@@ -2760,7 +2760,9 @@ jobs:
             if ! awk '
               function allowed(path) {
                 return path == ".github/workflows/opencode-review.yml" ||
+                  path == ".github/workflows/pr-review-merge-scheduler.yml" ||
                   path == ".github/workflows/strix.yml" ||
+                  path == "opencode.jsonc" ||
                   path == "requirements-strix-ci.txt" ||
                   path == "requirements-strix-ci-hashes.txt" ||
                   path == "scripts/ci/collect_failed_check_evidence.sh" ||
@@ -2786,7 +2788,7 @@ jobs:
             (
               cd "$source_root"
               if command -v actionlint >/dev/null 2>&1; then
-                actionlint -shellcheck= -pyflakes= .github/workflows/opencode-review.yml .github/workflows/strix.yml
+                actionlint -shellcheck= -pyflakes= .github/workflows/opencode-review.yml .github/workflows/pr-review-merge-scheduler.yml .github/workflows/strix.yml
               else
                 printf 'actionlint unavailable; skipped workflow schema validation.\n'
               fi

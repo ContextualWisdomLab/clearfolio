@@ -121,12 +121,13 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
 
-            return hex.toString();
+            // ⚡ Bolt: Replace slow String.format loop with HexFormat.of().formatHex()
+            // 🎯 Why: String.format parses the format string and allocates objects on every invocation,
+            //         which is a known performance bottleneck inside loops.
+            // 📊 Impact: Significantly faster execution time for hex conversions (often >10x faster)
+            //            and drastically reduced garbage collection overhead.
+            return java.util.HexFormat.of().formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

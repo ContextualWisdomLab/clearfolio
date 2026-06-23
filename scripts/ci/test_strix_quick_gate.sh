@@ -362,6 +362,9 @@ assert_opencode_review_uses_codegraph_and_gpt5_fallback() {
 	assert_file_contains "$workflow_file" "Prepare isolated OpenCode review workspace" "opencode review workflow isolates from the large project AGENTS.md"
 	assert_file_contains "$workflow_file" 'cd "$OPENCODE_REVIEW_WORKDIR"' "opencode review runs from the isolated OpenCode workspace"
 	assert_file_contains "$workflow_file" "failed-check-evidence.md" "opencode review copies full failed-check evidence into the isolated workspace"
+	assert_file_contains "$workflow_file" "OPENCODE_CHANGED_FILES_FILE" "opencode review exports the exact changed-file list for approval validation"
+	assert_file_contains "$workflow_file" 'diff --name-only --find-renames "$PR_MERGE_BASE" "$PR_HEAD_SHA" >"$OPENCODE_CHANGED_FILES_FILE"' "opencode review writes exact current-head changed files for the approval gate"
+	assert_file_contains "$workflow_file" "changed-files.txt" "opencode review copies changed-file evidence into the isolated workspace"
 	assert_file_contains "$workflow_file" "Checkout trusted review workflow" "opencode review executes trusted workflow scripts from the base checkout"
 	assert_file_contains "$workflow_file" "Checkout trusted review workflow for manual PR review" "opencode review checks out explicit base SHA for manual PR review reruns"
 	assert_file_contains "$workflow_file" 'ref: ${{ github.event.inputs.pr_base_sha }}' "opencode manual review checks out the trusted base workflow instead of the PR head"
@@ -912,10 +915,12 @@ EOF
 assert_opencode_review_gate_rejects_approve_without_changed_file_evidence() {
 	local tmp_dir
 	local output_file
+	local changed_files_file
 	local rc
 	local gate_result
 	tmp_dir="$(mktemp -d)"
 	output_file="$tmp_dir/opencode-output.md"
+	changed_files_file="$tmp_dir/changed-files.txt"
 
 	cat >"$output_file" <<'EOF'
 OpenCode transcript text before the review control block.
@@ -951,6 +956,42 @@ EOF
 	assert_equals "4" "$rc" "opencode approval gate rejects approvals without changed-file evidence"
 	assert_equals "NO_CONCLUSION" "$gate_result" "missing changed-file evidence rejection gate result"
 	assert_file_contains "$REPO_ROOT/.github/workflows/opencode-review.yml" "Before APPROVE, the summary must include at least one exact changed file path inspected as changed-file evidence" "opencode prompt requires changed-file evidence before approval"
+
+	cat >"$changed_files_file" <<'EOF'
+.github/workflows/opencode-review.yml
+scripts/ci/test_strix_quick_gate.sh
+EOF
+
+	cat >"$output_file" <<'EOF'
+OpenCode transcript text before the review control block.
+
+{"head_sha":"abc123","run_id":"42","run_attempt":"1","result":"APPROVE","reason":"Documentation-only changes with no functional impact","summary":"Verified README.md updates; no code changes detected.","findings":[]}
+EOF
+
+	set +e
+	OPENCODE_CHANGED_FILES_FILE="$changed_files_file" \
+		python3 "$REPO_ROOT/scripts/ci/opencode_review_normalize_output.py" \
+		"abc123" "42" "1" "$output_file" >"$tmp_dir/nonchanged-normalize.out" 2>"$tmp_dir/nonchanged-normalize.err"
+	rc=$?
+	set -e
+
+	assert_equals "4" "$rc" "opencode normalizer rejects approvals that cite non-changed files when exact changed-file evidence is available"
+	assert_file_contains "$tmp_dir/nonchanged-normalize.err" "NO_CONCLUSION" "opencode normalizer reports no conclusion for non-changed-file approval evidence"
+
+	cat >"$output_file" <<'EOF'
+OpenCode transcript text before the review control block.
+
+{"head_sha":"abc123","run_id":"42","run_attempt":"1","result":"APPROVE","reason":"No blockers found after inspecting .github/workflows/opencode-review.yml.","summary":"Reviewed .github/workflows/opencode-review.yml and scripts/ci/test_strix_quick_gate.sh against current-head evidence; no blocking findings.","findings":[]}
+EOF
+
+	set +e
+	OPENCODE_CHANGED_FILES_FILE="$changed_files_file" \
+		python3 "$REPO_ROOT/scripts/ci/opencode_review_normalize_output.py" \
+		"abc123" "42" "1" "$output_file" >"$tmp_dir/changed-normalize.out" 2>"$tmp_dir/changed-normalize.err"
+	rc=$?
+	set -e
+
+	assert_equals "0" "$rc" "opencode normalizer accepts approvals that cite exact current changed files"
 
 	rm -rf "$tmp_dir"
 }

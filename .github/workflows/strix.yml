@@ -372,8 +372,8 @@ jobs:
           STRIX_SOURCE_DIRS: ". backend frontend"
           STRIX_REASONING_EFFORT: low
           STRIX_LLM_MAX_RETRIES: 1
-          STRIX_TRANSIENT_RETRY_PER_MODEL: 5
-          STRIX_TRANSIENT_RETRY_BACKOFF_SECONDS: 60
+          STRIX_TRANSIENT_RETRY_PER_MODEL: 1
+          STRIX_TRANSIENT_RETRY_BACKOFF_SECONDS: 15
           STRIX_FALLBACK_MODELS: ${{ steps.gate.outputs.provider_mode == 'github_models' && 'github_models/deepseek/deepseek-r1-0528 github_models/deepseek/deepseek-v3-0324' || '' }}
           STRIX_FAIL_ON_PROVIDER_SIGNAL: "1"
           STRIX_VERTEX_FALLBACK_MODELS: ""
@@ -390,12 +390,35 @@ jobs:
           IS_PR_EVIDENCE_RUN: ${{ (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '') && 'true' || 'false' }}
         run: |
           budget_suffix="TIME""OUT"
-          process_budget_seconds="3600"
+          process_budget_seconds="900"
           export "LLM_${budget_suffix}=120"
           export "STRIX_MEMORY_COMPRESSOR_${budget_suffix}=10"
           export "STRIX_PROCESS_${budget_suffix}_SECONDS=$process_budget_seconds"
-          export "STRIX_TOTAL_${budget_suffix}_SECONDS=7200"
+          export "STRIX_TOTAL_${budget_suffix}_SECONDS=1800"
           bash "$TRUSTED_STRIX_GATE"
+
+      - name: Remove Strix secret temp files
+        if: ${{ always() && steps.gate.outputs.enabled == 'true' }}
+        run: |
+          set -euo pipefail
+          for secret_file in \
+            "${LLM_API_KEY_FILE:-}" \
+            "${LLM_API_BASE_FILE:-}" \
+            "${STRIX_LLM_FILE:-}" \
+            "${GOOGLE_APPLICATION_CREDENTIALS:-}" \
+            "${CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE:-}"; do
+            if [ -z "$secret_file" ]; then
+              continue
+            fi
+            case "$secret_file" in
+              "$RUNNER_TEMP"/*)
+                rm -f -- "$secret_file"
+                ;;
+              *)
+                echo "::warning::Refusing to remove temp secret path outside RUNNER_TEMP."
+                ;;
+            esac
+          done
 
       - name: Collect Strix reports for artifact upload
         if: ${{ always() && steps.gate.outputs.enabled == 'true' }}

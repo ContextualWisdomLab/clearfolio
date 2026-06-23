@@ -727,7 +727,7 @@ jobs:
         env:
           STRIX_GITHUB_MODELS_TOKEN: ${{ secrets.STRIX_GITHUB_MODELS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MODEL: github_models/openai/gpt-5
+          MODEL: github-models/openai/gpt-5
           USE_GITHUB_TOKEN: "true"
           SHARE: "false"
           NPM_CONFIG_IGNORE_SCRIPTS: "true"
@@ -1325,7 +1325,7 @@ jobs:
           OPENCODE_FAILED_CHECK_DIAGNOSIS_FILE: ${{ runner.temp }}/opencode-failed-check-diagnosis.md
           OPENCODE_REVIEW_WORKDIR: ${{ runner.temp }}/opencode-review-project
           OPENCODE_SOURCE_WORKDIR: ${{ runner.temp }}/opencode-pr-head
-          MODEL: github_models/openai/gpt-5
+          MODEL: github-models/openai/gpt-5
           USE_GITHUB_TOKEN: "true"
           NPM_CONFIG_IGNORE_SCRIPTS: "true"
           NO_COLOR: "1"
@@ -1863,7 +1863,7 @@ jobs:
               ".github/workflows/strix.yml" \
               "scripts/ci/test_strix_quick_gate.sh"
             emit_known_missing_string_finding \
-              "MODEL: github_models/openai/gpt-5" \
+              "MODEL: github-models/openai/gpt-5" \
               "OpenCode review must try GitHub Models GPT-5 first" \
               ".github/workflows/opencode-review.yml" \
               "scripts/ci/test_strix_quick_gate.sh"

@@ -2,7 +2,7 @@
   "mcp": {
     "codegraph": {
       "command": "npx",
-      "args": ["-y", "@sourcegraph/codegraph-mcp", "serve", "--mcp"]
+      "args": ["-y", "@colbymchenry/codegraph@0.9.9", "serve", "--mcp"]
     },
     "deepwiki": {
       "url": "https://mcp.deepwiki.com/mcp"

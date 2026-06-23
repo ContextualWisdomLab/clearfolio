@@ -190,6 +190,11 @@ a:hover {
   text-decoration: none;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .btn-primary {
   background: var(--brand-blue);
   color: #ffffff;

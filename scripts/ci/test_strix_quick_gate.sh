@@ -3314,6 +3314,10 @@ EOS
 			echo "Error: deployment scope missing backend/core/runtime_secrets.py ($target_path)" >&2
 			exit 60
 		fi
+		if [ ! -f "$target_path/scripts/ci/strix_quick_gate.sh" ]; then
+			echo "Error: deployment scope missing scripts/ci/strix_quick_gate.sh ($target_path)" >&2
+			exit 61
+		fi
 		if ! grep -Fq -- 'CMD ["/app/scripts/docker_entrypoint.sh"]' "$target_path/Dockerfile"; then
 			echo "Error: deployment Dockerfile does not reference docker_entrypoint.sh ($target_path)" >&2
 			exit 58

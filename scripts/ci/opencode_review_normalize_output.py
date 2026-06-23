@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -45,6 +46,8 @@ STRUCTURAL_FAILURE_PHRASES = (
     "no actionable changes to review",
     "no changes to review",
     "no changed files",
+    "no code changes",
+    "no code changes detected",
 )
 
 STRUCTURAL_FAILURE_PATTERNS = (
@@ -92,6 +95,33 @@ def mentions_changed_file_evidence(reason: str, summary: str) -> bool:
     return bool(CHANGED_FILE_EVIDENCE_PATTERN.search(f"{reason}\n{summary}"))
 
 
+def current_changed_files() -> list[str] | None:
+    """Return exact changed paths when the workflow provided bounded evidence."""
+    changed_files_path = os.environ.get("OPENCODE_CHANGED_FILES_FILE", "").strip()
+    if not changed_files_path:
+        return None
+    try:
+        lines = Path(changed_files_path).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    changed_files = []
+    for line in lines:
+        path = line.strip()
+        if path and not path.startswith("#"):
+            changed_files.append(path)
+    return changed_files
+
+
+def mentions_actual_changed_file(reason: str, summary: str) -> bool:
+    """Return whether approval text cites at least one exact current changed path."""
+    changed_files = current_changed_files()
+    if changed_files is None:
+        return mentions_changed_file_evidence(reason, summary)
+
+    combined = f"{reason}\n{summary}"
+    return any(path in combined for path in changed_files)
+
+
 def check_structural_approval(control_file: Path) -> int:
     """Validate an already-normalized control block before publishing approval."""
     try:
@@ -110,7 +140,7 @@ def check_structural_approval(control_file: Path) -> int:
     ):
         print("NO_CONCLUSION", file=sys.stderr)
         return 4
-    if value.get("result") == "APPROVE" and not mentions_changed_file_evidence(
+    if value.get("result") == "APPROVE" and not mentions_actual_changed_file(
         str(value.get("reason", "")),
         str(value.get("summary", "")),
     ):
@@ -160,7 +190,7 @@ def valid_control(
         return None
     if result == "APPROVE" and admits_missing_structural_review(reason, summary):
         return None
-    if result == "APPROVE" and not mentions_changed_file_evidence(reason, summary):
+    if result == "APPROVE" and not mentions_actual_changed_file(reason, summary):
         return None
 
     required_finding_fields = (

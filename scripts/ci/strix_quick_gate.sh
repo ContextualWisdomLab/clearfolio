@@ -1299,6 +1299,15 @@ frontend/postcss.config.mjs
 docker-compose.yml
 render.yaml
 VERSION
+scripts/ci/collect_failed_check_evidence.sh
+scripts/ci/emit_opencode_failed_check_fallback_findings.sh
+scripts/ci/opencode_review_approve_gate.sh
+scripts/ci/opencode_review_normalize_output.py
+scripts/ci/pr_review_merge_scheduler.py
+scripts/ci/strix_model_utils.sh
+scripts/ci/strix_quick_gate.sh
+scripts/ci/test_strix_quick_gate.sh
+scripts/ci/validate_opencode_failed_check_review.sh
 EOF
 	fi
 }

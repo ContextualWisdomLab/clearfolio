@@ -109,6 +109,8 @@ assert_strix_workflow_pr_trigger_hardened() {
 	assert_file_contains "$workflow_file" "git -C \"\$TRUSTED_WORKSPACE\"" "strix workflow runs git only inside trusted workspace"
 	assert_file_contains "$workflow_file" 'working-directory: ${{ runner.temp }}/trusted-workspace' "strix workflow executes privileged steps from the trusted workspace"
 	assert_file_contains "$workflow_file" "bash \"\$TRUSTED_STRIX_GATE_TEST\"" "strix workflow self-test executes trusted temp script"
+	assert_file_contains "$workflow_file" "STRIX_GATE_SELF_TEST_MODE: smoke" "strix workflow runs PR evidence self-test in smoke mode"
+	assert_file_contains "$workflow_file" "timeout 180 bash \"\$TRUSTED_STRIX_GATE_TEST\"" "strix workflow bounds trusted self-test runtime"
 	assert_file_contains "$workflow_file" "bash \"\$TRUSTED_STRIX_GATE\"" "strix workflow executes trusted temp gate script"
 	assert_file_contains "$workflow_file" "Collect Strix reports for artifact upload" "strix workflow preserves reports from trusted workspace"
 	assert_file_contains "$workflow_file" "scan-summary.txt" "strix workflow creates a fallback artifact when Strix emits no report files"
@@ -6136,6 +6138,16 @@ assert_opencode_failed_check_fallback_handles_pg_erd_cloud_strix_log_shape
 assert_opencode_failed_check_fallback_handles_split_code_location_lines
 
 assert_opencode_failed_check_fallback_does_not_anchor_unmapped_strix_reports_to_workflow
+
+if [ "${STRIX_GATE_SELF_TEST_MODE:-full}" = "smoke" ]; then
+	if [ "$FAILURES" -ne 0 ]; then
+		echo "test_strix_quick_gate: ${FAILURES} failure(s)" >&2
+		exit 1
+	fi
+
+	echo "test_strix_quick_gate: PASS (smoke)"
+	exit 0
+fi
 
 run_pull_request_target_head_scope_case \
 	"pull-request-target-modified-file-uses-head-blob" \

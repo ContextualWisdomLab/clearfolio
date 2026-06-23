@@ -142,7 +142,9 @@ jobs:
 
       - name: Self-test Strix gate script
         working-directory: ${{ runner.temp }}/trusted-workspace
-        run: bash "$TRUSTED_STRIX_GATE_TEST"
+        env:
+          STRIX_GATE_SELF_TEST_MODE: smoke
+        run: timeout 180 bash "$TRUSTED_STRIX_GATE_TEST"
 
       - name: Gate Strix secrets
         id: gate

@@ -174,6 +174,58 @@ jobs:
           git worktree add --detach "$OPENCODE_SOURCE_WORKDIR" "$PR_HEAD_SHA"
           git -C "$OPENCODE_SOURCE_WORKDIR" status --short
 
+      - name: Overlay PR-head review tooling bootstrap files for manual reruns
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          PR_BASE_SHA: ${{ github.event.inputs.pr_base_sha }}
+          PR_HEAD_SHA: ${{ github.event.inputs.pr_head_sha }}
+          OPENCODE_SOURCE_WORKDIR: ${{ runner.temp }}/opencode-pr-head
+        run: |
+          set -euo pipefail
+
+          # Manual self-modifying review-tooling PRs must exercise the proposed
+          # gate/normalizer. Source/application PRs keep the trusted base logic.
+          allowlist_file="$(mktemp)"
+          changed_files_file="$(mktemp)"
+          cat >"$allowlist_file" <<'EOF'
+          .github/workflows/opencode-review.yml
+          .github/workflows/pr-review-merge-scheduler.yml
+          .github/workflows/strix.yml
+          opencode.jsonc
+          requirements-strix-ci.txt
+          requirements-strix-ci-hashes.txt
+          scripts/ci/collect_failed_check_evidence.sh
+          scripts/ci/emit_opencode_failed_check_fallback_findings.sh
+          scripts/ci/opencode_review_approve_gate.sh
+          scripts/ci/opencode_review_normalize_output.py
+          scripts/ci/strix_model_utils.sh
+          scripts/ci/strix_quick_gate.sh
+          scripts/ci/test_strix_quick_gate.sh
+          scripts/ci/validate_opencode_failed_check_review.sh
+          EOF
+
+          pr_merge_base="$(git -C "$OPENCODE_SOURCE_WORKDIR" merge-base "$PR_BASE_SHA" "$PR_HEAD_SHA")"
+          git -C "$OPENCODE_SOURCE_WORKDIR" diff --name-only --find-renames "$pr_merge_base" "$PR_HEAD_SHA" >"$changed_files_file"
+          if [ ! -s "$changed_files_file" ]; then
+            printf 'No changed files; keeping trusted base review tooling.\n'
+            exit 0
+          fi
+
+          if ! awk 'NR == FNR {allowed[$0]=1; next} { if (!($0 in allowed)) exit 1 }' "$allowlist_file" "$changed_files_file"; then
+            printf '::notice::Skipping PR-head review tooling overlay because changed files include non-review-tooling paths.\n'
+            sed 's/^/changed: /' "$changed_files_file"
+            exit 0
+          fi
+
+          printf 'Only fully review-tooling PRs may execute PR-head bootstrap helpers in the trusted workspace.\n'
+          while IFS= read -r bootstrap_file; do
+            if [ -f "$OPENCODE_SOURCE_WORKDIR/$bootstrap_file" ]; then
+              mkdir -p "$(dirname "$GITHUB_WORKSPACE/$bootstrap_file")"
+              cp "$OPENCODE_SOURCE_WORKDIR/$bootstrap_file" "$GITHUB_WORKSPACE/$bootstrap_file"
+              printf 'Overlayed PR-head review tooling bootstrap file: %s\n' "$bootstrap_file"
+            fi
+          done <"$allowlist_file"
+
       - name: Configure git identity for OpenCode action
         run: |
           set -euo pipefail

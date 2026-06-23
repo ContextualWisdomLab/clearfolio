@@ -45,6 +45,7 @@ function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
+  document.title = "Loading... - Clearfolio Viewer";
 }
 
 function showError(message) {
@@ -53,6 +54,7 @@ function showError(message) {
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
+  document.title = "Error - Clearfolio Viewer";
 }
 
 function clearPreview() {
@@ -72,7 +74,9 @@ function renderPreviewLink(path) {
   link.href = path;
   link.textContent = "Open artifact";
   link.className = "btn btn-secondary";
-  link.rel = "noopener";
+  link.rel = "noopener noreferrer";
+  link.target = "_blank";
+  link.setAttribute("aria-label", "Open artifact (opens in new tab)");
   el.preview.appendChild(link);
 }
 
@@ -156,6 +160,7 @@ async function poll(docId, abortSignal) {
 
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
+    document.title = "Ready - Clearfolio Viewer";
 
     clearPreview();
     const path = bootstrap.data.previewResourcePath;

@@ -33,6 +33,11 @@ import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.PolicyOverrideRequest;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
+import com.clearfolio.viewer.artifact.ArtifactStore;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Optional;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -51,6 +56,7 @@ public class ConversionController {
     private final DocumentConversionService conversionService;
     private final TenantAccessService tenantAccessService;
     private final ArtifactLinkService artifactLinkService;
+    private final ArtifactStore artifactStore;
     private final int maxInMemorySizeBytes;
 
     /**
@@ -59,16 +65,19 @@ public class ConversionController {
      * @param conversionService conversion service
      * @param tenantAccessService tenant and permission guard
      * @param artifactLinkService signed artifact link service
+     * @param artifactStore artifact store for downloading pdfs
      * @param maxInMemorySize maximum in-memory multipart size
      */
     public ConversionController(
             DocumentConversionService conversionService,
             TenantAccessService tenantAccessService,
             ArtifactLinkService artifactLinkService,
+            ArtifactStore artifactStore,
             @Value("${spring.codec.max-in-memory-size:262144B}") DataSize maxInMemorySize) {
         this.conversionService = conversionService;
         this.tenantAccessService = tenantAccessService;
         this.artifactLinkService = artifactLinkService;
+        this.artifactStore = artifactStore;
         long bytes = Math.max(1L, maxInMemorySize.toBytes());
         this.maxInMemorySizeBytes = bytes > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) bytes;
     }
@@ -173,6 +182,67 @@ public class ConversionController {
             @RequestHeader HttpHeaders headers) {
         TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.VIEWER_READ);
         return getViewerBootstrap(docId, tenantContext);
+    }
+
+    /**
+     * Downloads the converted PDF artifact.
+     *
+     * @param jobId conversion job identifier
+     * @return PDF bytes with attachment disposition and checksum header
+     */
+    @GetMapping("/api/v1/convert/jobs/{jobId}/download")
+    public Mono<ResponseEntity<byte[]>> downloadArtifact(@PathVariable UUID jobId) {
+        ConversionJob job = conversionService.getJob(jobId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
+
+        if (job.getStatus() != ConversionJobStatus.SUCCEEDED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    job.getStatus() + " not ready yet. retry in a few seconds"
+            );
+        }
+
+        Optional<byte[]> stored = artifactStore.getPdf(jobId);
+        if (stored.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "artifact not found");
+        }
+
+        byte[] pdfBytes = stored.get();
+        String checksum = calculateSha256(pdfBytes);
+        String filename = job.getOriginalFileName();
+        if (filename == null || filename.isBlank()) {
+            filename = "document";
+        }
+
+        int lastDotIndex = filename.lastIndexOf('.');
+        if (lastDotIndex > 0) {
+            filename = filename.substring(0, lastDotIndex);
+        }
+        filename = filename + ".pdf";
+
+        return Mono.just(ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header("X-Checksum-Sha256", checksum)
+                .body(pdfBytes));
+    }
+
+    private String calculateSha256(byte[] data) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(data);
+            StringBuilder hexString = new StringBuilder(2 * hash.length);
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm not available", e);
+        }
     }
 
     private ViewerBootstrapResponse getViewerBootstrap(UUID docId, TenantContext tenantContext) {

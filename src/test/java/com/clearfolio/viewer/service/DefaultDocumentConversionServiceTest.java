@@ -46,6 +46,45 @@ import com.clearfolio.viewer.repository.ConversionJobStateStore;
 class DefaultDocumentConversionServiceTest {
 
     @Test
+    void getAllJobsReturnsAllJobsFromRepository() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionProperties props = new ConversionProperties();
+        DefaultDocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DocumentValidationService() {
+                    @Override
+                    public void validateOrThrow(org.springframework.web.multipart.MultipartFile file) {
+                    }
+                },
+                id -> {},
+                props
+        );
+
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        repository.save(job1);
+        repository.save(job2);
+
+        Iterable<ConversionJob> allJobs = service.getAllJobs();
+        int count = 0;
+        boolean found1 = false;
+        boolean found2 = false;
+        for (ConversionJob job : allJobs) {
+            count++;
+            if (job.getJobId().equals(job1.getJobId())) {
+                found1 = true;
+            }
+            if (job.getJobId().equals(job2.getJobId())) {
+                found2 = true;
+            }
+        }
+
+        assertEquals(2, count);
+        assertTrue(found1);
+        assertTrue(found2);
+    }
+
+    @Test
     void submitWithOverrideDelegatesPolicyHeadersToValidationService() {
         ConversionJobRepository repository = new InMemoryConversionJobRepository();
         RecordingConversionWorker worker = new RecordingConversionWorker();
@@ -671,6 +710,11 @@ class DefaultDocumentConversionServiceTest {
         @Override
         public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
             return finder.apply(candidate);
+        }
+
+        @Override
+        public Iterable<ConversionJob> findAll() {
+            return java.util.Collections.emptyList();
         }
     }
 

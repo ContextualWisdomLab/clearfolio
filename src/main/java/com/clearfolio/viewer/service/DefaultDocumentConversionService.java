@@ -63,6 +63,8 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         PolicyOverrideRequest effectiveOverride = overrideRequest == null
                 ? PolicyOverrideRequest.none()
                 : overrideRequest;
+        // Security: File type, size limits, and basic content validation are enforced here.
+        // Processing sandboxing is handled by the worker environment.
         validationService.validateOrThrow(file, effectiveOverride);
 
         String contentHash = contentHash(file);

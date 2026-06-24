@@ -83,12 +83,32 @@ public class PdfBoxArtifactGenerator implements PdfArtifactGenerator {
         }
 
         String stripped = value.strip();
-        if (stripped.isEmpty()) {
+        int len = stripped.length();
+        if (len == 0) {
             return "";
         }
 
-        StringBuilder normalized = new StringBuilder(stripped.length());
-        for (int i = 0; i < stripped.length(); i++) {
+        // Bolt optimization: Zero-allocation fast-path.
+        // Most strings are already PDF-safe.
+        // A quick scan avoids allocating StringBuilder when string is clean.
+        int firstUnsafe = -1;
+        for (int i = 0; i < len; i++) {
+            char ch = stripped.charAt(i);
+            if (ch < 0x20 || ch > 0x7E) {
+                firstUnsafe = i;
+                break;
+            }
+        }
+
+        // Return original string if entirely safe, avoiding allocation
+        if (firstUnsafe == -1) {
+            return stripped;
+        }
+
+        // Slow-path: Allocate StringBuilder and replace unsafe characters
+        StringBuilder normalized = new StringBuilder(len);
+        normalized.append(stripped, 0, firstUnsafe);
+        for (int i = firstUnsafe; i < len; i++) {
             char ch = stripped.charAt(i);
             if (ch >= 0x20 && ch <= 0x7E) {
                 normalized.append(ch);

@@ -33,19 +33,22 @@ import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.PolicyOverrideRequest;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
+import com.clearfolio.viewer.artifact.ArtifactStore;
 
 class ConversionControllerTest {
 
     private WebTestClient webTestClient;
 
     private DocumentConversionService conversionService;
+    private ArtifactStore artifactStore;
 
     private ConversionController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new ConversionController(conversionService, DataSize.ofBytes(262_144L));
+        artifactStore = mock(ArtifactStore.class);
+        controller = new ConversionController(conversionService, artifactStore, DataSize.ofBytes(262_144L));
         webTestClient = WebTestClient.bindToController(
                 controller
         ).controllerAdvice(new ApiExceptionHandler()).build();
@@ -55,6 +58,7 @@ class ConversionControllerTest {
     void constructorCapsMaxInMemorySizeAtIntegerMaxValue() throws Exception {
         ConversionController controller = new ConversionController(
                 conversionService,
+                artifactStore,
                 DataSize.ofBytes((long) Integer.MAX_VALUE + 1)
         );
         Field field = ConversionController.class.getDeclaredField("maxInMemorySizeBytes");
@@ -467,6 +471,80 @@ class ConversionControllerTest {
                 .jsonPath("$.previewResourcePath").isEqualTo("/artifacts/report.pdf")
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
                 .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundWhenJobNotFound() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void downloadArtifactReturnsConflictWhenJobNotSucceeded() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "doc.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "hash", 10L);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundWhenArtifactMissing() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "doc.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "hash", 10L);
+        job.markSucceeded("/path", "done");
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        when(artifactStore.getPdf(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void downloadArtifactReturnsPdfWithAttachmentDispositionAndChecksum() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "my-report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "hash", 10L);
+        job.markSucceeded("/path", "done");
+        byte[] pdfBytes = "fake pdf".getBytes();
+
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        when(artifactStore.getPdf(jobId)).thenReturn(Optional.of(pdfBytes));
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_PDF)
+                .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"my-report.pdf\"")
+                .expectHeader().exists("X-Checksum-Sha256")
+                .expectBody(byte[].class).isEqualTo(pdfBytes);
+    }
+
+    @Test
+    void downloadArtifactHandlesNullFilename() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, null, "application/pdf", "hash", 10L);
+        job.markSucceeded("/path", "done");
+        byte[] pdfBytes = "fake pdf".getBytes();
+
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        when(artifactStore.getPdf(jobId)).thenReturn(Optional.of(pdfBytes));
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"document.pdf\"");
     }
 
     @Test

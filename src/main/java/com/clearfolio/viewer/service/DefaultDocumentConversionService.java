@@ -110,6 +110,14 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         return RetryDeadLetterResult.ACCEPTED;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Iterable<ConversionJob> getAllJobs() {
+        return repository.findAll();
+    }
+
     private String contentHash(MultipartFile file) {
         try (InputStream stream = file.getInputStream()) {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

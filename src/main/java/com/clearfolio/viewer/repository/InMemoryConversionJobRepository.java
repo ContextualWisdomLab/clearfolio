@@ -89,4 +89,12 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository 
 
         return findById(jobId);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Iterable<ConversionJob> findAll() {
+        return jobs.values();
+    }
 }

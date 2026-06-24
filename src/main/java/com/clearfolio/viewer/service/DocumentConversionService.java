@@ -46,4 +46,11 @@ public interface DocumentConversionService {
      * @return retry outcome
      */
     RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId);
+
+    /**
+     * Returns all registered conversion jobs.
+     *
+     * @return an iterable of all conversion jobs
+     */
+    Iterable<ConversionJob> getAllJobs();
 }

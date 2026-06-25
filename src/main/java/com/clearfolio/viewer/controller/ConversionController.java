@@ -57,7 +57,7 @@ public class ConversionController {
             @Value("${spring.codec.max-in-memory-size:262144B}") DataSize maxInMemorySize) {
         this.conversionService = conversionService;
         long bytes = Math.max(1L, maxInMemorySize.toBytes());
-        this.maxInMemorySizeBytes = bytes > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) bytes;
+        this.maxInMemorySizeBytes = Math.min((int) bytes, 5 * 1024 * 1024);
     }
 
     /**
@@ -141,6 +141,7 @@ public class ConversionController {
             throw new IllegalArgumentException(OPERATOR_ID_HEADER + " header is required.");
         }
 
+        operatorId = operatorId.replaceAll("[^a-zA-Z0-9_-]", "");
         RetryDeadLetterResult retryResult = conversionService.retryDeadLettered(jobId, operatorId.strip());
         if (retryResult == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");

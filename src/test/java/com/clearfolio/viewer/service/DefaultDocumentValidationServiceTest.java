@@ -38,15 +38,27 @@ class DefaultDocumentValidationServiceTest {
         assertEquals("hwp", ex.getExtension());
     }
 
+    private String validToken(String approverId, String extension, String secret) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest((approverId + ":" + extension + ":" + secret).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash);
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
     @Test
     void allowsBlockedExtensionWhenOverrideHeadersAreValid() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
+        String token = validToken("approver-1", "hwp", conversionProperties.getPolicyOverrideSecret());
+
         assertDoesNotThrow(() -> validationService.validateOrThrow(
                 new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                PolicyOverrideRequest.of("true", "token-123", "approver-1")
+                PolicyOverrideRequest.of("true", token, "approver-1")
         ));
     }
 
@@ -56,11 +68,13 @@ class DefaultDocumentValidationServiceTest {
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
+        String token = validToken("approver-1", "hwp", conversionProperties.getPolicyOverrideSecret());
+
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
                         new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                        PolicyOverrideRequest.of("not-boolean", "token-123", "approver-1")
+                        PolicyOverrideRequest.of("not-boolean", token, "approver-1")
                 )
         );
 
@@ -173,6 +187,40 @@ class DefaultDocumentValidationServiceTest {
         assertDoesNotThrow(() -> validationService.validateOrThrow(
                 new MockMultipartFile("file", "contract.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", new byte[] {1})
         ));
+    }
+
+    @Test
+    void rejectsValidExtensionNotInAllowlist() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setAllowedExtensions(java.util.Set.of("pdf", "doc"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        UnsupportedDocumentFormatException ex = assertThrows(
+                UnsupportedDocumentFormatException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract.docx", "application/octet-stream", new byte[] {1})
+                )
+        );
+
+        assertEquals("docx", ex.getExtension());
+    }
+
+    @Test
+    void rejectsInvalidTokenSignature() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        PolicyOverrideRequest.of("true", "invalid-token", "approver-1")
+                )
+        );
+
+        assertEquals("Invalid approval token signature.", ex.getMessage());
     }
 
     @Test

@@ -52,15 +52,15 @@ class ConversionControllerTest {
     }
 
     @Test
-    void constructorCapsMaxInMemorySizeAtIntegerMaxValue() throws Exception {
+    void constructorCapsMaxInMemorySizeAt5MB() throws Exception {
         ConversionController controller = new ConversionController(
                 conversionService,
-                DataSize.ofBytes((long) Integer.MAX_VALUE + 1)
+                DataSize.ofBytes(10 * 1024 * 1024L)
         );
         Field field = ConversionController.class.getDeclaredField("maxInMemorySizeBytes");
         field.setAccessible(true);
 
-        assertEquals(Integer.MAX_VALUE, field.getInt(controller));
+        assertEquals(5 * 1024 * 1024, field.getInt(controller));
     }
 
     @Test

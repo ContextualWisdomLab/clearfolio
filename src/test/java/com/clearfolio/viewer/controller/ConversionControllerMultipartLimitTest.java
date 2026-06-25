@@ -65,11 +65,22 @@ class ConversionControllerMultipartLimitTest {
 
     @Test
     void submitAcceptsBlockedExtensionWhenPolicyOverrideHeadersAreValid() {
-        submit("contract.hwp", "hello".getBytes(), "true", "token-xyz", "approver-99")
+        String token = validToken("approver-99", "hwp", "default-secret-change-in-prod");
+        submit("contract.hwp", "hello".getBytes(), "true", token, "approver-99")
                 .expectStatus().isAccepted()
                 .expectBody()
                 .jsonPath("$.status").isEqualTo("ACCEPTED")
                 .jsonPath("$.jobId").value(value -> assertContains((String) value, "-"));
+    }
+
+    private String validToken(String approverId, String extension, String secret) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest((approverId + ":" + extension + ":" + secret).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash);
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 
     @Test

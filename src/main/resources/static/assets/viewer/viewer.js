@@ -45,6 +45,8 @@ function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
+  el.retryBtn.setAttribute("aria-disabled", "true");
+  el.retryBtn.innerHTML = `<span class="spinner" aria-hidden="true"></span> Refresh`;
 }
 
 function showError(message) {
@@ -52,6 +54,8 @@ function showError(message) {
   el.errorMessage.textContent = message;
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
+  el.retryBtn.setAttribute("aria-disabled", "false");
+  el.retryBtn.textContent = "Refresh";
   el.errorTitle.focus();
 }
 
@@ -70,9 +74,10 @@ function clearPreview() {
 function renderPreviewLink(path) {
   const link = document.createElement("a");
   link.href = path;
-  link.textContent = "Open artifact";
+  link.innerHTML = `Open artifact <span class="sr-only">(opens in a new tab)</span>`;
   link.className = "btn btn-secondary";
-  link.rel = "noopener";
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
   el.preview.appendChild(link);
 }
 
@@ -156,6 +161,8 @@ async function poll(docId, abortSignal) {
 
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
+    el.retryBtn.setAttribute("aria-disabled", "false");
+    el.retryBtn.textContent = "Refresh";
 
     clearPreview();
     const path = bootstrap.data.previewResourcePath;
@@ -195,6 +202,9 @@ function init() {
 
   let controller = new AbortController();
   const start = () => {
+    if (el.retryBtn.getAttribute("aria-disabled") === "true") {
+      return;
+    }
     controller.abort();
     controller = new AbortController();
     void poll(docId, controller.signal);

@@ -315,6 +315,34 @@ class ConversionControllerTest {
     }
 
     @Test
+    void deleteJobReturnsNoContentWhenFound() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.deleteJob(jobId)).thenReturn(true);
+
+        webTestClient.delete()
+                .uri("/api/v1/convert/jobs/{jobId}", jobId)
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectBody().isEmpty();
+    }
+
+    @Test
+    void deleteJobReturnsNotFoundWhenMissing() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.deleteJob(jobId)).thenReturn(false);
+
+        webTestClient.delete()
+                .uri("/api/v1/convert/jobs/{jobId}", jobId)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND")
+                .jsonPath("$.code").isEqualTo("NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("job not found")
+                .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+    }
+
+    @Test
     void retryReturnsNotFoundWhenJobMissing() {
         UUID jobId = UUID.randomUUID();
         when(conversionService.retryDeadLettered(jobId, "operator-7")).thenReturn(RetryDeadLetterResult.NOT_FOUND);

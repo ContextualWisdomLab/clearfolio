@@ -10,6 +10,7 @@ import org.springframework.util.unit.DataSize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -109,6 +110,20 @@ public class ConversionController {
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
         return ConversionJobStatusResponse.from(job);
+    }
+
+    /**
+     * Deletes a conversion job and its generated artifacts.
+     *
+     * @param jobId conversion job identifier
+     * @return no content response
+     */
+    @DeleteMapping("/api/v1/convert/jobs/{jobId}")
+    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId) {
+        if (!conversionService.deleteJob(jobId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
+        return ResponseEntity.noContent().build();
     }
 
     /**

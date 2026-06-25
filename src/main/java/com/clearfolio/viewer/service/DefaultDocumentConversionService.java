@@ -7,10 +7,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.config.ConversionProperties;
@@ -25,6 +27,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
     private final ConversionJobRepository repository;
     private final DocumentValidationService validationService;
     private final ConversionWorker conversionWorker;
+    private final ArtifactStore artifactStore;
     private final int maxRetryAttempts;
 
     /**
@@ -33,16 +36,19 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * @param repository conversion job repository
      * @param validationService document validation service
      * @param conversionWorker conversion worker
+     * @param artifactStore artifact store
      * @param conversionProperties conversion configuration values
      */
     public DefaultDocumentConversionService(
             ConversionJobRepository repository,
             DocumentValidationService validationService,
             ConversionWorker conversionWorker,
+            ArtifactStore artifactStore,
             ConversionProperties conversionProperties) {
         this.repository = repository;
         this.validationService = validationService;
         this.conversionWorker = conversionWorker;
+        this.artifactStore = artifactStore;
         this.maxRetryAttempts = conversionProperties.getMaxRetryAttempts();
     }
 
@@ -110,6 +116,21 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         return RetryDeadLetterResult.ACCEPTED;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean deleteJob(UUID jobId) {
+        Optional<ConversionJob> existing = repository.findById(jobId);
+        if (existing.isEmpty()) {
+            return false;
+        }
+
+        repository.delete(jobId);
+        artifactStore.deletePdf(jobId);
+        return true;
+    }
+
     private String contentHash(MultipartFile file) {
         try (InputStream stream = file.getInputStream()) {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -121,12 +142,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString();
+            return HexFormat.of().formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

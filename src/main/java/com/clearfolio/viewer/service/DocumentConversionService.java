@@ -46,4 +46,12 @@ public interface DocumentConversionService {
      * @return retry outcome
      */
     RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId);
+
+    /**
+     * Deletes a conversion job and its generated artifacts.
+     *
+     * @param jobId conversion job identifier
+     * @return true if the job was found and deleted, false otherwise
+     */
+    boolean deleteJob(UUID jobId);
 }

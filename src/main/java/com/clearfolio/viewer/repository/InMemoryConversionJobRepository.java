@@ -89,4 +89,18 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository 
 
         return findById(jobId);
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void delete(UUID jobId) {
+        ConversionJob job = jobs.remove(jobId);
+        if (job != null) {
+            String contentHash = job.getContentHash();
+            if (contentHash != null && !contentHash.isBlank()) {
+                jobsByContentHash.remove(contentHash, jobId);
+            }
+        }
+    }
 }

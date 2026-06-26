@@ -29,10 +29,6 @@ on:
         default: true
         type: boolean
 
-concurrency:
-  group: pr-review-merge-scheduler-${{ github.repository }}
-  cancel-in-progress: false
-
 jobs:
   scan-pr-queue:
     permissions:

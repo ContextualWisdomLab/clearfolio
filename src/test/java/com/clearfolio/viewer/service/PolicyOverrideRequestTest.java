@@ -25,20 +25,20 @@ class PolicyOverrideRequestTest {
 
     @Test
     void ofRetainsProvidedHeaderValues() {
-        PolicyOverrideRequest request = PolicyOverrideRequest.of("true", "token-123", "approver-1");
+        PolicyOverrideRequest request = PolicyOverrideRequest.of("true", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1");
 
         assertEquals("true", request.policyOverride());
-        assertEquals("token-123", request.approvalToken());
+        assertEquals("382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", request.approvalToken());
         assertEquals("approver-1", request.approverId());
     }
 
     @Test
     void ofCreatesDistinctInstanceWhenOnlyPartialHeadersArePresent() {
-        PolicyOverrideRequest request = PolicyOverrideRequest.of(null, "token-123", null);
+        PolicyOverrideRequest request = PolicyOverrideRequest.of(null, "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", null);
 
         assertNotSame(PolicyOverrideRequest.none(), request);
         assertNull(request.policyOverride());
-        assertEquals("token-123", request.approvalToken());
+        assertEquals("382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", request.approvalToken());
         assertNull(request.approverId());
     }
 

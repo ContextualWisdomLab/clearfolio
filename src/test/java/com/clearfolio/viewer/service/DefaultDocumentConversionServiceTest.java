@@ -72,12 +72,12 @@ class DefaultDocumentConversionServiceTest {
                 "hello-viewer".getBytes()
         );
 
-        UUID jobId = service.submit(file, PolicyOverrideRequest.of("true", "token-123", "approver-1"));
+        UUID jobId = service.submit(file, PolicyOverrideRequest.of("true", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1"));
 
         assertNotEquals(new UUID(0L, 0L), jobId);
         assertEquals(1, validationCallCount.get());
         assertEquals("true", capturedOverride.get().policyOverride());
-        assertEquals("token-123", capturedOverride.get().approvalToken());
+        assertEquals("382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", capturedOverride.get().approvalToken());
         assertEquals("approver-1", capturedOverride.get().approverId());
         assertEquals(1, worker.enqueuedCount());
     }

@@ -36,7 +36,7 @@ class ServiceInterfaceDefaultMethodsTest {
 
         UUID actual = service.submit(
                 new MockMultipartFile("file", "report.docx", "application/octet-stream", new byte[] {1}),
-                PolicyOverrideRequest.of("true", "token-123", "approver-1")
+                PolicyOverrideRequest.of("true", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1")
         );
 
         assertEquals(expected, actual);
@@ -53,7 +53,7 @@ class ServiceInterfaceDefaultMethodsTest {
                 new byte[] {1}
         );
 
-        service.validateOrThrow(file, PolicyOverrideRequest.of("true", "token-123", "approver-1"));
+        service.validateOrThrow(file, PolicyOverrideRequest.of("true", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1"));
 
         assertEquals(file, capturedFile.get());
     }

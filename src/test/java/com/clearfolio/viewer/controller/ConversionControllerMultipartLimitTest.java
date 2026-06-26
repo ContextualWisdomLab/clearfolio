@@ -15,7 +15,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 
 import com.clearfolio.viewer.service.PolicyOverrideRequest;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {"conversion.policy-override-secret=test-secret"})
 @AutoConfigureWebTestClient
 @TestPropertySource(
         properties = {
@@ -65,7 +65,7 @@ class ConversionControllerMultipartLimitTest {
 
     @Test
     void submitAcceptsBlockedExtensionWhenPolicyOverrideHeadersAreValid() {
-        submit("contract.hwp", "hello".getBytes(), "true", "token-xyz", "approver-99")
+        submit("contract.hwp", "hello".getBytes(), "true", "aa98d273e8300a37f6445758f1e730d736096badf7d6c65a433000ff5f16cb22", "approver-99")
                 .expectStatus().isAccepted()
                 .expectBody()
                 .jsonPath("$.status").isEqualTo("ACCEPTED")
@@ -86,7 +86,7 @@ class ConversionControllerMultipartLimitTest {
 
     @Test
     void submitRejectsBlockedExtensionWhenOverrideApproverIsMissing() {
-        submit("contract.hwp", "hello".getBytes(), "true", "token-xyz", " ")
+        submit("contract.hwp", "hello".getBytes(), "true", "aa98d273e8300a37f6445758f1e730d736096badf7d6c65a433000ff5f16cb22", " ")
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("BAD_REQUEST")
@@ -98,7 +98,7 @@ class ConversionControllerMultipartLimitTest {
 
     @Test
     void submitRejectsBlockedExtensionWhenOverrideFlagIsInvalid() {
-        submit("contract.hwp", "hello".getBytes(), "maybe", "token-xyz", "approver-99")
+        submit("contract.hwp", "hello".getBytes(), "maybe", "aa98d273e8300a37f6445758f1e730d736096badf7d6c65a433000ff5f16cb22", "approver-99")
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("BAD_REQUEST")

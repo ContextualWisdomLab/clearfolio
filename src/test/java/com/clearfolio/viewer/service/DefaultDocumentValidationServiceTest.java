@@ -26,6 +26,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsHwpAndHwpxByDefault() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         UnsupportedDocumentFormatException ex = assertThrows(
@@ -42,11 +43,12 @@ class DefaultDocumentValidationServiceTest {
     void allowsBlockedExtensionWhenOverrideHeadersAreValid() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         assertDoesNotThrow(() -> validationService.validateOrThrow(
                 new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                PolicyOverrideRequest.of("true", "token-123", "approver-1")
+                PolicyOverrideRequest.of("true", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1")
         ));
     }
 
@@ -54,13 +56,14 @@ class DefaultDocumentValidationServiceTest {
     void rejectsBlockedExtensionWhenOverrideFlagIsInvalid() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
                         new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                        PolicyOverrideRequest.of("not-boolean", "token-123", "approver-1")
+                        PolicyOverrideRequest.of("not-boolean", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1")
                 )
         );
 
@@ -71,6 +74,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsBlockedExtensionWhenOverrideTokenIsMissing() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
@@ -88,6 +92,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsBlockedExtensionWhenOverrideTokenIsNull() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
@@ -105,13 +110,14 @@ class DefaultDocumentValidationServiceTest {
     void rejectsBlockedExtensionWhenOverrideApproverIsMissing() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
                         new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                        PolicyOverrideRequest.of("true", "token-123", " ")
+                        PolicyOverrideRequest.of("true", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", " ")
                 )
         );
 
@@ -122,13 +128,14 @@ class DefaultDocumentValidationServiceTest {
     void rejectsBlockedExtensionWhenOverrideFlagIsFalse() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         UnsupportedDocumentFormatException ex = assertThrows(
                 UnsupportedDocumentFormatException.class,
                 () -> validationService.validateOrThrow(
                         new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                        PolicyOverrideRequest.of("false", "token-123", "approver-1")
+                        PolicyOverrideRequest.of("false", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1")
                 )
         );
 
@@ -139,13 +146,14 @@ class DefaultDocumentValidationServiceTest {
     void rejectsBlockedExtensionWhenOverrideFlagIsBlank() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         UnsupportedDocumentFormatException ex = assertThrows(
                 UnsupportedDocumentFormatException.class,
                 () -> validationService.validateOrThrow(
                         new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                        PolicyOverrideRequest.of(" ", "token-123", "approver-1")
+                        PolicyOverrideRequest.of(" ", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1")
                 )
         );
 
@@ -156,6 +164,7 @@ class DefaultDocumentValidationServiceTest {
     void ignoresInvalidOverrideFlagForSupportedExtension() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         assertDoesNotThrow(() -> validationService.validateOrThrow(
@@ -168,6 +177,7 @@ class DefaultDocumentValidationServiceTest {
     void allowsSupportedExtensions() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         assertDoesNotThrow(() -> validationService.validateOrThrow(
@@ -179,6 +189,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsMissingExtension() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
@@ -195,6 +206,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsBlankFilenameOrMissingName() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         assertThrows(
@@ -209,6 +221,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsNullFilename() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         assertThrows(
@@ -223,6 +236,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsOversizedPayload() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         conversionProperties.setMaxUploadSizeBytes(2L);
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
@@ -238,6 +252,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsNullFile() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
@@ -252,6 +267,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsEmptyFile() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
@@ -268,6 +284,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsMultipartWithNullOriginalFilename() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         MultipartFile file = mock(MultipartFile.class);
@@ -287,6 +304,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsFilenameEndingWithDot() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
@@ -303,6 +321,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsLeadingDotFilenameAsMissingExtension() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
@@ -319,6 +338,7 @@ class DefaultDocumentValidationServiceTest {
     void trimsFilenameBeforeBlockedExtensionCheck() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         UnsupportedDocumentFormatException ex = assertThrows(
@@ -335,6 +355,7 @@ class DefaultDocumentValidationServiceTest {
     void handlesNullOverrideRequestByFallingBackToDefaultPolicy() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         UnsupportedDocumentFormatException ex = assertThrows(
@@ -373,9 +394,46 @@ class DefaultDocumentValidationServiceTest {
     }
 
     @Test
+    void rejectsInvalidSignature() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                                new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                                PolicyOverrideRequest.of("true", "invalid-token", "approver-1")
+                )
+        );
+
+        assertEquals("Invalid policy override signature.", ex.getMessage());
+    }
+
+    @Test
+    void rejectsWhenPolicyOverrideSecretIsMissing() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("");
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                                new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                                PolicyOverrideRequest.of("true", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1")
+                )
+        );
+
+        assertEquals("Policy override secret is not configured.", ex.getMessage());
+    }
+
+    @Test
     void throwsWhenSha256DigestIsUnavailableForOverrideAuditFingerprint() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         synchronized (SECURITY_PROVIDERS_LOCK) {
@@ -389,11 +447,11 @@ class DefaultDocumentValidationServiceTest {
                         IllegalStateException.class,
                         () -> validationService.validateOrThrow(
                                 new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                                PolicyOverrideRequest.of("true", "token-123", "approver-1")
+                                PolicyOverrideRequest.of("true", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1")
                         )
                 );
 
-                assertEquals("SHA-256 digest unavailable", ex.getMessage());
+                assertEquals("HMAC SHA-256 unavailable", ex.getMessage());
             } finally {
                 for (int index = 0; index < providers.length; index++) {
                     Security.insertProviderAt(providers[index], index + 1);

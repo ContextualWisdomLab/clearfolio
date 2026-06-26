@@ -160,7 +160,7 @@ class ConversionControllerTest {
         UUID jobId = UUID.randomUUID();
         when(conversionService.submit(any(), any())).thenReturn(jobId);
 
-        submit("contract.hwp", "hello".getBytes(), "true", "token-123", "approver-1")
+        submit("contract.hwp", "hello".getBytes(), "true", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1")
                 .expectStatus().isAccepted()
                 .expectBody()
                 .jsonPath("$.jobId").isEqualTo(jobId.toString());
@@ -171,7 +171,7 @@ class ConversionControllerTest {
         verify(conversionService).submit(any(), overrideCaptor.capture());
         PolicyOverrideRequest overrideRequest = overrideCaptor.getValue();
         assertEquals("true", overrideRequest.policyOverride());
-        assertEquals("token-123", overrideRequest.approvalToken());
+        assertEquals("382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", overrideRequest.approvalToken());
         assertEquals("approver-1", overrideRequest.approverId());
     }
 

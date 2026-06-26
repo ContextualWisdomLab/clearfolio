@@ -1,0 +1,3 @@
+## 2024-05-15 - [Java Hex Conversion Optimization]
+**Learning:** Using `String.format("%02x", b)` in a loop to convert byte arrays to hex strings is a significant performance anti-pattern. It creates excessive string allocations and slows down operations. This is a common performance bottleneck specific to this codebase's architecture when generating hashes like SHA-256 for documents.
+**Action:** Replace `String.format` loops with Java 17+ `java.util.HexFormat.of().formatHex(bytes)`. This provides a more direct, allocation-efficient conversion. Keep this pattern in mind for any future byte manipulation or hashing implementations.

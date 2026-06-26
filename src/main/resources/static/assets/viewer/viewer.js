@@ -43,15 +43,27 @@ function isUuidLike(value) {
 
 function setLoading(message) {
   el.error.hidden = true;
+  el.liveStatus.hidden = false;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
+  el.retryBtn.disabled = true;
 }
 
 function showError(message) {
   el.error.hidden = false;
+  if (el.liveStatus) {
+    el.liveStatus.hidden = true;
+    el.liveStatus.textContent = "";
+  }
   el.errorMessage.textContent = message;
-  el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
+  el.retryBtn.disabled = false;
+
+  const help = document.getElementById("preview-help");
+  if (help) {
+    help.hidden = true;
+  }
+
   el.errorTitle.focus();
 }
 
@@ -64,6 +76,11 @@ function clearPreview() {
   const skeleton = el.preview.querySelector(".skeleton");
   if (skeleton) {
     skeleton.remove();
+  }
+
+  const help = document.getElementById("preview-help");
+  if (help) {
+    help.hidden = true;
   }
 }
 
@@ -156,6 +173,7 @@ async function poll(docId, abortSignal) {
 
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
+    el.retryBtn.disabled = false;
 
     clearPreview();
     const path = bootstrap.data.previewResourcePath;

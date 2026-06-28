@@ -41,6 +41,14 @@ function isUuidLike(value) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
 }
 
+function isKnownStatus(status) {
+  return status === "SUBMITTED" || status === "PROCESSING" || status === "SUCCEEDED" || status === "FAILED";
+}
+
+function isExpectedPdfPath(path, docId) {
+  return path === `/artifacts/${docId}.pdf`;
+}
+
 function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
@@ -131,7 +139,12 @@ async function poll(docId, abortSignal) {
       return;
     }
 
-    const status = data.status;
+    const status = typeof data.status === "string" ? data.status : "";
+    if (!isKnownStatus(status)) {
+      showError("Viewer bootstrap returned an invalid status.");
+      return;
+    }
+
     if (status === "SUBMITTED" || status === "PROCESSING") {
       el.liveStatus.textContent = `${status} - retrying soon...`;
       window.setTimeout(() => {
@@ -167,12 +180,13 @@ async function poll(docId, abortSignal) {
 
     clearPreview();
     const path = bootstrap.data.previewResourcePath;
-    if (typeof path === "string" && path.endsWith(".pdf")) {
-      renderPdfInline(path);
+    if (typeof path !== "string" || !isExpectedPdfPath(path, docId)) {
+      showError("Viewer bootstrap returned an invalid preview path.");
+      return;
     }
-    if (typeof path === "string" && path.length > 0) {
-      renderPreviewLink(path);
-    }
+
+    renderPdfInline(path);
+    renderPreviewLink(path);
   } catch (err) {
     if (abortSignal.aborted) {
       return;

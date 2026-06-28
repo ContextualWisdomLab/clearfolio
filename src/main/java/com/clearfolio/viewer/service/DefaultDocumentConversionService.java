@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -120,9 +121,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
                 digest.update(buffer, 0, read);
             }
 
-            byte[] raw = digest.digest();
-            // ⚡ Bolt Optimization: Use java.util.HexFormat instead of String.format in loop to eliminate excessive object allocation overhead and significantly speed up hex string conversion.
-            return java.util.HexFormat.of().formatHex(raw);
+            return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

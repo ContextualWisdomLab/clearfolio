@@ -46,7 +46,10 @@ function setLoading(message) {
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
   el.retryBtn.setAttribute("aria-disabled", "true");
-  el.retryBtn.innerHTML = `<span class="spinner" aria-hidden="true"></span> Refresh`;
+  const spinner = document.createElement("span");
+  spinner.className = "spinner";
+  spinner.setAttribute("aria-hidden", "true");
+  el.retryBtn.replaceChildren(spinner, " Refresh");
 }
 
 function showError(message) {
@@ -74,7 +77,11 @@ function clearPreview() {
 function renderPreviewLink(path) {
   const link = document.createElement("a");
   link.href = path;
-  link.innerHTML = `Open artifact <span class="sr-only">(opens in a new tab)</span>`;
+  link.append("Open artifact ");
+  const newTabText = document.createElement("span");
+  newTabText.className = "sr-only";
+  newTabText.textContent = "(opens in a new tab)";
+  link.append(newTabText);
   link.className = "btn btn-secondary";
   link.target = "_blank";
   link.rel = "noopener noreferrer";

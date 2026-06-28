@@ -108,7 +108,7 @@ class DefaultDocumentConversionServiceTest {
                 "file",
                 "contract.docx",
                 "application/octet-stream",
-                "hello-viewer".getBytes()
+                docxBytes("hello-viewer")
         );
 
         UUID jobId = service.submit(file, null);
@@ -133,7 +133,7 @@ class DefaultDocumentConversionServiceTest {
                 "file",
                 "contract.docx",
                 "application/octet-stream",
-                "hello-viewer".getBytes()
+                docxBytes("hello-viewer")
         );
 
         UUID first = service.submit(file);
@@ -158,13 +158,13 @@ class DefaultDocumentConversionServiceTest {
                 "file",
                 "contract.docx",
                 "application/octet-stream",
-                "hello-viewer".getBytes()
+                docxBytes("hello-viewer")
         );
         MockMultipartFile secondFile = new MockMultipartFile(
                 "file",
                 "contract.docx",
                 "application/octet-stream",
-                "different-content".getBytes()
+                docxBytes("different-content")
         );
 
         UUID first = service.submit(firstFile);
@@ -189,7 +189,7 @@ class DefaultDocumentConversionServiceTest {
                 "file",
                 "contract.docx",
                 "application/octet-stream",
-                "hello-viewer-concurrent".getBytes()
+                docxBytes("hello-viewer-concurrent")
         );
 
         ExecutorService executor = Executors.newFixedThreadPool(8);
@@ -550,6 +550,17 @@ class DefaultDocumentConversionServiceTest {
         UUID lastEnqueuedJobId() {
             return lastJobId.get();
         }
+    }
+
+    private static byte[] docxBytes(String payload) {
+        byte[] suffix = payload.getBytes(StandardCharsets.UTF_8);
+        byte[] bytes = new byte[suffix.length + 4];
+        bytes[0] = 0x50;
+        bytes[1] = 0x4B;
+        bytes[2] = 0x03;
+        bytes[3] = 0x04;
+        System.arraycopy(suffix, 0, bytes, 4, suffix.length);
+        return bytes;
     }
 
     private static class FindOrStoreOnlyRepository implements ConversionJobRepository {

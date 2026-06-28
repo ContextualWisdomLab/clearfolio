@@ -34,6 +34,13 @@ class ConversionPropertiesTest {
     }
 
     @Test
+    void allowedExtensionsBecomesEmptyWhenInputIsNull() {
+        ConversionProperties properties = new ConversionProperties();
+        properties.setAllowedExtensions(null);
+        assertTrue(properties.getAllowedExtensions().isEmpty());
+    }
+
+    @Test
     void policyOverrideSecretHasDefaultValue() {
         ConversionProperties properties = new ConversionProperties();
         assertEquals("default-secret-change-in-prod", properties.getPolicyOverrideSecret());

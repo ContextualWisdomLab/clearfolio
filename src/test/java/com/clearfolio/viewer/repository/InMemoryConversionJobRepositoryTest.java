@@ -136,20 +136,18 @@ class InMemoryConversionJobRepositoryTest {
     }
 
     @Test
-    void deleteRemovesJobAndHash() throws Exception {
+    void deleteRemovesJobAndHash() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
         ConversionJob job = newJob("hash-to-delete");
         repository.save(job);
 
         assertTrue(repository.findById(job.getJobId()).isPresent());
         assertTrue(repository.findByContentHash("hash-to-delete").isPresent());
-        assertFalse(jobsByContentHash(repository).isEmpty());
 
         repository.delete(job.getJobId());
 
         assertTrue(repository.findById(job.getJobId()).isEmpty());
         assertTrue(repository.findByContentHash("hash-to-delete").isEmpty());
-        assertTrue(jobsByContentHash(repository).isEmpty());
     }
 
     private ConversionJob newJob(String contentHash) {

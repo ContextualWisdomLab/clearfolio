@@ -81,7 +81,7 @@ public class ViewerUiController {
 
                     <header class="app-header" role="banner">
                       <div class="app-header__inner">
-                        <div class="brand" aria-label="Clearfolio Viewer">
+                        <div class="brand">
                           <span class="brand__name">Clearfolio Viewer</span>
                         </div>
 
@@ -105,16 +105,16 @@ public class ViewerUiController {
                           <p class="error__message" id="error-message"></p>
                         </div>
 
-                        <div class="actions" aria-label="Actions">
+                        <div class="actions" role="group" aria-label="Actions">
                           <button type="button" class="btn btn-primary" id="retry-btn">Refresh</button>
-                          <a class="btn btn-secondary" id="open-json-link" href="#" hidden>Open JSON bootstrap</a>
+                          <a class="btn btn-secondary" id="open-json-link" href="#" hidden target="_blank" rel="noopener noreferrer">Open JSON bootstrap</a>
                         </div>
                       </section>
 
                       <section class="panel" aria-labelledby="preview-title">
                         <h2 id="preview-title" class="panel__title">Preview</h2>
 
-                        <div id="preview" class="preview" aria-busy="true">
+                        <div id="preview" class="preview" aria-busy="true" aria-describedby="preview-help">
                           <div class="skeleton" aria-hidden="true"></div>
                           <p class="help" id="preview-help">When ready, the converted artifact will appear here.</p>
                         </div>

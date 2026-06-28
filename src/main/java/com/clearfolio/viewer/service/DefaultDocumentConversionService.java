@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +22,8 @@ import com.clearfolio.viewer.config.ConversionProperties;
  */
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
+
+    private static final HexFormat HEX_FORMAT = HexFormat.of();
 
     private final ConversionJobRepository repository;
     private final DocumentValidationService validationService;
@@ -121,12 +124,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-                    // ⚡ Bolt: Replace slow String.format loop with HexFormat.of().formatHex()
-        // 🎯 Why: String.format parses the format string and allocates objects on every invocation,
-        //         which is a known performance bottleneck inside loops.
-        // 📊 Impact: Significantly faster execution time for hex conversions (often >10x faster)
-        //            and drastically reduced garbage collection overhead.
-        return java.util.HexFormat.of().formatHex(raw);
+            return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

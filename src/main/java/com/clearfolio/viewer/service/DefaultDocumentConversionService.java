@@ -122,6 +122,8 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
+            // ⚡ Bolt: Optimized hex conversion using HexFormat
+            // Replaced slow String.format loop.
             return HexFormat.of().formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);

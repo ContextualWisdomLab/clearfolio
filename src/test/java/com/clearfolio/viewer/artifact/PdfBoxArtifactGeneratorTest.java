@@ -93,6 +93,11 @@ class PdfBoxArtifactGeneratorTest {
     }
 
     @Test
+    void pdfSafeTextReplacesPdfSyntaxCharacters() {
+        assertEquals("report???name???pdf", PdfBoxArtifactGenerator.pdfSafeText("report()\\name[]/pdf"));
+    }
+
+    @Test
     void generatePdfThrowsWhenOutputStreamFails() {
         PdfBoxArtifactGenerator.OutputTargetFactory factory = () -> {
             OutputStream failing = new OutputStream() {

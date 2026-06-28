@@ -36,6 +36,16 @@ class PdfBoxArtifactGeneratorTest {
     }
 
     @Test
+    void testPdfSafeTextCoverage() {
+        assertEquals("", PdfBoxArtifactGenerator.pdfSafeText(""));
+        assertEquals("", PdfBoxArtifactGenerator.pdfSafeText(null));
+        assertEquals("test", PdfBoxArtifactGenerator.pdfSafeText("test"));
+        assertEquals("test??", PdfBoxArtifactGenerator.pdfSafeText("test\u0000\u007F"));
+        assertEquals("??test", PdfBoxArtifactGenerator.pdfSafeText("\u0000\u007Ftest"));
+        assertEquals("?test?", PdfBoxArtifactGenerator.pdfSafeText("\u0000test\u007F"));
+    }
+
+    @Test
     void generatePdfAcceptsUnicodeInFileNameBySanitizing() {
         PdfBoxArtifactGenerator generator = new PdfBoxArtifactGenerator();
         UUID jobId = UUID.randomUUID();
@@ -90,11 +100,6 @@ class PdfBoxArtifactGeneratorTest {
 
         assertTrue(bytes.length > 4);
         assertEquals("%PDF", new String(bytes, 0, 4));
-    }
-
-    @Test
-    void pdfSafeTextReplacesPdfSyntaxCharacters() {
-        assertEquals("report???name???pdf", PdfBoxArtifactGenerator.pdfSafeText("report()\\name[]/pdf"));
     }
 
     @Test

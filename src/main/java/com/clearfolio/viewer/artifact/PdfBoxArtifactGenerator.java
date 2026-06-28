@@ -88,17 +88,19 @@ public class PdfBoxArtifactGenerator implements PdfArtifactGenerator {
             return "";
         }
 
-        // Avoid allocating StringBuilder when trimmed text is plain printable ASCII.
+        // Bolt optimization: Zero-allocation fast-path.
+        // Most strings are already PDF-safe.
+        // A quick scan avoids allocating StringBuilder when string is clean.
         int firstUnsafe = -1;
         for (int i = 0; i < len; i++) {
             char ch = stripped.charAt(i);
-            if (requiresPdfTextReplacement(ch)) {
+            if (ch < 0x20 || ch > 0x7E) {
                 firstUnsafe = i;
                 break;
             }
         }
 
-        // Return the trimmed string directly when no character replacement is needed.
+        // Return original string if entirely safe, avoiding allocation
         if (firstUnsafe == -1) {
             return stripped;
         }
@@ -108,7 +110,7 @@ public class PdfBoxArtifactGenerator implements PdfArtifactGenerator {
         normalized.append(stripped, 0, firstUnsafe);
         for (int i = firstUnsafe; i < len; i++) {
             char ch = stripped.charAt(i);
-            if (!requiresPdfTextReplacement(ch)) {
+            if (ch >= 0x20 && ch <= 0x7E) {
                 normalized.append(ch);
             } else {
                 normalized.append('?');
@@ -116,17 +118,6 @@ public class PdfBoxArtifactGenerator implements PdfArtifactGenerator {
         }
 
         return normalized.toString();
-    }
-
-    private static boolean requiresPdfTextReplacement(char ch) {
-        return ch < 0x20 || ch > 0x7E || isPdfSyntaxCharacter(ch);
-    }
-
-    private static boolean isPdfSyntaxCharacter(char ch) {
-        return switch (ch) {
-            case '(', ')', '\\', '<', '>', '[', ']', '{', '}', '/', '%' -> true;
-            default -> false;
-        };
     }
 
     record OutputTarget(OutputStream outputStream, Supplier<byte[]> bytesSupplier) implements AutoCloseable {

@@ -140,12 +140,11 @@ public class ViewerUiController {
                 """;
 
         return template
-                .replace("{{DOC_ID}}", htmlAttribute(docIdString))
-                .replace("{{INITIAL_STATE}}", htmlAttribute(initialState))
-                .replace("{{PDFJS_VIEWER_PATH}}", htmlAttribute(PDF_JS_VIEWER_PATH));
-    }
-
-    static String htmlAttribute(String value) {
-        return HtmlUtils.htmlEscape(value);
+                .replace("{{DOC_ID}}",
+                        HtmlUtils.htmlEscape(docIdString))
+                .replace("{{INITIAL_STATE}}",
+                        HtmlUtils.htmlEscape(initialState))
+                .replace("{{PDFJS_VIEWER_PATH}}",
+                        HtmlUtils.htmlEscape(PDF_JS_VIEWER_PATH));
     }
 }

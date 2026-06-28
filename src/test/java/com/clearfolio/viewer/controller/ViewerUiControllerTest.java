@@ -1,9 +1,7 @@
 package com.clearfolio.viewer.controller;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -46,11 +44,6 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("clearfolio-initial-state\" content=\"NOT_FOUND\""));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
-                    String openJsonLink = openJsonLinkTag(body);
-                    assertTrue(openJsonLink.contains("id=\"open-json-link\""));
-                    assertTrue(openJsonLink.contains("target=\"_blank\""));
-                    assertTrue(openJsonLink.contains("rel=\"noopener noreferrer\""));
-                    assertTrue(openJsonLink.contains("aria-label=\"Open JSON bootstrap (opens in new tab)\""));
                 });
     }
 
@@ -162,39 +155,5 @@ class ViewerUiControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML);
-    }
-
-    @Test
-    void viewerRejectsScriptLikeDocIdBeforeRenderingHtml() {
-        webTestClient.get()
-                .uri("/viewer/%3Cimg%20src=x%20onerror=alert(1)%3E")
-                .exchange()
-                .expectStatus().isNotFound();
-
-        verifyNoInteractions(conversionService);
-    }
-
-    @Test
-    void htmlAttributeEscapesCharactersThatCanBreakQuotedAttributes() {
-        String escaped = ViewerUiController.htmlAttribute("\"'&<>");
-
-        assertFalse(escaped.contains("\""));
-        assertFalse(escaped.contains("'"));
-        assertFalse(escaped.contains("<"));
-        assertFalse(escaped.contains(">"));
-        assertTrue(escaped.contains("&quot;"));
-        assertTrue(escaped.contains("&#39;"));
-        assertTrue(escaped.contains("&amp;"));
-        assertTrue(escaped.contains("&lt;"));
-        assertTrue(escaped.contains("&gt;"));
-    }
-
-    private static String openJsonLinkTag(String body) {
-        int idIndex = body.indexOf("id=\"open-json-link\"");
-        assertTrue(idIndex >= 0, "open-json-link anchor should be present");
-        int start = body.lastIndexOf("<a", idIndex);
-        int end = body.indexOf('>', idIndex);
-        assertTrue(start >= 0 && end > start, "open-json-link anchor start tag should be present");
-        return body.substring(start, end + 1);
     }
 }

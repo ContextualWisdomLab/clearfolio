@@ -1,3 +1,0 @@
-## 2026-06-29 - `HexFormat` is significantly faster than `String.format` for hex conversion
-**Learning:** In the `contentHash` method of `DefaultDocumentConversionService`, `String.format("%02x", b)` was used inside a loop to convert a byte array to a hex string. This is a known performance anti-pattern in Java because `String.format` parses the format string on every invocation. Java 17 introduced `java.util.HexFormat`, which is optimized for byte-to-hex conversion.
-**Action:** Always prefer `HexFormat` over `String.format` or custom bit-shifting logic for byte-to-hex conversion in codebases using Java 17 or higher.

@@ -107,7 +107,11 @@ public class ViewerUiController {
 
                         <div class="actions" aria-label="Actions">
                           <button type="button" class="btn btn-primary" id="retry-btn">Refresh</button>
-                          <a class="btn btn-secondary" id="open-json-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Open JSON bootstrap (opens in a new tab)" hidden>Open JSON bootstrap</a>
+                          <a class="btn btn-secondary" id="open-json-link" href="#"
+                             target="_blank" rel="noopener noreferrer" hidden
+                             aria-label="Open JSON bootstrap (new tab)">
+                            Open JSON bootstrap
+                          </a>
                         </div>
                       </section>
 

@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,8 +21,6 @@ import com.clearfolio.viewer.config.ConversionProperties;
  */
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
-
-    private static final HexFormat HEX_FORMAT = HexFormat.of();
 
     private final ConversionJobRepository repository;
     private final DocumentValidationService validationService;
@@ -123,7 +120,8 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
                 digest.update(buffer, 0, read);
             }
 
-            return HEX_FORMAT.formatHex(digest.digest());
+            byte[] raw = digest.digest();
+            return java.util.HexFormat.of().formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

@@ -144,6 +144,33 @@ class DefaultDocumentConversionServiceTest {
     }
 
     @Test
+    void submitStoresKnownSha256HexContentHash() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DefaultDocumentValidationService(new ConversionProperties()),
+                worker,
+                new ConversionProperties()
+        );
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "contract.docx",
+                "application/octet-stream",
+                "hello".getBytes(StandardCharsets.UTF_8)
+        );
+
+        service.submit(file);
+
+        String expected = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+        ConversionJob job = repository.findByContentHash(expected).orElseThrow();
+        assertEquals(64, job.getContentHash().length());
+        assertTrue(job.getContentHash().matches("[0-9a-f]{64}"));
+        assertEquals(expected, job.getContentHash());
+    }
+
+    @Test
     void returnsDifferentJobIdsForDifferentPayloads() {
         ConversionJobRepository repository = new InMemoryConversionJobRepository();
         RecordingConversionWorker worker = new RecordingConversionWorker();

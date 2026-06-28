@@ -1,13 +1,12 @@
 package com.clearfolio.viewer.service;
 
-import java.util.HexFormat;
-import java.util.Optional;
-import java.util.UUID;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -123,9 +122,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
                 digest.update(buffer, 0, read);
             }
 
-            byte[] raw = digest.digest();
-            // ⚡ Bolt optimization: HexFormat is ~100x faster than String.format for hex conversion
-            return HexFormat.of().formatHex(raw);
+            return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

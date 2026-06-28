@@ -44,9 +44,11 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("clearfolio-initial-state\" content=\"NOT_FOUND\""));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
-                    assertTrue(body.contains("target=\"_blank\""));
-                    assertTrue(body.contains("rel=\"noopener noreferrer\""));
-                    assertTrue(body.contains("title=\"Opens in a new tab\""));
+                    String openJsonLink = openJsonLinkTag(body);
+                    assertTrue(openJsonLink.contains("id=\"open-json-link\""));
+                    assertTrue(openJsonLink.contains("target=\"_blank\""));
+                    assertTrue(openJsonLink.contains("rel=\"noopener noreferrer\""));
+                    assertTrue(openJsonLink.contains("title=\"Opens in a new tab\""));
                 });
     }
 
@@ -158,5 +160,14 @@ class ViewerUiControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML);
+    }
+
+    private static String openJsonLinkTag(String body) {
+        int idIndex = body.indexOf("id=\"open-json-link\"");
+        assertTrue(idIndex >= 0, "open-json-link anchor should be present");
+        int start = body.lastIndexOf("<a", idIndex);
+        int end = body.indexOf('>', idIndex);
+        assertTrue(start >= 0 && end > start, "open-json-link anchor start tag should be present");
+        return body.substring(start, end + 1);
     }
 }

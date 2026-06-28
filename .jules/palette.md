@@ -1,3 +1,4 @@
+# UX and Accessibility Journal
 
 ## 2026-06-27 - [Refresh Button Disabled State & Link Accessibility]
 **Learning:** Polling mechanisms without visual disabled states led to potential duplicate clicking. Externally opening links dynamically created via JS were lacking accessibility metadata.

@@ -711,11 +711,6 @@ class DefaultDocumentConversionServiceTest {
         public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
             return finder.apply(candidate);
         }
-
-        @Override
-        public Iterable<ConversionJob> findAll() {
-            return java.util.Collections.emptyList();
-        }
     }
 
     private static class RecordingStateStore implements ConversionJobStateStore {

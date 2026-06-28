@@ -72,6 +72,11 @@ class ServiceInterfaceDefaultMethodsTest {
             public RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId) {
                 return RetryDeadLetterResult.NOT_FOUND;
             }
+
+            @Override
+            public Iterable<ConversionJob> getAllJobs() {
+                return java.util.Collections.emptyList();
+            }
         };
         PolicyOverrideRequest overrideRequest = PolicyOverrideRequest.of("true", "token-123", "approver-1");
 

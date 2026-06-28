@@ -572,11 +572,13 @@ class DefaultDocumentConversionServiceTest {
     void deleteJobReturnsTrueAndRemovesJobWhenFound() {
         ConversionJobRepository repository = new InMemoryConversionJobRepository();
         RecordingConversionWorker worker = new RecordingConversionWorker();
+        com.clearfolio.viewer.artifact.InMemoryArtifactStore artifactStore =
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore();
         DocumentConversionService service = new DefaultDocumentConversionService(
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
-                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
+                artifactStore,
                 new ConversionProperties()
         );
 
@@ -589,11 +591,14 @@ class DefaultDocumentConversionServiceTest {
                 3
         );
         repository.save(job);
+        artifactStore.putPdf(job.getJobId(), new byte[] {1, 2, 3});
 
         boolean deleted = service.deleteJob(job.getJobId());
 
         assertTrue(deleted);
         assertTrue(repository.findById(job.getJobId()).isEmpty());
+        assertTrue(repository.findByContentHash("hash-to-delete").isEmpty());
+        assertTrue(artifactStore.getPdf(job.getJobId()).isEmpty());
     }
 
     @Test

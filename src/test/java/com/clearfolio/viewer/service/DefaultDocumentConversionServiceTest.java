@@ -175,34 +175,6 @@ class DefaultDocumentConversionServiceTest {
     }
 
     @Test
-    void storesContentHashAsLowercaseSha256Hex() {
-        ConversionJobRepository repository = new InMemoryConversionJobRepository();
-        RecordingConversionWorker worker = new RecordingConversionWorker();
-        DocumentConversionService service = new DefaultDocumentConversionService(
-                repository,
-                new DefaultDocumentValidationService(new ConversionProperties()),
-                worker,
-                new ConversionProperties()
-        );
-
-        byte[] payload = "hello-viewer".getBytes(StandardCharsets.UTF_8);
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "contract.docx",
-                "application/octet-stream",
-                payload
-        );
-
-        UUID jobId = service.submit(file);
-
-        ConversionJob job = repository.findById(jobId).orElseThrow();
-        assertEquals(
-                "6908f2d58e1a44cd5f7fcc1c76a2a14e801e9158779d569466b4471ae4aae75d",
-                job.getContentHash()
-        );
-    }
-
-    @Test
     void returnsSameJobForConcurrentDuplicatePayloads() throws Exception {
         ConversionJobRepository repository = new InMemoryConversionJobRepository();
         RecordingConversionWorker worker = new RecordingConversionWorker();

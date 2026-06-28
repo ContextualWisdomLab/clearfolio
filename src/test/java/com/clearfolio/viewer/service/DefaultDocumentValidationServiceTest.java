@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Method;
 import java.security.Provider;
 import java.security.Security;
+import java.util.Locale;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,23 @@ class DefaultDocumentValidationServiceTest {
         assertDoesNotThrow(() -> validationService.validateOrThrow(
                 new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
                 PolicyOverrideRequest.of("true", "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113", "approver-1")
+        ));
+    }
+
+    @Test
+    void allowsBlockedExtensionWhenOverrideSignatureHexIsUppercase() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        assertDoesNotThrow(() -> validationService.validateOrThrow(
+                new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                PolicyOverrideRequest.of(
+                        "true",
+                        "382539e566ee03d875a7155df0e521b7fcec024572dde6f39f8b957a6907e113"
+                                .toUpperCase(Locale.ROOT),
+                        "approver-1")
         ));
     }
 
@@ -415,7 +433,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsWhenPolicyOverrideSecretIsMissing() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
-        conversionProperties.setPolicyOverrideSecret("");
+        conversionProperties.setPolicyOverrideSecret(" ");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
@@ -430,7 +448,7 @@ class DefaultDocumentValidationServiceTest {
     }
 
     @Test
-    void throwsWhenSha256DigestIsUnavailableForOverrideAuditFingerprint() {
+    void throwsWhenHmacSha256IsUnavailableForOverrideSignature() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
         conversionProperties.setPolicyOverrideSecret("test-secret");

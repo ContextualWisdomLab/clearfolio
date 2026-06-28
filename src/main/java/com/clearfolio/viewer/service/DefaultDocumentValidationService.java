@@ -1,14 +1,15 @@
 package com.clearfolio.viewer.service;
 
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.InvalidKeyException;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Set;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +27,9 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDocumentValidationService.class);
     private static final int FINGERPRINT_TRUNCATE_BYTES = 8;
+    private static final int HMAC_SHA256_BYTES = 32;
+    private static final int HMAC_SHA256_HEX_LENGTH = HMAC_SHA256_BYTES * 2;
+    private static final HexFormat HEX_FORMAT = HexFormat.of();
 
     private final Set<String> blockedExtensions;
     private final long maxUploadSizeBytes;
@@ -145,18 +149,18 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
     }
 
     private void verifySignature(String token, String approverId, String extension) {
-        if (policyOverrideSecret == null || policyOverrideSecret.isEmpty()) {
+        if (policyOverrideSecret == null || policyOverrideSecret.isBlank()) {
             throw new IllegalArgumentException("Policy override secret is not configured.");
         }
 
+        byte[] providedSignature = decodeSignature(token);
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(policyOverrideSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             String payload = approverId + ":" + extension;
             byte[] expected = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            String expectedHex = HexFormat.of().formatHex(expected);
 
-            if (!MessageDigest.isEqual(token.getBytes(StandardCharsets.UTF_8), expectedHex.getBytes(StandardCharsets.UTF_8))) {
+            if (!MessageDigest.isEqual(providedSignature, expected)) {
                 throw new IllegalArgumentException("Invalid policy override signature.");
             }
         } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
@@ -164,11 +168,22 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         }
     }
 
+    private byte[] decodeSignature(String token) {
+        if (token.length() != HMAC_SHA256_HEX_LENGTH) {
+            throw new IllegalArgumentException("Invalid policy override signature.");
+        }
+        try {
+            return HEX_FORMAT.parseHex(token);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Invalid policy override signature.", ex);
+        }
+    }
+
     private String tokenFingerprint(String approvalToken) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashed = digest.digest(approvalToken.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashed, 0, FINGERPRINT_TRUNCATE_BYTES);
+            return HEX_FORMAT.formatHex(hashed, 0, FINGERPRINT_TRUNCATE_BYTES);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

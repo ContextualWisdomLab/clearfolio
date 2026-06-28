@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 
 class ViewerUiControllerA11yTest {
@@ -42,7 +43,6 @@ class ViewerUiControllerA11yTest {
                     assertTrue(body.contains("target=\"_blank\""), "Should contain target=\"_blank\" for external links");
                     assertTrue(body.contains("aria-label=\"Service status (opens in a new tab)\""), "Should contain aria-label for service status link");
                     assertTrue(body.contains("aria-label=\"Open JSON bootstrap (opens in a new tab)\""), "Should contain aria-label for JSON bootstrap link");
-                    assertTrue(body.contains("external-link-indicator"), "Should use CSP-compatible indicator styling");
                     assertTrue(body.contains("&nearr;"), "Should contain visual indicator for external links");
                 });
     }

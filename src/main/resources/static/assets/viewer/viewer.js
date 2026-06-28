@@ -70,12 +70,7 @@ function clearPreview() {
 function renderPreviewLink(path) {
   const link = document.createElement("a");
   link.href = path;
-  link.append("Open artifact ");
-  const indicator = document.createElement("span");
-  indicator.className = "external-link-indicator";
-  indicator.setAttribute("aria-hidden", "true");
-  indicator.textContent = "\u2197";
-  link.append(indicator);
+  link.innerHTML = 'Open artifact <span aria-hidden="true" style="margin-left: 4px;">&nearr;</span>';
   link.setAttribute("aria-label", "Open artifact (opens in a new tab)");
   link.className = "btn btn-secondary";
   link.rel = "noopener noreferrer";

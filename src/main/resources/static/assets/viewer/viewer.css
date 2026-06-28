@@ -110,10 +110,6 @@ a:hover {
   color: var(--ink);
 }
 
-.external-link-indicator {
-  margin-left: 4px;
-}
-
 .app-main {
   max-width: 1100px;
   margin: 0 auto;

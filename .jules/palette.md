@@ -1,4 +1,0 @@
-
-## 2026-06-25 - Safe disabled states and external link context
-**Learning:** `disabled` attribute completely removes elements from the accessibility tree in some combinations, losing focus and context. For buttons like "Refresh" that might be long-running, it's better to use `aria-disabled="true"` to maintain the tab order and focus while preventing action in JS, avoiding losing users who navigate by keyboard. Additionally, whenever links open a new window (`target="_blank"`), appending screen reader hidden text `<span class="sr-only">(opens in a new tab)</span>` is necessary so screen reader users are not unexpectedly thrown into a new window without warning.
-**Action:** Always prefer `aria-disabled` and block clicks in JS over HTML `disabled` for async action buttons. Always use `target="_blank"`, `rel="noopener noreferrer"`, and visually hidden text explaining the new tab context for external or artifact links.

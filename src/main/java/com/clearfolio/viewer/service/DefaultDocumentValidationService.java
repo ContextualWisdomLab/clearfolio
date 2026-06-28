@@ -54,6 +54,11 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             throw new IllegalArgumentException("File is required.");
         }
 
+        String contentType = file.getContentType();
+        if (contentType == null || contentType.isBlank()) {
+            throw new IllegalArgumentException("File content type is required.");
+        }
+
         String fileName = file.getOriginalFilename();
         String extension = extensionOf(fileName);
         if (extension.isEmpty()) {
@@ -73,12 +78,18 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
 
             String approvalToken = requireNonBlank(
                     effectiveOverride.approvalToken(),
-                    PolicyOverrideRequest.APPROVAL_TOKEN_HEADER + " is required when policy override is true."
+                    PolicyOverrideRequest.APPROVAL_TOKEN_HEADER
+                            + " is required when policy override is true."
             );
             String approverId = requireNonBlank(
                     effectiveOverride.approverId(),
-                    PolicyOverrideRequest.APPROVER_ID_HEADER + " is required when policy override is true."
+                    PolicyOverrideRequest.APPROVER_ID_HEADER
+                            + " is required when policy override is true."
             );
+            if (!approverId.startsWith("approver-")) {
+                throw new SecurityException(
+                        "Policy override is restricted to privileged roles.");
+            }
             overrideApproverIdForAudit = approverId;
             overrideTokenForAudit = approvalToken;
         }

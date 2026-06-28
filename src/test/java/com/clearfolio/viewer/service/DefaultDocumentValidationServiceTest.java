@@ -272,6 +272,7 @@ class DefaultDocumentValidationServiceTest {
 
         MultipartFile file = mock(MultipartFile.class);
         when(file.isEmpty()).thenReturn(false);
+        when(file.getContentType()).thenReturn("application/pdf");
         when(file.getOriginalFilename()).thenReturn(null);
         when(file.getSize()).thenReturn(1L);
 

@@ -82,7 +82,9 @@ public class ConversionJob {
         if (value == null) {
             return null;
         }
-        return value.replace("\u0000", "");
+        return value.replace("\u0000", "")
+                .replace("\r", "")
+                .replace("\n", "");
     }
 
     /**

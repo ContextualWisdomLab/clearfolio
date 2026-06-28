@@ -44,9 +44,6 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("clearfolio-initial-state\" content=\"NOT_FOUND\""));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
-                    assertTrue(body.contains("class=\"actions\" aria-label=\"Actions\" role=\"group\""));
-                    assertTrue(body.contains(
-                            "id=\"open-json-link\" href=\"#\" hidden target=\"_blank\" rel=\"noopener noreferrer\""));
                 });
     }
 

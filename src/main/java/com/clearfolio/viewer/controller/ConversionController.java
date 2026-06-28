@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.util.unit.DataSize;
 import org.springframework.http.HttpStatus;
@@ -182,22 +183,49 @@ public class ConversionController {
 
         byte[] pdfBytes = stored.get();
         String checksum = calculateSha256(pdfBytes);
-        String filename = job.getOriginalFileName();
-        if (filename == null || filename.isBlank()) {
-            filename = "document";
-        }
-
-        int lastDotIndex = filename.lastIndexOf('.');
-        if (lastDotIndex > 0) {
-            filename = filename.substring(0, lastDotIndex);
-        }
-        filename = filename + ".pdf";
+        String filename = pdfDownloadFilename(job.getOriginalFileName());
+        ContentDisposition contentDisposition = ContentDisposition.attachment()
+                .filename(filename)
+                .build();
 
         return Mono.just(ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
                 .header("X-Checksum-Sha256", checksum)
                 .body(pdfBytes));
+    }
+
+    private static String pdfDownloadFilename(String originalFileName) {
+        String baseName = "document";
+        if (originalFileName != null && !originalFileName.isBlank()) {
+            baseName = originalFileName.strip();
+            int lastDotIndex = baseName.lastIndexOf('.');
+            if (lastDotIndex > 0) {
+                baseName = baseName.substring(0, lastDotIndex);
+            }
+        }
+
+        String sanitized = sanitizeFilenameBase(baseName);
+        if (sanitized.isBlank() || sanitized.chars().allMatch(character -> character == '.' || character == '_')) {
+            sanitized = "document";
+        }
+        return sanitized + ".pdf";
+    }
+
+    private static String sanitizeFilenameBase(String baseName) {
+        StringBuilder sanitized = new StringBuilder(baseName.length());
+        for (int index = 0; index < baseName.length(); index++) {
+            char character = baseName.charAt(index);
+            if (Character.isLetterOrDigit(character)
+                    || character == '.'
+                    || character == '-'
+                    || character == '_') {
+                sanitized.append(character);
+            } else {
+                sanitized.append('_');
+            }
+        }
+        return sanitized.toString();
     }
 
     private String calculateSha256(byte[] data) {

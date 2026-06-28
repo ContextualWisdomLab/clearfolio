@@ -3,9 +3,11 @@ package com.clearfolio.viewer.repository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
+import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -166,6 +168,32 @@ class InMemoryConversionJobRepositoryTest {
         assertEquals(2, count);
         assertTrue(found1);
         assertTrue(found2);
+    }
+
+    @Test
+    void findAllReturnsImmutableSnapshot() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-snapshot");
+        ConversionJob laterJob = newJob("hash-later");
+        repository.save(job);
+
+        Iterable<ConversionJob> snapshot = repository.findAll();
+        repository.save(laterJob);
+
+        int count = 0;
+        boolean foundOriginal = false;
+        boolean foundLater = false;
+        for (ConversionJob current : snapshot) {
+            count++;
+            foundOriginal = foundOriginal || current.getJobId().equals(job.getJobId());
+            foundLater = foundLater || current.getJobId().equals(laterJob.getJobId());
+        }
+
+        assertEquals(1, count);
+        assertTrue(foundOriginal);
+        assertFalse(foundLater);
+        assertThrows(UnsupportedOperationException.class, () -> ((Collection<?>) snapshot).clear());
+        assertTrue(repository.findById(job.getJobId()).isPresent());
     }
 
     private ConversionJob newJob(String contentHash) {

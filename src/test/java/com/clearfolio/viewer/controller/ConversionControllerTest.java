@@ -531,6 +531,33 @@ class ConversionControllerTest {
     }
 
     @Test
+    void downloadArtifactNormalizesUnsafeFilenameForContentDisposition() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "report\"\r\nX-Injected: yes.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "hash",
+                10L
+        );
+        job.markSucceeded("/path", "done");
+        byte[] pdfBytes = "fake pdf".getBytes();
+
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        when(artifactStore.getPdf(jobId)).thenReturn(Optional.of(pdfBytes));
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"report___X-Injected__yes.pdf\""
+                )
+                .expectHeader().doesNotExist("X-Injected");
+    }
+
+    @Test
     void downloadArtifactHandlesNullFilename() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, null, "application/pdf", "hash", 10L);

@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.HtmlUtils;
 
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
@@ -144,12 +145,7 @@ public class ViewerUiController {
                 .replace("{{PDFJS_VIEWER_PATH}}", htmlAttribute(PDF_JS_VIEWER_PATH));
     }
 
-    private static String htmlAttribute(String value) {
-        return value
-                .replace("&", "&amp;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;");
+    static String htmlAttribute(String value) {
+        return HtmlUtils.htmlEscape(value);
     }
 }

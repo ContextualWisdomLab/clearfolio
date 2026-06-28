@@ -1,7 +1,9 @@
 package com.clearfolio.viewer.controller;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -160,6 +162,31 @@ class ViewerUiControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML);
+    }
+
+    @Test
+    void viewerRejectsScriptLikeDocIdBeforeRenderingHtml() {
+        webTestClient.get()
+                .uri("/viewer/%3Cimg%20src=x%20onerror=alert(1)%3E")
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verifyNoInteractions(conversionService);
+    }
+
+    @Test
+    void htmlAttributeEscapesCharactersThatCanBreakQuotedAttributes() {
+        String escaped = ViewerUiController.htmlAttribute("\"'&<>");
+
+        assertFalse(escaped.contains("\""));
+        assertFalse(escaped.contains("'"));
+        assertFalse(escaped.contains("<"));
+        assertFalse(escaped.contains(">"));
+        assertTrue(escaped.contains("&quot;"));
+        assertTrue(escaped.contains("&#39;"));
+        assertTrue(escaped.contains("&amp;"));
+        assertTrue(escaped.contains("&lt;"));
+        assertTrue(escaped.contains("&gt;"));
     }
 
     private static String openJsonLinkTag(String body) {

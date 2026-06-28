@@ -23,6 +23,8 @@ import com.clearfolio.viewer.config.ConversionProperties;
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
 
+    private static final HexFormat HEX_FORMAT = HexFormat.of();
+
     private final ConversionJobRepository repository;
     private final DocumentValidationService validationService;
     private final ConversionWorker conversionWorker;
@@ -122,8 +124,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            // ⚡ Bolt: Replace slow String.format in loop with fast HexFormat
-            return HexFormat.of().formatHex(raw);
+            return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

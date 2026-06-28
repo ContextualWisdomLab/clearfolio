@@ -1,3 +1,0 @@
-## 2026-06-23 - Dynamic Title Updates for Screen Readers
-**Learning:** Polling pages that update a status container without changing the page focus leave screen reader users unaware of state changes. Updating `document.title` simultaneously with visual loading states is a critical pattern for single-page applications or polling views to provide context to assistive technologies and background tabs.
-**Action:** Always update `document.title` to reflect the current high-level status (e.g., "Loading...", "Ready", "Error") alongside `aria-busy` and visible status text in polling or long-running async workflows.

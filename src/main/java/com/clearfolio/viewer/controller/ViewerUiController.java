@@ -1,18 +1,12 @@
 package com.clearfolio.viewer.controller;
 
-import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.clearfolio.viewer.model.ConversionJob;
-import com.clearfolio.viewer.model.ConversionJobStatus;
-import com.clearfolio.viewer.service.DocumentConversionService;
 
 /**
  * HTML viewer UI entrypoint.
@@ -23,45 +17,20 @@ public class ViewerUiController {
     // Keep this in sync with `pom.xml` pdfjs-dist version.
     static final String PDF_JS_VIEWER_PATH = "/webjars/pdfjs-dist/4.10.38/web/viewer.html";
 
-    private final DocumentConversionService conversionService;
-
-    /**
-     * Creates the viewer controller.
-     *
-     * @param conversionService conversion service for job lookups
-     */
-    public ViewerUiController(DocumentConversionService conversionService) {
-        this.conversionService = conversionService;
-    }
-
     /**
      * Returns an HTML viewer shell.
      *
      * @param docId document identifier
-     * @return HTML payload or redirect
+     * @return HTML payload
      */
     @GetMapping(value = "/viewer/{docId:[0-9a-fA-F\u002d]{36}}", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> viewer(@PathVariable UUID docId) {
-        Optional<ConversionJob> job = conversionService.getJob(docId);
-        String initialState;
-        HttpStatus status;
-        if (job.isEmpty()) {
-            initialState = "NOT_FOUND";
-            status = HttpStatus.OK;
-        } else if (job.get().getStatus() == ConversionJobStatus.FAILED) {
-            initialState = "FAILED";
-            status = HttpStatus.OK;
-        } else {
-            initialState = "LOADING";
-            status = HttpStatus.OK;
-        }
-
-        return ResponseEntity.status(status)
+        return ResponseEntity.ok()
                 .contentType(MediaType.TEXT_HTML)
-                .body(viewerShellHtml(docId, initialState));
+                .body(viewerShellHtml(docId));
     }
 
-    private static String viewerShellHtml(UUID docId, String initialState) {
+    private static String viewerShellHtml(UUID docId) {
         String docIdString = docId.toString();
         String template = """
                 <!doctype html>
@@ -139,8 +108,17 @@ public class ViewerUiController {
                 """;
 
         return template
-                .replace("{{DOC_ID}}", docIdString)
-                .replace("{{INITIAL_STATE}}", initialState)
-                .replace("{{PDFJS_VIEWER_PATH}}", PDF_JS_VIEWER_PATH);
+                .replace("{{DOC_ID}}", htmlAttribute(docIdString))
+                .replace("{{INITIAL_STATE}}", "LOADING")
+                .replace("{{PDFJS_VIEWER_PATH}}", htmlAttribute(PDF_JS_VIEWER_PATH));
+    }
+
+    private static String htmlAttribute(String value) {
+        return value
+                .replace("&", "&amp;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 }

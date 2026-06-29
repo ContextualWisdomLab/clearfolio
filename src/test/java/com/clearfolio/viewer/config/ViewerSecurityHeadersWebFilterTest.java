@@ -45,6 +45,10 @@ class ViewerSecurityHeadersWebFilterTest {
         assertEquals("no-store", headers.getFirst(HttpHeaders.CACHE_CONTROL));
         assertEquals("nosniff", headers.getFirst("X-Content-Type-Options"));
         assertEquals("no-referrer", headers.getFirst("Referrer-Policy"));
+        assertEquals(
+                "max-age=31536000; includeSubDomains",
+                headers.getFirst("Strict-Transport-Security")
+        );
 
         String csp = headers.getFirst("Content-Security-Policy");
         assertNotNull(csp);

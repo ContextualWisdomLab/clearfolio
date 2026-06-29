@@ -2,6 +2,7 @@ package com.clearfolio.viewer.controller;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -155,5 +156,15 @@ class ViewerUiControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML);
+    }
+
+    @Test
+    void viewerRejectsScriptLikeDocIdBeforeRenderingHtml() {
+        webTestClient.get()
+                .uri("/viewer/%3Cimg%20src=x%20onerror=alert(1)%3E")
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verifyNoInteractions(conversionService);
     }
 }

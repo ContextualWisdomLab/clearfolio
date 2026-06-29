@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.HtmlUtils;
 
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
@@ -81,7 +82,7 @@ public class ViewerUiController {
 
                     <header class="app-header" role="banner">
                       <div class="app-header__inner">
-                        <div class="brand" aria-label="Clearfolio Viewer">
+                        <div class="brand">
                           <span class="brand__name">Clearfolio Viewer</span>
                         </div>
 
@@ -105,9 +106,15 @@ public class ViewerUiController {
                           <p class="error__message" id="error-message"></p>
                         </div>
 
-                        <div class="actions" aria-label="Actions">
+                        <div class="actions" role="group" aria-label="Actions">
                           <button type="button" class="btn btn-primary" id="retry-btn">Refresh</button>
-                          <a class="btn btn-secondary" id="open-json-link" href="#" hidden>Open JSON bootstrap</a>
+                          <a class="btn btn-secondary"
+                             id="open-json-link"
+                             href="#"
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             aria-label="Open JSON bootstrap (opens in new tab)"
+                             hidden>Open JSON bootstrap</a>
                         </div>
                       </section>
 
@@ -133,8 +140,11 @@ public class ViewerUiController {
                 """;
 
         return template
-                .replace("{{DOC_ID}}", docIdString)
-                .replace("{{INITIAL_STATE}}", initialState)
-                .replace("{{PDFJS_VIEWER_PATH}}", PDF_JS_VIEWER_PATH);
+                .replace("{{DOC_ID}}",
+                        HtmlUtils.htmlEscape(docIdString))
+                .replace("{{INITIAL_STATE}}",
+                        HtmlUtils.htmlEscape(initialState))
+                .replace("{{PDFJS_VIEWER_PATH}}",
+                        HtmlUtils.htmlEscape(PDF_JS_VIEWER_PATH));
     }
 }

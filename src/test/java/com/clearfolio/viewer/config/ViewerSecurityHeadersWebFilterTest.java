@@ -206,12 +206,11 @@ class ViewerSecurityHeadersWebFilterTest {
 
         HttpHeaders headers = exchange.getResponse().getHeaders();
         assertNull(headers.getFirst("Content-Security-Policy"));
+        assertNull(headers.getFirst("X-Content-Type-Options"));
+        assertNull(headers.getFirst("Referrer-Policy"));
         assertNull(headers.getFirst("X-XSS-Protection"));
         assertNull(headers.getFirst("Strict-Transport-Security"));
         assertNull(headers.getFirst("X-Frame-Options"));
-        assertNull(headers.getFirst("X-Content-Type-Options"));
-
-        assertNull(headers.getFirst("Referrer-Policy"));
     }
 
     @Test

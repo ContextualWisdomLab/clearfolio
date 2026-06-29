@@ -47,6 +47,13 @@ public class ViewerSecurityHeadersWebFilter implements WebFilter {
 
             headers.set("X-Content-Type-Options", "nosniff");
             headers.set("Referrer-Policy", "no-referrer");
+            headers.set("X-XSS-Protection", "0");
+            headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+            if ("'self'".equals(frameAncestors)) {
+                headers.set("X-Frame-Options", "SAMEORIGIN");
+            } else if ("'none'".equals(frameAncestors)) {
+                headers.set("X-Frame-Options", "DENY");
+            }
 
             // If the response is a redirect, do not attach an error-like CSP that could confuse debugging.
             if (exchange.getResponse().getStatusCode() == HttpStatus.FOUND) {

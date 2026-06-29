@@ -105,7 +105,7 @@ public class ViewerUiController {
                           <p class="error__message" id="error-message"></p>
                         </div>
 
-                        <div class="actions" aria-label="Actions">
+                        <div class="actions" role="group" aria-label="Preview actions">
                           <button type="button" class="btn btn-primary" id="retry-btn">Refresh</button>
                           <a class="btn btn-secondary" id="open-json-link" href="#" hidden>Open JSON bootstrap</a>
                         </div>

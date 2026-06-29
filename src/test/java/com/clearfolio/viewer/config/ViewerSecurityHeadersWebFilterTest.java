@@ -45,6 +45,8 @@ class ViewerSecurityHeadersWebFilterTest {
         assertEquals("no-store", headers.getFirst(HttpHeaders.CACHE_CONTROL));
         assertEquals("nosniff", headers.getFirst("X-Content-Type-Options"));
         assertEquals("no-referrer", headers.getFirst("Referrer-Policy"));
+        assertEquals("1; mode=block", headers.getFirst("X-XSS-Protection"));
+        assertEquals("max-age=31536000; includeSubDomains", headers.getFirst("Strict-Transport-Security"));
 
         String csp = headers.getFirst("Content-Security-Policy");
         assertNotNull(csp);
@@ -69,6 +71,8 @@ class ViewerSecurityHeadersWebFilterTest {
 
         HttpHeaders headers = exchange.getResponse().getHeaders();
         assertEquals("no-store", headers.getFirst(HttpHeaders.CACHE_CONTROL));
+        assertEquals("nosniff", headers.getFirst("X-Content-Type-Options"));
+        assertEquals("no-referrer", headers.getFirst("Referrer-Policy"));
         assertNull(headers.getFirst("Content-Security-Policy"));
     }
 
@@ -150,9 +154,10 @@ class ViewerSecurityHeadersWebFilterTest {
     }
 
     @Test
-    void treatsBlankOrNullPathAsNonViewerSurface() {
+    void treatsBlankOrNullPathAsNonViewerSurfaceAndAddsApiHeaders() {
         ViewerSecurityHeadersWebFilter filter = new ViewerSecurityHeadersWebFilter("self");
         AtomicBoolean invoked = new AtomicBoolean(false);
+
         WebFilterChain chain = webExchange -> {
             invoked.set(true);
             return Mono.empty();
@@ -164,7 +169,8 @@ class ViewerSecurityHeadersWebFilterTest {
         when(blankPath.getRequest()).thenReturn(request);
         when(request.getPath()).thenReturn(path);
         when(path.value()).thenReturn("   ");
-        when(blankPath.getResponse()).thenReturn(new MockServerHttpResponse());
+        MockServerHttpResponse response1 = new MockServerHttpResponse();
+        when(blankPath.getResponse()).thenReturn(response1);
 
         filter.filter(blankPath, chain).block();
         assertTrue(invoked.get());
@@ -176,26 +182,37 @@ class ViewerSecurityHeadersWebFilterTest {
         when(nullPath.getRequest()).thenReturn(request2);
         when(request2.getPath()).thenReturn(path2);
         when(path2.value()).thenReturn(null);
-        when(nullPath.getResponse()).thenReturn(new MockServerHttpResponse());
+        MockServerHttpResponse response2 = new MockServerHttpResponse();
+        when(nullPath.getResponse()).thenReturn(response2);
 
         filter.filter(nullPath, chain).block();
         assertTrue(invoked.get());
     }
 
     @Test
-    void doesNotAddHeadersForNonViewerPaths() {
+    void addsApiSecurityHeadersForNonViewerPaths() {
         ViewerSecurityHeadersWebFilter filter = new ViewerSecurityHeadersWebFilter("self");
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/convert/jobs/123").build()
         );
 
-        WebFilterChain chain = webExchange -> webExchange.getResponse().setComplete();
+        WebFilterChain chain = webExchange -> {
+            webExchange.getResponse().setStatusCode(HttpStatus.OK);
+            return webExchange.getResponse().setComplete();
+        };
 
         filter.filter(exchange, chain).block();
 
         HttpHeaders headers = exchange.getResponse().getHeaders();
-        assertNull(headers.getFirst("Content-Security-Policy"));
-        assertNull(headers.getFirst("X-Content-Type-Options"));
-        assertNull(headers.getFirst("Referrer-Policy"));
+        assertEquals("no-store", headers.getFirst(HttpHeaders.CACHE_CONTROL));
+        assertEquals("nosniff", headers.getFirst("X-Content-Type-Options"));
+        assertEquals("no-referrer", headers.getFirst("Referrer-Policy"));
+        assertEquals("DENY", headers.getFirst("X-Frame-Options"));
+
+        String csp = headers.getFirst("Content-Security-Policy");
+        assertNotNull(csp);
+        assertTrue(csp.contains("default-src 'none'"));
+        assertTrue(csp.contains("frame-ancestors 'none'"));
+        assertTrue(csp.contains("base-uri 'none'"));
     }
 }

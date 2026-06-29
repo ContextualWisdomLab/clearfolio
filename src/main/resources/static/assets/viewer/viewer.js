@@ -45,6 +45,7 @@ function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
+  el.retryBtn.disabled = true;
 }
 
 function showError(message) {
@@ -53,6 +54,7 @@ function showError(message) {
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
+  el.retryBtn.disabled = false;
 }
 
 function clearPreview() {
@@ -99,7 +101,16 @@ async function fetchJson(url, signal) {
   });
 
   const contentType = (res.headers.get("content-type") || "").toLowerCase();
-  const data = contentType.includes("application/json") ? await res.json() : null;
+  let data = null;
+  if (contentType.includes("application/json")) {
+    const text = await res.text();
+    data = JSON.parse(text, (key, value) => {
+      if (key === "__proto__" || key === "constructor" || key === "prototype") {
+        return undefined;
+      }
+      return value;
+    });
+  }
 
   return { res, data };
 }
@@ -155,6 +166,7 @@ async function poll(docId, abortSignal) {
     }
 
     el.preview.setAttribute("aria-busy", "false");
+    el.retryBtn.disabled = false;
     el.liveStatus.textContent = "Ready.";
 
     clearPreview();

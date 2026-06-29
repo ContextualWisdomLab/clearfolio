@@ -62,7 +62,9 @@ public class ViewerUiController {
     }
 
     private static String viewerShellHtml(UUID docId, String initialState) {
-        String docIdString = docId.toString();
+        String docIdString = escapeHtml(docId.toString());
+        String safeInitialState = escapeHtml(initialState);
+        String safeViewerPath = escapeHtml(PDF_JS_VIEWER_PATH);
         String template = """
                 <!doctype html>
                 <html lang="en">
@@ -134,7 +136,26 @@ public class ViewerUiController {
 
         return template
                 .replace("{{DOC_ID}}", docIdString)
-                .replace("{{INITIAL_STATE}}", initialState)
-                .replace("{{PDFJS_VIEWER_PATH}}", PDF_JS_VIEWER_PATH);
+                .replace("{{INITIAL_STATE}}", safeInitialState)
+                .replace("{{PDFJS_VIEWER_PATH}}", safeViewerPath);
+    }
+
+    private static String escapeHtml(final String input) {
+        if (input == null) {
+            return "";
+        }
+        StringBuilder escaped = new StringBuilder(input.length() * 2);
+        for (int i = 0; i < input.length(); i++) {
+            char ch = input.charAt(i);
+            switch (ch) {
+                case '<' -> escaped.append("&lt;");
+                case '>' -> escaped.append("&gt;");
+                case '&' -> escaped.append("&amp;");
+                case '"' -> escaped.append("&quot;");
+                case '\'' -> escaped.append("&#x27;");
+                default -> escaped.append(ch);
+            }
+        }
+        return escaped.toString();
     }
 }

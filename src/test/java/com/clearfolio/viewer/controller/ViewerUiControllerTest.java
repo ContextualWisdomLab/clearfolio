@@ -70,6 +70,22 @@ class ViewerUiControllerTest {
     }
 
     @Test
+    void viewerEscapesHtmlCharactersInDocIdAndInitialStateAndViewerPath() throws Exception {
+        java.lang.reflect.Method method = ViewerUiController.class.getDeclaredMethod("escapeHtml", String.class);
+        method.setAccessible(true);
+
+        String payload = "<script>alert('1' & \"2\")</script>";
+        String escaped = (String) method.invoke(null, payload);
+        assertTrue(escaped.equals("&lt;script&gt;alert(&#x27;1&#x27; &amp; &quot;2&quot;)&lt;/script&gt;"));
+
+        String escapedNull = (String) method.invoke(null, new Object[]{null});
+        assertTrue(escapedNull.equals(""));
+
+        String escapedSafe = (String) method.invoke(null, "safe-string");
+        assertTrue(escapedSafe.equals("safe-string"));
+    }
+
+    @Test
     void viewerReturnsFailedHtmlWhenJobFailed() {
         UUID docId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(

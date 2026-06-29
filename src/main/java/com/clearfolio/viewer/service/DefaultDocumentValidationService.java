@@ -150,17 +150,16 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         if (value == null) {
             return "";
         }
-        return value
-                .replace('\u0000', '_')
-                .replace('\t', '_')
-                .replace('\r', '_')
-                .replace('\n', '_')
-                .replace('\u2028', '_')
-                .replace('\u2029', '_')
-                .replace('\u202A', '_')
-                .replace('\u202B', '_')
-                .replace('\u202C', '_')
-                .replace('\u202D', '_')
-                .replace('\u202E', '_');
+        char[] chars = value.toCharArray();
+        boolean modified = false;
+        for (int i = 0; i < chars.length; i++) {
+            char c = chars[i];
+            if (c == '\u0000' || c == '\t' || c == '\r' || c == '\n'
+                    || (c >= '\u2028' && c <= '\u202E')) {
+                chars[i] = '_';
+                modified = true;
+            }
+        }
+        return modified ? new String(chars) : value;
     }
 }

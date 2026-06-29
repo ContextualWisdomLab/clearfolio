@@ -195,7 +195,7 @@ a:hover {
   color: #ffffff;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   filter: brightness(0.95);
 }
 
@@ -205,8 +205,13 @@ a:hover {
   color: var(--ink);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background: #fbfcfe;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .preview {

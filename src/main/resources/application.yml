@@ -5,6 +5,7 @@ spring:
     max-in-memory-size: ${conversion.max-upload-size-bytes}
 
 conversion:
+  policy-override-public-key: ${CONVERSION_POLICY_OVERRIDE_PUBLIC_KEY:}
   blocked-extensions:
     - hwp
     - hwpx

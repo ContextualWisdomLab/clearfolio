@@ -1,0 +1,3 @@
+## 2026-06-24 - Async Button States & New Tab Accessibility
+**Learning:** Found a missing disabled state on the primary "Refresh" (retry) button during the document polling/conversion cycle. Not disabling buttons during async operations leads to confusion and potential multiple submissions. Also, providing screen reader context for links opening in a new tab (`target="_blank"`) using `aria-label` is crucial for predictable navigation.
+**Action:** Always disable actionable UI buttons while async processes (like `fetch` or polling) are running and re-enable them upon completion (success or error). Also, when generating links that open in a new window/tab, explicitly announce this behavior via an `aria-label` (e.g., "(opens in a new tab)").

@@ -46,6 +46,19 @@ function isUuidLike(value) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
 }
 
+function isSafeUrl(url) {
+  if (typeof url !== "string") {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(url, window.location.href);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch (e) {
+    return false;
+  }
+}
+
 function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
@@ -78,15 +91,6 @@ function clearPreview() {
   const help = el.preview.querySelector("#preview-help");
   if (help) {
     help.remove();
-  }
-}
-
-function isSafeUrl(urlStr) {
-  try {
-    const url = new URL(urlStr, window.location.origin);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch (e) {
-    return false;
   }
 }
 
@@ -214,11 +218,13 @@ async function poll(docId, abortSignal) {
 
     clearPreview();
     const path = bootstrap.data.previewResourcePath;
-    if (typeof path === "string" && path.endsWith(".pdf")) {
-      renderPdfInline(path);
-    }
-    if (typeof path === "string" && path.length > 0) {
-      renderPreviewLink(path);
+    if (isSafeUrl(path)) {
+      if (path.endsWith(".pdf")) {
+        renderPdfInline(path);
+      }
+      if (path.length > 0) {
+        renderPreviewLink(path);
+      }
     }
   } catch (err) {
     if (abortSignal.aborted) {

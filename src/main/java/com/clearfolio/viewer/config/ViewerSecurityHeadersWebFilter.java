@@ -35,47 +35,48 @@ public class ViewerSecurityHeadersWebFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
-        if (!isViewerSurface(path)) {
-            return chain.filter(exchange);
-        }
+        boolean isViewer = isViewerSurface(path);
 
         exchange.getResponse().beforeCommit(() -> {
             HttpHeaders headers = exchange.getResponse().getHeaders();
 
-            // Avoid caching embedded preview surfaces.
-            headers.set(HttpHeaders.CACHE_CONTROL, "no-store");
-
+            // Global security headers
             headers.set("X-Content-Type-Options", "nosniff");
-            headers.set("Referrer-Policy", "no-referrer");
+            headers.set("Strict-Transport-Security", "max-age=31536000 ; includeSubDomains");
 
-            // If the response is a redirect, do not attach an error-like CSP that could confuse debugging.
-            if (exchange.getResponse().getStatusCode() == HttpStatus.FOUND) {
-                return Mono.empty();
+            if (isViewer) {
+                // Avoid caching embedded preview surfaces.
+                headers.set(HttpHeaders.CACHE_CONTROL, "no-store");
+
+                headers.set("Referrer-Policy", "no-referrer");
+
+                // If the response is a redirect, do not attach an error-like CSP that could confuse debugging.
+                if (exchange.getResponse().getStatusCode() != HttpStatus.FOUND) {
+                    // CSP goal: strict by default, but allow same-origin JS/CSS and PDF.js workers.
+                    headers.set(
+                            "Content-Security-Policy",
+                            String.join("; ",
+                                    "default-src 'none'",
+                                    "base-uri 'none'",
+                                    "frame-ancestors " + frameAncestors,
+                                    "script-src 'self'",
+                                    "style-src 'self'",
+                                    "img-src 'self' data: blob:",
+                                    "font-src 'self' data:",
+                                    "connect-src 'self'",
+                                    "worker-src 'self' blob:",
+                                    "frame-src 'self' blob:",
+                                    "object-src 'none'"
+                            )
+                    );
+                }
             }
-
-            // CSP goal: strict by default, but allow same-origin JS/CSS and PDF.js workers.
-            headers.set(
-                    "Content-Security-Policy",
-                    String.join("; ",
-                            "default-src 'none'",
-                            "base-uri 'none'",
-                            "frame-ancestors " + frameAncestors,
-                            "script-src 'self'",
-                            "style-src 'self'",
-                            "img-src 'self' data: blob:",
-                            "font-src 'self' data:",
-                            "connect-src 'self'",
-                            "worker-src 'self' blob:",
-                            "frame-src 'self' blob:",
-                            "object-src 'none'"
-                    )
-            );
 
             return Mono.empty();
         });
 
         // Ensure CSP is also applied to HEAD checks for the viewer surface.
-        if (exchange.getRequest().getMethod() == HttpMethod.HEAD) {
+        if (isViewer && exchange.getRequest().getMethod() == HttpMethod.HEAD) {
             return chain.filter(exchange).then(Mono.empty());
         }
 

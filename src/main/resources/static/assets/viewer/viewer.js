@@ -67,9 +67,19 @@ function clearPreview() {
   }
 }
 
+function isSafeUrl(url) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return ["http:", "https:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 function renderPreviewLink(path) {
   const link = document.createElement("a");
-  link.href = path;
+  // 🛡️ Sentinel: XSS protection for javascript: URIs
+  link.href = isSafeUrl(path) ? path : "#";
   link.textContent = "Open artifact";
   link.className = "btn btn-secondary";
   link.rel = "noopener";

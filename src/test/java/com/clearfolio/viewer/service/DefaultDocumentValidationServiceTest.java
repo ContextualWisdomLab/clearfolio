@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.security.Provider;
 import java.security.Security;
 import java.util.Set;
@@ -159,7 +160,7 @@ class DefaultDocumentValidationServiceTest {
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         assertDoesNotThrow(() -> validationService.validateOrThrow(
-                new MockMultipartFile("file", "contract.docx", "application/octet-stream", new byte[] {1}),
+                new MockMultipartFile("file", "contract.docx", "application/octet-stream", docxBytes("override")),
                 PolicyOverrideRequest.of("invalid", null, null)
         ));
     }
@@ -171,7 +172,70 @@ class DefaultDocumentValidationServiceTest {
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         assertDoesNotThrow(() -> validationService.validateOrThrow(
-                new MockMultipartFile("file", "contract.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", new byte[] {1})
+                new MockMultipartFile(
+                        "file",
+                        "contract.docx",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        docxBytes("contract")
+                )
+        ));
+    }
+
+    @Test
+    void rejectsSupportedExtensionWhenContentSignatureDoesNotMatch() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile(
+                                "file",
+                                "malicious.php.docx",
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                "<?php echo 'owned'; ?>".getBytes(StandardCharsets.UTF_8)
+                        )
+                )
+        );
+
+        assertEquals("File content does not match file extension.", ex.getMessage());
+    }
+
+    @Test
+    void rejectsUnsupportedDoubleExtension() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile(
+                                "file",
+                                "malicious.php.jpg",
+                                "image/jpeg",
+                                "<?php".getBytes(StandardCharsets.UTF_8)
+                        )
+                )
+        );
+
+        assertEquals("File extension is not supported.", ex.getMessage());
+    }
+
+    @Test
+    void allowsPdfWhenContentSignatureMatches() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        assertDoesNotThrow(() -> validationService.validateOrThrow(
+                new MockMultipartFile(
+                        "file",
+                        "report.pdf",
+                        "application/pdf",
+                        "%PDF-1.7\n".getBytes(StandardCharsets.UTF_8)
+                )
         ));
     }
 
@@ -189,6 +253,22 @@ class DefaultDocumentValidationServiceTest {
         );
 
         assertEquals("File extension is required.", ex.getMessage());
+    }
+
+    @Test
+    void rejectsFilenameWithNullByte() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract.hwp\0.pdf", "application/octet-stream", new byte[] {1})
+                )
+        );
+
+        assertEquals("File name is invalid.", ex.getMessage());
     }
 
     @Test
@@ -400,5 +480,16 @@ class DefaultDocumentValidationServiceTest {
                 }
             }
         }
+    }
+
+    private static byte[] docxBytes(String payload) {
+        byte[] suffix = payload.getBytes(StandardCharsets.UTF_8);
+        byte[] bytes = new byte[suffix.length + 4];
+        bytes[0] = 0x50;
+        bytes[1] = 0x4B;
+        bytes[2] = 0x03;
+        bytes[3] = 0x04;
+        System.arraycopy(suffix, 0, bytes, 4, suffix.length);
+        return bytes;
     }
 }

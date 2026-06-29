@@ -195,7 +195,10 @@ class ViewerSecurityHeadersWebFilterTest {
 
         HttpHeaders headers = exchange.getResponse().getHeaders();
         assertNull(headers.getFirst("Content-Security-Policy"));
-        assertNull(headers.getFirst("X-Content-Type-Options"));
+        assertNotNull(headers.getFirst("X-Content-Type-Options"));
+        assertEquals("nosniff", headers.getFirst("X-Content-Type-Options"));
+        assertNotNull(headers.getFirst("Strict-Transport-Security"));
+        assertTrue(headers.getFirst("Strict-Transport-Security").contains("max-age="));
         assertNull(headers.getFirst("Referrer-Policy"));
     }
 }

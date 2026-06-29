@@ -1,0 +1,4 @@
+## 2026-06-29 - [Global Security Headers]
+**Vulnerability:** The API endpoints were missing standard security headers such as `X-Content-Type-Options`, `X-Frame-Options`, and `Strict-Transport-Security`, while the viewer surface had a specialized CSP.
+**Learning:** In a WebFlux environment with specialized surface controllers, it's easy to overlook global headers if one controller uses its own filter. A global WebFilter is needed, but it must be careful not to conflict with the specialized viewer's `frame-ancestors` directive (which replaces `X-Frame-Options`).
+**Prevention:** Always implement a `GlobalSecurityHeadersWebFilter` that acts as a baseline, checking if a header is already set before adding it, and using path matching to apply stricter policies (like `Cache-Control: no-store` or `X-Frame-Options: DENY`) specifically to API routes.

@@ -86,7 +86,7 @@ public class ViewerUiController {
                         </div>
 
                         <nav class="header-nav" aria-label="Viewer utilities">
-                          <a class="header-nav__link" href="/healthz">Service status</a>
+                          <a class="header-nav__link" href="/healthz" target="_blank" rel="noopener noreferrer" aria-label="Service status (opens in a new tab)">Service status <span aria-hidden="true" style="margin-left: 4px;">&nearr;</span></a>
                         </nav>
                       </div>
                     </header>
@@ -105,9 +105,9 @@ public class ViewerUiController {
                           <p class="error__message" id="error-message"></p>
                         </div>
 
-                        <div class="actions" aria-label="Actions">
+                        <div class="actions" role="group" aria-label="Actions">
                           <button type="button" class="btn btn-primary" id="retry-btn">Refresh</button>
-                          <a class="btn btn-secondary" id="open-json-link" href="#" hidden>Open JSON bootstrap</a>
+                          <a class="btn btn-secondary" id="open-json-link" href="#" hidden target="_blank" rel="noopener noreferrer" aria-label="Open JSON bootstrap (opens in a new tab)">Open JSON bootstrap <span aria-hidden="true" style="margin-left: 4px;">&nearr;</span></a>
                         </div>
                       </section>
 

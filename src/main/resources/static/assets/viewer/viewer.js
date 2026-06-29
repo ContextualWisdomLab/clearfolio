@@ -70,9 +70,11 @@ function clearPreview() {
 function renderPreviewLink(path) {
   const link = document.createElement("a");
   link.href = path;
-  link.textContent = "Open artifact";
+  link.innerHTML = 'Open artifact <span aria-hidden="true" style="margin-left: 4px;">&nearr;</span>';
+  link.setAttribute("aria-label", "Open artifact (opens in a new tab)");
   link.className = "btn btn-secondary";
-  link.rel = "noopener";
+  link.rel = "noopener noreferrer";
+  link.target = "_blank";
   el.preview.appendChild(link);
 }
 

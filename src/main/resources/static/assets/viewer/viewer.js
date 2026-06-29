@@ -45,6 +45,7 @@ function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
+  el.retryBtn.disabled = true;
 }
 
 function showError(message) {
@@ -52,6 +53,7 @@ function showError(message) {
   el.errorMessage.textContent = message;
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
+  el.retryBtn.disabled = false;
   el.errorTitle.focus();
 }
 
@@ -72,7 +74,8 @@ function renderPreviewLink(path) {
   link.href = path;
   link.textContent = "Open artifact";
   link.className = "btn btn-secondary";
-  link.rel = "noopener";
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
   el.preview.appendChild(link);
 }
 
@@ -156,6 +159,7 @@ async function poll(docId, abortSignal) {
 
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
+    el.retryBtn.disabled = false;
 
     clearPreview();
     const path = bootstrap.data.previewResourcePath;

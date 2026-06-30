@@ -71,7 +71,20 @@ function clearPreview() {
   }
 }
 
+function isSafeUrl(urlStr) {
+  try {
+    const url = new URL(urlStr, window.location.origin);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (e) {
+    return false;
+  }
+}
+
 function renderPreviewLink(path) {
+  if (!isSafeUrl(path)) {
+    console.error("Blocked unsafe URL in preview link:", path);
+    return;
+  }
   const link = document.createElement("a");
   link.href = path;
   link.textContent = "Open artifact";
@@ -81,6 +94,10 @@ function renderPreviewLink(path) {
 }
 
 function renderPdfInline(path) {
+  if (!isSafeUrl(path)) {
+    console.error("Blocked unsafe URL in PDF inline:", path);
+    return;
+  }
   const viewerPath =
     getMetaContent("clearfolio-pdfjs-viewer-path") ||
     "/webjars/pdfjs-dist/4.10.38/web/viewer.html";

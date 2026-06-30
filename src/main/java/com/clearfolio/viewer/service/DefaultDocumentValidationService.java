@@ -55,6 +55,10 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         }
 
         String fileName = file.getOriginalFilename();
+        if (fileName != null && fileName.indexOf('\u0000') != -1) {
+            throw new IllegalArgumentException(
+                    "Invalid filename containing null byte.");
+        }
         String extension = extensionOf(fileName);
         if (extension.isEmpty()) {
             throw new IllegalArgumentException("File extension is required.");

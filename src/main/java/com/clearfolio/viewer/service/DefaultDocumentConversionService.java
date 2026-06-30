@@ -121,12 +121,8 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString();
+            // 성능 향상을 위해 String.format 대신 HexFormat 사용
+            return java.util.HexFormat.of().formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

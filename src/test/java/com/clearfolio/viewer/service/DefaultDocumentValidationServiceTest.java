@@ -192,6 +192,22 @@ class DefaultDocumentValidationServiceTest {
     }
 
     @Test
+    void rejectsFilenameWithNullByte() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract\u0000.pdf", "application/pdf", new byte[] {1})
+                )
+        );
+
+        assertEquals("File name contains invalid characters.", ex.getMessage());
+    }
+
+    @Test
     void rejectsBlankFilenameOrMissingName() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));

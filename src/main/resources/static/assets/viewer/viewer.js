@@ -89,7 +89,9 @@ function renderPreviewLink(path) {
   link.href = path;
   link.textContent = "Open artifact";
   link.className = "btn btn-secondary";
+  link.target = "_blank";
   link.rel = "noopener";
+  link.setAttribute("aria-label", "Open artifact in a new tab");
   el.preview.appendChild(link);
 }
 

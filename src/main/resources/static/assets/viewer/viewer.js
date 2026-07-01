@@ -46,7 +46,7 @@ function setLoading(message) {
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
   el.retryBtn.disabled = true;
-  el.retryBtn.textContent = "Refreshing...";
+  el.retryBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Refreshing...';
 }
 
 function showError(message) {

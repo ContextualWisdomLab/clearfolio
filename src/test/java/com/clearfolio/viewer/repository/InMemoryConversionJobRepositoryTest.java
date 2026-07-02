@@ -2,12 +2,14 @@ package com.clearfolio.viewer.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -185,6 +187,91 @@ class InMemoryConversionJobRepositoryTest {
         assertTrue(result.created());
         assertTrue(repository.findById(candidate.getJobId()).isPresent());
         assertTrue(jobsByContentHash(repository).isEmpty());
+    }
+
+    @Test
+    void findOrStoreRecordsSubmittedAndDedupeHitLifecycleEventsWithoutSourceMetadata() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob candidate = newJob("hash-event");
+        ConversionJob duplicate = newJob("hash-event");
+
+        ConversionJobRepository.FindOrStoreResult created = repository.findOrStoreByContentHash(candidate);
+        ConversionJobRepository.FindOrStoreResult reused = repository.findOrStoreByContentHash(duplicate);
+
+        assertTrue(created.created());
+        assertFalse(reused.created());
+        assertSame(candidate, reused.canonicalJob());
+
+        List<ConversionJobLifecycleEvent> events = repository.findLifecycleEventsByJobId(candidate.getJobId());
+        assertIterableEquals(
+                List.of("conversion.job.submitted", "conversion.job.dedupe_hit"),
+                events.stream().map(ConversionJobLifecycleEvent::eventType).toList()
+        );
+        assertEquals(ConversionJobStatus.SUBMITTED, events.getFirst().statusAfter());
+        assertEquals(0, events.getFirst().attemptCount());
+        assertEquals(2, repository.findLifecycleEventsByTenantId("buyer-demo").size());
+        assertFalse(events.toString().contains("report.docx"));
+        assertFalse(events.toString().contains("hash-event"));
+    }
+
+    @Test
+    void stateStoreRecordsTransitionLifecycleEventsInOrder() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-transition-events");
+        repository.findOrStoreByContentHash(job);
+        ConversionJobStateStore stateStore = repository;
+        Instant retryAt = Instant.now().minusMillis(1);
+
+        assertTrue(stateStore.claimForProcessing(job.getJobId(), Instant.now()).isPresent());
+        stateStore.scheduleRetry(job.getJobId(), "retry later", retryAt);
+        assertTrue(stateStore.claimForProcessing(job.getJobId(), Instant.now()).isPresent());
+        stateStore.markSucceeded(job.getJobId(), "/artifacts/" + job.getJobId() + ".pdf", "done");
+
+        List<ConversionJobLifecycleEvent> events = repository.findLifecycleEventsByJobId(job.getJobId());
+        assertIterableEquals(
+                List.of(
+                        "conversion.job.submitted",
+                        "conversion.processing.started",
+                        "conversion.retry.scheduled",
+                        "conversion.processing.started",
+                        "conversion.job.succeeded"
+                ),
+                events.stream().map(ConversionJobLifecycleEvent::eventType).toList()
+        );
+        assertEquals(ConversionJobStatus.PROCESSING, events.get(1).statusAfter());
+        assertEquals(1, events.get(1).attemptCount());
+        assertEquals(ConversionJobStatus.PROCESSING, events.get(2).statusBefore());
+        assertEquals(ConversionJobStatus.SUBMITTED, events.get(2).statusAfter());
+        assertEquals(retryAt, events.get(2).retryAt());
+        assertEquals(2, events.get(3).attemptCount());
+        assertEquals(ConversionJobStatus.SUCCEEDED, events.get(4).statusAfter());
+    }
+
+    @Test
+    void retryDeadLetteredRecordsAcceptedEventOnlyWhenTransitionSucceeds() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-retry-accepted-event");
+        repository.findOrStoreByContentHash(job);
+        ConversionJobStateStore stateStore = repository;
+
+        assertTrue(stateStore.claimForProcessing(job.getJobId(), Instant.now()).isPresent());
+        stateStore.markDeadLettered(job.getJobId(), "retries exhausted");
+        assertTrue(stateStore.retryDeadLettered(job.getJobId(), "operator-7"));
+        assertFalse(stateStore.retryDeadLettered(job.getJobId(), "operator-7"));
+
+        List<ConversionJobLifecycleEvent> events = repository.findLifecycleEventsByJobId(job.getJobId());
+        assertIterableEquals(
+                List.of(
+                        "conversion.job.submitted",
+                        "conversion.processing.started",
+                        "conversion.job.failed",
+                        "conversion.retry.accepted"
+                ),
+                events.stream().map(ConversionJobLifecycleEvent::eventType).toList()
+        );
+        assertEquals(ConversionJobStatus.FAILED, events.get(2).statusAfter());
+        assertEquals(ConversionJobStatus.SUBMITTED, events.get(3).statusAfter());
+        assertEquals(0, events.get(3).attemptCount());
     }
 
     @Test

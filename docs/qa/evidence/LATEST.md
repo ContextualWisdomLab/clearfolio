@@ -15,15 +15,17 @@
   `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`
 - Conversion job state-store implementation:
   `src/main/java/com/clearfolio/viewer/repository/ConversionJobStateStore.java`
+- Conversion job lifecycle event implementation:
+  `src/main/java/com/clearfolio/viewer/repository/ConversionJobLifecycleEvent.java`
 - Buyer sandbox Spring profile:
   `src/main/resources/application-buyer-demo.yml`
 - Buyer deployment supplemental verification:
   `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/buyer-deployment-slice-verification.md`
 - FigJam signed tenant claims, file-backed artifact ledger, KPI snapshot
   evidence ledger, KPI snapshot export evidence API, buyer-demo KPI evidence
-  panel, operator recovery evidence, buyer integration deployment, and durable
-  job repository target architecture, and conversion state store implementation
-  flows:
+  panel, operator recovery evidence, buyer integration deployment, durable job
+  repository target architecture, conversion state store implementation, and
+  conversion lifecycle event trail flows:
   <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>
 - Verification source head SHA before latest evidence refresh:
-  `73d11f53e864f99e576e6f3d3329f9efe40a7c79`
+  `0e629ee49b3796e49045bce58106cfd9af9be918`

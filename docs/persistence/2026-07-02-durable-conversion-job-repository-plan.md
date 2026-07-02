@@ -21,6 +21,11 @@ Current implementation:
 - `ConversionJobStateStore` exists in code and exposes explicit transition
   methods for processing claims, retry scheduling, success, dead-lettering, and
   operator retry acceptance.
+- `ConversionJobLifecycleEvent` now records a process-local append-only trail
+  for job submission, dedupe hit, processing start, retry scheduling, success,
+  failure, and operator retry acceptance without storing source filenames,
+  content hashes, artifact paths, raw document bytes, signed tokens, or raw
+  converter error strings.
 - `DefaultDocumentConversionService` creates a mutable `ConversionJob` and
   enqueues work only when the repository reports a new canonical job.
 - `DefaultConversionWorker` routes lifecycle changes through
@@ -35,8 +40,8 @@ Buyer risk:
 - retry schedule is not durable;
 - lifecycle status changes now have an explicit code boundary, but the current
   implementation is still process-local until a SQL implementation is added;
-- analytics and audit evidence can only be partial until lifecycle events are
-  durable.
+- analytics and audit evidence can only be partial until lifecycle events move
+  from the process-local in-memory trail into durable storage and projections.
 
 ## Design Decision
 
@@ -181,15 +186,18 @@ then use the normal max-attempt/dead-letter policy.
 1. Done: add `ConversionJobStateStore` with in-memory implementation and tests.
 2. Done: refactor `DefaultConversionWorker` and operator retry to use explicit
    transition methods.
-3. Keep `ConversionJobRepository` read methods stable for controllers and KPI
+3. Done: add process-local append-only lifecycle events to
+   `InMemoryConversionJobRepository` for every current transition, with tests
+   proving event order and source-metadata omission.
+4. Keep `ConversionJobRepository` read methods stable for controllers and KPI
    snapshots.
-4. Add SQL schema migration scripts and a disabled SQL repository profile.
-5. Add repository contract tests that run against in-memory and SQL
+5. Add SQL schema migration scripts and a disabled SQL repository profile.
+6. Add repository contract tests that run against in-memory and SQL
    implementations.
-6. Add restart recovery tests for due retries and stale `PROCESSING` jobs.
-7. Add event emission for lifecycle transitions and map it to the durable
-   metrics event model.
-8. Turn on SQL profile only in a buyer sandbox after artifact store persistence
+7. Add restart recovery tests for due retries and stale `PROCESSING` jobs.
+8. Map process-local lifecycle events to durable metrics events and daily
+   projections.
+9. Turn on SQL profile only in a buyer sandbox after artifact store persistence
    and OIDC/gateway claims are configured.
 
 ## Buyer Acceptance Criteria

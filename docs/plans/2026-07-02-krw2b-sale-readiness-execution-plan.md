@@ -266,6 +266,11 @@ Progress as of 2026-07-02:
 - `ConversionJobStateStore` is now implemented in-repo and used by the worker
   and operator retry path. This closes the first pre-SQL persistence
   prerequisite without adding a database dependency, submodule, or library split.
+- `ConversionJobLifecycleEvent` now gives the current in-memory repository a
+  process-local append-only event trail for submission, dedupe hit, processing
+  start, retry scheduling, success, failure, and operator retry acceptance.
+  This improves buyer KPI traceability while keeping SQL durability, restart
+  recovery, and projections as explicit follow-up work.
 
 ## Library and submodule decision
 
@@ -357,8 +362,12 @@ Progress as of 2026-07-02:
   the interface and `RepositoryBackedConversionJobStateStore` preserving
   compatibility for repository implementations that have not yet moved to the
   explicit transition contract.
-- The remaining production closure is SQL-backed state, append-only lifecycle
-  events, restart recovery tests, and buyer-sandbox profile activation.
+- The in-memory runtime now records append-only lifecycle events for every
+  current transition without storing source filenames, content hashes, artifact
+  paths, signed tokens, or raw converter error strings.
+- The remaining production closure is SQL-backed state, durable event
+  persistence, restart recovery tests, projections, and buyer-sandbox profile
+  activation.
 
 ### Phase 4: Commercial proof
 

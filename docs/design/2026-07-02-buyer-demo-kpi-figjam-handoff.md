@@ -37,6 +37,8 @@ Date: 2026-07-02
   `Clearfolio Durable Job Repository Target Architecture`.
 - Added FigJam diagram on the same board:
   `Clearfolio Conversion State Store Implementation Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Conversion Lifecycle Event Trail Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -76,6 +78,7 @@ Date: 2026-07-02
 | Snapshot evidence lookup | `KpiSnapshotExportResponse` | Lets an authorized buyer inspect exported KPI evidence without raw content. |
 | KPI evidence panel | `/api/v1/analytics/kpi-snapshot-exports` | Turns export evidence into a buyer-readable UI panel while omitting tenant ids. |
 | Recovery evidence panel | Browser session history plus job status payloads | Shows needs-action jobs, retry-ready dead letters, last accepted retry, and latest inspected detail without a new admin system. |
+| Lifecycle event trail | `ConversionJobLifecycleEvent` | Proves ordered transition evidence in the current runtime without storing filenames, content hashes, artifact paths, signed tokens, or raw converter errors. |
 
 ## Mermaid Source
 
@@ -371,6 +374,68 @@ flowchart LR
     stateStore -->|"Verified by"| tests
     tests -->|"Feeds"| gates
     plan -->|"Next step"| stateStore
+```
+
+### Conversion Lifecycle Event Trail Flow
+
+```mermaid
+flowchart LR
+    subgraph entry ["Current Runtime Entry Points"]
+        submit["Upload submit"]
+        dedupe["Duplicate upload"]
+        worker["Conversion worker"]
+        operator["Operator retry"]
+    end
+    subgraph state ["State Store Boundary"]
+        repository["InMemoryConversionJobRepository"]
+        stateStore["ConversionJobStateStore"]
+    end
+    subgraph events ["Process-local Lifecycle Events"]
+        submitted["conversion.job.submitted"]
+        dedupeHit["conversion.job.dedupe_hit"]
+        started["conversion.processing.started"]
+        retryScheduled["conversion.retry.scheduled"]
+        succeeded["conversion.job.succeeded"]
+        failed["conversion.job.failed"]
+        retryAccepted["conversion.retry.accepted"]
+    end
+    subgraph privacy ["Event Redaction Boundary"]
+        allowed["job id, tenant, status, attempt, retryAt"]
+        omitted["no filename, hash, artifact path, token, raw converter error"]
+    end
+    subgraph buyerProof ["Buyer Diligence Proof"]
+        tests["Repository event-order tests"]
+        durablePlan["SQL event table plan"]
+        projection["Future KPI projection"]
+    end
+
+    submit -->|"findOrStore"| repository
+    dedupe -->|"reuse canonical job"| repository
+    worker -->|"claim, retry, success, failure"| stateStore
+    operator -->|"retry accepted"| stateStore
+    stateStore --> repository
+    repository --> submitted
+    repository --> dedupeHit
+    repository --> started
+    repository --> retryScheduled
+    repository --> succeeded
+    repository --> failed
+    repository --> retryAccepted
+    submitted --> allowed
+    started --> allowed
+    failed --> omitted
+    retryAccepted --> omitted
+    allowed --> tests
+    omitted --> tests
+    tests --> durablePlan
+    durablePlan --> projection
+
+    style entry fill:#C2E5FF,stroke:#3DADFF
+    style state fill:#CDF4D3,stroke:#66D575
+    style events fill:#FFECBD,stroke:#FFC943
+    style privacy fill:#DCCCFF,stroke:#874FFF
+    style omitted fill:#FFCDC2,stroke:#FF7556
+    style buyerProof fill:#D9D9D9,stroke:#B3B3B3
 ```
 
 ### Threat Boundaries and Data Handling

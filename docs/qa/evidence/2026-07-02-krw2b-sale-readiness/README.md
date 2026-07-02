@@ -2,7 +2,7 @@
 
 Date: 2026-07-02
 Verification source head SHA before this evidence refresh:
-`73d11f53e864f99e576e6f3d3329f9efe40a7c79`
+`0e629ee49b3796e49045bce58106cfd9af9be918`
 
 ## Gate Summary
 
@@ -10,7 +10,7 @@ Verification source head SHA before this evidence refresh:
 | --- | --- | --- |
 | Java runtime | Pass, OpenJDK 21.0.11 | `java-version.txt` |
 | Compile warnings/deprecations | Pass | `compile.log` |
-| Tests + JaCoCo | Pass, 327 tests, `classes=49`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
+| Tests + JaCoCo | Pass, 335 tests, `classes=49`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
 | JavaDoc | Pass, `javadoc_warnings_or_errors=none` | `javadoc.log`, `javadoc-status.txt` |
 | Markdown lint | Pass, 0 errors across changed docs | `markdownlint.log` |
 | JS syntax | Pass | `node-check.log` |
@@ -19,7 +19,7 @@ Verification source head SHA before this evidence refresh:
 | License review | Partial, policy checker reports 136 allowed components, 6 review-required components, 0 unlisted violations; legal decisions still needed | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
 | Auth/tenant, signed artifacts, and KPI snapshots | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, artifact read audit API, optional file-backed artifact-link ledger replay, optional file-backed KPI snapshot ledger replay, and tenant-scoped KPI snapshot export API implemented; OIDC/JWT and centralized durable revocation/audit/analytics persistence pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact/analytics tests |
 | Buyer deployment integration | Pass for buyer sandbox scope; `buyer-demo` Spring profile, gateway-signed header contract, connector API table, OpenAPI connector seed, smoke path, and cutover gates are documented; buyer tenant import and production OIDC/JWT profile remain follow-up | `src/main/resources/application-buyer-demo.yml`, `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`, `docs/deployment/clearfolio-buyer-connector.openapi.yaml` |
-| Durable job repository design and state-store slice | Partial, code boundary implemented; `ConversionJobStateStore` now routes worker success/failure and operator retry transitions, while SQL persistence and append-only lifecycle events remain pending | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`, state-store tests |
+| Durable job repository design, state-store, and lifecycle event slice | Partial, code boundary implemented; `ConversionJobStateStore` routes worker success/failure and operator retry transitions, and `ConversionJobLifecycleEvent` now records process-local append-only transition evidence, while SQL persistence and restart recovery remain pending | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`, state-store and lifecycle event tests |
 | Local smoke | Pass, signed tenant claims plus file-backed artifact/KPI ledgers, KPI snapshot export API, buyer-demo KPI evidence panel, and operator recovery evidence panel | `smoke-local.txt`, `smoke-app.log`, `smoke-ui-root.txt` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
@@ -35,7 +35,7 @@ Result:
 
 - Semgrep completed successfully.
 - Rules run: 60 Java rules.
-- Targets scanned: 50 tracked files.
+- Targets scanned: 53 tracked files.
 - Findings: 0.
 - Errors: 0.
 
@@ -82,7 +82,9 @@ Evidence:
 - `src/main/resources/application-buyer-demo.yml`
 - `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`
 - `src/main/java/com/clearfolio/viewer/repository/ConversionJobStateStore.java`
+- `src/main/java/com/clearfolio/viewer/repository/ConversionJobLifecycleEvent.java`
 - `src/main/java/com/clearfolio/viewer/repository/RepositoryBackedConversionJobStateStore.java`
+- `docs/superpowers/plans/2026-07-02-conversion-job-lifecycle-events.md`
 - `buyer-deployment-slice-verification.md`
 - FigJam diagrams:
   [Clearfolio Gateway Signed Tenant Claims Flow](https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM)
@@ -90,7 +92,8 @@ Evidence:
   `Clearfolio KPI Snapshot Export Evidence API Flow` and
   `Clearfolio Buyer Demo KPI Evidence Panel Flow` plus
   `Clearfolio Operator Recovery Evidence Flow` and
-  `Clearfolio Conversion State Store Implementation Flow`.
+  `Clearfolio Conversion State Store Implementation Flow` plus
+  `Clearfolio Conversion Lifecycle Event Trail Flow`.
 
 ## Local Smoke
 

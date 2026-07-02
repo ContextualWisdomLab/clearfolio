@@ -9,7 +9,10 @@ from in-memory jobs through `GET /api/v1/analytics/kpi-snapshot`, but each
 authorized export can now be recorded to an optional local append-only snapshot
 ledger when `clearfolio.analytics-snapshot-ledger.path` is configured, and the
 recorded exports can be read through
-`GET /api/v1/analytics/kpi-snapshot-exports`.
+`GET /api/v1/analytics/kpi-snapshot-exports`. Conversion job transitions now
+also emit process-local `ConversionJobLifecycleEvent` records in
+`InMemoryConversionJobRepository`; those records prove the event contract shape
+for the current runtime but are not durable analytics storage yet.
 
 ## Goal
 
@@ -200,9 +203,11 @@ optimization.
 1. Keep the KPI response contract stable while recording authorized exports in
    `KpiSnapshotLedger` and exposing tenant-scoped export evidence through
    `GET /api/v1/analytics/kpi-snapshot-exports`.
-2. Define `AnalyticsEvent` and `AnalyticsEventRepository` in the existing app.
-3. Add an in-memory implementation for tests and MVP parity.
-4. Emit lifecycle events at the code points listed above.
+2. Emit process-local conversion lifecycle events from the in-memory repository
+   for job submission, dedupe hit, processing start, retry scheduling, success,
+   failure, and operator retry acceptance.
+3. Define `AnalyticsEvent` and `AnalyticsEventRepository` in the existing app.
+4. Add a durable implementation only when the SQL repository profile exists.
 5. Promote snapshot export evidence into the same append-only event contract.
 6. Add PostgreSQL persistence only after tenant and deployment design are ready.
 7. Add daily projection generation and evidence export.

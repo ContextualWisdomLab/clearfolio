@@ -17,6 +17,7 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
 
 ## Scope
 
+- `GET /`: buyer-demo upload, status, KPI, and session-history shell.
 - `POST /api/v1/convert/jobs`: upload document and receive async job id.
 - `GET /api/v1/convert/jobs/{jobId}`: poll conversion status and lifecycle fields.
 - `POST /api/v1/convert/jobs` response includes `jobId`, `status`, and `statusUrl`.

@@ -142,6 +142,50 @@ a:hover {
   font-weight: 800;
 }
 
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.panel-header .panel__title {
+  margin-bottom: 6px;
+}
+
+.panel__caption {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.upload-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.field-label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.file-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
 .status {
   padding: 12px;
   border-radius: 12px;
@@ -200,6 +244,11 @@ a:hover {
   cursor: not-allowed;
 }
 
+.btn-compact {
+  min-height: 36px;
+  padding: 8px 10px;
+}
+
 .btn-primary:hover:not(:disabled) {
   filter: brightness(0.95);
 }
@@ -242,6 +291,77 @@ a:hover {
   color: var(--muted);
 }
 
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.kpi {
+  min-height: 76px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.kpi__label {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.kpi__value {
+  display: block;
+  margin-top: 6px;
+  font-size: 28px;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.history-table th,
+.history-table td {
+  padding: 12px 10px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.history-table th {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.table-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.table-link {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.empty-state {
+  margin: 14px 0 0;
+  color: var(--muted);
+}
+
 .app-footer {
   border-top: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.75);
@@ -279,6 +399,16 @@ a:hover {
 
   .page-title {
     font-size: 22px;
+  }
+
+  .upload-form,
+  .kpi-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

@@ -215,6 +215,16 @@ Deliver a complete buyer demo surface without changing the production contract.
 - Add seeded demo fixtures and screenshots for desktop and mobile.
 - Preserve the existing API and Maven gates.
 
+Progress as of 2026-07-02:
+
+- `GET /` now serves the buyer-demo document intake shell.
+- The shell posts to the existing `/api/v1/convert/jobs` endpoint, tracks
+  session history in browser-local storage, polls existing status URLs, and
+  links each job to `/viewer/{docId}`.
+- The shell includes session KPIs for submitted, ready, and needs-action
+  documents, providing the first product-facing anchor for the Data Analytics
+  KPI model.
+
 ### Phase 2: Due-diligence pack
 
 Make the repo easy to inspect by a buyer, reviewer, or security team.

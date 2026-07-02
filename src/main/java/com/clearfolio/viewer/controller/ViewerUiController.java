@@ -35,6 +35,18 @@ public class ViewerUiController {
     }
 
     /**
+     * Returns the buyer-demo document intake shell.
+     *
+     * @return HTML payload for document intake and session history
+     */
+    @GetMapping(value = "/", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> home() {
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .body(demoShellHtml());
+    }
+
+    /**
      * Returns an HTML viewer shell.
      *
      * @param docId document identifier
@@ -136,5 +148,112 @@ public class ViewerUiController {
                 .replace("{{DOC_ID}}", docIdString)
                 .replace("{{INITIAL_STATE}}", initialState)
                 .replace("{{PDFJS_VIEWER_PATH}}", PDF_JS_VIEWER_PATH);
+    }
+
+    private static String demoShellHtml() {
+        return """
+                <!doctype html>
+                <html lang="en">
+                  <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+                    <meta name="referrer" content="no-referrer" />
+                    <title>Clearfolio Viewer</title>
+                    <link rel="stylesheet" href="/assets/viewer/viewer.css" />
+                  </head>
+                  <body>
+                    <a class="skip-link" href="#main">Skip to content</a>
+
+                    <header class="app-header" role="banner">
+                      <div class="app-header__inner">
+                        <div class="brand" aria-label="Clearfolio Viewer">
+                          <span class="brand__name">Clearfolio Viewer</span>
+                        </div>
+
+                        <nav class="header-nav" aria-label="Viewer utilities">
+                          <a class="header-nav__link" href="/healthz">Service status</a>
+                        </nav>
+                      </div>
+                    </header>
+
+                    <main id="main" class="app-main" tabindex="-1">
+                      <h1 class="page-title">Document intake</h1>
+                      <p class="page-subtitle">Submit a document, watch conversion progress, and open the governed preview from one buyer-demo surface.</p>
+
+                      <section class="panel demo-panel" aria-labelledby="upload-title">
+                        <div class="panel-header">
+                          <div>
+                            <h2 id="upload-title" class="panel__title">Upload document</h2>
+                            <p class="panel__caption">Uses the existing async conversion API. History is stored only in this browser session.</p>
+                          </div>
+                        </div>
+
+                        <form id="upload-form" class="upload-form" enctype="multipart/form-data">
+                          <label class="field-label" for="file-input">Document</label>
+                          <input id="file-input" name="file" class="file-input" type="file" required />
+
+                          <div class="actions">
+                            <button type="submit" class="btn btn-primary" id="submit-btn">Submit document</button>
+                          </div>
+                        </form>
+
+                        <div id="demo-status" class="status" role="status" aria-live="polite" aria-atomic="true">Ready for upload.</div>
+                        <div id="demo-error" class="error" role="alert" hidden>
+                          <h3 class="error__title" id="demo-error-title" tabindex="-1">Upload could not continue</h3>
+                          <p class="error__message" id="demo-error-message"></p>
+                        </div>
+                      </section>
+
+                      <section class="kpi-strip" id="kpi-strip" aria-label="Session KPIs">
+                        <div class="kpi">
+                          <span class="kpi__label">Submitted</span>
+                          <strong class="kpi__value" id="kpi-submitted">0</strong>
+                        </div>
+                        <div class="kpi">
+                          <span class="kpi__label">Ready</span>
+                          <strong class="kpi__value" id="kpi-ready">0</strong>
+                        </div>
+                        <div class="kpi">
+                          <span class="kpi__label">Needs action</span>
+                          <strong class="kpi__value" id="kpi-action">0</strong>
+                        </div>
+                      </section>
+
+                      <section class="panel" aria-labelledby="history-title">
+                        <div class="panel-header">
+                          <div>
+                            <h2 id="history-title" class="panel__title">Session history</h2>
+                            <p class="panel__caption">Open status JSON for diligence or launch the preview when conversion is ready.</p>
+                          </div>
+                          <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn">Clear</button>
+                        </div>
+
+                        <div class="table-wrap" id="session-history">
+                          <table class="history-table">
+                            <thead>
+                              <tr>
+                                <th scope="col">File</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Submitted</th>
+                                <th scope="col">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody id="history-body"></tbody>
+                          </table>
+                          <p class="empty-state" id="empty-history">No documents submitted in this session.</p>
+                        </div>
+                      </section>
+                    </main>
+
+                    <footer class="app-footer" role="contentinfo">
+                      <div class="app-footer__inner">
+                        <small>Copyright (c) 2026 by HYOSUNG. All rights reserved.</small>
+                      </div>
+                    </footer>
+
+                    <script type="module" src="/assets/viewer/demo.js"></script>
+                  </body>
+                </html>
+                """;
     }
 }

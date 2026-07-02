@@ -33,6 +33,25 @@ class ViewerUiControllerTest {
     }
 
     @Test
+    void homeReturnsBuyerDemoUploadShell() {
+        webTestClient.get()
+                .uri("/")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
+                .expectBody(String.class)
+                .value(body -> {
+                    assertTrue(body.contains("Document intake"));
+                    assertTrue(body.contains("id=\"upload-form\""));
+                    assertTrue(body.contains("name=\"file\""));
+                    assertTrue(body.contains("id=\"session-history\""));
+                    assertTrue(body.contains("id=\"kpi-strip\""));
+                    assertTrue(body.contains("/assets/viewer/demo.js"));
+                    assertTrue(body.contains("/assets/viewer/viewer.css"));
+                });
+    }
+
+    @Test
     void viewerReturnsNotFoundHtmlWhenJobMissing() {
         UUID docId = UUID.randomUUID();
         when(conversionService.getJob(docId)).thenReturn(Optional.empty());
@@ -63,6 +82,21 @@ class ViewerUiControllerTest {
             assertTrue(Pattern.compile("link\\.rel\\s*=\\s*\"noopener noreferrer\"").matcher(script).find());
             assertTrue(Pattern.compile("aria-label\"\\s*,\\s*\"Open artifact in a new tab\"").matcher(script).find());
             assertTrue(Pattern.compile("querySelector\\(\\s*\"#preview-help\"\\s*\\)").matcher(script).find());
+        }
+    }
+
+    @Test
+    void demoScriptUsesExistingApiAndSessionHistory() throws Exception {
+        try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/demo.js")) {
+            assertNotNull(input);
+            String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+
+            assertTrue(script.contains("/api/v1/convert/jobs"));
+            assertTrue(script.contains("/viewer/"));
+            assertTrue(script.contains("FormData"));
+            assertTrue(script.contains("localStorage"));
+            assertTrue(script.contains("clearfolio-demo-history-v1"));
+            assertTrue(script.contains("setTimeout"));
         }
     }
 

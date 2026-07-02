@@ -1,5 +1,58 @@
-19:51:56.159 [main] INFO org.hibernate.validator.internal.util.Version -- HV000001: Hibernate Validator 8.0.2.Final
-19:51:58.815 [main] ERROR com.clearfolio.viewer.controller.ApiExceptionHandler -- Unexpected error on path=/test/path traceId=trace-7
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ------------------< com.clearfolio:clearfolio-viewer >------------------
+[INFO] Building Clearfolio Viewer 0.1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ clearfolio-viewer ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO]
+[INFO] --- compiler:3.14.0:compile (default-compile) @ clearfolio-viewer ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ clearfolio-viewer ---
+[INFO] skip non existing resourceDirectory /Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2/src/test/resources
+[INFO]
+[INFO] --- compiler:3.14.0:testCompile (default-testCompile) @ clearfolio-viewer ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- surefire:3.5.3:test (default-test) @ clearfolio-viewer ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.clearfolio.viewer.repository.InMemoryConversionJobRepositoryTest
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.084 s -- in com.clearfolio.viewer.repository.InMemoryConversionJobRepositoryTest
+[INFO] Running com.clearfolio.viewer.repository.ConversionJobRepositoryTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in com.clearfolio.viewer.repository.ConversionJobRepositoryTest
+[INFO] Running com.clearfolio.viewer.config.ConversionPropertiesTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in com.clearfolio.viewer.config.ConversionPropertiesTest
+[INFO] Running com.clearfolio.viewer.config.ViewerSecurityHeadersWebFilterTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.420 s -- in com.clearfolio.viewer.config.ViewerSecurityHeadersWebFilterTest
+[INFO] Running com.clearfolio.viewer.config.ConversionExecutorConfigTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.071 s -- in com.clearfolio.viewer.config.ConversionExecutorConfigTest
+[INFO] Running com.clearfolio.viewer.auth.TenantContextTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in com.clearfolio.viewer.auth.TenantContextTest
+[INFO] Running com.clearfolio.viewer.auth.TenantAccessServiceTest
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.083 s -- in com.clearfolio.viewer.auth.TenantAccessServiceTest
+[INFO] Running com.clearfolio.viewer.controller.HealthControllerTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in com.clearfolio.viewer.controller.HealthControllerTest
+[INFO] Running com.clearfolio.viewer.controller.InMemoryMultipartFileTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in com.clearfolio.viewer.controller.InMemoryMultipartFileTest
+[INFO] Running com.clearfolio.viewer.controller.ViewerUiControllerTest
+19:52:27.480 [main] INFO org.hibernate.validator.internal.util.Version -- HV000001: Hibernate Validator 8.0.2.Final
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.884 s -- in com.clearfolio.viewer.controller.ViewerUiControllerTest
+[INFO] Running com.clearfolio.viewer.controller.ConversionControllerTest
+[INFO] Tests run: 28, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.189 s -- in com.clearfolio.viewer.controller.ConversionControllerTest
+[INFO] Running com.clearfolio.viewer.controller.ArtifactControllerTest
+[INFO] Tests run: 32, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.747 s -- in com.clearfolio.viewer.controller.ArtifactControllerTest
+[INFO] Running com.clearfolio.viewer.controller.AnalyticsControllerTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.078 s -- in com.clearfolio.viewer.controller.AnalyticsControllerTest
+[INFO] Running com.clearfolio.viewer.controller.ApiExceptionHandlerTest
+19:52:29.936 [main] ERROR com.clearfolio.viewer.controller.ApiExceptionHandler -- Unexpected error on path=/test/path traceId=trace-7
 java.lang.RuntimeException: boom
 	at com.clearfolio.viewer.controller.ApiExceptionHandlerTest.handleUnexpectedReturnsInternalErrorPayload(ApiExceptionHandlerTest.java:313)
 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
@@ -76,7 +129,7 @@ java.lang.RuntimeException: boom
 	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
 	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
 	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
-19:51:58.821 [main] ERROR com.clearfolio.viewer.controller.ApiExceptionHandler -- Unexpected error on path= traceId=c9d966dd-b39b-480a-9ca6-cab37dbbb0c7
+19:52:29.944 [main] ERROR com.clearfolio.viewer.controller.ApiExceptionHandler -- Unexpected error on path= traceId=89342e3b-b504-4367-a87f-e3b011cf041b
 java.lang.RuntimeException: boom
 	at com.clearfolio.viewer.controller.ApiExceptionHandlerTest.handleUnexpectedSupportsNullRequestUri(ApiExceptionHandlerTest.java:354)
 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
@@ -153,6 +206,8 @@ java.lang.RuntimeException: boom
 	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
 	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
 	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+[INFO] Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.034 s -- in com.clearfolio.viewer.controller.ApiExceptionHandlerTest
+[INFO] Running com.clearfolio.viewer.controller.ConversionControllerMultipartLimitTest
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -163,9 +218,51 @@ java.lang.RuntimeException: boom
 
  :: Spring Boot ::                (v3.5.0)
 
-2026-07-02T19:51:59.237+09:00  INFO 21571 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : Starting ConversionControllerMultipartLimitTest using Java 21.0.11 with PID 21571 (started by seonghobae in /Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2)
-2026-07-02T19:51:59.238+09:00  INFO 21571 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : No active profile set, falling back to 1 default profile: "default"
-2026-07-02T19:52:00.196+09:00  INFO 21571 --- [clearfolio-viewer] [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 55780 (http)
-2026-07-02T19:52:00.202+09:00  INFO 21571 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : Started ConversionControllerMultipartLimitTest in 1.214 seconds (process running for 8.377)
-2026-07-02T19:52:00.233+09:00  INFO 21571 --- [clearfolio-viewer] [oundedElastic-1] c.c.v.s.DefaultDocumentValidationService : Blocked-format override accepted extension=hwp approverId=approver-99 tokenFingerprint=0f55333bafabf797
-2026-07-02T19:52:01.332+09:00  INFO 21571 --- [clearfolio-viewer] [           main] c.c.v.s.DefaultDocumentValidationService : Blocked-format override accepted extension=hwp approverId=approver-1 tokenFingerprint=034192845dc489de
+2026-07-02T19:52:30.277+09:00  INFO 26468 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : Starting ConversionControllerMultipartLimitTest using Java 21.0.11 with PID 26468 (started by seonghobae in /Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2)
+2026-07-02T19:52:30.279+09:00  INFO 26468 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : No active profile set, falling back to 1 default profile: "default"
+2026-07-02T19:52:31.048+09:00  INFO 26468 --- [clearfolio-viewer] [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 56008 (http)
+2026-07-02T19:52:31.055+09:00  INFO 26468 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : Started ConversionControllerMultipartLimitTest in 0.961 seconds (process running for 6.795)
+2026-07-02T19:52:31.082+09:00  INFO 26468 --- [clearfolio-viewer] [oundedElastic-1] c.c.v.s.DefaultDocumentValidationService : Blocked-format override accepted extension=hwp approverId=approver-99 tokenFingerprint=0f55333bafabf797
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.175 s -- in com.clearfolio.viewer.controller.ConversionControllerMultipartLimitTest
+[INFO] Running com.clearfolio.viewer.model.ConversionJobTest
+[INFO] Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.clearfolio.viewer.model.ConversionJobTest
+[INFO] Running com.clearfolio.viewer.api.ApiErrorResponseTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in com.clearfolio.viewer.api.ApiErrorResponseTest
+[INFO] Running com.clearfolio.viewer.api.ViewerBootstrapResponseTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in com.clearfolio.viewer.api.ViewerBootstrapResponseTest
+[INFO] Running com.clearfolio.viewer.api.ConversionJobStatusResponseTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in com.clearfolio.viewer.api.ConversionJobStatusResponseTest
+[INFO] Running com.clearfolio.viewer.api.KpiSnapshotResponseTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.046 s -- in com.clearfolio.viewer.api.KpiSnapshotResponseTest
+[INFO] Running com.clearfolio.viewer.artifact.ArtifactLinkLedgerTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.030 s -- in com.clearfolio.viewer.artifact.ArtifactLinkLedgerTest
+[INFO] Running com.clearfolio.viewer.artifact.ArtifactLinkServiceTest
+[INFO] Tests run: 36, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.046 s -- in com.clearfolio.viewer.artifact.ArtifactLinkServiceTest
+[INFO] Running com.clearfolio.viewer.artifact.PdfBoxArtifactGeneratorTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.240 s -- in com.clearfolio.viewer.artifact.PdfBoxArtifactGeneratorTest
+[INFO] Running com.clearfolio.viewer.ClearfolioViewerApplicationTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.079 s -- in com.clearfolio.viewer.ClearfolioViewerApplicationTest
+[INFO] Running com.clearfolio.viewer.service.ServiceInterfaceDefaultMethodsTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in com.clearfolio.viewer.service.ServiceInterfaceDefaultMethodsTest
+[INFO] Running com.clearfolio.viewer.service.DefaultDocumentValidationServiceTest
+2026-07-02T19:52:31.615+09:00  INFO 26468 --- [clearfolio-viewer] [           main] c.c.v.s.DefaultDocumentValidationService : Blocked-format override accepted extension=hwp approverId=approver-1 tokenFingerprint=034192845dc489de
+[INFO] Tests run: 24, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.052 s -- in com.clearfolio.viewer.service.DefaultDocumentValidationServiceTest
+[INFO] Running com.clearfolio.viewer.service.DefaultDocumentConversionServiceTest
+[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in com.clearfolio.viewer.service.DefaultDocumentConversionServiceTest
+[INFO] Running com.clearfolio.viewer.service.PolicyOverrideRequestTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in com.clearfolio.viewer.service.PolicyOverrideRequestTest
+[INFO] Running com.clearfolio.viewer.service.DefaultConversionWorkerTest
+[INFO] Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.209 s -- in com.clearfolio.viewer.service.DefaultConversionWorkerTest
+[INFO] Running com.clearfolio.viewer.exception.UnsupportedDocumentFormatExceptionTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in com.clearfolio.viewer.exception.UnsupportedDocumentFormatExceptionTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 305, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  12.323 s
+[INFO] Finished at: 2026-07-02T19:52:35+09:00
+[INFO] ------------------------------------------------------------------------

@@ -226,6 +226,10 @@ Progress as of 2026-07-02:
   issued-at skew checks, and tests for signed, unsigned, expired, malformed, and
   invalid-signature paths. This is still a gateway scaffold, not production
   OIDC/JWT.
+- Optional file-backed artifact link ledger replay is now implemented when
+  `clearfolio.artifact-link-ledger.path` is configured. Issued-link,
+  revocation, and artifact-read metadata can survive a single-process restart,
+  while centralized durable revocation/audit persistence remains open.
 - Durable metrics event model is now captured in
   `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
 
@@ -280,6 +284,9 @@ Progress as of 2026-07-02:
   artifact reads require an `artifactToken` query parameter or bearer token.
 - Runtime artifact links now have a process-local token ledger, tenant-scoped
   `tokenId` revocation, and tenant-filtered artifact read audit-event API.
+- The artifact link ledger can now append and replay issued, revoked, and read
+  records from a configured local file, improving buyer-demo continuity without
+  claiming production-grade durable storage.
 
 ### Phase 2: Due-diligence pack
 

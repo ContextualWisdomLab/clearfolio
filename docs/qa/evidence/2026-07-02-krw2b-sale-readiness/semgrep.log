@@ -24,8 +24,3 @@ Ran 60 rules on 47 files: 0 findings.
 
 If Semgrep missed a finding, please send us feedback to let us know!
 See https://semgrep.dev/docs/reporting-false-negatives/
-{
-  "results": 0,
-  "errors": 0,
-  "paths": 47
-}

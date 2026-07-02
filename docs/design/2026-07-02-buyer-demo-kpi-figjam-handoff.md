@@ -21,6 +21,8 @@ Date: 2026-07-02
   `Clearfolio Runtime Signed Artifact Link Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Artifact Revocation and Read Audit Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio File Backed Artifact Ledger Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -424,4 +426,46 @@ flowchart LR
     style ledger fill:#FFF3E3,stroke:#B95D00
     style audit fill:#FFF3E3,stroke:#B95D00
     style denied fill:#FFE2E2,stroke:#D92D20
+```
+
+### File Backed Artifact Ledger Flow
+
+```mermaid
+flowchart LR
+    service["ArtifactLinkLedger bean"]
+    config{"Path configured?"}
+    memory["Process memory"]
+    issued["ISSUED metadata"]
+    revoked["REVOKED metadata"]
+    read["READ event"]
+    file[("Append-only ledger file")]
+    restart["Service restart"]
+    replay["Replay ledger"]
+    valid{"Valid order?"}
+    recovered["Recovered ledger state"]
+    fail["Fail startup with invalid ledger"]
+    production["Future durable store"]
+
+    service --> config
+    config -->|"No"| memory
+    config -->|"Yes"| file
+    service -->|"Records"| issued
+    service -->|"Revokes"| revoked
+    service -->|"Audits"| read
+    issued -->|"Append"| file
+    revoked -->|"Append first revoke"| file
+    read -->|"Append"| file
+    file -->|"Boot"| restart
+    restart --> replay
+    replay --> valid
+    valid -->|"Yes"| recovered
+    valid -->|"No"| fail
+    recovered -.->|"Not centralized"| production
+
+    style config fill:#FFECBD,stroke:#FFC943
+    style memory fill:#DDF4FF,stroke:#0969DA
+    style file fill:#FFF3E3,stroke:#B95D00
+    style recovered fill:#CDF4D3,stroke:#66D575
+    style fail fill:#FFE2E2,stroke:#D92D20
+    style production fill:#DCCCFF,stroke:#874FFF
 ```

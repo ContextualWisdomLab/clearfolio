@@ -2,22 +2,23 @@
 
 Date: 2026-07-02
 Verification source head SHA before this evidence refresh:
-`87af619e3aa3c6c3a7981db3072120d77a36f927`
+`e7aefbc1962601789e6c80ca7ba8dea0f94dc2be`
 
 ## Gate Summary
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
+| Java runtime | Pass, OpenJDK 21.0.11 | `java-version.txt` |
 | Compile warnings/deprecations | Pass | `compile.log` |
-| Tests + JaCoCo | Pass, `classes=46`, `line_missed=0`, `branch_missed=0` | `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
+| Tests + JaCoCo | Pass, `classes=46`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
 | JavaDoc | Pass, `javadoc_warnings_or_errors=none` | `javadoc.log`, `javadoc-status.txt` |
 | Markdown lint | Pass, 0 errors across changed docs | `markdownlint.log` |
 | JS syntax | Pass | `node-check.log` |
 | SAST | Pass, 0 findings | `semgrep.log`, `semgrep.json` |
 | SBOM | Pass, CycloneDX 1.6, 142 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
 | License review | Partial, policy checker reports 136 allowed components, 6 review-required components, 0 unlisted violations; legal decisions still needed | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
-| Auth/tenant and signed artifacts | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, and artifact read audit API implemented; OIDC/JWT, durable revocation, and persisted audit pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact tests |
-| Local smoke | Pass | `smoke-local.txt` |
+| Auth/tenant and signed artifacts | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, artifact read audit API, and optional file-backed artifact-link ledger replay implemented; OIDC/JWT and centralized durable revocation/audit pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact tests |
+| Local smoke | Pass, signed tenant claims plus file-backed artifact ledger | `smoke-local.txt`, `smoke-app.log` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
 ## SAST
@@ -82,7 +83,8 @@ Evidence:
 Command path:
 
 - Start app on a random local port with
-  `clearfolio.tenant-claims.hmac-secret` configured.
+  `clearfolio.tenant-claims.hmac-secret` and
+  `clearfolio.artifact-link-ledger.path` configured.
 - Runtime Java: 21.0.11.
 - Verify `GET /`, `/assets/viewer/demo.js`, missing-auth KPI denial,
   unsigned tenant-claim KPI denial, authenticated empty KPI snapshot with signed
@@ -112,6 +114,8 @@ Result:
 - Cross-tenant status lookup: 404.
 - Post-upload KPI: `totalJobs=1`, `succeededJobs=1`,
   `conversionSuccessRate=1.0`, numeric `p95TimeToPreviewMs`.
+- Artifact ledger file: present, 2 `ISSUED` lines, 1 `REVOKED` line,
+  and 1 `READ` line.
 
 Evidence:
 

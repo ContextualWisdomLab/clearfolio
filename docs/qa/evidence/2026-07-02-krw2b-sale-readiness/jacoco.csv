@@ -18,7 +18,7 @@ Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactReadEvent,0,27,0,0,0,1,
 Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactLinkService,0,828,0,72,0,186,0,64,0,28
 Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactTokenException,0,10,0,0,0,4,0,2,0,2
 Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactLinkRecord,0,76,0,2,0,3,0,4,0,3
-Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactLinkLedger,0,84,0,6,0,18,0,12,0,9
+Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactLinkLedger,0,674,0,44,0,155,0,54,0,31
 Clearfolio Viewer,com.clearfolio.viewer.artifact,InMemoryArtifactStore,0,32,0,2,0,8,0,4,0,3
 Clearfolio Viewer,com.clearfolio.viewer.api,ArtifactLinkRequest,0,19,0,0,0,2,0,2,0,2
 Clearfolio Viewer,com.clearfolio.viewer.api,SubmitConversionResponse,0,21,0,0,0,2,0,2,0,2

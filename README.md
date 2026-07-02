@@ -61,7 +61,10 @@ production gaps.
 - Artifact reads now require a signed `artifactToken` query parameter or bearer
   token. Issued tokens are recorded in a runtime ledger, can be revoked by
   `tokenId`, and successful artifact reads are exposed as tenant-scoped audit
-  evidence. Durable external persistence and object-store metadata remain open.
+  evidence. Deployments can set `clearfolio.artifact-link-ledger.path` to
+  replay issued-link, revocation, and read-audit metadata from a local
+  append-only ledger file after restart. Centralized durable persistence and
+  object-store metadata remain open.
 
 ## Acceptance gates (current)
 

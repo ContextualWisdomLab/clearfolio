@@ -5,9 +5,10 @@ Date: 2026-07-02
 This document defines the production design for secure preview artifact access.
 The current runtime now issues and verifies HMAC artifact tokens for in-memory
 PDF artifacts, records issued token metadata in a runtime ledger, supports
-tenant-scoped token revocation, and records verified artifact reads as audit
-events. Durable artifact metadata, external audit persistence, object-store
-metadata, and production key management are still implementation gaps.
+tenant-scoped token revocation, records verified artifact reads as audit events,
+and can replay that ledger from an optional local append-only file. Durable
+artifact metadata, external audit persistence, object-store metadata, and
+production key management are still implementation gaps.
 
 ## Goal
 
@@ -37,12 +38,16 @@ Current controls:
 - Blocks unknown or revoked token identifiers.
 - Records verified artifact reads with tenant, subject, document, token id,
   range, status code, trace id, and timestamp.
-- Uses in-memory PDF bytes and runtime ledger state; there is no durable object
-  store, external revocation table, or persisted read audit yet.
+- Uses in-memory PDF bytes and a runtime artifact ledger. Deployments can set
+  `clearfolio.artifact-link-ledger.path` to persist issued-link, revocation,
+  and read-audit events to a local append-only UTF-8 file and replay them on
+  restart.
+- The optional file-backed ledger is process-local evidence persistence, not a
+  multi-replica production revocation table or object-store metadata layer.
 
 This is stronger than the original MVP capability URL, but not yet enough for a
 buyer production deployment without durable storage, externally persisted
-revocation state, and persisted audit.
+revocation state, centralized audit, and object-store metadata.
 
 ## Proposed API Contract
 
@@ -195,6 +200,17 @@ Do not put filenames, approval tokens, raw user claims, or source document
 content in the token.
 
 ## Persistence Requirements
+
+Current buyer-demo runtime persistence:
+
+- Default mode keeps artifact link and read-event state in process memory.
+- When `clearfolio.artifact-link-ledger.path` is configured, `ArtifactLinkLedger`
+  appends `ISSUED`, `REVOKED`, and `READ` records to a local file.
+- Text fields are Base64 URL-safe encoded and nullable fields use a sentinel so
+  tenant ids, subjects, ranges, reasons, and trace ids can round-trip without
+  ad hoc delimiter parsing.
+- On startup, the ledger replays the file and rejects invalid or out-of-order
+  lines rather than silently accepting corrupted revocation or audit state.
 
 Minimum tables when durable storage exists:
 

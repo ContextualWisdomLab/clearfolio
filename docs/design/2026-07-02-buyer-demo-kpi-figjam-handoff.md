@@ -10,6 +10,8 @@ Date: 2026-07-02
 - Added FigJam diagram on the same board:
   `Clearfolio License Diligence Closure Flow`.
 - Added FigJam diagram on the same board:
+  `Clearfolio License Review Reduction Flow`.
+- Added FigJam diagram on the same board:
   `Clearfolio Auth Tenant Boundary Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Operator Job Detail Flow`.
@@ -516,9 +518,9 @@ flowchart LR
     gate["CI allowlist gate"]
     buyer["Buyer data-room package"]
 
-    sbom -->|"Shows 142 components"| metadata
+    sbom -->|"Shows 63 components"| metadata
     metadata -->|"0 unknown"| flagged
-    flagged -->|"6 flagged"| review
+    flagged -->|"3 flagged"| review
     review -->|"Classifies risk"| legal
     legal -->|"Allowed"| approve
     legal -->|"Not allowed"| replace
@@ -535,6 +537,37 @@ flowchart LR
     style remove fill:#FFCDC2,stroke:#FF7556
     style gate fill:#C2E5FF,stroke:#3DADFF
     style buyer fill:#DCCCFF,stroke:#874FFF
+```
+
+### License Review Reduction Flow
+
+```mermaid
+flowchart LR
+    runtimeDeps["Runtime dependencies"]
+    codeSearch["No Tika imports"]
+    removeTika["Remove parser package"]
+    sbom["CycloneDX SBOM"]
+    componentCount["63 components"]
+    policyCheck["Policy checker"]
+    allowed["60 allowed"]
+    review["3 review-required"]
+    buyerRelease["Buyer-release mode"]
+
+    runtimeDeps --> codeSearch
+    codeSearch -->|"Unused"| removeTika
+    removeTika -->|"Regenerate"| sbom
+    sbom --> componentCount
+    componentCount --> policyCheck
+    policyCheck --> allowed
+    policyCheck --> review
+    review -->|"Legal decision"| buyerRelease
+    allowed -->|"No violations"| buyerRelease
+
+    style removeTika fill:#CDF4D3,stroke:#66D575
+    style componentCount fill:#C2E5FF,stroke:#3DADFF
+    style allowed fill:#CDF4D3,stroke:#66D575
+    style review fill:#FFECBD,stroke:#FFC943
+    style buyerRelease fill:#DCCCFF,stroke:#874FFF
 ```
 
 ### Auth Tenant Boundary Flow

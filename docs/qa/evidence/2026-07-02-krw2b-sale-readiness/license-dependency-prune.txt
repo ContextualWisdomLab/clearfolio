@@ -1,0 +1,14 @@
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ------------------< com.clearfolio:clearfolio-viewer >------------------
+[INFO] Building Clearfolio Viewer 0.1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- dependency:3.8.1:tree (default-cli) @ clearfolio-viewer ---
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.799 s
+[INFO] Finished at: 2026-07-03T06:47:40+09:00
+[INFO] ------------------------------------------------------------------------

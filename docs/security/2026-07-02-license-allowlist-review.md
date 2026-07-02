@@ -27,10 +27,15 @@ sale, enterprise license, or buyer data-room handoff.
 | Format-specific restrictive licenses | Review | Confirm whether current dependency usage triggers redistribution or feature restrictions. |
 | Components without license metadata | Block until identified | No unknown-license component should enter a buyer release. |
 
-Current SBOM status has 142 components, 20 unique license metadata entries, and
+Current SBOM status has 63 components, 7 unique license metadata entries, and
 0 components without license metadata. The remaining buyer risk is not missing
 metadata; it is whether the flagged transitive dependencies are acceptable under
 Clearfolio's distribution and sale model.
+
+The unused `tika-parsers-standard-package` dependency was removed after code
+search showed no direct Tika API usage. This removed the review-required Tika
+transitive dependencies `jhighlight`, `junrar`, and `juniversalchardet` from
+the generated SBOM.
 
 ## Flagged Components
 
@@ -39,9 +44,6 @@ Clearfolio's distribution and sale model.
 | `logback-classic` | `1.5.18` | `EPL-1.0`, `GNU Lesser General Public License` | Review as standard logging dependency. |
 | `logback-core` | `1.5.18` | `EPL-1.0`, `GNU Lesser General Public License` | Review as standard logging dependency. |
 | `jakarta.annotation-api` | `2.1.1` | `EPL-2.0`, `GPL-2.0-with-classpath-exception` | Review classpath-exception scope. |
-| `jhighlight` | `1.1.0` | `CDDL, v1.0`, `LGPL-2.1-or-later` | Review or remove if not needed for supported preview paths. |
-| `junrar` | `7.5.5` | `UnRar License` | Review archive-format need; remove if unsupported formats do not require it. |
-| `juniversalchardet` | `2.5.0` | `MPL-1.1`, `GPL-3.0`, `LGPL-3.0` | Review dual-license selection or replace before buyer release. |
 
 ## Buyer Diligence Position
 
@@ -58,7 +60,7 @@ be described as `license review pending` until the following decisions are made:
 | KPI | Target | Current value | Status |
 | --- | --- | --- | --- |
 | Components with license metadata | 100 percent | 100 percent | Ready |
-| Flagged components with legal decision | 100 percent | 0 of 6 | Open |
+| Flagged components with legal decision | 100 percent | 0 of 3 | Open |
 | Disallowed copyleft runtime dependencies | 0 | Pending legal classification | Open |
 | Automated allowlist enforcement | Required | Implemented for engineering review mode; buyer-release mode still waits on legal decisions | Partial |
 
@@ -81,7 +83,7 @@ allowlist decision path plus a small standard-library policy checker.
 4. If a component is rejected, remove or replace it before building a buyer
    data-room package.
 5. For buyer-release mode, run the checker with `--require-no-review` so the
-   six known review-required components fail until legal has approved or
+   three known review-required components fail until legal has approved or
    engineering has replaced them.
 
 ## Current Classification
@@ -90,6 +92,6 @@ allowlist decision path plus a small standard-library policy checker.
 | --- | --- |
 | Can a buyer see all dependency license metadata? | Yes. |
 | Can Clearfolio claim license clearance? | No. Legal decisions are still open. |
-| Is there automated drift detection? | Yes. The policy checker reports 136 allowed components, 6 review-required components, and 0 unlisted violations for the current SBOM. |
-| Is there an actionable next step? | Yes. Six flagged components need approve, replace, or remove decisions, then buyer-release mode can require zero review-required components. |
+| Is there automated drift detection? | Yes. The policy checker reports 60 allowed components, 3 review-required components, and 0 unlisted violations for the current SBOM. |
+| Is there an actionable next step? | Yes. Three flagged components need approve, replace, or remove decisions, then buyer-release mode can require zero review-required components. |
 | Is a repository split or submodule needed for license closure? | No. The risk is dependency policy, not code ownership. |

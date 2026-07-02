@@ -40,7 +40,7 @@ strict: partial evidence is marked partial, not complete.
 | Are risky formats controlled? | Ready | HWP/HWPX default block, policy-override headers with token fingerprint logging, and `docs/security/2026-07-02-threat-model-data-handling.md`. | Policy ownership and approval workflow are not externalized. | Policy-owner matrix. |
 | Are browser security headers present? | Ready | `ViewerSecurityHeadersWebFilter` applies viewer browser headers. | CSP/frame policy still needs production domain matrix. | Deployment security profile. |
 | Is auth/RBAC implemented? | Partial | Header-claim runtime enforcement exists for JSON APIs and artifact links: `TenantAccessService`, tenant-owned `ConversionJob`, tenant-aware dedupe, cross-tenant `404`, tenant-filtered KPI snapshots, optional gateway HMAC validation for tenant headers, signed artifact-token reads, token revocation, optional file-backed artifact ledger replay, and artifact read audit events. Auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | OIDC/JWT issuer/audience/expiry validation, role mapping, managed secret rotation, and centralized audit events are not implemented. | Validated gateway/OIDC claims plus durable audit/revocation store. |
-| Is there license/SBOM evidence? | Partial | CycloneDX SBOM evidence exists under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; engineering review exists in `docs/security/2026-07-02-license-allowlist-review.md`; `scripts/check_sbom_license_policy.py` enforces the engineering allowlist and current policy summary reports 136 allowed components, 6 review-required components, and 0 unlisted violations. | Six flagged components still need legal approve, replace, or remove decisions before buyer-release mode can require zero review-required components. | Legal sign-off and buyer-release license-policy mode. |
+| Is there license/SBOM evidence? | Partial | CycloneDX SBOM evidence exists under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; unused Tika parser package was removed from runtime dependencies; engineering review exists in `docs/security/2026-07-02-license-allowlist-review.md`; `scripts/check_sbom_license_policy.py` enforces the engineering allowlist and current policy summary reports 60 allowed components, 3 review-required components, and 0 unlisted violations. | Three flagged components still need legal approve, replace, or remove decisions before buyer-release mode can require zero review-required components. | Legal sign-off and buyer-release license-policy mode. |
 | Is data handling documented? | Partial | `docs/security/2026-07-02-threat-model-data-handling.md` maps current data classes, trust boundaries, and retention limits. | Production retention policy, tenant ACLs, and durable encrypted stores are not implemented. | Production data-retention policy. |
 
 ## Commercial Diligence
@@ -78,7 +78,7 @@ strict: partial evidence is marked partial, not complete.
 
 ## Next Closure Order
 
-1. Get legal sign-off or replacement decisions for the six review-required SBOM
+1. Get legal sign-off or replacement decisions for the three review-required SBOM
    components, then run license-policy buyer-release mode.
 2. Use configured gateway-signed tenant headers for buyer deployments, then
    replace the scaffold with validated gateway/OIDC JWT claims.

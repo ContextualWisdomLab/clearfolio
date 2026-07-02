@@ -201,6 +201,11 @@ Progress as of 2026-07-02:
 - The buyer-demo root shell now also renders a KPI snapshot evidence panel from
   `GET /api/v1/analytics/kpi-snapshot-exports`, showing export count, latest
   export time, export subject, and runtime job count without exposing tenant ids.
+- The buyer-demo root shell now has a static `Load demo story` control backed by
+  `src/main/resources/static/assets/viewer/demo-fixtures.json`. The fixture
+  seeds succeeded, processing, unsupported-format, dead-lettered, KPI snapshot,
+  and KPI export evidence into the browser session so local screenshots, FigJam,
+  and buyer-deck material use the same Product Design and Data Analytics story.
 - Figma evidence flow is now captured as a FigJam artifact and mirrored in
   `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`.
 - Market, valuation, pricing, and KPI thresholds are now captured in
@@ -330,6 +335,11 @@ Progress as of 2026-07-02:
 - The artifact link ledger can now append and replay issued, revoked, and read
   records from a configured local file, improving buyer-demo continuity without
   claiming production-grade durable storage.
+- A static seeded buyer-demo story is now available from the root shell via
+  `Load demo story`. It keeps seeded evidence in browser session state, avoids a
+  backend DB seed path, and gives desktop/mobile screenshot work a deterministic
+  source for successful, processing, unsupported-format, and dead-lettered
+  document states.
 
 ### Phase 2: Due-diligence pack
 

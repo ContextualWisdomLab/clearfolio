@@ -16,9 +16,9 @@ strict: partial evidence is marked partial, not complete.
 
 | Buyer question | Status | Current evidence | Gap | Next artifact |
 | --- | --- | --- | --- | --- |
-| Can a buyer run a demo from upload to preview? | Ready | `GET /`, `POST /api/v1/convert/jobs`, `/viewer/{docId}`; local smoke proof in PR #74. | Demo uses in-memory runtime. | Seeded demo data and screenshot set. |
+| Can a buyer run a demo from upload to preview? | Ready | `GET /`, `POST /api/v1/convert/jobs`, `/viewer/{docId}`; local smoke proof in PR #74; root shell `Load demo story` control backed by `src/main/resources/static/assets/viewer/demo-fixtures.json`. | Demo uses in-memory runtime and static local seed data; desktop/mobile screenshot set is not captured yet. | Seeded desktop/mobile screenshot set. |
 | Does the UI expose buyer-readable KPIs? | Ready | `GET /api/v1/analytics/kpi-snapshot`; root shell reads tenant-scoped runtime KPI snapshot and renders a KPI snapshot evidence panel from `GET /api/v1/analytics/kpi-snapshot-exports`; optional `clearfolio.analytics-snapshot-ledger.path` records exported snapshots; durable model in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | Full lifecycle KPI history is not implemented durably yet. | Durable metric event implementation. |
-| Is the Figma design story available without Code Connect? | Ready | FigJam evidence flow and `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`. | High-fidelity screen frames are not complete. | Figma frames for desktop/mobile happy and negative paths. |
+| Is the Figma design story available without Code Connect? | Ready | FigJam evidence flow, seeded buyer-demo story flow, and `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`. | High-fidelity screen frames are not complete. | Figma frames for desktop/mobile happy and negative paths. |
 | Are unsupported and failed states explained? | Partial | HWP/HWPX block behavior, error schema, failed job retry flow, buyer-demo status table, root-shell job detail drawer, and session-scoped operator recovery evidence panel. | Retry is surfaced in the buyer-demo shell, but not yet as a production admin UI. | Production operator job management surface. |
 
 ## Technical Diligence
@@ -69,6 +69,7 @@ strict: partial evidence is marked partial, not complete.
 | SBOM evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-status.txt` |
 | SAST evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json` |
 | Buyer-demo implementation | `src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`, `src/main/resources/static/assets/viewer/demo.js`, `src/main/resources/static/assets/viewer/viewer.css`; includes KPI evidence and session-scoped operator recovery evidence panels. |
+| Seeded buyer-demo story | `src/main/resources/static/assets/viewer/demo-fixtures.json`, `docs/superpowers/plans/2026-07-03-seeded-buyer-demo-story.md`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/seeded-demo-story-verification.md`; includes succeeded, processing, unsupported-format, dead-lettered, KPI snapshot, and KPI export story data for local screenshots and Figma handoff. |
 | KPI API implementation | `src/main/java/com/clearfolio/viewer/controller/AnalyticsController.java`, `src/main/java/com/clearfolio/viewer/api/KpiSnapshotResponse.java`, `src/main/java/com/clearfolio/viewer/api/KpiSnapshotExportResponse.java` |
 | KPI snapshot evidence ledger | `src/main/java/com/clearfolio/viewer/analytics/KpiSnapshotLedger.java`, `src/main/java/com/clearfolio/viewer/analytics/KpiSnapshotRecord.java`; includes optional `clearfolio.analytics-snapshot-ledger.path` file-backed replay and tenant-scoped lookup for exported KPI snapshots. |
 | Auth/tenant runtime slice | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`, `src/main/java/com/clearfolio/viewer/auth/TenantContext.java`, `src/main/java/com/clearfolio/viewer/model/ConversionJob.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java`; includes optional gateway HMAC validation when `clearfolio.tenant-claims.hmac-secret` is set. |
@@ -89,4 +90,5 @@ strict: partial evidence is marked partial, not complete.
    persistence.
 5. Promote process-local conversion lifecycle events and optional KPI snapshot
    ledger evidence into durable metrics events and daily projections.
-6. Add seeded demo screenshots and Figma high-fidelity frames.
+6. Capture seeded desktop/mobile screenshots and Figma high-fidelity frames from
+   the static buyer-demo story.

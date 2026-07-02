@@ -39,6 +39,8 @@ Date: 2026-07-02
   `Clearfolio Conversion State Store Implementation Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Conversion Lifecycle Event Trail Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Seeded Buyer Demo Story Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -65,6 +67,8 @@ Date: 2026-07-02
 - The operator recovery evidence panel must stay scoped to the current browser
   session and should summarize retry posture without claiming production admin
   coverage.
+- The seeded buyer-demo story must be labeled as local browser-session demo
+  evidence, not production data or a durable analytics source.
 
 ## Data Analytics Mapping
 
@@ -79,6 +83,7 @@ Date: 2026-07-02
 | KPI evidence panel | `/api/v1/analytics/kpi-snapshot-exports` | Turns export evidence into a buyer-readable UI panel while omitting tenant ids. |
 | Recovery evidence panel | Browser session history plus job status payloads | Shows needs-action jobs, retry-ready dead letters, last accepted retry, and latest inspected detail without a new admin system. |
 | Lifecycle event trail | `ConversionJobLifecycleEvent` | Proves ordered transition evidence in the current runtime without storing filenames, content hashes, artifact paths, signed tokens, or raw converter errors. |
+| Seeded demo story | `demo-fixtures.json` | Gives screenshots, FigJam, and buyer-deck review one deterministic local story covering success, processing, unsupported-format, dead-letter, KPI snapshot, and KPI export evidence. |
 
 ## Mermaid Source
 
@@ -182,6 +187,60 @@ flowchart LR
     style evidenceStore fill:#FFECBD,stroke:#FFC943
     style buyerProof fill:#DCCCFF,stroke:#874FFF
     style noTenant fill:#FFCDC2,stroke:#FF7556
+```
+
+### Seeded Buyer Demo Story Flow
+
+```mermaid
+flowchart LR
+    fixture["demo-fixtures.json"]
+    button["Load demo story"]
+    storage[("Session history")]
+
+    subgraph demoSurface ["Viewer demo surface"]
+        history["History table"]
+        kpiStrip["KPI strip"]
+        evidencePanel["Evidence panel"]
+        recoveryPanel["Recovery panel"]
+        detailDrawer["Job detail"]
+    end
+
+    subgraph proofStates ["Buyer proof states"]
+        successState["Succeeded job"]
+        processingState["Processing job"]
+        unsupportedState["Unsupported format"]
+        deadLetterState["Dead letter"]
+    end
+
+    subgraph salesProof ["Sale proof outputs"]
+        screenshots["Screenshots"]
+        figjam["FigJam handoff"]
+        buyerDeck["Buyer deck"]
+    end
+
+    fixture -->|"Loaded by"| button
+    button -->|"Seeds"| storage
+    storage -->|"Renders"| history
+    fixture -->|"Feeds"| kpiStrip
+    fixture -->|"Feeds"| evidencePanel
+    history -->|"Summarizes"| recoveryPanel
+    history -->|"Opens"| detailDrawer
+    history -->|"Shows"| successState
+    history -->|"Shows"| processingState
+    history -->|"Shows"| unsupportedState
+    history -->|"Shows"| deadLetterState
+    kpiStrip -->|"Supports"| screenshots
+    recoveryPanel -->|"Supports"| screenshots
+    detailDrawer -->|"Supports"| screenshots
+    screenshots -->|"Feeds"| figjam
+    figjam -->|"Feeds"| buyerDeck
+
+    style demoSurface fill:#C2E5FF,stroke:#3DADFF
+    style proofStates fill:#FFECBD,stroke:#FFC943
+    style salesProof fill:#CDF4D3,stroke:#66D575
+    style unsupportedState fill:#FFE0C2,stroke:#FF9E42
+    style deadLetterState fill:#FFCDC2,stroke:#FF7556
+    style successState fill:#CDF4D3,stroke:#66D575
 ```
 
 ### Operator Recovery Evidence Flow

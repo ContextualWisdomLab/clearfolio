@@ -118,8 +118,10 @@ Current implementation status:
   role mapping.
 - Implemented: signed artifact link creation and artifact token verification
   for current in-memory PDF artifacts.
-- Not implemented: durable artifact metadata, revocation, persisted artifact
-  audit events, and production key management.
+- Implemented: runtime artifact token ledger, tenant-scoped token revocation,
+  and artifact read audit-event API.
+- Not implemented: durable artifact metadata, externally persisted revocation
+  state, persisted artifact audit events, and production key management.
 
 ## Error Semantics
 

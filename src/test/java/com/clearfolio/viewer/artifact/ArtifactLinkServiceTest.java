@@ -17,8 +17,10 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -29,7 +31,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.api.ArtifactLinkRequest;
+import com.clearfolio.viewer.api.ArtifactLinkRevocationRequest;
+import com.clearfolio.viewer.api.ArtifactLinkRevocationResponse;
 import com.clearfolio.viewer.api.ArtifactLinkResponse;
+import com.clearfolio.viewer.api.ArtifactReadEventResponse;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
@@ -143,6 +148,19 @@ class ArtifactLinkServiceTest {
                 sampleBytes(),
                 tokenFrom(response)
         ));
+    }
+
+    @Test
+    void springConstructorUsesProvidedLedger() {
+        ArtifactLinkLedger ledger = new ArtifactLinkLedger();
+        ArtifactLinkService serviceWithLedger = new ArtifactLinkService(artifactStore, ledger, SECRET);
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+
+        ArtifactLinkResponse response = serviceWithLedger.createLink(job, tenantContext(), null);
+
+        assertTrue(ledger.findByTokenId(response.tokenId()).isPresent());
     }
 
     @Test
@@ -345,6 +363,142 @@ class ArtifactLinkServiceTest {
     }
 
     @Test
+    void verifyReadTokenRejectsUnknownLedgerToken() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        String token = tokenFrom(service.createLink(job, tenantContext(), null));
+        ArtifactLinkService emptyLedgerService = serviceAt(NOW);
+
+        assertTokenStatus(
+                HttpStatus.FORBIDDEN,
+                () -> emptyLedgerService.verifyReadToken(docId, job, sampleBytes(), token)
+        );
+    }
+
+    @Test
+    void verifyReadTokenRejectsLedgerTenantMismatch() {
+        assertLedgerMismatch(record -> copyRecord(record, "other-tenant", record.docId(), record.artifactChecksum()));
+    }
+
+    @Test
+    void verifyReadTokenRejectsLedgerDocMismatch() {
+        assertLedgerMismatch(record -> copyRecord(record, record.tenantId(), UUID.randomUUID(), record.artifactChecksum()));
+    }
+
+    @Test
+    void verifyReadTokenRejectsLedgerChecksumMismatch() {
+        assertLedgerMismatch(record -> copyRecord(record, record.tenantId(), record.docId(), "different-checksum"));
+    }
+
+    @Test
+    void revokeLinkDeniesFutureReadsAndIsIdempotent() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        ArtifactLinkResponse link = service.createLink(job, tenantContext(), null);
+
+        ArtifactLinkRevocationResponse first = service.revokeLink(
+                link.tokenId(),
+                revokeTenantContext(),
+                new ArtifactLinkRevocationRequest("viewer closed")
+        );
+        ArtifactLinkRevocationResponse second = service.revokeLink(
+                link.tokenId(),
+                revokeTenantContext(),
+                new ArtifactLinkRevocationRequest("second request")
+        );
+
+        assertEquals(link.tokenId(), first.tokenId());
+        assertEquals(NOW, first.revokedAt());
+        assertEquals(TenantContext.DEMO_SUBJECT_ID, first.revokedBy());
+        assertEquals("viewer closed", first.reason());
+        assertTrue(first.revoked());
+        assertEquals(first, second);
+        assertTokenStatus(
+                HttpStatus.FORBIDDEN,
+                () -> service.verifyReadToken(docId, job, sampleBytes(), tokenFrom(link))
+        );
+    }
+
+    @Test
+    void revokeLinkDefaultsReasonWhenRequestIsNull() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        ArtifactLinkResponse link = service.createLink(job, tenantContext(), null);
+
+        ArtifactLinkRevocationResponse revoked = service.revokeLink(link.tokenId(), revokeTenantContext(), null);
+
+        assertEquals("operator-request", revoked.reason());
+    }
+
+    @Test
+    void revokeLinkDefaultsBlankReasonAndRejectsUnknownOrWrongTenantLinks() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        ArtifactLinkResponse link = service.createLink(job, tenantContext(), null);
+
+        ArtifactLinkRevocationResponse revoked = service.revokeLink(
+                link.tokenId(),
+                revokeTenantContext(),
+                new ArtifactLinkRevocationRequest(" \u0000 ")
+        );
+
+        assertEquals("operator-request", revoked.reason());
+        assertEquals(HttpStatus.NOT_FOUND, assertThrows(
+                ResponseStatusException.class,
+                () -> service.revokeLink(" ", revokeTenantContext(), null)
+        ).getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, assertThrows(
+                ResponseStatusException.class,
+                () -> service.revokeLink("missing-token", revokeTenantContext(), null)
+        ).getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, assertThrows(
+                ResponseStatusException.class,
+                () -> service.revokeLink(link.tokenId(), otherTenantContext(), null)
+        ).getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, assertThrows(
+                ResponseStatusException.class,
+                () -> service.revokeLink(link.tokenId(), null, null)
+        ).getStatusCode());
+    }
+
+    @Test
+    void recordReadReturnsTenantScopedEvents() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        ArtifactTokenClaims claims = service.verifyReadToken(
+                docId,
+                job,
+                sampleBytes(),
+                tokenFrom(service.createLink(
+                        job,
+                        tenantContext(),
+                        new ArtifactLinkRequest("viewer", 300, " viewer-1 ")
+                ))
+        );
+
+        service.recordRead(claims, " bytes=0-3 ", 206, " trace-1 ");
+
+        List<ArtifactReadEventResponse> events = service.readEvents(docId, auditTenantContext());
+        assertEquals(1, events.size());
+        ArtifactReadEventResponse event = events.getFirst();
+        assertEquals(TenantContext.DEMO_TENANT_ID, event.tenantId());
+        assertEquals(TenantContext.DEMO_SUBJECT_ID, event.subjectId());
+        assertEquals(docId.toString(), event.docId());
+        assertEquals(claims.tokenId(), event.tokenId());
+        assertEquals("bytes=0-3", event.rangeRequested());
+        assertEquals(206, event.statusCode());
+        assertEquals("trace-1", event.traceId());
+        assertEquals(NOW, event.readAt());
+        assertTrue(service.readEvents(docId, otherTenantContext()).isEmpty());
+        assertTrue(service.readEvents(UUID.randomUUID(), auditTenantContext()).isEmpty());
+    }
+
+    @Test
     void verifyReadTokenRejectsUnsupportedVersion() {
         UUID docId = UUID.randomUUID();
         ConversionJob job = succeededJob(docId);
@@ -430,6 +584,54 @@ class ArtifactLinkServiceTest {
         );
     }
 
+    private ArtifactLinkService serviceAt(ArtifactLinkLedger ledger, Instant instant) {
+        return new ArtifactLinkService(
+                artifactStore,
+                ledger,
+                SECRET,
+                Clock.fixed(instant, ZoneOffset.UTC),
+                new FixedSecureRandom()
+        );
+    }
+
+    private void assertLedgerMismatch(UnaryOperator<ArtifactLinkRecord> mutation) {
+        ArtifactLinkLedger ledger = new ArtifactLinkLedger();
+        ArtifactLinkService ledgerService = serviceAt(ledger, NOW);
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        ArtifactLinkResponse link = ledgerService.createLink(job, tenantContext(), null);
+        ArtifactLinkRecord record = ledger.findByTokenId(link.tokenId()).orElseThrow();
+        ledger.recordIssued(mutation.apply(record));
+
+        assertTokenStatus(
+                HttpStatus.FORBIDDEN,
+                () -> ledgerService.verifyReadToken(docId, job, sampleBytes(), tokenFrom(link))
+        );
+    }
+
+    private static ArtifactLinkRecord copyRecord(
+            ArtifactLinkRecord record,
+            String tenantId,
+            UUID docId,
+            String artifactChecksum) {
+        return new ArtifactLinkRecord(
+                record.tokenId(),
+                tenantId,
+                record.subjectId(),
+                docId,
+                record.scope(),
+                record.purpose(),
+                artifactChecksum,
+                record.viewerSessionId(),
+                record.issuedAt(),
+                record.expiresAt(),
+                record.revokedAt(),
+                record.revokedBy(),
+                record.revokeReason()
+        );
+    }
+
     private static void assertTokenStatus(HttpStatus expected, ThrowingRunnable runnable) {
         ArtifactTokenException ex = assertThrows(ArtifactTokenException.class, runnable::run);
         assertEquals(expected, ex.getStatus());
@@ -468,6 +670,30 @@ class ArtifactLinkServiceTest {
                 TenantContext.DEMO_TENANT_ID,
                 TenantContext.DEMO_SUBJECT_ID,
                 Set.of(TenantPermissions.ARTIFACT_LINK_CREATE, TenantPermissions.VIEWER_READ)
+        );
+    }
+
+    private static TenantContext revokeTenantContext() {
+        return new TenantContext(
+                TenantContext.DEMO_TENANT_ID,
+                TenantContext.DEMO_SUBJECT_ID,
+                Set.of(TenantPermissions.ARTIFACT_LINK_REVOKE)
+        );
+    }
+
+    private static TenantContext auditTenantContext() {
+        return new TenantContext(
+                TenantContext.DEMO_TENANT_ID,
+                TenantContext.DEMO_SUBJECT_ID,
+                Set.of(TenantPermissions.AUDIT_READ)
+        );
+    }
+
+    private static TenantContext otherTenantContext() {
+        return new TenantContext(
+                "other-tenant",
+                TenantContext.DEMO_SUBJECT_ID,
+                Set.of(TenantPermissions.ARTIFACT_LINK_REVOKE, TenantPermissions.AUDIT_READ)
         );
     }
 

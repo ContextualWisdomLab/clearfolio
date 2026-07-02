@@ -9,6 +9,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,7 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.api.ArtifactLinkRequest;
+import com.clearfolio.viewer.api.ArtifactLinkRevocationRequest;
+import com.clearfolio.viewer.api.ArtifactLinkRevocationResponse;
 import com.clearfolio.viewer.api.ArtifactLinkResponse;
+import com.clearfolio.viewer.api.ArtifactReadEventResponse;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
@@ -47,6 +51,7 @@ public class ArtifactLinkService {
     private static final String HMAC_SHA_256 = "HmacSHA256";
     private static final String VERSION = "v1";
     private static final String DEFAULT_PURPOSE = "viewer-preview";
+    private static final String DEFAULT_REVOKE_REASON = "operator-request";
     private static final int DEFAULT_TTL_SECONDS = 300;
     private static final int MAX_TTL_SECONDS = 900;
     private static final int TOKEN_FIELD_COUNT = 10;
@@ -54,6 +59,7 @@ public class ArtifactLinkService {
     private static final Base64.Decoder URL_DECODER = Base64.getUrlDecoder();
 
     private final ArtifactStore artifactStore;
+    private final ArtifactLinkLedger artifactLinkLedger;
     private final SecretKeySpec signingKey;
     private final Clock clock;
     private final SecureRandom secureRandom;
@@ -67,8 +73,21 @@ public class ArtifactLinkService {
     @Autowired
     public ArtifactLinkService(
             ArtifactStore artifactStore,
+            ArtifactLinkLedger artifactLinkLedger,
             @Value("${clearfolio.artifact-token.secret:}") String configuredSecret) {
-        this(artifactStore, configuredSecret, Clock.systemUTC(), new SecureRandom());
+        this(artifactStore, artifactLinkLedger, configuredSecret, Clock.systemUTC(), new SecureRandom());
+    }
+
+    /**
+     * Creates the link service with an isolated runtime ledger.
+     *
+     * @param artifactStore artifact byte store
+     * @param configuredSecret optional deployment secret
+     */
+    public ArtifactLinkService(
+            ArtifactStore artifactStore,
+            String configuredSecret) {
+        this(artifactStore, new ArtifactLinkLedger(), configuredSecret, Clock.systemUTC(), new SecureRandom());
     }
 
     ArtifactLinkService(
@@ -76,7 +95,17 @@ public class ArtifactLinkService {
             String configuredSecret,
             Clock clock,
             SecureRandom secureRandom) {
+        this(artifactStore, new ArtifactLinkLedger(), configuredSecret, clock, secureRandom);
+    }
+
+    ArtifactLinkService(
+            ArtifactStore artifactStore,
+            ArtifactLinkLedger artifactLinkLedger,
+            String configuredSecret,
+            Clock clock,
+            SecureRandom secureRandom) {
         this.artifactStore = artifactStore;
+        this.artifactLinkLedger = artifactLinkLedger;
         this.signingKey = new SecretKeySpec(secretBytes(configuredSecret, secureRandom), HMAC_SHA_256);
         this.clock = clock;
         this.secureRandom = secureRandom;
@@ -122,6 +151,21 @@ public class ArtifactLinkService {
                 expiresAt
         );
         String token = sign(claims);
+        artifactLinkLedger.recordIssued(new ArtifactLinkRecord(
+                tokenId,
+                claims.tenantId(),
+                claims.subjectId(),
+                claims.docId(),
+                claims.scope(),
+                claims.purpose(),
+                claims.artifactChecksum(),
+                nullableClean(effectiveRequest.viewerSessionId()),
+                claims.issuedAt(),
+                claims.expiresAt(),
+                null,
+                null,
+                null
+        ));
         String artifactUrl = "/artifacts/" + job.getJobId() + ".pdf?"
                 + ARTIFACT_TOKEN_PARAM + "=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
         return new ArtifactLinkResponse(
@@ -140,8 +184,9 @@ public class ArtifactLinkService {
      * @param job conversion job
      * @param artifactBytes stored artifact bytes
      * @param token supplied artifact token
+     * @return verified artifact token claims
      */
-    public void verifyReadToken(UUID docId, ConversionJob job, byte[] artifactBytes, String token) {
+    public ArtifactTokenClaims verifyReadToken(UUID docId, ConversionJob job, byte[] artifactBytes, String token) {
         if (token == null || token.isBlank()) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token required");
         }
@@ -156,12 +201,106 @@ public class ArtifactLinkService {
         if (!docId.equals(claims.docId())) {
             throw new ArtifactTokenException(HttpStatus.FORBIDDEN, "artifact token doc mismatch");
         }
+        ArtifactLinkRecord record = artifactLinkLedger.findByTokenId(claims.tokenId())
+                .orElseThrow(() -> new ArtifactTokenException(HttpStatus.FORBIDDEN, "artifact token unknown"));
+        if (record.isRevoked()) {
+            throw new ArtifactTokenException(HttpStatus.FORBIDDEN, "artifact token revoked");
+        }
+        if (!record.tenantId().equals(claims.tenantId())
+                || !record.docId().equals(claims.docId())
+                || !record.artifactChecksum().equals(claims.artifactChecksum())) {
+            throw new ArtifactTokenException(HttpStatus.FORBIDDEN, "artifact token ledger mismatch");
+        }
         if (job == null || !job.belongsToTenant(claims.tenantId())) {
             throw new ArtifactTokenException(HttpStatus.FORBIDDEN, "artifact token tenant mismatch");
         }
         if (!sha256Hex(artifactBytes).equals(claims.artifactChecksum())) {
             throw new ArtifactTokenException(HttpStatus.FORBIDDEN, "artifact token checksum mismatch");
         }
+        return claims;
+    }
+
+    /**
+     * Revokes a previously issued artifact link for the current tenant.
+     *
+     * @param tokenId artifact token identifier
+     * @param tenantContext verified tenant context
+     * @param request optional revocation request
+     * @return revocation response
+     */
+    public ArtifactLinkRevocationResponse revokeLink(
+            String tokenId,
+            TenantContext tenantContext,
+            ArtifactLinkRevocationRequest request) {
+        String effectiveTokenId = nullableClean(tokenId);
+        if (effectiveTokenId == null || tenantContext == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "artifact link not found");
+        }
+
+        ArtifactLinkRecord record = artifactLinkLedger.findByTokenId(effectiveTokenId)
+                .filter(link -> link.tenantId().equals(tenantContext.tenantId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "artifact link not found"));
+        ArtifactLinkRecord revoked = artifactLinkLedger.revoke(
+                record.tokenId(),
+                Instant.now(clock),
+                tenantContext.subjectId(),
+                reasonOf(request == null ? null : request.reason())
+        ).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "artifact link not found"));
+
+        return new ArtifactLinkRevocationResponse(
+                revoked.tokenId(),
+                revoked.revokedAt(),
+                revoked.revokedBy(),
+                revoked.revokeReason(),
+                revoked.isRevoked()
+        );
+    }
+
+    /**
+     * Records an audited artifact read after token verification.
+     *
+     * @param claims verified token claims
+     * @param rangeRequested optional HTTP range header
+     * @param statusCode response status code
+     * @param traceId optional caller supplied trace identifier
+     */
+    public void recordRead(
+            ArtifactTokenClaims claims,
+            String rangeRequested,
+            int statusCode,
+            String traceId) {
+        artifactLinkLedger.recordRead(new ArtifactReadEvent(
+                claims.tenantId(),
+                claims.subjectId(),
+                claims.docId(),
+                claims.tokenId(),
+                nullableClean(rangeRequested),
+                statusCode,
+                nullableClean(traceId),
+                Instant.now(clock)
+        ));
+    }
+
+    /**
+     * Returns audited artifact reads for the current tenant and document.
+     *
+     * @param docId document identifier
+     * @param tenantContext verified tenant context
+     * @return matching audit events
+     */
+    public List<ArtifactReadEventResponse> readEvents(UUID docId, TenantContext tenantContext) {
+        return artifactLinkLedger.readEventsFor(tenantContext.tenantId(), docId).stream()
+                .map(event -> new ArtifactReadEventResponse(
+                        event.tenantId(),
+                        event.subjectId(),
+                        event.docId().toString(),
+                        event.tokenId(),
+                        event.rangeRequested(),
+                        event.statusCode(),
+                        event.traceId(),
+                        event.readAt()
+                ))
+                .toList();
     }
 
     /**
@@ -263,10 +402,21 @@ public class ArtifactLinkService {
     }
 
     private static String purposeOf(String requestedPurpose) {
-        return Optional.ofNullable(requestedPurpose)
-                .map(value -> value.replace("\u0000", "").strip())
-                .filter(value -> !value.isBlank())
+        return Optional.ofNullable(nullableClean(requestedPurpose))
                 .orElse(DEFAULT_PURPOSE);
+    }
+
+    private static String reasonOf(String requestedReason) {
+        return Optional.ofNullable(nullableClean(requestedReason))
+                .orElse(DEFAULT_REVOKE_REASON);
+    }
+
+    private static String nullableClean(String value) {
+        if (value == null) {
+            return null;
+        }
+        String cleaned = value.replace("\u0000", "").strip();
+        return cleaned.isEmpty() ? null : cleaned;
     }
 
     private static String sha256Hex(byte[] bytes) {

@@ -17,6 +17,8 @@ Date: 2026-07-02
   `Clearfolio Runtime Tenant Enforcement Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Runtime Signed Artifact Link Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Artifact Revocation and Read Audit Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -339,4 +341,45 @@ flowchart LR
     style link fill:#E8F3FF,stroke:#2374AB
     style verify fill:#FFECBD,stroke:#FFC943
     style range fill:#DFF7E8,stroke:#1B7F3A
+```
+
+### Artifact Revocation And Read Audit Flow
+
+```mermaid
+flowchart LR
+    viewer["Viewer or operator"]
+    linkApi["POST artifact-links"]
+    ledger["Runtime artifact link ledger"]
+    artifactApi["GET artifacts doc.pdf"]
+    tokenCheck["Token verification"]
+    pdfBytes["PDF byte response"]
+    audit["Artifact read audit events"]
+    operator["Operator or tenant admin"]
+    revokeApi["POST artifact-links token revoke"]
+    denied["Artifact read blocked"]
+    reviewer["Buyer reviewer"]
+    auditApi["GET artifact-read-events"]
+
+    viewer -->|"Create signed link"| linkApi
+    linkApi -->|"Record token metadata"| ledger
+    viewer -->|"Read PDF with artifactToken"| artifactApi
+    artifactApi -->|"Verify signature expiry scope doc tenant checksum"| tokenCheck
+    tokenCheck -->|"Check token is known and active"| ledger
+    ledger -->|"Active token"| artifactApi
+    artifactApi -->|"Serve full range or 416"| pdfBytes
+    artifactApi -->|"Record status range trace"| audit
+    operator -->|"Revoke token"| revokeApi
+    revokeApi -->|"Mark token revoked"| ledger
+    ledger -->|"Revoked token"| tokenCheck
+    tokenCheck -->|"Return 403"| denied
+    reviewer -->|"Read audit evidence"| auditApi
+    auditApi -->|"Tenant filtered events"| audit
+
+    style linkApi fill:#E8F3FF,stroke:#2F6BFF
+    style artifactApi fill:#E8F3FF,stroke:#2F6BFF
+    style revokeApi fill:#E8F3FF,stroke:#2F6BFF
+    style auditApi fill:#E8F3FF,stroke:#2F6BFF
+    style ledger fill:#FFF3E3,stroke:#B95D00
+    style audit fill:#FFF3E3,stroke:#B95D00
+    style denied fill:#FFE2E2,stroke:#D92D20
 ```

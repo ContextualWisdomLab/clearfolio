@@ -267,6 +267,8 @@ Progress as of 2026-07-02:
   decides state.
 - Viewer bootstrap now returns a short-lived signed artifact URL, and direct
   artifact reads require an `artifactToken` query parameter or bearer token.
+- Runtime artifact links now have a process-local token ledger, tenant-scoped
+  `tokenId` revocation, and tenant-filtered artifact read audit-event API.
 
 ### Phase 2: Due-diligence pack
 
@@ -285,8 +287,8 @@ Replace MVP internals that buyers will discount.
 - Add durable job repository and migration strategy.
 - Add real artifact store abstraction.
 - Replace demo tenant headers with validated OIDC/S2S claims and role mapping.
-- Add durable artifact metadata, token revocation, and artifact read audit
-  events.
+- Add durable artifact metadata and persist token revocation plus artifact read
+  audit events outside process memory.
 - Add metrics and observability.
 - Add converter runtime integration behind a stable adapter boundary.
 

@@ -2,6 +2,7 @@ package com.clearfolio.viewer.controller;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -17,10 +18,14 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.api.ArtifactLinkRequest;
+import com.clearfolio.viewer.api.ArtifactLinkRevocationRequest;
+import com.clearfolio.viewer.api.ArtifactLinkRevocationResponse;
 import com.clearfolio.viewer.api.ArtifactLinkResponse;
+import com.clearfolio.viewer.api.ArtifactReadEventResponse;
 import com.clearfolio.viewer.artifact.ArtifactLinkService;
 import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.artifact.ArtifactTokenException;
+import com.clearfolio.viewer.artifact.ArtifactTokenClaims;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
@@ -83,6 +88,38 @@ public class ArtifactController {
     }
 
     /**
+     * Revokes a previously issued signed artifact link.
+     *
+     * @param tokenId artifact token identifier
+     * @param request optional revocation request
+     * @param headers request headers carrying tenant claims
+     * @return revocation payload
+     */
+    @PostMapping("/api/v1/viewer/artifact-links/{tokenId}/revoke")
+    public ArtifactLinkRevocationResponse revokeArtifactLink(
+            @PathVariable String tokenId,
+            @RequestBody(required = false) ArtifactLinkRevocationRequest request,
+            @RequestHeader HttpHeaders headers) {
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ARTIFACT_LINK_REVOKE);
+        return artifactLinkService.revokeLink(tokenId, tenantContext, request);
+    }
+
+    /**
+     * Returns artifact read audit events for a tenant-owned document.
+     *
+     * @param docId document identifier
+     * @param headers request headers carrying tenant claims
+     * @return current artifact read events
+     */
+    @GetMapping("/api/v1/viewer/{docId}/artifact-read-events")
+    public List<ArtifactReadEventResponse> listArtifactReadEvents(
+            @PathVariable UUID docId,
+            @RequestHeader HttpHeaders headers) {
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.AUDIT_READ);
+        return artifactLinkService.readEvents(docId, tenantContext);
+    }
+
+    /**
      * Serves the converted PDF artifact for a document when conversion succeeded.
      *
      * <p>Only a single HTTP range is supported.
@@ -91,6 +128,7 @@ public class ArtifactController {
      * @param rangeHeader optional {@code Range} header
      * @param queryToken signed artifact token query parameter
      * @param authorizationHeader optional bearer artifact token
+     * @param traceId optional request trace identifier
      * @return PDF bytes when available
      */
     @GetMapping(value = "/artifacts/{docId}.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
@@ -98,7 +136,8 @@ public class ArtifactController {
             @PathVariable UUID docId,
             @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader,
             @RequestParam(value = ArtifactLinkService.ARTIFACT_TOKEN_PARAM, required = false) String queryToken,
-            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader) {
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @RequestHeader(value = "X-Request-Id", required = false) String traceId) {
         Optional<ConversionJob> job = conversionService.getJob(docId);
         if (job.isEmpty() || job.get().getStatus() != ConversionJobStatus.SUCCEEDED) {
             return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
@@ -111,8 +150,9 @@ public class ArtifactController {
 
         byte[] pdfBytes = stored.get();
         String token = ArtifactLinkService.resolveToken(queryToken, authorizationHeader);
+        ArtifactTokenClaims claims;
         try {
-            artifactLinkService.verifyReadToken(docId, job.get(), pdfBytes, token);
+            claims = artifactLinkService.verifyReadToken(docId, job.get(), pdfBytes, token);
         } catch (ArtifactTokenException ex) {
             return Mono.just(tokenFailure(ex.getStatus()));
         }
@@ -121,14 +161,20 @@ public class ArtifactController {
 
         Optional<ResolvedRange> range = resolveSingleRange(rangeHeader, totalLength);
         if (range.isPresent() && range.get().unsatisfiable()) {
-            return Mono.just(unsatisfiable(totalLength));
+            ResponseEntity<byte[]> response = unsatisfiable(totalLength);
+            artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
+            return Mono.just(response);
         }
         if (range.isPresent() && range.get().invalid()) {
-            return Mono.just(unsatisfiable(totalLength));
+            ResponseEntity<byte[]> response = unsatisfiable(totalLength);
+            artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
+            return Mono.just(response);
         }
 
         if (range.isEmpty()) {
-            return Mono.just(full(pdfBytes));
+            ResponseEntity<byte[]> response = full(pdfBytes);
+            artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
+            return Mono.just(response);
         }
 
         ResolvedRange resolved = range.get();
@@ -136,7 +182,9 @@ public class ArtifactController {
         int end = resolved.endInclusive();
         int length = end - start + 1;
         byte[] slice = java.util.Arrays.copyOfRange(pdfBytes, start, end + 1);
-        return Mono.just(partial(slice, start, end, totalLength, length));
+        ResponseEntity<byte[]> response = partial(slice, start, end, totalLength, length);
+        artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
+        return Mono.just(response);
     }
 
     private static ResponseEntity<byte[]> full(byte[] pdfBytes) {

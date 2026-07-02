@@ -31,6 +31,16 @@ public final class TenantPermissions {
     public static final String ARTIFACT_LINK_CREATE = "artifact-link:create";
 
     /**
+     * Permission required to revoke signed artifact links.
+     */
+    public static final String ARTIFACT_LINK_REVOKE = "artifact-link:revoke";
+
+    /**
+     * Permission required to read audit evidence.
+     */
+    public static final String AUDIT_READ = "audit:read";
+
+    /**
      * Permission required to read buyer-demo analytics.
      */
     public static final String ANALYTICS_READ = "analytics:read";

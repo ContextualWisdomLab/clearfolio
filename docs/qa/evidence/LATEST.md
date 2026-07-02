@@ -7,4 +7,4 @@
 - Auth/tenant model: `docs/security/2026-07-02-auth-tenant-model.md`
 - Signed artifact link runtime: `docs/security/2026-07-02-signed-artifact-link-design.md`
 - Verification source head SHA before latest evidence refresh:
-  `1c2c54accaadba0e37754fe6ad3f75385b57acbc`
+  `a088d8e0ec07a6585b263c3b953ce11b433e6933`

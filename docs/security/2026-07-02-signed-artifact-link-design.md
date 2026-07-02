@@ -3,9 +3,11 @@
 Date: 2026-07-02
 
 This document defines the production design for secure preview artifact access.
-The first runtime slice now issues and verifies stateless HMAC artifact tokens
-for in-memory PDF artifacts. Durable artifact metadata, revocation, audit
-persistence, and production key management are still implementation gaps.
+The current runtime now issues and verifies HMAC artifact tokens for in-memory
+PDF artifacts, records issued token metadata in a runtime ledger, supports
+tenant-scoped token revocation, and records verified artifact reads as audit
+events. Durable artifact metadata, external audit persistence, object-store
+metadata, and production key management are still implementation gaps.
 
 ## Goal
 
@@ -31,11 +33,16 @@ Current controls:
 - Requires a signed `artifactToken` query parameter or bearer artifact token.
 - Verifies token scope, expiry, route `docId`, job tenant, and current artifact
   checksum before serving bytes.
-- Uses in-memory PDF bytes and stateless HMAC tokens; there is no durable object
-  store, revocation table, or persisted read audit yet.
+- Records issued tokens in a runtime artifact link ledger.
+- Blocks unknown or revoked token identifiers.
+- Records verified artifact reads with tenant, subject, document, token id,
+  range, status code, trace id, and timestamp.
+- Uses in-memory PDF bytes and runtime ledger state; there is no durable object
+  store, external revocation table, or persisted read audit yet.
 
 This is stronger than the original MVP capability URL, but not yet enough for a
-buyer production deployment without durable storage, revocation, and audit.
+buyer production deployment without durable storage, externally persisted
+revocation state, and persisted audit.
 
 ## Proposed API Contract
 
@@ -84,6 +91,55 @@ Rules:
 - Query token exists only to support PDF.js `file=` loading; server-to-server
   callers should use `Authorization: Bearer <artifact-token>`.
 
+### Revoke Artifact Link
+
+```text
+POST /api/v1/viewer/artifact-links/{tokenId}/revoke
+Authorization: Bearer <access-token>
+Content-Type: application/json
+```
+
+The current buyer-demo runtime requires `artifact-link:revoke` in
+`X-Clearfolio-Permissions`.
+
+Request:
+
+```json
+{
+  "reason": "viewer closed"
+}
+```
+
+Response:
+
+```json
+{
+  "tokenId": "01J...",
+  "revokedAt": "2026-07-02T07:05:00Z",
+  "revokedBy": "user-123",
+  "reason": "viewer closed",
+  "revoked": true
+}
+```
+
+Rules:
+
+- Revocation is tenant-scoped and hides unknown or cross-tenant token ids as
+  `404`.
+- Repeating revocation is idempotent and returns the first recorded revocation
+  fields.
+- Revoked token ids are rejected before artifact bytes are served.
+
+### Read Artifact Audit Events
+
+```text
+GET /api/v1/viewer/{docId}/artifact-read-events
+Authorization: Bearer <access-token>
+```
+
+The current buyer-demo runtime requires `audit:read` and returns events filtered
+to the caller tenant and document.
+
 ### Read Artifact
 
 ```text
@@ -103,8 +159,8 @@ Current runtime validation:
 7. Serve the PDF with the current range and no-store headers.
 
 Production validation must additionally require `aud=clearfolio-artifact`,
-reject revoked `jti`, and emit an `artifact.read` metric event without storing
-the raw token.
+persist revoked `jti` state outside process memory, and persist `artifact.read`
+events without storing the raw token.
 
 ## Token Shape
 
@@ -212,9 +268,10 @@ Do not reveal whether a different tenant owns the document.
 3. Done: add `POST /api/v1/viewer/{docId}/artifact-links`.
 4. Done: add token verification to artifact serving.
 5. Done: add PDF.js viewer bootstrap support for signed links.
-6. Next: add durable artifact metadata with checksum and tenant id.
-7. Next: add revocation and access audit tables.
-8. Next: remove direct unsigned fallback paths from production profiles.
+6. Done: add runtime token ledger, token revocation, and read audit API.
+7. Next: add durable artifact metadata with checksum and tenant id.
+8. Next: persist revocation and access audit events outside process memory.
+9. Next: remove direct unsigned fallback paths from production profiles.
 
 No separate library or submodule is justified yet. Extract token signing only
 after a second runtime or SDK needs the same contract.

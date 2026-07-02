@@ -33,10 +33,11 @@ The current security posture is MVP-grade and evidence-oriented. It has
 bounded upload size, blocked HWP/HWPX defaults, policy override audit
 fingerprints, warning-free compile gates, 100 percent production package
 JaCoCo line/branch coverage, JavaDoc gates, Semgrep evidence, no-store artifact
-responses, signed artifact tokens, tenant-scoped JSON APIs, and viewer CSP
-headers. The largest production gaps are no validated OIDC/JWT, no durable
-encrypted store, no revocation/audit persistence for artifact tokens, no AV or
-file-type deep inspection, and no isolated real converter runtime.
+responses, signed artifact tokens, runtime artifact-token revocation, artifact
+read audit events, tenant-scoped JSON APIs, and viewer CSP headers. The largest
+production gaps are no validated OIDC/JWT, no durable encrypted store, no
+durable revocation/audit persistence for artifact tokens, no AV or file-type
+deep inspection, and no isolated real converter runtime.
 
 ## Threat Model, Trust Boundaries, and Assumptions
 
@@ -68,8 +69,9 @@ file-type deep inspection, and no isolated real converter runtime.
 - The current service is an MVP running behind a trusted network or demo
   environment. It is not internet-hardened as a standalone SaaS service.
 - `docId` is no longer sufficient to read artifacts; artifact reads require a
-  signed token bound to document, tenant, expiry, scope, and checksum. Durable
-  revocation is not implemented yet.
+  signed token bound to document, tenant, expiry, scope, and checksum. Issued
+  tokens are recorded in a runtime ledger and can be revoked by `tokenId`;
+  durable external revocation state is not implemented yet.
 - Source document bytes are not durably stored by the current application after
   submission. Converted PDF bytes and metadata live in memory until process
   restart.
@@ -160,20 +162,20 @@ file-type deep inspection, and no isolated real converter runtime.
 | --- | --- | --- | --- | --- | --- |
 | Upload request | Source bytes, filename, content type, override headers | `ConversionController` | In-memory multipart wrapper | Request scope | Large payload and malicious file risk. |
 | Validation | File metadata, size, extension, override headers | `DefaultDocumentValidationService` | No source bytes persisted | Request scope | Policy-token validation is external. |
-| Job creation | Filename, content type, hash, size | `DefaultDocumentConversionService` | `ConversionJob` metadata | Process lifetime | No tenant or retention policy. |
+| Job creation | Filename, content type, hash, size, tenant id, subject id | `DefaultDocumentConversionService` | `ConversionJob` metadata | Process lifetime | No durable retention policy. |
 | Queue and retry | Job id, status, attempt count, retry time | `DefaultConversionWorker` | Job lifecycle fields | Process lifetime | Worker saturation and retry audit gaps. |
 | Artifact generation | Job metadata | `PdfBoxArtifactGenerator` | Synthetic PDF bytes | Process lifetime | Real converter sandbox not present. |
-| Artifact serving | `docId`, `artifactToken`, optional range | `ArtifactController` | No new server storage | Response scope | Token is stateless; no durable revocation or read audit. |
+| Artifact serving | `docId`, `artifactToken`, optional range | `ArtifactController` | Runtime ledger and read audit event | Process lifetime | No durable revocation or read-audit persistence. |
 | Viewer shell | `docId`, status, artifact path | `ViewerUiController`, `viewer.js` | Browser-rendered state | Browser tab lifetime | Embedding domain matrix not finalized. |
 | Demo shell | User file picker state, session jobs, KPI snapshot | `demo.js` | Browser session history | Browser session | Session history is not auditable server data. |
-| KPI snapshot | Job metadata aggregate | `AnalyticsController` | No new server storage | Response scope | No durable metrics or tenant dimension. |
+| KPI snapshot | Tenant-filtered job metadata aggregate | `AnalyticsController` | No new server storage | Response scope | No durable metrics event store. |
 
 ## Retention and Classification
 
 | Data class | Classification | Current storage | Current retention | Production requirement |
 | --- | --- | --- | --- | --- |
 | Source document bytes | Confidential customer content | Request memory only | Request processing window | Encrypted object quarantine, malware scan, deletion SLA. |
-| Converted PDF artifact | Confidential customer content | JVM memory | Until process restart | Encrypted object store, durable token metadata, revocation, TTL, tenant ACL. |
+| Converted PDF artifact | Confidential customer content | JVM memory | Until process restart | Encrypted object store, durable token metadata, persisted revocation, TTL, tenant ACL. |
 | File name and content type | Customer metadata | In-memory job repository | Until process restart | Tenant-scoped metadata table with retention policy. |
 | Content hash | Derived document identifier | In-memory job repository | Until process restart | Treat as sensitive metadata; avoid cross-tenant dedupe. |
 | Job status and timings | Operational metadata | In-memory job repository | Until process restart | Durable event table for audit and KPI reporting. |
@@ -194,8 +196,9 @@ file-type deep inspection, and no isolated real converter runtime.
 
 ### High
 
-- Artifact token leakage can expose a preview until token expiry in a production
-  deployment without revocation.
+- Artifact token leakage can expose a preview until token expiry or runtime
+  revocation; production deployments still need durable revocation state across
+  restarts and replicas.
 - Malicious uploads can exhaust memory, worker capacity, or artifact storage
   without rate limiting.
 - Policy override accepts blocked formats without external token validation or
@@ -231,6 +234,7 @@ Next implementation slices, in order:
 
 1. Complete license policy and allowlist review for the generated SBOM.
 2. Replace demo tenant headers with validated gateway/OIDC claims.
-3. Add durable artifact metadata, revocation, and artifact read audit events.
+3. Add durable artifact metadata and persist artifact token revocation plus read
+   audit events outside process memory.
 4. Implement durable metrics events for job lifecycle and commercial KPIs.
 5. Add deployment security profile with production `frame-ancestors` matrix.

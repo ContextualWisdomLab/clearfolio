@@ -15,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import com.clearfolio.viewer.api.ArtifactLinkRequest;
+import com.clearfolio.viewer.api.ArtifactLinkResponse;
+import com.clearfolio.viewer.api.ArtifactLinkRevocationRequest;
 import com.clearfolio.viewer.artifact.ArtifactLinkService;
 import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
@@ -143,6 +145,112 @@ class ArtifactControllerTest {
                 .headers(ArtifactControllerTest::addArtifactLinkPermission)
                 .exchange()
                 .expectStatus().isNotFound();
+    }
+
+    @Test
+    void revokeArtifactLinkRequiresPermission() {
+        webTestClient.post()
+                .uri("/api/v1/viewer/artifact-links/{tokenId}/revoke", "token-1")
+                .headers(headers -> addAuth(headers, TenantPermissions.ARTIFACT_LINK_CREATE))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void revokeArtifactLinkDeniesFutureArtifactReads() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        when(conversionService.getJob(docId)).thenReturn(Optional.of(job));
+        artifactStore.putPdf(docId, sampleBytes());
+        ArtifactLinkResponse link = signedArtifactLink(job);
+
+        webTestClient.post()
+                .uri("/api/v1/viewer/artifact-links/{tokenId}/revoke", link.tokenId())
+                .headers(ArtifactControllerTest::addRevokePermission)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new ArtifactLinkRevocationRequest("shared outside tenant"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.tokenId").isEqualTo(link.tokenId())
+                .jsonPath("$.revoked").isEqualTo(true)
+                .jsonPath("$.revokedBy").isEqualTo(TenantContext.DEMO_SUBJECT_ID)
+                .jsonPath("$.reason").isEqualTo("shared outside tenant");
+
+        webTestClient.get()
+                .uri(link.artifactUrl())
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void revokeArtifactLinkReturnsNotFoundForUnknownOrCrossTenantToken() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        ArtifactLinkResponse link = signedArtifactLink(job);
+
+        webTestClient.post()
+                .uri("/api/v1/viewer/artifact-links/{tokenId}/revoke", "missing-token")
+                .headers(ArtifactControllerTest::addRevokePermission)
+                .exchange()
+                .expectStatus().isNotFound();
+        webTestClient.post()
+                .uri("/api/v1/viewer/artifact-links/{tokenId}/revoke", link.tokenId())
+                .headers(headers -> {
+                    headers.add(TenantContext.TENANT_ID_HEADER, "other-tenant");
+                    headers.add(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID);
+                    headers.add(TenantContext.PERMISSIONS_HEADER, TenantPermissions.ARTIFACT_LINK_REVOKE);
+                })
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void listArtifactReadEventsRequiresPermission() {
+        UUID docId = UUID.randomUUID();
+
+        webTestClient.get()
+                .uri("/api/v1/viewer/{docId}/artifact-read-events", docId)
+                .headers(headers -> addAuth(headers, TenantPermissions.VIEWER_READ))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void listsArtifactReadEventsForSuccessfulAndUnsatisfiableReads() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        when(conversionService.getJob(docId)).thenReturn(Optional.of(job));
+        byte[] pdf = sampleBytes();
+        artifactStore.putPdf(docId, pdf);
+        String artifactUrl = signedArtifactUrl(job);
+
+        webTestClient.get()
+                .uri(artifactUrl)
+                .header("X-Request-Id", "trace-ok")
+                .exchange()
+                .expectStatus().isOk();
+        webTestClient.get()
+                .uri(artifactUrl)
+                .header(HttpHeaders.RANGE, "bytes=100-200")
+                .header("X-Request-Id", "trace-416")
+                .exchange()
+                .expectStatus().isEqualTo(416);
+
+        webTestClient.get()
+                .uri("/api/v1/viewer/{docId}/artifact-read-events", docId)
+                .headers(ArtifactControllerTest::addAuditPermission)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$[0].tenantId").isEqualTo(TenantContext.DEMO_TENANT_ID)
+                .jsonPath("$[0].docId").isEqualTo(docId.toString())
+                .jsonPath("$[0].statusCode").isEqualTo(200)
+                .jsonPath("$[0].traceId").isEqualTo("trace-ok")
+                .jsonPath("$[1].rangeRequested").isEqualTo("bytes=100-200")
+                .jsonPath("$[1].statusCode").isEqualTo(416)
+                .jsonPath("$[1].traceId").isEqualTo("trace-416");
     }
 
     @Test
@@ -454,7 +562,11 @@ class ArtifactControllerTest {
     }
 
     private String signedArtifactUrl(ConversionJob job) {
-        return artifactLinkService.createLink(job, tenantContext(), ArtifactLinkRequest.viewerPreview()).artifactUrl();
+        return signedArtifactLink(job).artifactUrl();
+    }
+
+    private ArtifactLinkResponse signedArtifactLink(ConversionJob job) {
+        return artifactLinkService.createLink(job, tenantContext(), ArtifactLinkRequest.viewerPreview());
     }
 
     private static String artifactTokenFrom(String artifactUrl) {
@@ -472,6 +584,14 @@ class ArtifactControllerTest {
 
     private static void addArtifactLinkPermission(HttpHeaders headers) {
         addAuth(headers, TenantPermissions.ARTIFACT_LINK_CREATE);
+    }
+
+    private static void addRevokePermission(HttpHeaders headers) {
+        addAuth(headers, TenantPermissions.ARTIFACT_LINK_REVOKE);
+    }
+
+    private static void addAuditPermission(HttpHeaders headers) {
+        addAuth(headers, TenantPermissions.AUDIT_READ);
     }
 
     private static void addAuth(HttpHeaders headers, String permissions) {

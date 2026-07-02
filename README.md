@@ -52,8 +52,9 @@ OIDC/JWT validation.
 - `GET /viewer/{docId}` returns an HTML shell without checking job existence;
   the protected JSON APIs determine visible state.
 - Artifact reads now require a signed `artifactToken` query parameter or bearer
-  token. The current token is a stateless HMAC runtime scaffold; durable
-  revocation, persisted audit events, and object-store metadata remain open.
+  token. Issued tokens are recorded in a runtime ledger, can be revoked by
+  `tokenId`, and successful artifact reads are exposed as tenant-scoped audit
+  evidence. Durable external persistence and object-store metadata remain open.
 
 ## Acceptance gates (current)
 

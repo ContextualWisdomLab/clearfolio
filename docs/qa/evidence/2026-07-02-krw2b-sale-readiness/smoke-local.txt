@@ -1,12 +1,12 @@
-Clearfolio local auth/tenant/signed-artifact smoke
+Clearfolio local auth/tenant/signed-artifact-revocation-audit smoke
 Date: 2026-07-02
 root_shell_http=200
 demo_js_http=200
 missing_auth_kpi_http=401
 auth_empty_kpi_http=200
 upload_http=202
-job_id=0eadb50b-19c5-4d3b-aafb-82fbe15e1279
-status_url=/api/v1/convert/jobs/0eadb50b-19c5-4d3b-aafb-82fbe15e1279
+job_id=842baf65-a33d-437c-97d2-641fb425ed43
+status_url=/api/v1/convert/jobs/842baf65-a33d-437c-97d2-641fb425ed43
 final_status=SUCCEEDED
 status_tenant_id=buyer-demo
 viewer_html_http=200
@@ -15,13 +15,20 @@ viewer_preview_has_token=true
 viewer_artifact_link_scope=artifact:read
 artifact_link_http=200
 artifact_link_scope=artifact:read
+artifact_token_id_present=true
 unsigned_artifact_http=401
 signed_artifact_range_http=206
 signed_artifact_range_bytes=4
+artifact_read_audit_http=200
+artifact_read_audit_count=1
+artifact_read_audit_last_status=206
+artifact_revoke_http=200
+artifact_revoke_flag=true
+revoked_artifact_http=403
 cross_tenant_status_http=404
 auth_post_kpi_http=200
 
 totalJobs=1
 succeededJobs=1
 conversionSuccessRate=1.0
-p95TimeToPreviewMs=486
+p95TimeToPreviewMs=292

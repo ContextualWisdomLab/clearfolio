@@ -30,7 +30,7 @@ strict: partial evidence is marked partial, not complete.
 | Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=40`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
 | Is request handling non-blocking? | Ready | WebFlux controller path and `DefaultDocumentConversionService` enqueue behavior. | Real converter runtime is not integrated. | Converter adapter contract and load-test plan. |
 | Is persistence production-grade? | Missing | `ConversionJobRepository` abstraction exists. | In-memory repository only. | Durable repository design and migration plan. |
-| Are artifacts production-grade? | Partial | In-memory PDF artifact store, signed artifact-token runtime, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, revocation table, persisted read audit, or retention policy. | Durable artifact metadata and revocation implementation. |
+| Are artifacts production-grade? | Partial | In-memory PDF artifact store, signed artifact-token runtime, runtime token ledger, tenant-scoped token revocation, artifact read audit API, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, externally persisted revocation table, persisted read audit, or retention policy. | Durable artifact metadata and persisted revocation/audit implementation. |
 
 ## Security and Compliance Diligence
 
@@ -39,7 +39,7 @@ strict: partial evidence is marked partial, not complete.
 | Is there SAST evidence? | Ready | Semgrep evidence under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json`; 0 findings. | GitHub security checks are queued on PR #74. | Check-run snapshot when workflows complete. |
 | Are risky formats controlled? | Ready | HWP/HWPX default block, policy-override headers with token fingerprint logging, and `docs/security/2026-07-02-threat-model-data-handling.md`. | Policy ownership and approval workflow are not externalized. | Policy-owner matrix. |
 | Are browser security headers present? | Ready | `ViewerSecurityHeadersWebFilter` applies viewer browser headers. | CSP/frame policy still needs production domain matrix. | Deployment security profile. |
-| Is auth/RBAC implemented? | Partial | Header-claim runtime enforcement exists for JSON APIs and artifact links: `TenantAccessService`, tenant-owned `ConversionJob`, tenant-aware dedupe, cross-tenant `404`, tenant-filtered KPI snapshots, and signed artifact-token reads. Auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | Header claims are not cryptographically validated OIDC/JWT tokens, role mapping is not implemented, and audit events are not persisted. | Validated gateway/OIDC claims plus persisted audit/revocation. |
+| Is auth/RBAC implemented? | Partial | Header-claim runtime enforcement exists for JSON APIs and artifact links: `TenantAccessService`, tenant-owned `ConversionJob`, tenant-aware dedupe, cross-tenant `404`, tenant-filtered KPI snapshots, signed artifact-token reads, token revocation, and artifact read audit events. Auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | Header claims are not cryptographically validated OIDC/JWT tokens, role mapping is not implemented, and audit events are not persisted outside process memory. | Validated gateway/OIDC claims plus durable audit/revocation store. |
 | Is there license/SBOM evidence? | Partial | CycloneDX SBOM evidence exists under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; engineering review exists in `docs/security/2026-07-02-license-allowlist-review.md`. | Six flagged components still need legal approve, replace, or remove decisions. | Legal sign-off and CI allowlist enforcement. |
 | Is data handling documented? | Partial | `docs/security/2026-07-02-threat-model-data-handling.md` maps current data classes, trust boundaries, and retention limits. | Production retention policy, tenant ACLs, and durable encrypted stores are not implemented. | Production data-retention policy. |
 
@@ -76,7 +76,7 @@ strict: partial evidence is marked partial, not complete.
 
 1. Get legal sign-off or replacement decisions for flagged SBOM components.
 2. Replace demo tenant headers with validated gateway/OIDC JWT claims.
-3. Add durable artifact metadata, token revocation, and artifact read audit
-   events.
+3. Add durable artifact metadata and persist token revocation plus artifact
+   read audit events outside process memory.
 4. Implement durable metrics events.
 5. Add seeded demo screenshots and Figma high-fidelity frames.

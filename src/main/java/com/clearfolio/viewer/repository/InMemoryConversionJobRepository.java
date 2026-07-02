@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -88,5 +89,13 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository 
         }
 
         return findById(jobId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Iterable<ConversionJob> findAll() {
+        return List.copyOf(jobs.values());
     }
 }

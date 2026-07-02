@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.util.unit.DataSize;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,11 @@ import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.PolicyOverrideRequest;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
+import com.clearfolio.viewer.artifact.ArtifactStore;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Optional;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -43,18 +49,22 @@ public class ConversionController {
     public static final String OPERATOR_ID_HEADER = "X-Clearfolio-Operator-Id";
 
     private final DocumentConversionService conversionService;
+    private final ArtifactStore artifactStore;
     private final int maxInMemorySizeBytes;
 
     /**
      * Creates a controller that delegates conversion operations to the service layer.
      *
      * @param conversionService conversion service
+     * @param artifactStore artifact store for downloading pdfs
      * @param maxInMemorySize maximum in-memory multipart size
      */
     public ConversionController(
             DocumentConversionService conversionService,
+            ArtifactStore artifactStore,
             @Value("${spring.codec.max-in-memory-size:262144B}") DataSize maxInMemorySize) {
         this.conversionService = conversionService;
+        this.artifactStore = artifactStore;
         long bytes = Math.max(1L, maxInMemorySize.toBytes());
         this.maxInMemorySizeBytes = bytes > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) bytes;
     }
@@ -146,6 +156,94 @@ public class ConversionController {
     @GetMapping({"/api/v1/viewer/{docId}", "/api/v1/convert/viewer/{docId}"})
     public ViewerBootstrapResponse getViewer(@PathVariable("docId") UUID docId) {
         return getViewerBootstrap(docId);
+    }
+
+    /**
+     * Downloads the converted PDF artifact.
+     *
+     * @param jobId conversion job identifier
+     * @return PDF bytes with attachment disposition and checksum header
+     */
+    @GetMapping("/api/v1/convert/jobs/{jobId}/download")
+    public Mono<ResponseEntity<byte[]>> downloadArtifact(@PathVariable UUID jobId) {
+        ConversionJob job = conversionService.getJob(jobId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
+
+        if (job.getStatus() != ConversionJobStatus.SUCCEEDED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    job.getStatus() + " not ready yet. retry in a few seconds"
+            );
+        }
+
+        Optional<byte[]> stored = artifactStore.getPdf(jobId);
+        if (stored.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "artifact not found");
+        }
+
+        byte[] pdfBytes = stored.get();
+        String checksum = calculateSha256(pdfBytes);
+        String filename = pdfDownloadFilename(job.getOriginalFileName());
+        ContentDisposition contentDisposition = ContentDisposition.attachment()
+                .filename(filename)
+                .build();
+
+        return Mono.just(ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
+                .header("X-Checksum-Sha256", checksum)
+                .body(pdfBytes));
+    }
+
+    private static String pdfDownloadFilename(String originalFileName) {
+        String baseName = "document";
+        if (originalFileName != null && !originalFileName.isBlank()) {
+            baseName = originalFileName.strip();
+            int lastDotIndex = baseName.lastIndexOf('.');
+            if (lastDotIndex > 0) {
+                baseName = baseName.substring(0, lastDotIndex);
+            }
+        }
+
+        String sanitized = sanitizeFilenameBase(baseName);
+        if (sanitized.isBlank() || sanitized.chars().allMatch(character -> character == '.' || character == '_')) {
+            sanitized = "document";
+        }
+        return sanitized + ".pdf";
+    }
+
+    private static String sanitizeFilenameBase(String baseName) {
+        StringBuilder sanitized = new StringBuilder(baseName.length());
+        for (int index = 0; index < baseName.length(); index++) {
+            char character = baseName.charAt(index);
+            if (Character.isLetterOrDigit(character)
+                    || character == '.'
+                    || character == '-'
+                    || character == '_') {
+                sanitized.append(character);
+            } else {
+                sanitized.append('_');
+            }
+        }
+        return sanitized.toString();
+    }
+
+    private String calculateSha256(byte[] data) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(data);
+            StringBuilder hexString = new StringBuilder(2 * hash.length);
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 algorithm not available", e);
+        }
     }
 
     private ViewerBootstrapResponse getViewerBootstrap(UUID docId) {

@@ -50,4 +50,11 @@ public interface ConversionJobRepository {
      * @return canonical stored conversion job and whether the candidate was created
      */
     FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate);
+
+    /**
+     * Finds all conversion jobs.
+     *
+     * @return an iterable of all conversion jobs
+     */
+    Iterable<ConversionJob> findAll();
 }

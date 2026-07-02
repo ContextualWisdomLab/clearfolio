@@ -18,6 +18,7 @@ class ConversionExecutorConfigTest {
 
         Executor executor = config.conversionExecutor(properties);
 
+        assertThat(executor).isInstanceOf(ThreadPoolTaskExecutor.class);
         ThreadPoolTaskExecutor taskExecutor = (ThreadPoolTaskExecutor) executor;
         try {
             assertThat(taskExecutor.getCorePoolSize()).isEqualTo(1);

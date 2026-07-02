@@ -43,3 +43,31 @@ Added `Clearfolio Buyer Integration Deployment Flow` to:
 <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>
 
 Figma Code Connect was not used.
+
+## Review Thread Follow-Up
+
+Date: 2026-07-02T21:24:59+0900
+
+Source head before this follow-up:
+`2a6a0907ba87e409e594bfaa42bd48933635ed15`
+
+Unresolved Copilot review comments were not treated as a process blocker, but
+three small test-clarity comments were actionable and low risk:
+
+- renamed `HealthControllerTest` method so it no longer claims HTTP routing
+  coverage when it directly invokes the controller method;
+- added `details.maxUploadSize=1024` assertion to the reactive codec limit test
+  so it cannot pass through the service validation path by accident;
+- asserted `ThreadPoolTaskExecutor` type before casting in
+  `ConversionExecutorConfigTest`.
+
+Verification after the follow-up:
+
+| Gate | Result |
+| --- | --- |
+| Targeted tests | `mvn -Dtest=HealthControllerTest,ConversionControllerMultipartLimitTest,ConversionExecutorConfigTest test` passed, 11 tests, 0 failures, 0 errors. |
+| Compile | `mvn -DskipTests compile` passed, no compile warnings in output. |
+| Markdown lint | `npx markdownlint-cli2 ...` passed, 8 files, 0 errors. |
+| JavaDoc | `mvn -q -DskipTests javadoc:javadoc` passed, no output. |
+| SAST | Semgrep passed, 60 Java rules, 50 tracked files, 0 findings, 0 errors. |
+| Full tests and coverage | `mvn test` passed, 312 tests, 0 failures, 0 errors; `missed_instr=0 missed_branch=0 missed_line=0`. |

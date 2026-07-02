@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class HealthControllerTest {
 
     @Test
-    void healthEndpointReturnsOkAndPayload() {
+    void healthControllerReturnsOkPayload() {
         final HealthController controller = new HealthController();
 
         final Map<String, String> response = controller.health();

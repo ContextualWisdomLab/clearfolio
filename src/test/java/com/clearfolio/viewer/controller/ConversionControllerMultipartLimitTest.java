@@ -109,6 +109,7 @@ class ConversionControllerMultipartLimitTest {
                 .jsonPath("$.errorCode").isEqualTo("BAD_REQUEST")
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
                 .jsonPath("$.message").isEqualTo("File is too large.")
+                .jsonPath("$.details.maxUploadSize").isEqualTo(1024)
                 .jsonPath("$.traceId").value(ConversionControllerMultipartLimitTest::assertNonBlankTraceId);
     }
 

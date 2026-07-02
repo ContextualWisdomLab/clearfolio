@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,6 +43,13 @@ public interface ConversionJobRepository {
      * @return matching conversion job when found
      */
     Optional<ConversionJob> findByContentHash(String contentHash);
+
+    /**
+     * Returns a snapshot of all known conversion jobs.
+     *
+     * @return current conversion jobs
+     */
+    List<ConversionJob> findAll();
 
     /**
      * Stores a new job or returns the existing canonical job for the same hash.

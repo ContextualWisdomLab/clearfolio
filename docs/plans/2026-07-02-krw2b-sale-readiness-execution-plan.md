@@ -183,6 +183,13 @@ The analytics package should maintain three cases:
 - Add seeded demo data so Figma, local demo, and buyer deck use the same story.
 - Add evidence snapshots under `docs/qa/evidence/` for each release candidate.
 
+Progress as of 2026-07-02:
+
+- `GET /api/v1/analytics/kpi-snapshot` now exports current runtime counters
+  for total, submitted, processing, succeeded, failed, dead-lettered,
+  conversion success rate, and p95 time-to-preview. This is intentionally
+  scoped to current in-memory runtime data until durable persistence exists.
+
 ## Library and submodule decision
 
 Do not split a separate library or Git submodule in the first sale-readiness

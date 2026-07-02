@@ -24,6 +24,7 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
 - `POST /api/v1/convert/jobs/{jobId}/retry`: operator-triggered retry for dead-lettered jobs.
 - `GET /viewer/{docId}`: canonical HTML viewer UI entrypoint (mobile-safe loading/failed/ready states).
 - `GET /api/v1/viewer/{docId}` and `GET /api/v1/convert/viewer/{docId}`: viewer bootstrap JSON (unchanged response shape).
+- `GET /api/v1/analytics/kpi-snapshot`: current conversion KPI counters for demo and diligence evidence.
 - `GET /artifacts/{docId}.pdf`: serves converted PDF bytes (SUCCEEDED jobs only) with single-range support.
 - Errors follow shared shape (`errorCode`, optional `code`, `message`, `traceId`, `details`) for 404/409/400/500 paths.
 - `GET /healthz`: readiness probe.

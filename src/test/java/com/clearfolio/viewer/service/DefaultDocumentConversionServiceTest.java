@@ -575,6 +575,11 @@ class DefaultDocumentConversionServiceTest {
         }
 
         @Override
+        public java.util.List<ConversionJob> findAll() {
+            return java.util.List.of();
+        }
+
+        @Override
         public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
             return finder.apply(candidate);
         }

@@ -27,6 +27,19 @@ class InMemoryConversionJobRepositoryTest {
     }
 
     @Test
+    void findAllReturnsStoredJobsSnapshot() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob first = newJob("hash-a");
+        ConversionJob second = newJob("hash-b");
+        repository.save(first);
+        repository.save(second);
+
+        assertTrue(repository.findAll().contains(first));
+        assertTrue(repository.findAll().contains(second));
+        assertEquals(2, repository.findAll().size());
+    }
+
+    @Test
     void findByContentHashReturnsEmptyForBlankOrMissingHash() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
 

@@ -195,6 +195,8 @@ Progress as of 2026-07-02:
   `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`.
 - Market, valuation, pricing, and KPI thresholds are now captured in
   `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`.
+- Buyer diligence questions, current evidence, gaps, and next closure artifacts
+  are now indexed in `docs/diligence/2026-07-02-buyer-diligence-index.md`.
 
 ## Library and submodule decision
 

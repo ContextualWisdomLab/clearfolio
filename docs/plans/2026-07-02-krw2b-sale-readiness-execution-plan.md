@@ -206,6 +206,13 @@ Progress as of 2026-07-02:
   seeds succeeded, processing, unsupported-format, dead-lettered, KPI snapshot,
   and KPI export evidence into the browser session so local screenshots, FigJam,
   and buyer-deck material use the same Product Design and Data Analytics story.
+- The Figma buyer diligence closure map is now captured on the FigJam evidence
+  board as `Clearfolio KRW 2B Buyer Diligence Closure Map`. The companion
+  handoff in
+  `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md` defines the
+  Slides deck plan, Product Design acceptance, KPI frame, claim boundaries, and
+  Ponytail no-split decision. Figma Slides generation is prepared but waiting
+  for team or organization plan selection in the Figma widget.
 - Figma evidence flow is now captured as a FigJam artifact and mirrored in
   `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`.
 - Market, valuation, pricing, and KPI thresholds are now captured in

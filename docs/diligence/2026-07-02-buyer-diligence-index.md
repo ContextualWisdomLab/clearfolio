@@ -18,7 +18,7 @@ strict: partial evidence is marked partial, not complete.
 | --- | --- | --- | --- | --- |
 | Can a buyer run a demo from upload to preview? | Ready | `GET /`, `POST /api/v1/convert/jobs`, `/viewer/{docId}`; local smoke proof in PR #74; root shell `Load demo story` control backed by `src/main/resources/static/assets/viewer/demo-fixtures.json`; desktop/mobile seeded screenshots under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/screenshots/`. | Demo uses in-memory runtime and static local seed data. | High-fidelity Figma frames from the seeded states. |
 | Does the UI expose buyer-readable KPIs? | Ready | `GET /api/v1/analytics/kpi-snapshot`; root shell reads tenant-scoped runtime KPI snapshot and renders a KPI snapshot evidence panel from `GET /api/v1/analytics/kpi-snapshot-exports`; optional `clearfolio.analytics-snapshot-ledger.path` records exported snapshots; durable model in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | Full lifecycle KPI history is not implemented durably yet. | Durable metric event implementation. |
-| Is the Figma design story available without Code Connect? | Ready | FigJam evidence flow, seeded buyer-demo story flow, uploaded desktop/mobile screenshot nodes `25:1423` and `25:1422`, and `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`. | High-fidelity screen frames are not complete. | Figma frames for desktop/mobile happy and negative paths. |
+| Is the Figma design story available without Code Connect? | Ready | FigJam evidence flow, seeded buyer-demo story flow, buyer diligence closure map, uploaded desktop/mobile screenshot nodes `25:1423` and `25:1422`, `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`, and `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md`. | High-fidelity screen frames are not complete; Figma Slides generation is waiting for team or organization plan selection in the widget. | Figma frames for desktop/mobile happy and negative paths, then Slides deck generation. |
 | Are unsupported and failed states explained? | Partial | HWP/HWPX block behavior, error schema, failed job retry flow, buyer-demo status table, root-shell job detail drawer, and session-scoped operator recovery evidence panel. | Retry is surfaced in the buyer-demo shell, but not yet as a production admin UI. | Production operator job management surface. |
 
 ## Technical Diligence
@@ -56,10 +56,12 @@ strict: partial evidence is marked partial, not complete.
 
 | Evidence item | Location |
 | --- | --- |
-| Active PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/74> |
+| Active PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/82> |
+| Baseline sale-readiness PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/74> |
 | Sale-readiness plan | `docs/plans/2026-07-02-krw2b-sale-readiness-execution-plan.md` |
 | Business model | `docs/business/2026-07-02-krw2b-valuation-kpi-model.md` |
 | FigJam handoff | `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md` |
+| Buyer diligence Slides and closure map handoff | `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md` |
 | Threat model and data handling | `docs/security/2026-07-02-threat-model-data-handling.md` |
 | Signed artifact design | `docs/security/2026-07-02-signed-artifact-link-design.md` |
 | Auth and tenant model | `docs/security/2026-07-02-auth-tenant-model.md` |
@@ -69,7 +71,7 @@ strict: partial evidence is marked partial, not complete.
 | SBOM evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-status.txt` |
 | SAST evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json` |
 | Buyer-demo implementation | `src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`, `src/main/resources/static/assets/viewer/demo.js`, `src/main/resources/static/assets/viewer/viewer.css`; includes KPI evidence and session-scoped operator recovery evidence panels. |
-| Seeded buyer-demo story | `src/main/resources/static/assets/viewer/demo-fixtures.json`, `docs/superpowers/plans/2026-07-03-seeded-buyer-demo-story.md`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/seeded-demo-story-verification.md`, and `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/screenshots/`; includes succeeded, processing, unsupported-format, dead-lettered, KPI snapshot, KPI export, desktop screenshot, and mobile screenshot evidence for Figma handoff. |
+| Seeded buyer-demo story | `src/main/resources/static/assets/viewer/demo-fixtures.json`, `docs/superpowers/plans/2026-07-03-seeded-buyer-demo-story.md`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/seeded-demo-story-verification.md`, and `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/screenshots/`; includes succeeded, processing, unsupported-format, dead-lettered, KPI snapshot, KPI export, desktop screenshot, mobile screenshot, FigJam closure map, and buyer-diligence Slides handoff evidence. |
 | KPI API implementation | `src/main/java/com/clearfolio/viewer/controller/AnalyticsController.java`, `src/main/java/com/clearfolio/viewer/api/KpiSnapshotResponse.java`, `src/main/java/com/clearfolio/viewer/api/KpiSnapshotExportResponse.java` |
 | KPI snapshot evidence ledger | `src/main/java/com/clearfolio/viewer/analytics/KpiSnapshotLedger.java`, `src/main/java/com/clearfolio/viewer/analytics/KpiSnapshotRecord.java`; includes optional `clearfolio.analytics-snapshot-ledger.path` file-backed replay and tenant-scoped lookup for exported KPI snapshots. |
 | Auth/tenant runtime slice | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`, `src/main/java/com/clearfolio/viewer/auth/TenantContext.java`, `src/main/java/com/clearfolio/viewer/model/ConversionJob.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java`; includes optional gateway HMAC validation when `clearfolio.tenant-claims.hmac-secret` is set. |
@@ -91,4 +93,5 @@ strict: partial evidence is marked partial, not complete.
 5. Promote process-local conversion lifecycle events and optional KPI snapshot
    ledger evidence into durable metrics events and daily projections.
 6. Produce high-fidelity Figma frames from the seeded desktop/mobile screenshot
-   states.
+   states, then generate the buyer diligence Slides deck after Figma plan
+   selection is available.

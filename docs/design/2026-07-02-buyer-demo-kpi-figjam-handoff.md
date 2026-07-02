@@ -43,6 +43,10 @@ Date: 2026-07-02
   `Clearfolio Seeded Buyer Demo Story Flow`.
 - Added seeded buyer-demo screenshots on the same board:
   desktop node `25:1423`, mobile node `25:1422`.
+- Added FigJam diagram on the same board:
+  `Clearfolio KRW 2B Buyer Diligence Closure Map`.
+- Buyer diligence Slides handoff:
+  `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -73,6 +77,9 @@ Date: 2026-07-02
   evidence, not production data or a durable analytics source.
 - Desktop and mobile screenshot evidence must come from the running local
   product surface after clicking `Load demo story`, not from static mockups.
+- Buyer diligence presentation artifacts must keep `Ready`, `Partial`, and gap
+  states visually distinct; local seeded proof must not be styled as production
+  data.
 
 ## Data Analytics Mapping
 
@@ -88,6 +95,7 @@ Date: 2026-07-02
 | Recovery evidence panel | Browser session history plus job status payloads | Shows needs-action jobs, retry-ready dead letters, last accepted retry, and latest inspected detail without a new admin system. |
 | Lifecycle event trail | `ConversionJobLifecycleEvent` | Proves ordered transition evidence in the current runtime without storing filenames, content hashes, artifact paths, signed tokens, or raw converter errors. |
 | Seeded demo story | `demo-fixtures.json` | Gives screenshots, FigJam, and buyer-deck review one deterministic local story covering success, processing, unsupported-format, dead-letter, KPI snapshot, and KPI export evidence. |
+| Buyer diligence closure map | FigJam diagram plus `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md` | Aligns Product Design, Data Analytics, Figma, Superpowers, and Ponytail workstreams around current proof, open gaps, and next closure order. |
 
 ## Mermaid Source
 

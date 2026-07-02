@@ -9,10 +9,21 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
+import com.clearfolio.viewer.api.ArtifactLinkRequest;
+import com.clearfolio.viewer.api.ArtifactLinkResponse;
+import com.clearfolio.viewer.artifact.ArtifactLinkService;
 import com.clearfolio.viewer.artifact.ArtifactStore;
+import com.clearfolio.viewer.artifact.ArtifactTokenException;
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.service.DocumentConversionService;
@@ -29,16 +40,46 @@ public class ArtifactController {
 
     private final DocumentConversionService conversionService;
     private final ArtifactStore artifactStore;
+    private final ArtifactLinkService artifactLinkService;
+    private final TenantAccessService tenantAccessService;
 
     /**
      * Creates a controller that serves stored conversion artifacts.
      *
      * @param conversionService conversion service for status gating
      * @param artifactStore artifact store for PDF bytes
+     * @param artifactLinkService signed artifact link service
+     * @param tenantAccessService tenant and permission guard
      */
-    public ArtifactController(DocumentConversionService conversionService, ArtifactStore artifactStore) {
+    public ArtifactController(
+            DocumentConversionService conversionService,
+            ArtifactStore artifactStore,
+            ArtifactLinkService artifactLinkService,
+            TenantAccessService tenantAccessService) {
         this.conversionService = conversionService;
         this.artifactStore = artifactStore;
+        this.artifactLinkService = artifactLinkService;
+        this.tenantAccessService = tenantAccessService;
+    }
+
+    /**
+     * Creates a short-lived signed artifact link for a converted document.
+     *
+     * @param docId document identifier
+     * @param request optional link request
+     * @param headers request headers carrying tenant claims
+     * @return signed artifact link payload
+     */
+    @PostMapping("/api/v1/viewer/{docId}/artifact-links")
+    public ArtifactLinkResponse createArtifactLink(
+            @PathVariable UUID docId,
+            @RequestBody(required = false) ArtifactLinkRequest request,
+            @RequestHeader HttpHeaders headers) {
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ARTIFACT_LINK_CREATE);
+        ConversionJob job = conversionService.getJob(docId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "artifact not found"));
+        tenantAccessService.requireSameTenant(tenantContext, job);
+        return artifactLinkService.createLink(job, tenantContext, request);
     }
 
     /**
@@ -48,12 +89,16 @@ public class ArtifactController {
      *
      * @param docId document identifier
      * @param rangeHeader optional {@code Range} header
+     * @param queryToken signed artifact token query parameter
+     * @param authorizationHeader optional bearer artifact token
      * @return PDF bytes when available
      */
     @GetMapping(value = "/artifacts/{docId}.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public Mono<ResponseEntity<byte[]>> getPdf(
             @PathVariable UUID docId,
-            @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader) {
+            @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader,
+            @RequestParam(value = ArtifactLinkService.ARTIFACT_TOKEN_PARAM, required = false) String queryToken,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader) {
         Optional<ConversionJob> job = conversionService.getJob(docId);
         if (job.isEmpty() || job.get().getStatus() != ConversionJobStatus.SUCCEEDED) {
             return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
@@ -65,6 +110,13 @@ public class ArtifactController {
         }
 
         byte[] pdfBytes = stored.get();
+        String token = ArtifactLinkService.resolveToken(queryToken, authorizationHeader);
+        try {
+            artifactLinkService.verifyReadToken(docId, job.get(), pdfBytes, token);
+        } catch (ArtifactTokenException ex) {
+            return Mono.just(tokenFailure(ex.getStatus()));
+        }
+
         int totalLength = pdfBytes.length;
 
         Optional<ResolvedRange> range = resolveSingleRange(rangeHeader, totalLength);
@@ -119,6 +171,13 @@ public class ArtifactController {
                 .header("X-Content-Type-Options", "nosniff")
                 .header(HttpHeaders.ACCEPT_RANGES, RANGE_UNIT_BYTES)
                 .header(HttpHeaders.CONTENT_RANGE, RANGE_UNIT_BYTES + " */" + totalLength)
+                .build();
+    }
+
+    private static ResponseEntity<byte[]> tokenFailure(HttpStatus status) {
+        return ResponseEntity.status(status)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header("X-Content-Type-Options", "nosniff")
                 .build();
     }
 

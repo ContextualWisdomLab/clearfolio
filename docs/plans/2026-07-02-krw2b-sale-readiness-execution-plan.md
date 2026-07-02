@@ -205,14 +205,16 @@ Progress as of 2026-07-02:
 - Engineering license allowlist review is now captured in
   `docs/security/2026-07-02-license-allowlist-review.md`; legal clearance
   remains open for 6 flagged components.
-- Signed artifact link design is now captured in
+- Signed artifact link runtime is now implemented for current in-memory PDF
+  artifacts and captured in
   `docs/security/2026-07-02-signed-artifact-link-design.md`.
 - Auth, RBAC, and tenant model design is now captured in
   `docs/security/2026-07-02-auth-tenant-model.md`; the first runtime slice now
   enforces tenant headers and permissions on JSON APIs, stores job tenant
   metadata, filters KPI snapshots by tenant, and hides cross-tenant jobs.
-  Validated OIDC/JWT claims, role mapping, audit persistence, and signed
-  artifact tokens remain open.
+  Signed artifact tokens are now enforced for artifact reads. Validated
+  OIDC/JWT claims, role mapping, durable revocation, and audit persistence
+  remain open.
 - Durable metrics event model is now captured in
   `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
 
@@ -263,6 +265,8 @@ Progress as of 2026-07-02:
 - Demo JS now sends `buyer-demo` tenant headers to protected JSON APIs, and the
   viewer shell no longer reveals job existence before the protected status API
   decides state.
+- Viewer bootstrap now returns a short-lived signed artifact URL, and direct
+  artifact reads require an `artifactToken` query parameter or bearer token.
 
 ### Phase 2: Due-diligence pack
 
@@ -280,8 +284,9 @@ Replace MVP internals that buyers will discount.
 
 - Add durable job repository and migration strategy.
 - Add real artifact store abstraction.
-- Add signed preview resource links.
 - Replace demo tenant headers with validated OIDC/S2S claims and role mapping.
+- Add durable artifact metadata, token revocation, and artifact read audit
+  events.
 - Add metrics and observability.
 - Add converter runtime integration behind a stable adapter boundary.
 

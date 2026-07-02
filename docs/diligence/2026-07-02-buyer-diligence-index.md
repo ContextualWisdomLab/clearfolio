@@ -27,10 +27,10 @@ strict: partial evidence is marked partial, not complete.
 | --- | --- | --- | --- | --- |
 | Is the architecture inspectable? | Ready | `docs/architecture.md`, PRD/TRD, diagrams, package boundaries. | Target production architecture is still partly roadmap. | Target architecture diagram for durable queue/store. |
 | Are the mandatory gates reproducible? | Ready | Maven compile/test/JaCoCo/JavaDoc commands in PR #74, AGENTS gate policy, and `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md`. | GitHub hosted checks are queued. | Attach CI pass or queued-check explanation when available. |
-| Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=32`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
+| Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=40`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
 | Is request handling non-blocking? | Ready | WebFlux controller path and `DefaultDocumentConversionService` enqueue behavior. | Real converter runtime is not integrated. | Converter adapter contract and load-test plan. |
 | Is persistence production-grade? | Missing | `ConversionJobRepository` abstraction exists. | In-memory repository only. | Durable repository design and migration plan. |
-| Are artifacts production-grade? | Partial | In-memory PDF artifact store, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, signed URL runtime, or retention; artifact path is not yet tokenized even though JSON APIs now enforce tenant headers. | Signed artifact link implementation. |
+| Are artifacts production-grade? | Partial | In-memory PDF artifact store, signed artifact-token runtime, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, revocation table, persisted read audit, or retention policy. | Durable artifact metadata and revocation implementation. |
 
 ## Security and Compliance Diligence
 
@@ -39,7 +39,7 @@ strict: partial evidence is marked partial, not complete.
 | Is there SAST evidence? | Ready | Semgrep evidence under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json`; 0 findings. | GitHub security checks are queued on PR #74. | Check-run snapshot when workflows complete. |
 | Are risky formats controlled? | Ready | HWP/HWPX default block, policy-override headers with token fingerprint logging, and `docs/security/2026-07-02-threat-model-data-handling.md`. | Policy ownership and approval workflow are not externalized. | Policy-owner matrix. |
 | Are browser security headers present? | Ready | `ViewerSecurityHeadersWebFilter` applies viewer browser headers. | CSP/frame policy still needs production domain matrix. | Deployment security profile. |
-| Is auth/RBAC implemented? | Partial | Header-claim runtime enforcement exists for JSON APIs: `TenantAccessService`, tenant-owned `ConversionJob`, tenant-aware dedupe, cross-tenant `404`, and tenant-filtered KPI snapshots. Auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | Header claims are not cryptographically validated OIDC/JWT tokens, role mapping is not implemented, audit events are not persisted, and artifact URLs are not signed. | Validated gateway/OIDC claims plus signed artifact token enforcement. |
+| Is auth/RBAC implemented? | Partial | Header-claim runtime enforcement exists for JSON APIs and artifact links: `TenantAccessService`, tenant-owned `ConversionJob`, tenant-aware dedupe, cross-tenant `404`, tenant-filtered KPI snapshots, and signed artifact-token reads. Auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | Header claims are not cryptographically validated OIDC/JWT tokens, role mapping is not implemented, and audit events are not persisted. | Validated gateway/OIDC claims plus persisted audit/revocation. |
 | Is there license/SBOM evidence? | Partial | CycloneDX SBOM evidence exists under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; engineering review exists in `docs/security/2026-07-02-license-allowlist-review.md`. | Six flagged components still need legal approve, replace, or remove decisions. | Legal sign-off and CI allowlist enforcement. |
 | Is data handling documented? | Partial | `docs/security/2026-07-02-threat-model-data-handling.md` maps current data classes, trust boundaries, and retention limits. | Production retention policy, tenant ACLs, and durable encrypted stores are not implemented. | Production data-retention policy. |
 
@@ -70,11 +70,13 @@ strict: partial evidence is marked partial, not complete.
 | Buyer-demo implementation | `src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`, `src/main/resources/static/assets/viewer/demo.js`, `src/main/resources/static/assets/viewer/viewer.css` |
 | KPI API implementation | `src/main/java/com/clearfolio/viewer/controller/AnalyticsController.java`, `src/main/java/com/clearfolio/viewer/api/KpiSnapshotResponse.java` |
 | Auth/tenant runtime slice | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`, `src/main/java/com/clearfolio/viewer/auth/TenantContext.java`, `src/main/java/com/clearfolio/viewer/model/ConversionJob.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java` |
+| Signed artifact runtime slice | `src/main/java/com/clearfolio/viewer/artifact/ArtifactLinkService.java`, `src/main/java/com/clearfolio/viewer/controller/ArtifactController.java`, `src/main/java/com/clearfolio/viewer/api/ArtifactLinkResponse.java` |
 
 ## Next Closure Order
 
 1. Get legal sign-off or replacement decisions for flagged SBOM components.
 2. Replace demo tenant headers with validated gateway/OIDC JWT claims.
-3. Implement signed artifact links after validated auth and tenant enforcement.
+3. Add durable artifact metadata, token revocation, and artifact read audit
+   events.
 4. Implement durable metrics events.
 5. Add seeded demo screenshots and Figma high-fidelity frames.

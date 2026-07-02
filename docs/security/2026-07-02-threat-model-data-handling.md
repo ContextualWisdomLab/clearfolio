@@ -4,9 +4,8 @@ Date: 2026-07-02
 
 This document closes the current buyer-diligence gap for a repository-scoped
 threat model, data-flow map, and retention classification. It reflects the
-current MVP runtime only. It does not claim production tenant isolation, RBAC,
-signed artifact URLs, durable storage, antivirus scanning, or a hardened
-converter sandbox.
+current MVP runtime only. It does not claim production OIDC/JWT identity,
+durable storage, antivirus scanning, or a hardened converter sandbox.
 
 ## Overview
 
@@ -25,8 +24,8 @@ Primary runtime surfaces:
 - `GET /api/v1/viewer/{docId}` and `/api/v1/convert/viewer/{docId}`: JSON
   viewer bootstrap for succeeded jobs.
 - `GET /viewer/{docId}`: PDF.js-backed HTML viewer shell.
-- `GET /artifacts/{docId}.pdf`: converted PDF artifact with single-range
-  support.
+- `GET /artifacts/{docId}.pdf`: converted PDF artifact with signed-token
+  verification and single-range support.
 - `GET /api/v1/analytics/kpi-snapshot`: read-only runtime KPI counters.
 - `GET /healthz`: readiness probe.
 
@@ -34,9 +33,10 @@ The current security posture is MVP-grade and evidence-oriented. It has
 bounded upload size, blocked HWP/HWPX defaults, policy override audit
 fingerprints, warning-free compile gates, 100 percent production package
 JaCoCo line/branch coverage, JavaDoc gates, Semgrep evidence, no-store artifact
-responses, and viewer CSP headers. The largest production gaps are no auth/RBAC,
-no tenant boundary, no durable encrypted store, no signed artifact links, no AV
-or file-type deep inspection, and no isolated real converter runtime.
+responses, signed artifact tokens, tenant-scoped JSON APIs, and viewer CSP
+headers. The largest production gaps are no validated OIDC/JWT, no durable
+encrypted store, no revocation/audit persistence for artifact tokens, no AV or
+file-type deep inspection, and no isolated real converter runtime.
 
 ## Threat Model, Trust Boundaries, and Assumptions
 
@@ -46,7 +46,7 @@ or file-type deep inspection, and no isolated real converter runtime.
 | --- | --- | --- |
 | Uploaded source bytes | Request memory during `POST /api/v1/convert/jobs` | Can contain confidential business documents. |
 | Conversion job metadata | `InMemoryConversionJobRepository` | Includes file name, content type, hash, size, status, timing, and retry state. |
-| Converted PDF bytes | `InMemoryArtifactStore` | Preview artifact is retrievable by `docId` while the process is alive. |
+| Converted PDF bytes | `InMemoryArtifactStore` | Preview artifact is retrievable with a short-lived signed artifact token while the process is alive. |
 | Approval token | Request header during blocked-format override | Must not be logged or persisted raw. |
 | Operator retry authority | `X-Clearfolio-Operator-Id` header | Requeues dead-lettered jobs and affects audit trail. |
 | Browser session history | User browser session | Contains local demo history and document/job labels. |
@@ -59,16 +59,17 @@ or file-type deep inspection, and no isolated real converter runtime.
 | Public HTTP request to WebFlux controllers | Browser, API client, uploaded file, headers, path IDs, range header | Controller and service layer | UUID binding, multipart size cap, extension blocklist, range parsing, stable error responses. |
 | Upload validation to background conversion | User-provided file and filename | Validation service, job repository, worker executor | HWP/HWPX block by default, max upload bytes, SHA-256 content hash dedupe, async queue. |
 | Worker to artifact store | Conversion output bytes | In-memory PDF artifact store | Generated PDF is synthetic in current MVP, cloned on put/get. |
-| Viewer HTML to browser | Static JS/CSS, PDF.js iframe, artifact URL | User browser | CSP on `/viewer`, `no-store`, `nosniff`, `no-referrer`, same-origin defaults. |
+| Viewer HTML to browser | Static JS/CSS, PDF.js iframe, signed artifact URL | User browser | CSP on `/viewer`, artifact token verification, `no-store`, `nosniff`, `no-referrer`, same-origin defaults. |
 | Operator retry | Operator-supplied identifier | Dead-letter retry transition | Non-blank operator header required; retry only for failed dead-lettered jobs. |
 | Analytics API | Any caller with network access | In-memory job repository | Read-only projection, no raw upload bytes, no token output. |
 
 ### Assumptions
 
-- The current service is a single-tenant MVP running behind a trusted network or
-  demo environment. It is not internet-hardened as a standalone SaaS service.
-- `docId` acts as an unguessable capability only because it is a UUID. There is
-  no authorization check, signed URL, expiry, tenant scope, or revocation model.
+- The current service is an MVP running behind a trusted network or demo
+  environment. It is not internet-hardened as a standalone SaaS service.
+- `docId` is no longer sufficient to read artifacts; artifact reads require a
+  signed token bound to document, tenant, expiry, scope, and checksum. Durable
+  revocation is not implemented yet.
 - Source document bytes are not durably stored by the current application after
   submission. Converted PDF bytes and metadata live in memory until process
   restart.
@@ -89,6 +90,7 @@ or file-type deep inspection, and no isolated real converter runtime.
   `X-Clearfolio-Approval-Token`, and `X-Clearfolio-Approver-Id`.
 - Operator retry header `X-Clearfolio-Operator-Id`.
 - `jobId` and `docId` path variables.
+- `artifactToken` query parameter or bearer token for artifact reads.
 - HTTP `Range` header for artifact reads.
 - Optional `X-Trace-Id` header reflected in API error payloads.
 - Browser execution environment for the root shell and viewer shell.
@@ -108,9 +110,9 @@ or file-type deep inspection, and no isolated real converter runtime.
   content hash.
 - `DefaultConversionWorker` uses a bounded executor, retry backoff, and
   dead-letter terminal state.
-- `ArtifactController` serves artifacts only for `SUCCEEDED` jobs, supports one
-  range, rejects invalid or unsatisfiable ranges, and sets `no-store` plus
-  `X-Content-Type-Options: nosniff`.
+- `ArtifactController` serves artifacts only for `SUCCEEDED` jobs with a valid
+  artifact token, supports one range, rejects invalid or unsatisfiable ranges,
+  and sets `no-store` plus `X-Content-Type-Options: nosniff`.
 - `ViewerSecurityHeadersWebFilter` applies `Cache-Control: no-store`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and a CSP
   with `frame-ancestors`, `object-src 'none'`, same-origin scripts/styles, and
@@ -161,7 +163,7 @@ or file-type deep inspection, and no isolated real converter runtime.
 | Job creation | Filename, content type, hash, size | `DefaultDocumentConversionService` | `ConversionJob` metadata | Process lifetime | No tenant or retention policy. |
 | Queue and retry | Job id, status, attempt count, retry time | `DefaultConversionWorker` | Job lifecycle fields | Process lifetime | Worker saturation and retry audit gaps. |
 | Artifact generation | Job metadata | `PdfBoxArtifactGenerator` | Synthetic PDF bytes | Process lifetime | Real converter sandbox not present. |
-| Artifact serving | `docId`, optional range | `ArtifactController` | No new server storage | Response scope | Capability URL lacks auth or expiry. |
+| Artifact serving | `docId`, `artifactToken`, optional range | `ArtifactController` | No new server storage | Response scope | Token is stateless; no durable revocation or read audit. |
 | Viewer shell | `docId`, status, artifact path | `ViewerUiController`, `viewer.js` | Browser-rendered state | Browser tab lifetime | Embedding domain matrix not finalized. |
 | Demo shell | User file picker state, session jobs, KPI snapshot | `demo.js` | Browser session history | Browser session | Session history is not auditable server data. |
 | KPI snapshot | Job metadata aggregate | `AnalyticsController` | No new server storage | Response scope | No durable metrics or tenant dimension. |
@@ -171,7 +173,7 @@ or file-type deep inspection, and no isolated real converter runtime.
 | Data class | Classification | Current storage | Current retention | Production requirement |
 | --- | --- | --- | --- | --- |
 | Source document bytes | Confidential customer content | Request memory only | Request processing window | Encrypted object quarantine, malware scan, deletion SLA. |
-| Converted PDF artifact | Confidential customer content | JVM memory | Until process restart | Encrypted object store, signed URLs, TTL, tenant ACL. |
+| Converted PDF artifact | Confidential customer content | JVM memory | Until process restart | Encrypted object store, durable token metadata, revocation, TTL, tenant ACL. |
 | File name and content type | Customer metadata | In-memory job repository | Until process restart | Tenant-scoped metadata table with retention policy. |
 | Content hash | Derived document identifier | In-memory job repository | Until process restart | Treat as sensitive metadata; avoid cross-tenant dedupe. |
 | Job status and timings | Operational metadata | In-memory job repository | Until process restart | Durable event table for audit and KPI reporting. |
@@ -192,8 +194,8 @@ or file-type deep inspection, and no isolated real converter runtime.
 
 ### High
 
-- Anyone with network access can fetch artifacts by known `docId` in a
-  production deployment.
+- Artifact token leakage can expose a preview until token expiry in a production
+  deployment without revocation.
 - Malicious uploads can exhaust memory, worker capacity, or artifact storage
   without rate limiting.
 - Policy override accepts blocked formats without external token validation or
@@ -228,7 +230,7 @@ This document moves the following diligence items forward:
 Next implementation slices, in order:
 
 1. Complete license policy and allowlist review for the generated SBOM.
-2. Implement signed artifact links after auth and tenant design.
-3. Implement durable metrics events for job lifecycle and commercial KPIs.
-4. Add deployment security profile with production `frame-ancestors` matrix.
-5. Add auth/RBAC and tenant model design before any production persistence work.
+2. Replace demo tenant headers with validated gateway/OIDC claims.
+3. Add durable artifact metadata, revocation, and artifact read audit events.
+4. Implement durable metrics events for job lifecycle and commercial KPIs.
+5. Add deployment security profile with production `frame-ancestors` matrix.

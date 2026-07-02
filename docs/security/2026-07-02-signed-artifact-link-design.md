@@ -3,8 +3,9 @@
 Date: 2026-07-02
 
 This document defines the production design for secure preview artifact access.
-It is intentionally a design artifact, not an implementation claim. Current
-runtime artifact access is still gated only by `docId` and job status.
+The first runtime slice now issues and verifies stateless HMAC artifact tokens
+for in-memory PDF artifacts. Durable artifact metadata, revocation, audit
+persistence, and production key management are still implementation gaps.
 
 ## Goal
 
@@ -27,9 +28,14 @@ Current controls:
 - Returns only when the job exists and status is `SUCCEEDED`.
 - Supports one HTTP byte range.
 - Returns `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
-- Uses in-memory PDF bytes and has no tenant, expiry, revocation, or signature.
+- Requires a signed `artifactToken` query parameter or bearer artifact token.
+- Verifies token scope, expiry, route `docId`, job tenant, and current artifact
+  checksum before serving bytes.
+- Uses in-memory PDF bytes and stateless HMAC tokens; there is no durable object
+  store, revocation table, or persisted read audit yet.
 
-This is acceptable for the MVP demo but not for a buyer production deployment.
+This is stronger than the original MVP capability URL, but not yet enough for a
+buyer production deployment without durable storage, revocation, and audit.
 
 ## Proposed API Contract
 
@@ -40,6 +46,10 @@ POST /api/v1/viewer/{docId}/artifact-links
 Authorization: Bearer <access-token>
 Content-Type: application/json
 ```
+
+The current buyer-demo runtime uses `X-Clearfolio-*` tenant headers instead of a
+validated bearer access token. Production must replace those headers with
+validated gateway/OIDC claims.
 
 Request:
 
@@ -69,7 +79,8 @@ Rules:
 - `docId` must belong to the caller's `tenantId`.
 - Job status must be `SUCCEEDED`.
 - Token scope must be `artifact:read`.
-- Link creation emits an immutable `artifact.link.created` audit event.
+- Link creation should emit an immutable `artifact.link.created` audit event
+  once durable audit persistence exists.
 - Query token exists only to support PDF.js `file=` loading; server-to-server
   callers should use `Authorization: Bearer <artifact-token>`.
 
@@ -80,19 +91,20 @@ GET /artifacts/{docId}.pdf?artifactToken=<token>
 Range: bytes=0-65535
 ```
 
-Validation:
+Current runtime validation:
 
 1. Parse token and require valid HMAC or asymmetric signature.
-2. Require `aud=clearfolio-artifact`.
-3. Require `scope=artifact:read`.
-4. Require `exp` in the future.
-5. Require token `docId` to match the route `docId`.
-6. Require token `tenantId` to match the artifact tenant.
-7. Require token `artifactVersion` or `artifactChecksum` to match current
+2. Require `scope=artifact:read`.
+3. Require `exp` in the future.
+4. Require token `docId` to match the route `docId`.
+5. Require token `tenantId` to match the artifact tenant.
+6. Require token `artifactVersion` or `artifactChecksum` to match current
    artifact metadata.
-8. Reject revoked `jti`.
-9. Serve the PDF with the current range and no-store headers.
-10. Emit an `artifact.read` metric event without storing the token.
+7. Serve the PDF with the current range and no-store headers.
+
+Production validation must additionally require `aud=clearfolio-artifact`,
+reject revoked `jti`, and emit an `artifact.read` metric event without storing
+the raw token.
 
 ## Token Shape
 
@@ -111,6 +123,10 @@ Recommended claims:
 | `iat` | Yes | Audit timestamp. |
 | `exp` | Yes | Short expiry. |
 | `purpose` | Yes | `viewer-preview`, `download`, or `integration`. |
+
+Current runtime token payload contains `jti`, `tenantId`, `sub`, `docId`,
+`scope`, `purpose`, `artifactChecksum`, `iat`, and `exp`. `iss`, `aud`, and
+revocation checks remain production-hardening work.
 
 Signing options:
 
@@ -183,20 +199,22 @@ Do not reveal whether a different tenant owns the document.
 - Operators can revoke a link by `tokenId`.
 - Audit and KPI systems can count link creation and artifact reads without
   storing the signed token.
-- Existing `/viewer/{docId}` and JSON bootstrap contracts can remain additive:
-  add `artifactLinkUrl`, `artifactLinkExpiresAt`, and `artifactLinkScope` only
-  after auth/tenant runtime exists.
+- Existing `/viewer/{docId}` and JSON bootstrap contracts remain additive:
+  `artifactLinkUrl`, `artifactLinkExpiresAt`, and `artifactLinkScope` are now
+  returned by the protected viewer bootstrap API.
 
 ## Implementation Sequence
 
-1. Implement the auth and tenant model defined in
+1. Done: implement the auth and tenant model defined in
    `docs/security/2026-07-02-auth-tenant-model.md`.
-2. Add durable artifact metadata with checksum and tenant id.
-3. Add `POST /api/v1/viewer/{docId}/artifact-links`.
-4. Add token verification to artifact serving.
-5. Add revocation and access audit tables.
-6. Add PDF.js viewer bootstrap support for signed links.
-7. Remove direct unsigned artifact access from production profiles.
+2. Done: add stateless checksum binding against current in-memory artifact
+   bytes.
+3. Done: add `POST /api/v1/viewer/{docId}/artifact-links`.
+4. Done: add token verification to artifact serving.
+5. Done: add PDF.js viewer bootstrap support for signed links.
+6. Next: add durable artifact metadata with checksum and tenant id.
+7. Next: add revocation and access audit tables.
+8. Next: remove direct unsigned fallback paths from production profiles.
 
 No separate library or submodule is justified yet. Extract token signing only
 after a second runtime or SDK needs the same contract.

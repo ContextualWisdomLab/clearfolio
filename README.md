@@ -23,9 +23,10 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
 - `POST /api/v1/convert/jobs` response includes `jobId`, `status`, and `statusUrl`.
 - `POST /api/v1/convert/jobs/{jobId}/retry`: operator-triggered retry for dead-lettered jobs.
 - `GET /viewer/{docId}`: canonical HTML viewer UI entrypoint (mobile-safe loading/failed/ready states).
-- `GET /api/v1/viewer/{docId}` and `GET /api/v1/convert/viewer/{docId}`: viewer bootstrap JSON (unchanged response shape).
+- `GET /api/v1/viewer/{docId}` and `GET /api/v1/convert/viewer/{docId}`: viewer bootstrap JSON with a short-lived signed artifact URL.
+- `POST /api/v1/viewer/{docId}/artifact-links`: create a tenant-bound signed artifact URL for succeeded jobs.
 - `GET /api/v1/analytics/kpi-snapshot`: current conversion KPI counters for demo and diligence evidence.
-- `GET /artifacts/{docId}.pdf`: serves converted PDF bytes (SUCCEEDED jobs only) with single-range support.
+- `GET /artifacts/{docId}.pdf`: serves converted PDF bytes (SUCCEEDED jobs only) with single-range support after artifact token verification.
 - Errors follow shared shape (`errorCode`, optional `code`, `message`, `traceId`, `details`) for 404/409/400/500 paths.
 - `GET /healthz`: readiness probe.
 - HWP/HWPX are blocked by configuration.
@@ -40,7 +41,8 @@ OIDC/JWT validation.
 
 - API contract has been kept backward-compatible with the existing jobs + viewer flow.
 - `GET /viewer/{docId}` remains the canonical entry route, but now serves HTML (PDF.js viewer).
-- Alias endpoints remain stable in behavior and response shape expectations.
+- Alias endpoints remain stable, with signed artifact link fields added to
+  viewer bootstrap responses.
 - Dead-letter terminal cases keep `status=FAILED` in API payloads and set
   `deadLettered=true` when retries are exhausted.
 - Dead-lettered jobs can be re-queued by an operator with
@@ -49,8 +51,9 @@ OIDC/JWT validation.
   headers and hide cross-tenant jobs as `404`.
 - `GET /viewer/{docId}` returns an HTML shell without checking job existence;
   the protected JSON APIs determine visible state.
-- Direct artifact URLs are still unsigned and remain scoped to the next signed
-  artifact link implementation.
+- Artifact reads now require a signed `artifactToken` query parameter or bearer
+  token. The current token is a stateless HMAC runtime scaffold; durable
+  revocation, persisted audit events, and object-store metadata remain open.
 
 ## Acceptance gates (current)
 

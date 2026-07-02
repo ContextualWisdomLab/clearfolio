@@ -21,6 +21,8 @@ import org.springframework.web.reactive.function.BodyInserters;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
+import com.clearfolio.viewer.artifact.ArtifactLinkService;
+import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
 import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
@@ -53,6 +55,7 @@ class ConversionControllerMultipartLimitTest {
             return new ConversionController(
                     conversionService,
                     new TenantAccessService(),
+                    new ArtifactLinkService(new InMemoryArtifactStore(), "test-secret"),
                     org.springframework.util.unit.DataSize.ofBytes(2048L)
             );
         }

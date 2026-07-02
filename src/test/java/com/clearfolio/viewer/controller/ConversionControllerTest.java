@@ -30,6 +30,8 @@ import org.springframework.web.reactive.function.BodyInserters;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
+import com.clearfolio.viewer.artifact.ArtifactLinkService;
+import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
 import com.clearfolio.viewer.exception.UnsupportedDocumentFormatException;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
@@ -43,12 +45,20 @@ class ConversionControllerTest {
 
     private DocumentConversionService conversionService;
 
+    private InMemoryArtifactStore artifactStore;
+
     private ConversionController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new ConversionController(conversionService, new TenantAccessService(), DataSize.ofBytes(262_144L));
+        artifactStore = new InMemoryArtifactStore();
+        controller = new ConversionController(
+                conversionService,
+                new TenantAccessService(),
+                new ArtifactLinkService(artifactStore, "test-secret"),
+                DataSize.ofBytes(262_144L)
+        );
         webTestClient = WebTestClient.bindToController(
                 controller
         ).controllerAdvice(new ApiExceptionHandler()).build();
@@ -59,6 +69,7 @@ class ConversionControllerTest {
         ConversionController controller = new ConversionController(
                 conversionService,
                 new TenantAccessService(),
+                new ArtifactLinkService(new InMemoryArtifactStore(), "test-secret"),
                 DataSize.ofBytes((long) Integer.MAX_VALUE + 1)
         );
         Field field = ConversionController.class.getDeclaredField("maxInMemorySizeBytes");
@@ -541,6 +552,7 @@ class ConversionControllerTest {
                 12L
         );
         job.markSucceeded("/artifacts/report.pdf", "conversion completed");
+        artifactStore.putPdf(docId, new byte[] {1, 2, 3});
         when(conversionService.getJob(docId)).thenReturn(Optional.of(job));
 
         webTestClient.get()
@@ -552,7 +564,9 @@ class ConversionControllerTest {
                 .jsonPath("$.docId").isEqualTo(docId.toString())
                 .jsonPath("$.status").isEqualTo(ConversionJobStatus.SUCCEEDED.name())
                 .jsonPath("$.fileName").isEqualTo("report.docx")
-                .jsonPath("$.previewResourcePath").isEqualTo("/artifacts/report.pdf")
+                .jsonPath("$.previewResourcePath").value(value -> assertSignedArtifactUrl((String) value, docId))
+                .jsonPath("$.artifactLinkUrl").value(value -> assertSignedArtifactUrl((String) value, docId))
+                .jsonPath("$.artifactLinkScope").isEqualTo(ArtifactLinkService.ARTIFACT_READ_SCOPE)
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
                 .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
     }
@@ -610,6 +624,7 @@ class ConversionControllerTest {
                 12L
         );
         job.markSucceeded("/artifacts/report.pdf", "conversion completed");
+        artifactStore.putPdf(docId, new byte[] {1, 2, 3});
         when(conversionService.getJob(docId)).thenReturn(Optional.of(job));
 
         String[] aliasEndpoints = {"/api/v1/viewer/{docId}", "/api/v1/convert/viewer/{docId}"};
@@ -622,7 +637,8 @@ class ConversionControllerTest {
                 .expectBody()
                 .jsonPath("$.docId").isEqualTo(docId.toString())
                 .jsonPath("$.status").isEqualTo(ConversionJobStatus.SUCCEEDED.name())
-                .jsonPath("$.previewResourcePath").isEqualTo("/artifacts/report.pdf")
+                .jsonPath("$.previewResourcePath").value(value -> assertSignedArtifactUrl((String) value, docId))
+                .jsonPath("$.artifactLinkUrl").value(value -> assertSignedArtifactUrl((String) value, docId))
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
                 .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
         }
@@ -684,6 +700,7 @@ class ConversionControllerTest {
                         TenantPermissions.JOB_READ,
                         TenantPermissions.JOB_RETRY,
                         TenantPermissions.VIEWER_READ,
+                        TenantPermissions.ARTIFACT_LINK_CREATE,
                         TenantPermissions.ANALYTICS_READ
                 )
         );
@@ -702,5 +719,9 @@ class ConversionControllerTest {
     private static void assertNonBlankTraceId(Object value) {
         String traceId = (String) value;
         assertFalse(traceId.isBlank());
+    }
+
+    private static void assertSignedArtifactUrl(String actual, UUID docId) {
+        assertTrue(actual.startsWith("/artifacts/" + docId + ".pdf?artifactToken="));
     }
 }

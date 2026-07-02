@@ -15,6 +15,8 @@ Date: 2026-07-02
   `Clearfolio Operator Job Detail Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Runtime Tenant Enforcement Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Runtime Signed Artifact Link Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -281,8 +283,8 @@ flowchart LR
     response["Status, viewer, KPI response"]
     denied["401 or 403"]
     hidden["404 hidden resource"]
-    artifact["Unsigned artifact path"]
-    signed["Next: signed artifact token"]
+    artifact["Signed artifact URL"]
+    signed["Artifact token verification"]
 
     browser -->|"Sends"| headers
     headers -->|"Parsed by"| auth
@@ -294,13 +296,47 @@ flowchart LR
     repository --> owner
     owner -->|"No"| hidden
     owner -->|"Yes"| response
-    response -->|"Still links"| artifact
-    artifact -->|"Production closure"| signed
+    response -->|"Returns"| artifact
+    artifact -->|"Read guarded by"| signed
 
     style auth fill:#C2E5FF,stroke:#3DADFF
     style permission fill:#FFECBD,stroke:#FFC943
     style repository fill:#DCCCFF,stroke:#874FFF
     style response fill:#CDF4D3,stroke:#66D575
-    style artifact fill:#D9D9D9,stroke:#B3B3B3
+    style artifact fill:#DFF7E8,stroke:#1B7F3A
     style signed fill:#FFECBD,stroke:#FFC943
+```
+
+### Runtime Signed Artifact Link Flow
+
+```mermaid
+flowchart LR
+    viewer["Viewer JSON API"]
+    job{"Job succeeded and same tenant?"}
+    hidden["404 hidden resource"]
+    link["ArtifactLinkService creates HMAC token"]
+    claims["Claims: jti, tenantId, subjectId, docId, scope, exp, checksum"]
+    bootstrap["Bootstrap returns signed previewResourcePath"]
+    pdfjs["PDF.js requests /artifacts/{docId}.pdf?artifactToken=..."]
+    verify{"Token valid, unexpired, same doc, tenant, checksum?"}
+    deny["401 or 403 no-store"]
+    range["Serve PDF bytes with Range and no-store headers"]
+    api["POST /api/v1/viewer/{docId}/artifact-links"]
+
+    viewer -->|"viewer:read tenant headers"| job
+    api -->|"artifact-link:create tenant headers"| job
+    job -->|"No"| hidden
+    job -->|"Yes"| link
+    link --> claims
+    claims --> bootstrap
+    bootstrap --> pdfjs
+    pdfjs --> verify
+    verify -->|"No"| deny
+    verify -->|"Yes"| range
+
+    style hidden fill:#FFE2E2,stroke:#D92D20
+    style deny fill:#FFE2E2,stroke:#D92D20
+    style link fill:#E8F3FF,stroke:#2374AB
+    style verify fill:#FFECBD,stroke:#FFC943
+    style range fill:#DFF7E8,stroke:#1B7F3A
 ```

@@ -68,6 +68,33 @@ class TenantAccessServiceTest {
     }
 
     @Test
+    void requireSameTenantRejectsNullContextOrJobAsNotFound() {
+        TenantContext context = new TenantContext("tenant-a", "user-1", Set.of(TenantPermissions.JOB_READ));
+        ConversionJob job = new ConversionJob(
+                UUID.randomUUID(),
+                "tenant-a",
+                "user-1",
+                "report.docx",
+                "application/octet-stream",
+                "hash",
+                1L,
+                1
+        );
+
+        ResponseStatusException nullContext = assertThrows(
+                ResponseStatusException.class,
+                () -> service.requireSameTenant(null, job)
+        );
+        ResponseStatusException nullJob = assertThrows(
+                ResponseStatusException.class,
+                () -> service.requireSameTenant(context, null)
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, nullContext.getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND, nullJob.getStatusCode());
+    }
+
+    @Test
     void requireSameTenantAcceptsOwnedJob() {
         TenantContext context = new TenantContext("tenant-a", "user-1", Set.of(TenantPermissions.JOB_READ));
         ConversionJob job = new ConversionJob(

@@ -27,6 +27,24 @@ class InMemoryConversionJobRepositoryTest {
     }
 
     @Test
+    void findByTenantAndContentHashFallsBackToDemoTenantWhenTenantIsNull() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-default-tenant");
+        repository.save(job);
+
+        assertSame(job, repository.findByTenantAndContentHash(null, "hash-default-tenant").orElseThrow());
+    }
+
+    @Test
+    void findByTenantAndContentHashFallsBackToDemoTenantWhenTenantIsBlank() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-blank-tenant");
+        repository.save(job);
+
+        assertSame(job, repository.findByTenantAndContentHash(" ", "hash-blank-tenant").orElseThrow());
+    }
+
+    @Test
     void findAllReturnsStoredJobsSnapshot() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
         ConversionJob first = newJob("hash-a");

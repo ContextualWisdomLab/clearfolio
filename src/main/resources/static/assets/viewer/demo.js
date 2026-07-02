@@ -5,7 +5,7 @@ const ACTIVE_STATUSES = new Set(["ACCEPTED", "SUBMITTED", "PROCESSING"]);
 const DEMO_AUTH_HEADERS = {
   "X-Clearfolio-Tenant-Id": "buyer-demo",
   "X-Clearfolio-Subject-Id": "buyer-demo-operator",
-  "X-Clearfolio-Permissions": "job:create,job:read,job:retry,viewer:read,analytics:read",
+  "X-Clearfolio-Permissions": "job:create,job:read,job:retry,viewer:read,artifact-link:create,analytics:read",
 };
 
 const el = {

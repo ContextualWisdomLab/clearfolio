@@ -150,6 +150,30 @@ class DefaultDocumentConversionServiceTest {
     }
 
     @Test
+    void submitWithNullTenantContextFallsBackToDemoOwnership() {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DefaultDocumentValidationService(new ConversionProperties()),
+                worker,
+                new ConversionProperties()
+        );
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "contract.docx",
+                "application/octet-stream",
+                "hello-viewer".getBytes()
+        );
+
+        UUID jobId = service.submit(file, PolicyOverrideRequest.none(), null);
+
+        ConversionJob job = repository.findById(jobId).orElseThrow();
+        assertEquals(TenantContext.DEMO_TENANT_ID, job.getTenantId());
+        assertEquals(TenantContext.DEMO_SUBJECT_ID, job.getSubjectId());
+    }
+
+    @Test
     void returnsSameJobIdForDuplicatePayloads() {
         ConversionJobRepository repository = new InMemoryConversionJobRepository();
         RecordingConversionWorker worker = new RecordingConversionWorker();

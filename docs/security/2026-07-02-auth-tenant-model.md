@@ -40,7 +40,7 @@ Current buyer-demo runtime headers:
 
 - `X-Clearfolio-Tenant-Id: buyer-demo`
 - `X-Clearfolio-Subject-Id: buyer-demo-operator`
-- `X-Clearfolio-Permissions: job:create,job:read,job:retry,viewer:read,analytics:read`
+- `X-Clearfolio-Permissions: job:create,job:read,job:retry,viewer:read,artifact-link:create,analytics:read`
 
 These headers are a runtime enforcement scaffold, not a cryptographic identity
 proof. Production must replace them with validated gateway/OIDC claims.
@@ -116,8 +116,10 @@ Current implementation status:
 - Implemented: KPI snapshots filter to the request tenant.
 - Not implemented: OIDC/JWT signature, issuer, audience, expiry, revocation, and
   role mapping.
-- Not implemented: signed artifact link creation and artifact token
-  verification; `/artifacts/{docId}.pdf` remains the next high-risk closure.
+- Implemented: signed artifact link creation and artifact token verification
+  for current in-memory PDF artifacts.
+- Not implemented: durable artifact metadata, revocation, persisted artifact
+  audit events, and production key management.
 
 ## Error Semantics
 
@@ -176,8 +178,9 @@ Store token fingerprints, not raw tokens.
    `analytics:read` on existing JSON routes.
 4. Done: add tenant-scoped KPI projection from current in-memory jobs.
 5. Next: replace demo headers with validated gateway/OIDC JWT claims.
-6. Next: add signed artifact link creation and token verification.
-7. Next: add audit events and CI/contract tests for token rejection paths.
+6. Done: add signed artifact link creation and token verification.
+7. Next: add durable revocation, persisted audit events, and CI/contract tests
+   for production token rejection paths.
 
 No library split is justified until a second Clearfolio service or external SDK
 needs to reuse this authorization contract.

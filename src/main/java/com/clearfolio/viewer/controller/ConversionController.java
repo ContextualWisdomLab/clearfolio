@@ -22,9 +22,12 @@ import org.springframework.web.server.ResponseStatusException;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
+import com.clearfolio.viewer.api.ArtifactLinkRequest;
+import com.clearfolio.viewer.api.ArtifactLinkResponse;
 import com.clearfolio.viewer.api.ConversionJobStatusResponse;
 import com.clearfolio.viewer.api.SubmitConversionResponse;
 import com.clearfolio.viewer.api.ViewerBootstrapResponse;
+import com.clearfolio.viewer.artifact.ArtifactLinkService;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.service.DocumentConversionService;
@@ -47,6 +50,7 @@ public class ConversionController {
 
     private final DocumentConversionService conversionService;
     private final TenantAccessService tenantAccessService;
+    private final ArtifactLinkService artifactLinkService;
     private final int maxInMemorySizeBytes;
 
     /**
@@ -54,14 +58,17 @@ public class ConversionController {
      *
      * @param conversionService conversion service
      * @param tenantAccessService tenant and permission guard
+     * @param artifactLinkService signed artifact link service
      * @param maxInMemorySize maximum in-memory multipart size
      */
     public ConversionController(
             DocumentConversionService conversionService,
             TenantAccessService tenantAccessService,
+            ArtifactLinkService artifactLinkService,
             @Value("${spring.codec.max-in-memory-size:262144B}") DataSize maxInMemorySize) {
         this.conversionService = conversionService;
         this.tenantAccessService = tenantAccessService;
+        this.artifactLinkService = artifactLinkService;
         long bytes = Math.max(1L, maxInMemorySize.toBytes());
         this.maxInMemorySizeBytes = bytes > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) bytes;
     }
@@ -174,7 +181,12 @@ public class ConversionController {
         tenantAccessService.requireSameTenant(tenantContext, job);
 
         if (job.getStatus() == ConversionJobStatus.SUCCEEDED) {
-            return ViewerBootstrapResponse.from(job);
+            ArtifactLinkResponse artifactLink = artifactLinkService.createLink(
+                    job,
+                    tenantContext,
+                    ArtifactLinkRequest.viewerPreview()
+            );
+            return ViewerBootstrapResponse.from(job, artifactLink);
         }
 
         if (job.getStatus() == ConversionJobStatus.FAILED) {

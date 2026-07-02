@@ -26,6 +26,11 @@ public final class TenantPermissions {
     public static final String VIEWER_READ = "viewer:read";
 
     /**
+     * Permission required to create signed artifact links.
+     */
+    public static final String ARTIFACT_LINK_CREATE = "artifact-link:create";
+
+    /**
      * Permission required to read buyer-demo analytics.
      */
     public static final String ANALYTICS_READ = "analytics:read";

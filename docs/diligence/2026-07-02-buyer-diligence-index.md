@@ -17,7 +17,7 @@ strict: partial evidence is marked partial, not complete.
 | Buyer question | Status | Current evidence | Gap | Next artifact |
 | --- | --- | --- | --- | --- |
 | Can a buyer run a demo from upload to preview? | Ready | `GET /`, `POST /api/v1/convert/jobs`, `/viewer/{docId}`; local smoke proof in PR #74. | Demo uses in-memory runtime. | Seeded demo data and screenshot set. |
-| Does the UI expose buyer-readable KPIs? | Ready | `GET /api/v1/analytics/kpi-snapshot`; root shell reads runtime KPI snapshot; durable model in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | KPI history is not implemented durably yet. | Durable metric event implementation. |
+| Does the UI expose buyer-readable KPIs? | Ready | `GET /api/v1/analytics/kpi-snapshot`; root shell reads tenant-scoped runtime KPI snapshot; durable model in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | KPI history is not implemented durably yet. | Durable metric event implementation. |
 | Is the Figma design story available without Code Connect? | Ready | FigJam evidence flow and `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`. | High-fidelity screen frames are not complete. | Figma frames for desktop/mobile happy and negative paths. |
 | Are unsupported and failed states explained? | Partial | HWP/HWPX block behavior, error schema, failed job retry flow, buyer-demo status table, and root-shell job detail drawer. | Retry is surfaced in the buyer-demo shell, but not yet as a production admin UI. | Production operator job management surface. |
 
@@ -30,7 +30,7 @@ strict: partial evidence is marked partial, not complete.
 | Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=32`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
 | Is request handling non-blocking? | Ready | WebFlux controller path and `DefaultDocumentConversionService` enqueue behavior. | Real converter runtime is not integrated. | Converter adapter contract and load-test plan. |
 | Is persistence production-grade? | Missing | `ConversionJobRepository` abstraction exists. | In-memory repository only. | Durable repository design and migration plan. |
-| Are artifacts production-grade? | Partial | In-memory PDF artifact store, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, signed URL runtime, retention, or tenant isolation. | Signed artifact link implementation. |
+| Are artifacts production-grade? | Partial | In-memory PDF artifact store, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, signed URL runtime, or retention; artifact path is not yet tokenized even though JSON APIs now enforce tenant headers. | Signed artifact link implementation. |
 
 ## Security and Compliance Diligence
 
@@ -39,7 +39,7 @@ strict: partial evidence is marked partial, not complete.
 | Is there SAST evidence? | Ready | Semgrep evidence under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json`; 0 findings. | GitHub security checks are queued on PR #74. | Check-run snapshot when workflows complete. |
 | Are risky formats controlled? | Ready | HWP/HWPX default block, policy-override headers with token fingerprint logging, and `docs/security/2026-07-02-threat-model-data-handling.md`. | Policy ownership and approval workflow are not externalized. | Policy-owner matrix. |
 | Are browser security headers present? | Ready | `ViewerSecurityHeadersWebFilter` applies viewer browser headers. | CSP/frame policy still needs production domain matrix. | Deployment security profile. |
-| Is auth/RBAC implemented? | Partial | PRD defines S2S/user-context target; auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | No runtime token validation, tenant enforcement, or RBAC checks are implemented. | Auth/tenant runtime enforcement. |
+| Is auth/RBAC implemented? | Partial | Header-claim runtime enforcement exists for JSON APIs: `TenantAccessService`, tenant-owned `ConversionJob`, tenant-aware dedupe, cross-tenant `404`, and tenant-filtered KPI snapshots. Auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | Header claims are not cryptographically validated OIDC/JWT tokens, role mapping is not implemented, audit events are not persisted, and artifact URLs are not signed. | Validated gateway/OIDC claims plus signed artifact token enforcement. |
 | Is there license/SBOM evidence? | Partial | CycloneDX SBOM evidence exists under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; engineering review exists in `docs/security/2026-07-02-license-allowlist-review.md`. | Six flagged components still need legal approve, replace, or remove decisions. | Legal sign-off and CI allowlist enforcement. |
 | Is data handling documented? | Partial | `docs/security/2026-07-02-threat-model-data-handling.md` maps current data classes, trust boundaries, and retention limits. | Production retention policy, tenant ACLs, and durable encrypted stores are not implemented. | Production data-retention policy. |
 
@@ -49,7 +49,7 @@ strict: partial evidence is marked partial, not complete.
 | --- | --- | --- | --- | --- |
 | Is there a KRW 2B valuation logic? | Ready | `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`. | Comparable transactions are not refreshed beyond public multiple anchors. | Transaction comparable refresh before buyer use. |
 | Is there a pricing path? | Partial | Pricing scenarios in valuation/KPI model. | No customer interviews, pilots, or signed LOIs. | Pilot evidence and ICP qualification pack. |
-| Are buyer KPIs measurable? | Partial | Runtime KPI snapshot exposes reliability and latency fields; durable event model is documented in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | Durable event persistence, tenant dimension, monthly volume, cost, and margin data are not implemented. | Durable analytics event implementation. |
+| Are buyer KPIs measurable? | Partial | Runtime KPI snapshot exposes reliability and latency fields and is filtered by request tenant; durable event model is documented in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | Durable event persistence, monthly volume, cost, and margin data are not implemented. | Durable analytics event implementation. |
 | Can a buyer integrate it cheaply? | Partial | API routes and Power Platform delivery chain are documented. | No deployment playbook or connector guide. | Integration and deployment playbook. |
 
 ## Current PR Evidence
@@ -69,11 +69,12 @@ strict: partial evidence is marked partial, not complete.
 | SAST evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json` |
 | Buyer-demo implementation | `src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`, `src/main/resources/static/assets/viewer/demo.js`, `src/main/resources/static/assets/viewer/viewer.css` |
 | KPI API implementation | `src/main/java/com/clearfolio/viewer/controller/AnalyticsController.java`, `src/main/java/com/clearfolio/viewer/api/KpiSnapshotResponse.java` |
+| Auth/tenant runtime slice | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`, `src/main/java/com/clearfolio/viewer/auth/TenantContext.java`, `src/main/java/com/clearfolio/viewer/model/ConversionJob.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java` |
 
 ## Next Closure Order
 
 1. Get legal sign-off or replacement decisions for flagged SBOM components.
-2. Implement auth/tenant runtime enforcement.
-3. Implement signed artifact links after auth and tenant runtime enforcement.
+2. Replace demo tenant headers with validated gateway/OIDC JWT claims.
+3. Implement signed artifact links after validated auth and tenant enforcement.
 4. Implement durable metrics events.
 5. Add seeded demo screenshots and Figma high-fidelity frames.

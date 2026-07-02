@@ -8,8 +8,12 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
 
@@ -21,13 +25,16 @@ class AnalyticsControllerTest {
     @BeforeEach
     void setUp() {
         repository = new InMemoryConversionJobRepository();
-        webTestClient = WebTestClient.bindToController(new AnalyticsController(repository)).build();
+        webTestClient = WebTestClient.bindToController(
+                new AnalyticsController(repository, new TenantAccessService())
+        ).controllerAdvice(new ApiExceptionHandler()).build();
     }
 
     @Test
     void kpiSnapshotReturnsZeroMetricsWhenNoJobsExist() {
         webTestClient.get()
                 .uri("/api/v1/analytics/kpi-snapshot")
+                .headers(AnalyticsControllerTest::addAnalyticsAuth)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -60,6 +67,7 @@ class AnalyticsControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/analytics/kpi-snapshot")
+                .headers(AnalyticsControllerTest::addAnalyticsAuth)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -76,6 +84,41 @@ class AnalyticsControllerTest {
                 });
     }
 
+    @Test
+    void kpiSnapshotFiltersJobsToCurrentTenant() {
+        repository.save(newJob("current-tenant.docx"));
+        repository.save(new ConversionJob(
+                UUID.randomUUID(),
+                "tenant-b",
+                "user-b",
+                "other-tenant.docx",
+                "application/octet-stream",
+                "other-tenant-hash",
+                42L,
+                3
+        ));
+
+        webTestClient.get()
+                .uri("/api/v1/analytics/kpi-snapshot")
+                .headers(AnalyticsControllerTest::addAnalyticsAuth)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.totalJobs").isEqualTo(1)
+                .jsonPath("$.submittedJobs").isEqualTo(1);
+    }
+
+    @Test
+    void kpiSnapshotRejectsMissingAnalyticsPermission() {
+        webTestClient.get()
+                .uri("/api/v1/analytics/kpi-snapshot")
+                .headers(headers -> addAuth(headers, TenantPermissions.JOB_READ))
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.message").isEqualTo("missing permission: " + TenantPermissions.ANALYTICS_READ);
+    }
+
     private ConversionJob newJob(String fileName) {
         return new ConversionJob(
                 UUID.randomUUID(),
@@ -85,5 +128,15 @@ class AnalyticsControllerTest {
                 42L,
                 3
         );
+    }
+
+    private static void addAnalyticsAuth(HttpHeaders headers) {
+        addAuth(headers, TenantPermissions.ANALYTICS_READ);
+    }
+
+    private static void addAuth(HttpHeaders headers, String permissions) {
+        headers.add(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID);
+        headers.add(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID);
+        headers.add(TenantContext.PERMISSIONS_HEADER, permissions);
     }
 }

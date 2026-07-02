@@ -1,8 +1,13 @@
 package com.clearfolio.viewer.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpHeaders;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.api.KpiSnapshotResponse;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 
@@ -13,23 +18,30 @@ import com.clearfolio.viewer.repository.ConversionJobRepository;
 public class AnalyticsController {
 
     private final ConversionJobRepository repository;
+    private final TenantAccessService tenantAccessService;
 
     /**
      * Creates an analytics controller backed by the conversion job repository.
      *
      * @param repository conversion job repository
+     * @param tenantAccessService tenant and permission guard
      */
-    public AnalyticsController(ConversionJobRepository repository) {
+    public AnalyticsController(ConversionJobRepository repository, TenantAccessService tenantAccessService) {
         this.repository = repository;
+        this.tenantAccessService = tenantAccessService;
     }
 
     /**
      * Returns current conversion KPI counters.
      *
+     * @param headers request headers carrying tenant claims
      * @return KPI snapshot payload
      */
     @GetMapping("/api/v1/analytics/kpi-snapshot")
-    public KpiSnapshotResponse kpiSnapshot() {
-        return KpiSnapshotResponse.from(repository.findAll());
+    public KpiSnapshotResponse kpiSnapshot(@RequestHeader HttpHeaders headers) {
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ANALYTICS_READ);
+        return KpiSnapshotResponse.from(repository.findAll().stream()
+                .filter(job -> job.belongsToTenant(tenantContext.tenantId()))
+                .toList());
     }
 }

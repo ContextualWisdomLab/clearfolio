@@ -6,4 +6,4 @@
 - License review: `docs/security/2026-07-02-license-allowlist-review.md`
 - Auth/tenant model: `docs/security/2026-07-02-auth-tenant-model.md`
 - Verification source head SHA before latest evidence refresh:
-  `8dbe005f87e2727577dcd2b4c7cc6996ac00a3e0`
+  `1c2c54accaadba0e37754fe6ad3f75385b57acbc`

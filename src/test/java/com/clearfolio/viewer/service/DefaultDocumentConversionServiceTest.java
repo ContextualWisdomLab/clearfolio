@@ -33,6 +33,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
@@ -116,6 +118,35 @@ class DefaultDocumentConversionServiceTest {
         assertNotEquals(new UUID(0L, 0L), jobId);
         assertSame(PolicyOverrideRequest.none(), capturedOverride.get());
         assertEquals(1, worker.enqueuedCount());
+    }
+
+    @Test
+    void submitStoresTenantAndSubjectMetadataOnJob() {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DefaultDocumentValidationService(new ConversionProperties()),
+                worker,
+                new ConversionProperties()
+        );
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "contract.docx",
+                "application/octet-stream",
+                "hello-viewer".getBytes()
+        );
+        TenantContext tenantContext = new TenantContext(
+                "tenant-a",
+                "subject-a",
+                Set.of(TenantPermissions.JOB_CREATE)
+        );
+
+        UUID jobId = service.submit(file, PolicyOverrideRequest.none(), tenantContext);
+
+        ConversionJob job = repository.findById(jobId).orElseThrow();
+        assertEquals("tenant-a", job.getTenantId());
+        assertEquals("subject-a", job.getSubjectId());
     }
 
     @Test

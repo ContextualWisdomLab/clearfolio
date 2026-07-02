@@ -10,6 +10,7 @@ import com.clearfolio.viewer.model.ConversionJob;
  */
 public record ConversionJobStatusResponse(
         UUID jobId,
+        String tenantId,
         String fileName,
         String status,
         String message,
@@ -32,6 +33,7 @@ public record ConversionJobStatusResponse(
     public static ConversionJobStatusResponse from(ConversionJob job) {
         return new ConversionJobStatusResponse(
                 job.getJobId(),
+                job.getTenantId(),
                 job.getOriginalFileName(),
                 job.getStatus().name(),
                 job.getStatusMessage(),

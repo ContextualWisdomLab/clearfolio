@@ -30,6 +30,12 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
 - `GET /healthz`: readiness probe.
 - HWP/HWPX are blocked by configuration.
 
+Protected JSON APIs require Clearfolio tenant headers in the current buyer-demo
+runtime: `X-Clearfolio-Tenant-Id`, `X-Clearfolio-Subject-Id`, and
+`X-Clearfolio-Permissions`. The built-in demo shell sends `buyer-demo` headers
+automatically. These headers are a runtime enforcement scaffold, not production
+OIDC/JWT validation.
+
 ## Compatibility notes
 
 - API contract has been kept backward-compatible with the existing jobs + viewer flow.
@@ -39,6 +45,12 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
   `deadLettered=true` when retries are exhausted.
 - Dead-lettered jobs can be re-queued by an operator with
   `X-Clearfolio-Operator-Id` via `/api/v1/convert/jobs/{jobId}/retry`.
+- Status, viewer bootstrap, retry, and KPI JSON APIs enforce tenant permission
+  headers and hide cross-tenant jobs as `404`.
+- `GET /viewer/{docId}` returns an HTML shell without checking job existence;
+  the protected JSON APIs determine visible state.
+- Direct artifact URLs are still unsigned and remain scoped to the next signed
+  artifact link implementation.
 
 ## Acceptance gates (current)
 

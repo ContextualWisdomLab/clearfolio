@@ -12,11 +12,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
@@ -46,7 +50,11 @@ class ConversionControllerMultipartLimitTest {
 
         @Bean
         ConversionController conversionController(DocumentConversionService conversionService) {
-            return new ConversionController(conversionService, org.springframework.util.unit.DataSize.ofBytes(2048L));
+            return new ConversionController(
+                    conversionService,
+                    new TenantAccessService(),
+                    org.springframework.util.unit.DataSize.ofBytes(2048L)
+            );
         }
 
         @Bean
@@ -210,6 +218,7 @@ class ConversionControllerMultipartLimitTest {
         WebTestClient.RequestBodySpec request = webTestClient.post()
                 .uri("/api/v1/convert/jobs")
                 .contentType(MediaType.MULTIPART_FORM_DATA);
+        request.headers(ConversionControllerMultipartLimitTest::addAllPermissions);
         if (policyOverride != null) {
             request.header(PolicyOverrideRequest.POLICY_OVERRIDE_HEADER, policyOverride);
         }
@@ -232,5 +241,14 @@ class ConversionControllerMultipartLimitTest {
     private static void assertNonBlankTraceId(Object value) {
         String traceId = (String) value;
         assertFalse(traceId.isBlank());
+    }
+
+    private static void addAllPermissions(HttpHeaders headers) {
+        headers.add(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID);
+        headers.add(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID);
+        headers.add(
+                TenantContext.PERMISSIONS_HEADER,
+                String.join(",", TenantPermissions.JOB_CREATE, TenantPermissions.JOB_READ)
+        );
     }
 }

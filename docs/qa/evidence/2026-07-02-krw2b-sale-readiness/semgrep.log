@@ -1,10 +1,11 @@
+Installed 66 packages in 220ms
                
                
 ┌─────────────┐
 │ Scan Status │
 └─────────────┘
-  Scanning 33 files tracked by git with 60 Code rules:
-  Scanning 33 files with 60 java rules.
+  Scanning 36 files tracked by git with 60 Code rules:
+  Scanning 36 files with 60 java rules.
                 
                 
 ┌──────────────┐
@@ -13,13 +14,13 @@
 ✅ Scan completed successfully.
  • Findings: 0 (0 blocking)
  • Rules run: 60
- • Targets scanned: 33
+ • Targets scanned: 36
  • Parsed lines: ~100.0%
  • Scan skipped: 
-   ◦ Files matching .semgrepignore patterns: 25
+   ◦ Files matching .semgrepignore patterns: 27
  • Scan was limited to files tracked by git
  • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
-Ran 60 rules on 33 files: 0 findings.
+Ran 60 rules on 36 files: 0 findings.
 (need more rules? `semgrep login` for additional free Semgrep Registry rules)
 
 If Semgrep missed a finding, please send us feedback to let us know!

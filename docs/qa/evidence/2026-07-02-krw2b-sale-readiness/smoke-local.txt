@@ -1,7 +1,20 @@
-root_status=200
-demo_js_status=200
-job_id=c6b29bd5-7656-42fb-97b6-b116c12134e4
+Clearfolio local auth/tenant smoke
+Date: 2026-07-02
+root_shell_http=200
+demo_js_http=200
+missing_auth_kpi_http=401
+auth_empty_kpi_http=200
+upload_http=202
+job_id=d6f7b5d2-aba6-4d9b-a89c-0e05e4b36dd1
+status_url=/api/v1/convert/jobs/d6f7b5d2-aba6-4d9b-a89c-0e05e4b36dd1
 final_status=SUCCEEDED
-viewer_status=200
-empty_kpi={"totalJobs":0,"submittedJobs":0,"processingJobs":0,"succeededJobs":0,"failedJobs":0,"deadLetteredJobs":0,"conversionSuccessRate":0.0,"p95TimeToPreviewMs":null}
-after_kpi={"totalJobs":1,"submittedJobs":0,"processingJobs":0,"succeededJobs":1,"failedJobs":0,"deadLetteredJobs":0,"conversionSuccessRate":1.0,"p95TimeToPreviewMs":243}
+status_tenant_id=buyer-demo
+viewer_html_http=200
+viewer_bootstrap_http=200
+cross_tenant_status_http=404
+auth_post_kpi_http=200
+
+totalJobs=1
+succeededJobs=1
+conversionSuccessRate=1
+p95TimeToPreviewMs=381

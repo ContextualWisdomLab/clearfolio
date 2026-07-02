@@ -13,6 +13,8 @@ Date: 2026-07-02
   `Clearfolio Auth Tenant Boundary Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Operator Job Detail Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Runtime Tenant Enforcement Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -263,4 +265,42 @@ flowchart LR
     style retryApi fill:#CDF4D3,stroke:#66D575
     style viewer fill:#CDF4D3,stroke:#66D575
     style json fill:#D9D9D9,stroke:#B3B3B3
+```
+
+### Runtime Tenant Enforcement Flow
+
+```mermaid
+flowchart LR
+    browser["Buyer demo browser"]
+    headers["Tenant headers"]
+    api["Protected JSON API"]
+    auth["TenantAccessService"]
+    permission{"Permission present?"}
+    repository["Tenant-aware job repository"]
+    owner{"Same tenant?"}
+    response["Status, viewer, KPI response"]
+    denied["401 or 403"]
+    hidden["404 hidden resource"]
+    artifact["Unsigned artifact path"]
+    signed["Next: signed artifact token"]
+
+    browser -->|"Sends"| headers
+    headers -->|"Parsed by"| auth
+    browser -->|"Calls"| api
+    api -->|"Requires"| auth
+    auth --> permission
+    permission -->|"No"| denied
+    permission -->|"Yes"| repository
+    repository --> owner
+    owner -->|"No"| hidden
+    owner -->|"Yes"| response
+    response -->|"Still links"| artifact
+    artifact -->|"Production closure"| signed
+
+    style auth fill:#C2E5FF,stroke:#3DADFF
+    style permission fill:#FFECBD,stroke:#FFC943
+    style repository fill:#DCCCFF,stroke:#874FFF
+    style response fill:#CDF4D3,stroke:#66D575
+    style artifact fill:#D9D9D9,stroke:#B3B3B3
+    style signed fill:#FFECBD,stroke:#FFC943
 ```

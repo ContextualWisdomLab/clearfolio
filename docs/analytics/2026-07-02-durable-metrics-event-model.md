@@ -3,9 +3,9 @@
 Date: 2026-07-02
 
 This document defines the durable event model needed to turn the current
-runtime-only KPI snapshot into buyer-grade analytics evidence. It is a design
-artifact. The current implementation still reads in-memory jobs through
-`GET /api/v1/analytics/kpi-snapshot`.
+tenant-filtered, runtime-only KPI snapshot into buyer-grade analytics evidence.
+It is a design artifact. The current implementation still reads in-memory jobs
+through `GET /api/v1/analytics/kpi-snapshot`.
 
 ## Goal
 
@@ -180,7 +180,7 @@ optimization.
 
 - A buyer can audit every KPI back to immutable event types and formulas.
 - Runtime KPI endpoint can keep its current response shape while switching its
-  source from in-memory jobs to durable projections.
+  source from tenant-filtered in-memory jobs to durable projections.
 - Events are tenant-scoped before paid pilots.
 - Metrics events do not carry raw customer document content or secrets.
 - Failure categories are controlled values, not raw exception strings.

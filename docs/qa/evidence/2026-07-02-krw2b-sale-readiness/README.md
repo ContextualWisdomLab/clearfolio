@@ -2,7 +2,7 @@
 
 Date: 2026-07-02
 Verification source head SHA before this evidence refresh:
-`8dbe005f87e2727577dcd2b4c7cc6996ac00a3e0`
+`1c2c54accaadba0e37754fe6ad3f75385b57acbc`
 
 ## Gate Summary
 
@@ -16,7 +16,7 @@ Verification source head SHA before this evidence refresh:
 | SAST | Pass, 0 findings | `semgrep.log`, `semgrep.json` |
 | SBOM | Pass, CycloneDX 1.6, 142 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
 | License review | Partial, 6 flagged components need legal decision | `docs/security/2026-07-02-license-allowlist-review.md` |
-| Auth/tenant model | Partial, design complete and runtime enforcement pending | `docs/security/2026-07-02-auth-tenant-model.md` |
+| Auth/tenant model | Partial, first runtime enforcement slice implemented; OIDC/JWT and signed artifact tokens pending | `docs/security/2026-07-02-auth-tenant-model.md`, auth tests |
 | Local smoke | Pass | `smoke-local.txt` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
@@ -32,7 +32,7 @@ Result:
 
 - Semgrep completed successfully.
 - Rules run: 60 Java rules.
-- Targets scanned: 33 tracked files.
+- Targets scanned: 36 tracked files.
 - Findings: 0.
 - Errors: 0.
 
@@ -72,15 +72,22 @@ Evidence:
 Command path:
 
 - Start app on `localhost:18080`.
-- Verify `GET /`, `/assets/viewer/demo.js`, empty KPI snapshot, document upload,
-  status polling to `SUCCEEDED`, `/viewer/{docId}`, and post-upload KPI snapshot.
+- Verify `GET /`, `/assets/viewer/demo.js`, missing-auth KPI denial,
+  authenticated empty KPI snapshot, document upload with tenant headers, status
+  polling to `SUCCEEDED`, `/viewer/{docId}`, authenticated viewer bootstrap,
+  cross-tenant status denial, and post-upload KPI snapshot.
 
 Result:
 
 - Root shell: 200.
 - Demo JS: 200.
+- Missing-auth KPI: 401.
+- Authenticated empty KPI: 200.
 - Final conversion status: `SUCCEEDED`.
+- Status tenant: `buyer-demo`.
 - Viewer HTML: 200.
+- Viewer bootstrap: 200.
+- Cross-tenant status lookup: 404.
 - Post-upload KPI: `totalJobs=1`, `succeededJobs=1`,
   `conversionSuccessRate=1.0`, numeric `p95TimeToPreviewMs`.
 

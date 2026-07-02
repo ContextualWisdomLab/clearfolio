@@ -1,0 +1,2 @@
+node --check src/main/resources/static/assets/viewer/demo.js
+node --check src/main/resources/static/assets/viewer/viewer.js

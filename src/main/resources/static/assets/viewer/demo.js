@@ -2,6 +2,11 @@ const STORAGE_KEY = "clearfolio-demo-history-v1";
 const KPI_ENDPOINT = "/api/v1/analytics/kpi-snapshot";
 const POLL_DELAY_MS = 1500;
 const ACTIVE_STATUSES = new Set(["ACCEPTED", "SUBMITTED", "PROCESSING"]);
+const DEMO_AUTH_HEADERS = {
+  "X-Clearfolio-Tenant-Id": "buyer-demo",
+  "X-Clearfolio-Subject-Id": "buyer-demo-operator",
+  "X-Clearfolio-Permissions": "job:create,job:read,job:retry,viewer:read,analytics:read",
+};
 
 const el = {
   form: document.getElementById("upload-form"),
@@ -70,6 +75,25 @@ function createLink(href, label) {
   return link;
 }
 
+async function openJsonDocument(url, title) {
+  const popup = window.open("", "_blank");
+  if (!popup) {
+    setError("Allow popups to inspect JSON evidence in a new tab.");
+    return;
+  }
+
+  popup.opener = null;
+  popup.document.title = title;
+  const pre = popup.document.createElement("pre");
+  pre.textContent = "Loading...";
+  popup.document.body.appendChild(pre);
+
+  const { res, data } = await fetchJson(url);
+  pre.textContent = res.ok && data
+    ? JSON.stringify(data, null, 2)
+    : "Unable to load JSON evidence with the current tenant claim.";
+}
+
 function createActionButton(label, onClick) {
   const button = document.createElement("button");
   button.type = "button";
@@ -77,6 +101,14 @@ function createActionButton(label, onClick) {
   button.className = "btn btn-secondary btn-compact";
   button.addEventListener("click", onClick);
   return button;
+}
+
+function jsonHeaders(extra = {}) {
+  return {
+    Accept: "application/json",
+    ...DEMO_AUTH_HEADERS,
+    ...extra,
+  };
 }
 
 function renderHistory(history = loadHistory()) {
@@ -99,7 +131,9 @@ function renderHistory(history = loadHistory()) {
       actionsCell.appendChild(createActionButton("Details", () => {
         void openJobDetail(job);
       }));
-      actionsCell.appendChild(createLink(job.statusUrl, "Status JSON"));
+      actionsCell.appendChild(createActionButton("Status JSON", () => {
+        void openJsonDocument(job.statusUrl, "Clearfolio status JSON");
+      }));
     }
     if (job.jobId) {
       actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer"));
@@ -139,6 +173,7 @@ function renderJobDetail(detail) {
   el.jobDetailBody.textContent = "";
 
   addDetailRow("Job ID", detail.jobId);
+  addDetailRow("Tenant", detail.tenantId);
   addDetailRow("Status", detail.status);
   addDetailRow("Message", detail.message);
   addDetailRow("Attempts", `${detail.attemptCount ?? 0} / ${detail.maxAttempts ?? "n/a"}`);
@@ -185,10 +220,9 @@ async function retryActiveJob() {
     const res = await fetch(`/api/v1/convert/jobs/${encodeURIComponent(jobId)}/retry`, {
       method: "POST",
       credentials: "same-origin",
-      headers: {
-        Accept: "application/json",
+      headers: jsonHeaders({
         "X-Clearfolio-Operator-Id": "buyer-demo-operator",
-      },
+      }),
     });
     const data = (res.headers.get("content-type") || "").includes("application/json") ? await res.json() : null;
 
@@ -265,7 +299,7 @@ async function refreshKpis() {
 
 async function fetchJson(url) {
   const res = await fetch(url, {
-    headers: { Accept: "application/json" },
+    headers: jsonHeaders(),
     credentials: "same-origin",
   });
   const contentType = (res.headers.get("content-type") || "").toLowerCase();
@@ -309,7 +343,7 @@ async function submitDocument(event) {
       method: "POST",
       body,
       credentials: "same-origin",
-      headers: { Accept: "application/json" },
+      headers: jsonHeaders(),
     });
     const data = (res.headers.get("content-type") || "").includes("application/json") ? await res.json() : null;
 

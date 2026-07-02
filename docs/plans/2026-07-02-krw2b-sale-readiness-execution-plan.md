@@ -208,8 +208,11 @@ Progress as of 2026-07-02:
 - Signed artifact link design is now captured in
   `docs/security/2026-07-02-signed-artifact-link-design.md`.
 - Auth, RBAC, and tenant model design is now captured in
-  `docs/security/2026-07-02-auth-tenant-model.md`; runtime enforcement remains
-  open.
+  `docs/security/2026-07-02-auth-tenant-model.md`; the first runtime slice now
+  enforces tenant headers and permissions on JSON APIs, stores job tenant
+  metadata, filters KPI snapshots by tenant, and hides cross-tenant jobs.
+  Validated OIDC/JWT claims, role mapping, audit persistence, and signed
+  artifact tokens remain open.
 - Durable metrics event model is now captured in
   `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
 
@@ -257,6 +260,9 @@ Progress as of 2026-07-02:
 - Session history rows now expose a job detail drawer backed by the existing
   status API, including attempts, retry schedule, dead-letter state, artifact
   path, and an operator retry action for dead-lettered jobs.
+- Demo JS now sends `buyer-demo` tenant headers to protected JSON APIs, and the
+  viewer shell no longer reveals job existence before the protected status API
+  decides state.
 
 ### Phase 2: Due-diligence pack
 
@@ -275,7 +281,7 @@ Replace MVP internals that buyers will discount.
 - Add durable job repository and migration strategy.
 - Add real artifact store abstraction.
 - Add signed preview resource links.
-- Add tenant and RBAC model.
+- Replace demo tenant headers with validated OIDC/S2S claims and role mapping.
 - Add metrics and observability.
 - Add converter runtime integration behind a stable adapter boundary.
 

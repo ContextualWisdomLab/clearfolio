@@ -1,10 +1,12 @@
 package com.clearfolio.viewer.controller;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -124,6 +126,10 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("load-demo-data-btn"));
             assertTrue(script.contains("openJobDetail"));
             assertTrue(script.contains("retryActiveJob"));
+            assertTrue(script.contains("refreshKpisAfterUpdate"));
+            assertTrue(script.contains("refreshKpisAfterUpdate: false"));
+            assertTrue(script.contains("const demoHistory = data.history.slice(0, 12)"));
+            assertTrue(script.contains("submittedAt: new Date().toISOString()"));
             assertTrue(script.contains("/retry"));
             assertTrue(script.contains("X-Clearfolio-Operator-Id"));
             assertTrue(script.contains("X-Clearfolio-Tenant-Id"));
@@ -148,6 +154,9 @@ class ViewerUiControllerTest {
             assertTrue(root.toString().contains("SUCCEEDED"));
             assertTrue(root.toString().contains("UNSUPPORTED_FORMAT"));
             assertTrue(root.toString().contains("deadLettered"));
+            for (JsonNode job : jobs) {
+                assertDoesNotThrow(() -> Instant.parse(job.path("submittedAt").asText()));
+            }
         }
     }
 

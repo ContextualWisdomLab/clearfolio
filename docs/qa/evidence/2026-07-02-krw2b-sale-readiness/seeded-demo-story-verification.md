@@ -99,6 +99,20 @@ FigJam upload:
 - Desktop screenshot placed on node `25:1423`.
 - Mobile screenshot placed on node `25:1422`.
 
+## Review Thread Hardening
+
+Follow-up fixes after PR review comments:
+
+- Seeded job-detail inspection updates local session history without refreshing
+  live KPI endpoints, so the deterministic seeded KPI/evidence state is not
+  overwritten by an empty runtime snapshot.
+- `Load demo story` renders the same 12-row history slice that is persisted to
+  browser session storage.
+- Fixture `submittedAt` values use explicit ISO-8601 timestamps with timezone
+  so browser parsing is deterministic across engines.
+- `ViewerUiControllerTest` verifies the seeded fixture timestamp format and the
+  seeded-detail no-refresh path.
+
 ## Claim Boundary
 
 The fixture is deterministic local demo evidence for Product Design, Data

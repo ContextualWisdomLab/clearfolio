@@ -71,12 +71,14 @@ function setError(message) {
   el.errorTitle.focus();
 }
 
-function updateJob(jobId, patch) {
+function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
   const history = loadHistory();
   const next = history.map(job => (job.jobId === jobId ? { ...job, ...patch } : job));
   saveHistory(next);
   renderHistory(next);
-  void refreshKpis();
+  if (refreshKpisAfterUpdate) {
+    void refreshKpis();
+  }
 }
 
 function createLink(href, label) {
@@ -249,6 +251,8 @@ async function openJobDetail(job) {
       deadLettered: Boolean(job.seededDetail.deadLettered),
       message: job.seededDetail.message,
       lastInspectedAt: new Date().toISOString(),
+    }, {
+      refreshKpisAfterUpdate: false,
     });
     setStatus("Seeded job detail loaded.");
     return;
@@ -420,8 +424,9 @@ async function loadDemoData() {
       return;
     }
 
-    saveHistory(data.history);
-    renderHistory(data.history);
+    const demoHistory = data.history.slice(0, 12);
+    saveHistory(demoHistory);
+    renderHistory(demoHistory);
     if (data.kpiSnapshot) {
       renderKpiSnapshot(data.kpiSnapshot);
     }
@@ -508,7 +513,7 @@ async function submitDocument(event) {
       fileName: file.name,
       status: data.status || "ACCEPTED",
       statusUrl: data.statusUrl,
-      submittedAt: new Date().toLocaleString(),
+      submittedAt: new Date().toISOString(),
     };
     const history = [job, ...loadHistory()];
     saveHistory(history);
@@ -529,7 +534,7 @@ function addFailedHistory(fileName, status) {
   const history = [{
     fileName,
     status,
-    submittedAt: new Date().toLocaleString(),
+    submittedAt: new Date().toISOString(),
   }, ...loadHistory()];
   saveHistory(history);
   renderHistory(history);

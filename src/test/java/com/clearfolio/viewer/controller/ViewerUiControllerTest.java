@@ -1,9 +1,12 @@
 package com.clearfolio.viewer.controller;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,7 +47,20 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("clearfolio-initial-state\" content=\"NOT_FOUND\""));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
+                    assertTrue(body.contains("target=\"_blank\" rel=\"noopener noreferrer\""));
                 });
+    }
+
+    @Test
+    void viewerScriptOpensArtifactLinksInNewContextAndClearsHelpText() throws Exception {
+        try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/viewer.js")) {
+            assertNotNull(input);
+            String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+
+            assertTrue(script.contains("link.target = \"_blank\";"));
+            assertTrue(script.contains("link.rel = \"noopener noreferrer\";"));
+            assertTrue(script.contains("el.preview.querySelector(\"#preview-help\")"));
+        }
     }
 
     @Test

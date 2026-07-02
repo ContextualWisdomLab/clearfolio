@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
+import org.mockito.ArgumentCaptor;
 
 import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.model.ConversionJob;
@@ -40,6 +41,38 @@ import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 
 class DefaultDocumentConversionServiceTest {
+
+    @Test
+    void submitGeneratesExpectedSha256HexContentHash() {
+        ConversionJobRepository repository = mock(ConversionJobRepository.class);
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DefaultDocumentValidationService(new ConversionProperties()),
+                worker,
+                new ConversionProperties()
+        );
+
+        String testContent = "hello";
+        String expectedSha256Hex = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.txt",
+                "text/plain",
+                testContent.getBytes(StandardCharsets.UTF_8)
+        );
+
+        ArgumentCaptor<ConversionJob> jobCaptor = ArgumentCaptor.forClass(ConversionJob.class);
+        when(repository.findOrStoreByContentHash(jobCaptor.capture()))
+                .thenAnswer(invocation -> new ConversionJobRepository.FindOrStoreResult(invocation.getArgument(0), true));
+
+        service.submit(file);
+
+        ConversionJob capturedJob = jobCaptor.getValue();
+        assertEquals(expectedSha256Hex, capturedJob.getContentHash());
+        assertEquals(64, capturedJob.getContentHash().length());
+    }
 
     @Test
     void submitWithOverrideDelegatesPolicyHeadersToValidationService() {

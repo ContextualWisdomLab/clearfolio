@@ -26,7 +26,7 @@ strict: partial evidence is marked partial, not complete.
 | Buyer question | Status | Current evidence | Gap | Next artifact |
 | --- | --- | --- | --- | --- |
 | Is the architecture inspectable? | Ready | `docs/architecture.md`, PRD/TRD, diagrams, package boundaries. | Target production architecture is still partly roadmap. | Target architecture diagram for durable queue/store. |
-| Are the mandatory gates reproducible? | Ready | Maven compile/test/JaCoCo/JavaDoc commands in PR #74 and AGENTS gate policy. | Evidence folder still has older `LATEST.md` pointer. | Fresh 2026-07-02 release evidence bundle. |
+| Are the mandatory gates reproducible? | Ready | Maven compile/test/JaCoCo/JavaDoc commands in PR #74, AGENTS gate policy, and `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md`. | GitHub hosted checks are queued. | Attach CI pass or queued-check explanation when available. |
 | Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=32`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
 | Is request handling non-blocking? | Ready | WebFlux controller path and `DefaultDocumentConversionService` enqueue behavior. | Real converter runtime is not integrated. | Converter adapter contract and load-test plan. |
 | Is persistence production-grade? | Missing | `ConversionJobRepository` abstraction exists. | In-memory repository only. | Durable repository design and migration plan. |
@@ -66,8 +66,8 @@ strict: partial evidence is marked partial, not complete.
 
 ## Next Closure Order
 
-1. Create a fresh 2026-07-02 evidence bundle and update `docs/qa/evidence/LATEST.md`.
-2. Add threat model and data handling map.
-3. Add SBOM/license evidence.
-4. Add signed artifact link design.
-5. Add durable metrics event model.
+1. Add threat model and data handling map.
+2. Add SBOM/license evidence.
+3. Add signed artifact link design.
+4. Add durable metrics event model.
+5. Add seeded demo screenshots and Figma high-fidelity frames.

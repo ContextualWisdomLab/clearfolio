@@ -1,0 +1,7 @@
+root_status=200
+demo_js_status=200
+job_id=c6b29bd5-7656-42fb-97b6-b116c12134e4
+final_status=SUCCEEDED
+viewer_status=200
+empty_kpi={"totalJobs":0,"submittedJobs":0,"processingJobs":0,"succeededJobs":0,"failedJobs":0,"deadLetteredJobs":0,"conversionSuccessRate":0.0,"p95TimeToPreviewMs":null}
+after_kpi={"totalJobs":1,"submittedJobs":0,"processingJobs":0,"succeededJobs":1,"failedJobs":0,"deadLetteredJobs":0,"conversionSuccessRate":1.0,"p95TimeToPreviewMs":243}

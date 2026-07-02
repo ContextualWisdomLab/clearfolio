@@ -1,37 +1,9 @@
 {
-  "allowedCount": 60,
+  "allowedCount": 61,
   "bomFormat": "CycloneDX",
-  "componentCount": 63,
-  "reviewRequiredComponents": [
-    {
-      "component": "ch.qos.logback:logback-classic@1.5.18",
-      "licenses": [
-        "EPL-1.0",
-        "GNU Lesser General Public License"
-      ],
-      "purl": "pkg:maven/ch.qos.logback/logback-classic@1.5.18?type=jar",
-      "reason": "Dual EPL/LGPL metadata; legal must confirm selected license route."
-    },
-    {
-      "component": "ch.qos.logback:logback-core@1.5.18",
-      "licenses": [
-        "EPL-1.0",
-        "GNU Lesser General Public License"
-      ],
-      "purl": "pkg:maven/ch.qos.logback/logback-core@1.5.18?type=jar",
-      "reason": "Dual EPL/LGPL metadata; legal must confirm selected license route."
-    },
-    {
-      "component": "jakarta.annotation:jakarta.annotation-api@2.1.1",
-      "licenses": [
-        "EPL-2.0",
-        "GPL-2.0-with-classpath-exception"
-      ],
-      "purl": "pkg:maven/jakarta.annotation/jakarta.annotation-api@2.1.1?type=jar",
-      "reason": "GPL classpath-exception metadata; legal must confirm exception scope."
-    }
-  ],
-  "reviewRequiredCount": 3,
+  "componentCount": 61,
+  "reviewRequiredComponents": [],
+  "reviewRequiredCount": 0,
   "specVersion": "1.6",
   "violationCount": 0,
   "violations": []

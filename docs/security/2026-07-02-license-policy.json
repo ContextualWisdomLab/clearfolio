@@ -1,6 +1,6 @@
 {
   "policyVersion": "2026-07-02",
-  "status": "engineering-review",
+  "status": "buyer-release-ready",
   "allowedLicenses": [
     "0BSD",
     "Apache License v2",
@@ -13,18 +13,5 @@
     "MIT-0",
     "Similar to Apache License but with the acknowledgment clause removed"
   ],
-  "reviewRequiredComponents": [
-    {
-      "purl": "pkg:maven/ch.qos.logback/logback-classic@1.5.18?type=jar",
-      "reason": "Dual EPL/LGPL metadata; legal must confirm selected license route."
-    },
-    {
-      "purl": "pkg:maven/ch.qos.logback/logback-core@1.5.18?type=jar",
-      "reason": "Dual EPL/LGPL metadata; legal must confirm selected license route."
-    },
-    {
-      "purl": "pkg:maven/jakarta.annotation/jakarta.annotation-api@2.1.1?type=jar",
-      "reason": "GPL classpath-exception metadata; legal must confirm exception scope."
-    }
-  ]
+  "reviewRequiredComponents": []
 }

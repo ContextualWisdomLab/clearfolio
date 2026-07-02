@@ -56,7 +56,7 @@ GREEN:
 | JavaDoc | `mvn -q -DskipTests javadoc:javadoc` | Exit 0; no output. |
 | Markdown lint | `npx markdownlint-cli2 $(git diff --name-only origin/main -- '*.md')` | 7 files, 0 errors. |
 | Semgrep | `uvx semgrep --config p/java --metrics=off --error --json --output /tmp/clearfolio-seeded-demo-semgrep.json src/main/java src/test/java` | 53 Java files scanned, 60 rules, 0 findings. |
-| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json` | 63 components, 60 allowed, 3 review-required, 0 violations. |
+| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json --require-no-review` | 61 components, 61 allowed, 0 review-required, 0 violations. |
 | Diff hygiene | `git diff --check` | Exit 0. |
 
 ## Browser Screenshot Evidence

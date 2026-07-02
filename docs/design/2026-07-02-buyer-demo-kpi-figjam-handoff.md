@@ -587,9 +587,9 @@ flowchart LR
     gate["CI allowlist gate"]
     buyer["Buyer data-room package"]
 
-    sbom -->|"Shows 63 components"| metadata
+    sbom -->|"Shows 61 components"| metadata
     metadata -->|"0 unknown"| flagged
-    flagged -->|"3 flagged"| review
+    flagged -->|"0 flagged"| review
     review -->|"Classifies risk"| legal
     legal -->|"Allowed"| approve
     legal -->|"Not allowed"| replace

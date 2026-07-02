@@ -28,7 +28,7 @@ The deployment cannot yet prove:
 
 - production OIDC/JWT issuer, audience, expiry, `kid`, and role validation;
 - centralized durable job, artifact, revocation, audit, or analytics storage;
-- legal approval for the three remaining review-required SBOM components;
+- final legal review of the attribution and redistribution package;
 - a packaged Power Platform connector.
 
 ## Runtime Profile
@@ -149,11 +149,12 @@ mvn test
 mvn -q -DskipTests javadoc:javadoc
 python3 scripts/check_sbom_license_policy.py \
   --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json \
-  --policy docs/security/2026-07-02-license-policy.json
+  --policy docs/security/2026-07-02-license-policy.json \
+  --require-no-review
 ```
 
-Buyer-release mode must add `--require-no-review` only after legal approval or
-dependency replacement clears all review-required components.
+Buyer-release mode must keep `--require-no-review` enabled so any future
+review-required component fails before buyer handoff.
 
 ## Diligence Handoff Checklist
 
@@ -206,8 +207,8 @@ contracts independently.
 
 The buyer sandbox should not be promoted to production until these gates close:
 
-- legal approve, replace, or remove decisions for the three remaining review-required SBOM
-  components;
+- buyer-release license-policy evidence remains green with
+  `--require-no-review` and final attribution/legal release review is prepared;
 - validated gateway or OIDC JWT issuer, audience, expiry, key rotation, and role
   mapping;
 - durable conversion job repository with persisted state transitions;

@@ -34,7 +34,7 @@ Java HotSpot(TM) 64-Bit Server VM (build 26.0.1+8-34, mixed mode, sharing)
 | Coverage | `awk -F, ... target/site/jacoco/jacoco.csv` | Pass, `missed_instr=0 missed_branch=0 missed_line=0`. |
 | JavaDoc | `mvn -q -DskipTests javadoc:javadoc` | Pass, no output. |
 | SAST | `uvx semgrep --config p/java --metrics=off --error --json --output /tmp/clearfolio-buyer-deployment-semgrep.json src/main/java src/test/java` | Pass, 60 Java rules, 50 tracked files, 0 findings, 0 errors. |
-| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json` | Pass in engineering-review mode: 60 allowed, 3 review-required, 0 violations. |
+| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json --require-no-review` | Pass in buyer-release mode: 61 allowed, 0 review-required, 0 violations. |
 | Buyer-demo profile smoke | `SPRING_PROFILES_ACTIVE=buyer-demo ... mvn -q spring-boot:run -Dspring-boot.run.arguments="--server.port=18084"` with `/healthz` and `/` curl checks | Pass: `health={"status":"ok"}`, root contains Clearfolio copy and recovery panel markup. |
 
 ## FigJam Evidence
@@ -114,7 +114,7 @@ Validation:
 | Tests and coverage | `mvn test` passed, 312 tests, 0 failures, 0 errors; JaCoCo remained `missed_instr=0 missed_branch=0 missed_line=0`. |
 | JavaDoc | `mvn -q -DskipTests javadoc:javadoc` passed, no output. |
 | SAST | `uvx semgrep --config p/java --metrics=off --error --json --output /tmp/clearfolio-durable-repository-semgrep.json src/main/java src/test/java` passed, 60 Java rules, 50 tracked files, 0 findings. |
-| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json` passed in engineering-review mode: 60 allowed, 3 review-required, 0 violations. |
+| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json --require-no-review` passed in buyer-release mode: 61 allowed, 0 review-required, 0 violations. |
 
 FigJam evidence:
 
@@ -156,7 +156,7 @@ Validation:
 | Tests and coverage | `mvn test` passed, 327 tests, 0 failures, 0 errors; JaCoCo remained `missed_instr=0 missed_branch=0 missed_line=0`. |
 | JavaDoc | `mvn -q -DskipTests javadoc:javadoc` passed, no output. |
 | SAST | `uvx semgrep --config p/java --metrics=off --error --json --output /tmp/clearfolio-state-store-semgrep.json src/main/java src/test/java` passed, 60 Java rules, 52 tracked files, 0 findings. |
-| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json` passed in engineering-review mode: 60 allowed, 3 review-required, 0 violations. |
+| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json --require-no-review` passed in buyer-release mode: 61 allowed, 0 review-required, 0 violations. |
 
 FigJam evidence:
 

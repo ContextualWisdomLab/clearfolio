@@ -254,6 +254,9 @@ Progress as of 2026-07-02:
 - The shell includes session KPIs for submitted, ready, and needs-action
   documents, providing the first product-facing anchor for the Data Analytics
   KPI model.
+- Session history rows now expose a job detail drawer backed by the existing
+  status API, including attempts, retry schedule, dead-letter state, artifact
+  path, and an operator retry action for dead-lettered jobs.
 
 ### Phase 2: Due-diligence pack
 

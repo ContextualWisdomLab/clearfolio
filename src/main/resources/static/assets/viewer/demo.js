@@ -18,7 +18,13 @@ const el = {
   kpiReady: document.getElementById("kpi-ready"),
   kpiSuccessRate: document.getElementById("kpi-success-rate"),
   kpiP95: document.getElementById("kpi-p95"),
+  jobDetail: document.getElementById("job-detail"),
+  jobDetailCaption: document.getElementById("job-detail-caption"),
+  jobDetailBody: document.getElementById("job-detail-body"),
+  retryJobBtn: document.getElementById("retry-job-btn"),
 };
+
+let activeJobDetail = null;
 
 function loadHistory() {
   try {
@@ -64,6 +70,15 @@ function createLink(href, label) {
   return link;
 }
 
+function createActionButton(label, onClick) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.className = "btn btn-secondary btn-compact";
+  button.addEventListener("click", onClick);
+  return button;
+}
+
 function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
@@ -81,6 +96,9 @@ function renderHistory(history = loadHistory()) {
     actionsCell.className = "table-actions";
 
     if (job.statusUrl) {
+      actionsCell.appendChild(createActionButton("Details", () => {
+        void openJobDetail(job);
+      }));
       actionsCell.appendChild(createLink(job.statusUrl, "Status JSON"));
     }
     if (job.jobId) {
@@ -89,6 +107,114 @@ function renderHistory(history = loadHistory()) {
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
     el.historyBody.appendChild(row);
+  }
+}
+
+function addDetailRow(label, value) {
+  const term = document.createElement("dt");
+  const description = document.createElement("dd");
+  term.textContent = label;
+  description.textContent = formatDetailValue(value);
+  el.jobDetailBody.append(term, description);
+}
+
+function formatDetailValue(value) {
+  if (value === null || value === undefined || value === "") {
+    return "n/a";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  return String(value);
+}
+
+function renderJobDetail(detail) {
+  activeJobDetail = detail;
+  el.jobDetail.hidden = false;
+  el.jobDetailCaption.textContent = detail.fileName
+    ? `${detail.fileName} operational evidence`
+    : "Operational evidence";
+  el.jobDetailBody.textContent = "";
+
+  addDetailRow("Job ID", detail.jobId);
+  addDetailRow("Status", detail.status);
+  addDetailRow("Message", detail.message);
+  addDetailRow("Attempts", `${detail.attemptCount ?? 0} / ${detail.maxAttempts ?? "n/a"}`);
+  addDetailRow("Dead-lettered", Boolean(detail.deadLettered));
+  addDetailRow("Retry at", detail.retryAt);
+  addDetailRow("Created", detail.createdAt);
+  addDetailRow("Started", detail.startedAt);
+  addDetailRow("Completed", detail.completedAt);
+  addDetailRow("Artifact", detail.convertedResourcePath);
+
+  el.retryJobBtn.hidden = !detail.deadLettered;
+}
+
+async function openJobDetail(job) {
+  if (!job.statusUrl) {
+    return;
+  }
+
+  setStatus("Loading job detail...");
+  const { res, data } = await fetchJson(job.statusUrl);
+  if (!res.ok || !data) {
+    setError("Unable to load job detail. Open the status JSON for raw evidence.");
+    return;
+  }
+
+  const statusUrl = job.statusUrl || `/api/v1/convert/jobs/${encodeURIComponent(data.jobId)}`;
+  updateJob(data.jobId, {
+    status: data.status,
+    statusUrl,
+  });
+  renderJobDetail(data);
+  setStatus("Job detail loaded.");
+}
+
+async function retryActiveJob() {
+  if (!activeJobDetail || !activeJobDetail.deadLettered) {
+    return;
+  }
+
+  const jobId = activeJobDetail.jobId;
+  setStatus("Requesting operator retry...");
+  el.retryJobBtn.disabled = true;
+  try {
+    const res = await fetch(`/api/v1/convert/jobs/${encodeURIComponent(jobId)}/retry`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "X-Clearfolio-Operator-Id": "buyer-demo-operator",
+      },
+    });
+    const data = (res.headers.get("content-type") || "").includes("application/json") ? await res.json() : null;
+
+    if (!res.ok || !data) {
+      setError((data && data.message) || "Retry could not be accepted.");
+      return;
+    }
+
+    const statusUrl = data.statusUrl || `/api/v1/convert/jobs/${encodeURIComponent(jobId)}`;
+    updateJob(jobId, {
+      status: data.status || "ACCEPTED",
+      statusUrl,
+    });
+    renderJobDetail({
+      ...activeJobDetail,
+      status: data.status || "ACCEPTED",
+      message: "operator retry queued by buyer-demo-operator",
+      deadLettered: false,
+      retryAt: null,
+    });
+    setStatus("Operator retry accepted. Tracking conversion status...");
+    void pollJob(jobId, statusUrl);
+  } catch (err) {
+    setError("Network error while requesting retry. Retry when the service is reachable.");
+  } finally {
+    el.retryJobBtn.disabled = false;
   }
 }
 
@@ -243,8 +369,13 @@ function init() {
   el.clearHistoryBtn.addEventListener("click", () => {
     saveHistory([]);
     renderHistory([]);
+    activeJobDetail = null;
+    el.jobDetail.hidden = true;
     void refreshKpis();
     setStatus("Session history cleared.");
+  });
+  el.retryJobBtn.addEventListener("click", () => {
+    void retryActiveJob();
   });
 }
 

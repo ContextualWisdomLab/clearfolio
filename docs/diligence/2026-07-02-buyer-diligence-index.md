@@ -19,7 +19,7 @@ strict: partial evidence is marked partial, not complete.
 | Can a buyer run a demo from upload to preview? | Ready | `GET /`, `POST /api/v1/convert/jobs`, `/viewer/{docId}`; local smoke proof in PR #74. | Demo uses in-memory runtime. | Seeded demo data and screenshot set. |
 | Does the UI expose buyer-readable KPIs? | Ready | `GET /api/v1/analytics/kpi-snapshot`; root shell reads runtime KPI snapshot; durable model in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | KPI history is not implemented durably yet. | Durable metric event implementation. |
 | Is the Figma design story available without Code Connect? | Ready | FigJam evidence flow and `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`. | High-fidelity screen frames are not complete. | Figma frames for desktop/mobile happy and negative paths. |
-| Are unsupported and failed states explained? | Partial | HWP/HWPX block behavior, error schema, failed job retry flow, buyer-demo status table. | Operator retry is not yet surfaced as an admin UI. | Operator job detail drawer design and implementation slice. |
+| Are unsupported and failed states explained? | Partial | HWP/HWPX block behavior, error schema, failed job retry flow, buyer-demo status table, and root-shell job detail drawer. | Retry is surfaced in the buyer-demo shell, but not yet as a production admin UI. | Production operator job management surface. |
 
 ## Technical Diligence
 
@@ -67,7 +67,7 @@ strict: partial evidence is marked partial, not complete.
 | Durable metrics event model | `docs/analytics/2026-07-02-durable-metrics-event-model.md` |
 | SBOM evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-status.txt` |
 | SAST evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json` |
-| Buyer-demo implementation | `src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`, `src/main/resources/static/assets/viewer/demo.js` |
+| Buyer-demo implementation | `src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`, `src/main/resources/static/assets/viewer/demo.js`, `src/main/resources/static/assets/viewer/viewer.css` |
 | KPI API implementation | `src/main/java/com/clearfolio/viewer/controller/AnalyticsController.java`, `src/main/java/com/clearfolio/viewer/api/KpiSnapshotResponse.java` |
 
 ## Next Closure Order

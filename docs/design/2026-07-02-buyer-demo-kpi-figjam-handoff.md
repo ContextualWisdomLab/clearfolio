@@ -11,6 +11,8 @@ Date: 2026-07-02
   `Clearfolio License Diligence Closure Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Auth Tenant Boundary Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Operator Job Detail Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -21,6 +23,8 @@ Date: 2026-07-02
   conversion success rate, and p95 preview latency.
 - Upload, status tracking, preview handoff, and evidence flow must remain visible
   as one buyer-demo journey rather than separate marketing pages.
+- Session history rows must expose a readable job detail drawer before forcing
+  buyers or operators into raw JSON.
 - The UI must retain keyboard-accessible controls, visible focus, and live status
   announcements for upload and conversion state changes.
 - KPI fallback behavior must not create contradictory buyer evidence: backend
@@ -225,4 +229,38 @@ flowchart LR
     style artifact fill:#CDF4D3,stroke:#66D575
     style kpi fill:#DCCCFF,stroke:#874FFF
     style audit fill:#D9D9D9,stroke:#B3B3B3
+```
+
+### Operator Job Detail Flow
+
+```mermaid
+flowchart LR
+    history["Session history row"]
+    details["Details button"]
+    statusApi["Status API"]
+    drawer["Job detail drawer"]
+    deadLetter{"Dead-lettered?"}
+    retry["Retry button"]
+    retryApi["Retry API"]
+    poll["Status polling"]
+    viewer["Open viewer"]
+    json["Status JSON"]
+
+    history -->|"Selects"| details
+    history -->|"Opens"| json
+    details -->|"Fetches"| statusApi
+    statusApi -->|"Returns evidence"| drawer
+    drawer -->|"Shows attempts"| deadLetter
+    deadLetter -->|"Yes"| retry
+    deadLetter -->|"No"| viewer
+    retry -->|"Operator header"| retryApi
+    retryApi -->|"Accepted"| poll
+    poll -->|"Succeeded"| viewer
+
+    style drawer fill:#C2E5FF,stroke:#3DADFF
+    style deadLetter fill:#FFECBD,stroke:#FFC943
+    style retry fill:#DCCCFF,stroke:#874FFF
+    style retryApi fill:#CDF4D3,stroke:#66D575
+    style viewer fill:#CDF4D3,stroke:#66D575
+    style json fill:#D9D9D9,stroke:#B3B3B3
 ```

@@ -45,6 +45,8 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("id=\"upload-form\""));
                     assertTrue(body.contains("name=\"file\""));
                     assertTrue(body.contains("id=\"session-history\""));
+                    assertTrue(body.contains("id=\"job-detail\""));
+                    assertTrue(body.contains("id=\"retry-job-btn\""));
                     assertTrue(body.contains("id=\"kpi-strip\""));
                     assertTrue(body.contains("id=\"kpi-total\""));
                     assertTrue(body.contains("id=\"kpi-success-rate\""));
@@ -103,6 +105,11 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("setTimeout"));
             assertTrue(script.contains("formatPercent"));
             assertTrue(script.contains("formatMilliseconds"));
+            assertTrue(script.contains("openJobDetail"));
+            assertTrue(script.contains("retryActiveJob"));
+            assertTrue(script.contains("/retry"));
+            assertTrue(script.contains("X-Clearfolio-Operator-Id"));
+            assertTrue(script.contains("deadLettered"));
         }
     }
 

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -525,6 +526,82 @@ class DefaultConversionWorkerTest {
         assertEquals(1, attempts.get());
         assertEquals(1, job.getAttemptCount());
         assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
+    }
+
+    @Test
+    void recoverPendingJobsRequeuesDueSubmittedAndStaleProcessingJobs() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionProperties conversionProperties = new ConversionProperties();
+        Instant recoveryNow = Instant.now().plusSeconds(120);
+
+        ConversionJob dueSubmitted = new ConversionJob(
+                UUID.randomUUID(),
+                "due.docx",
+                "application/octet-stream",
+                "hash-due-recovery",
+                10L,
+                3
+        );
+        ConversionJob futureRetry = new ConversionJob(
+                UUID.randomUUID(),
+                "future.docx",
+                "application/octet-stream",
+                "hash-future-recovery",
+                10L,
+                3
+        );
+        futureRetry.markRetryScheduled("retry later", recoveryNow.plusSeconds(30));
+        ConversionJob staleProcessing = new ConversionJob(
+                UUID.randomUUID(),
+                "stale.docx",
+                "application/octet-stream",
+                "hash-stale-recovery",
+                10L,
+                3
+        );
+        assertTrue(staleProcessing.markProcessing("worker exited"));
+        repository.save(dueSubmitted);
+        repository.save(futureRetry);
+        repository.save(staleProcessing);
+
+        AtomicInteger attempts = new AtomicInteger();
+        DefaultConversionWorker worker = new DefaultConversionWorker(
+                repository,
+                Runnable::run,
+                new InMemoryArtifactStore(),
+                new PdfBoxArtifactGenerator(),
+                conversionProperties,
+                id -> {
+                    attempts.incrementAndGet();
+                    return "/artifacts/" + id + ".pdf";
+                }
+        );
+
+        int recovered = worker.recoverPendingJobs(recoveryNow, Duration.ofSeconds(60));
+
+        assertEquals(2, recovered);
+        assertEquals(2, attempts.get());
+        assertEquals(ConversionJobStatus.SUCCEEDED, dueSubmitted.getStatus());
+        assertEquals(1, dueSubmitted.getAttemptCount());
+        assertEquals(ConversionJobStatus.SUCCEEDED, staleProcessing.getStatus());
+        assertEquals(2, staleProcessing.getAttemptCount());
+        assertEquals(ConversionJobStatus.SUBMITTED, futureRetry.getStatus());
+        assertEquals(recoveryNow.plusSeconds(30), futureRetry.getRetryAt());
+    }
+
+    @Test
+    void recoverPendingJobsOnStartupUsesConfiguredLeaseWithoutRecoverableJobs() {
+        DefaultConversionWorker worker = new DefaultConversionWorker(
+                new InMemoryConversionJobRepository(),
+                Runnable::run,
+                new InMemoryArtifactStore(),
+                new PdfBoxArtifactGenerator(),
+                new ConversionProperties(),
+                id -> "/artifacts/" + id + ".pdf"
+        );
+
+        worker.recoverPendingJobsAfterStartup();
+        assertEquals(0, worker.recoverPendingJobsOnStartup());
     }
 
     @Test

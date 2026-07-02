@@ -17,6 +17,9 @@
   `src/main/java/com/clearfolio/viewer/repository/ConversionJobStateStore.java`
 - Conversion job lifecycle event implementation:
   `src/main/java/com/clearfolio/viewer/repository/ConversionJobLifecycleEvent.java`
+- Conversion job recovery sweep implementation:
+  `src/main/java/com/clearfolio/viewer/repository/ConversionJobRepository.java`,
+  `src/main/java/com/clearfolio/viewer/service/DefaultConversionWorker.java`
 - Buyer sandbox Spring profile:
   `src/main/resources/application-buyer-demo.yml`
 - Buyer deployment supplemental verification:
@@ -25,7 +28,7 @@
   evidence ledger, KPI snapshot export evidence API, buyer-demo KPI evidence
   panel, operator recovery evidence, buyer integration deployment, durable job
   repository target architecture, conversion state store implementation, and
-  conversion lifecycle event trail flows:
+  conversion lifecycle event trail plus conversion recovery sweep flows:
   <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>
 - Verification source head SHA before latest evidence refresh:
-  `0e629ee49b3796e49045bce58106cfd9af9be918`
+  `7df3ac8b8253cd1a445ba7faddbf99bc9a5c5fcd`

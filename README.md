@@ -81,6 +81,11 @@ profile and follow
   showing tenant ids. This is buyer-demo evidence continuity, not the full
   durable metrics event stream described in
   `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
+- `DefaultConversionWorker` runs a startup recovery sweep using
+  `conversion.processing-lease-timeout-ms` to re-enqueue due `SUBMITTED` jobs
+  and stale retryable `PROCESSING` jobs while repository state is available.
+  The default in-memory runtime still loses conversion jobs across process
+  restart until the planned SQL repository profile is implemented.
 
 ## Acceptance gates (current)
 
@@ -95,8 +100,9 @@ Current release claim boundary:
 - Conversion lifecycle transitions now use an explicit in-repo state-store
   boundary and append a process-local lifecycle event trail for submission,
   dedupe hits, processing start, retry scheduling, success, failure, and
-  operator retry acceptance. The default runtime remains process-local until a
-  SQL profile is introduced.
+  operator retry acceptance. The worker can also recover due submitted jobs and
+  stale processing leases from the available repository state at startup. The
+  default runtime remains process-local until a SQL profile is introduced.
 
 ## Delivery schedule
 

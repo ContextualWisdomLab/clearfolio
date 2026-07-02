@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -81,5 +83,16 @@ class TenantContextTest {
         TenantContext context = new TenantContext("tenant-a", "user-1", java.util.Set.of(TenantPermissions.JOB_READ));
 
         assertFalse(context.hasPermission(TenantPermissions.JOB_RETRY));
+    }
+
+    @Test
+    void canonicalPermissionsReturnsStablePermissionClaimString() {
+        TenantContext context = new TenantContext(
+                "tenant-a",
+                "user-1",
+                new LinkedHashSet<>(List.of(TenantPermissions.JOB_READ, TenantPermissions.VIEWER_READ))
+        );
+
+        assertEquals("job:read,viewer:read", context.canonicalPermissions());
     }
 }

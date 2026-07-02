@@ -16,6 +16,8 @@ Date: 2026-07-02
 - Added FigJam diagram on the same board:
   `Clearfolio Runtime Tenant Enforcement Flow`.
 - Added FigJam diagram on the same board:
+  `Clearfolio Gateway Signed Tenant Claims Flow`.
+- Added FigJam diagram on the same board:
   `Clearfolio Runtime Signed Artifact Link Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Artifact Revocation and Read Audit Flow`.
@@ -235,6 +237,46 @@ flowchart LR
     style artifact fill:#CDF4D3,stroke:#66D575
     style kpi fill:#DCCCFF,stroke:#874FFF
     style audit fill:#D9D9D9,stroke:#B3B3B3
+```
+
+### Gateway Signed Tenant Claims Flow
+
+```mermaid
+flowchart LR
+    client["Browser or workflow client"]
+    gateway["Trusted gateway or host platform"]
+    claims["Tenant claim set"]
+    signed["Signed X-Clearfolio headers"]
+    service["Clearfolio Viewer API"]
+    auth["TenantAccessService"]
+    tenant["Tenant-scoped job, KPI, viewer, artifact link APIs"]
+    reject["401 rejected auth claims"]
+    artifact["Signed artifact token"]
+    preview["Viewer preview"]
+    hidden["404 hidden resource"]
+    demo["Unsigned buyer-demo mode only"]
+
+    client -->|"OIDC or platform auth"| gateway
+    gateway -->|"Maps identity to tenant id, subject id, permissions"| claims
+    claims -->|"HMAC signs tenant id, subject id, permissions, issued-at"| signed
+    signed -->|"POST or GET JSON API"| service
+    service -->|"Verify signature and skew when configured"| auth
+    auth -->|"Valid signature and permission"| tenant
+    auth -->|"Missing, stale, future, or invalid signature"| reject
+    tenant -->|"Artifact link create"| artifact
+    artifact -->|"Tenant and checksum-bound PDF read"| preview
+    tenant -->|"Cross-tenant lookup"| hidden
+    service -->|"No hmac secret in local demo"| demo
+
+    style gateway fill:#C2E5FF,stroke:#3DADFF
+    style service fill:#C2E5FF,stroke:#3DADFF
+    style tenant fill:#C2E5FF,stroke:#3DADFF
+    style claims fill:#CDF4D3,stroke:#66D575
+    style signed fill:#CDF4D3,stroke:#66D575
+    style auth fill:#CDF4D3,stroke:#66D575
+    style reject fill:#FFCDC2,stroke:#FF7556
+    style hidden fill:#FFCDC2,stroke:#FF7556
+    style demo fill:#FFCDC2,stroke:#FF7556
 ```
 
 ### Operator Job Detail Flow

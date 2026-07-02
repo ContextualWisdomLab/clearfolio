@@ -27,7 +27,7 @@ strict: partial evidence is marked partial, not complete.
 | --- | --- | --- | --- | --- |
 | Is the architecture inspectable? | Ready | `docs/architecture.md`, PRD/TRD, diagrams, package boundaries. | Target production architecture is still partly roadmap. | Target architecture diagram for durable queue/store. |
 | Are the mandatory gates reproducible? | Ready | Maven compile/test/JaCoCo/JavaDoc commands in PR #74, AGENTS gate policy, and `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md`. | GitHub hosted checks are queued. | Attach CI pass or queued-check explanation when available. |
-| Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=40`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
+| Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=46`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
 | Is request handling non-blocking? | Ready | WebFlux controller path and `DefaultDocumentConversionService` enqueue behavior. | Real converter runtime is not integrated. | Converter adapter contract and load-test plan. |
 | Is persistence production-grade? | Missing | `ConversionJobRepository` abstraction exists. | In-memory repository only. | Durable repository design and migration plan. |
 | Are artifacts production-grade? | Partial | In-memory PDF artifact store, signed artifact-token runtime, runtime token ledger, tenant-scoped token revocation, artifact read audit API, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, externally persisted revocation table, persisted read audit, or retention policy. | Durable artifact metadata and persisted revocation/audit implementation. |
@@ -39,7 +39,7 @@ strict: partial evidence is marked partial, not complete.
 | Is there SAST evidence? | Ready | Semgrep evidence under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json`; 0 findings. | GitHub security checks are queued on PR #74. | Check-run snapshot when workflows complete. |
 | Are risky formats controlled? | Ready | HWP/HWPX default block, policy-override headers with token fingerprint logging, and `docs/security/2026-07-02-threat-model-data-handling.md`. | Policy ownership and approval workflow are not externalized. | Policy-owner matrix. |
 | Are browser security headers present? | Ready | `ViewerSecurityHeadersWebFilter` applies viewer browser headers. | CSP/frame policy still needs production domain matrix. | Deployment security profile. |
-| Is auth/RBAC implemented? | Partial | Header-claim runtime enforcement exists for JSON APIs and artifact links: `TenantAccessService`, tenant-owned `ConversionJob`, tenant-aware dedupe, cross-tenant `404`, tenant-filtered KPI snapshots, signed artifact-token reads, token revocation, and artifact read audit events. Auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | Header claims are not cryptographically validated OIDC/JWT tokens, role mapping is not implemented, and audit events are not persisted outside process memory. | Validated gateway/OIDC claims plus durable audit/revocation store. |
+| Is auth/RBAC implemented? | Partial | Header-claim runtime enforcement exists for JSON APIs and artifact links: `TenantAccessService`, tenant-owned `ConversionJob`, tenant-aware dedupe, cross-tenant `404`, tenant-filtered KPI snapshots, optional gateway HMAC validation for tenant headers, signed artifact-token reads, token revocation, and artifact read audit events. Auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | OIDC/JWT issuer/audience/expiry validation, role mapping, managed secret rotation, and durable audit events are not implemented. | Validated gateway/OIDC claims plus durable audit/revocation store. |
 | Is there license/SBOM evidence? | Partial | CycloneDX SBOM evidence exists under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; engineering review exists in `docs/security/2026-07-02-license-allowlist-review.md`; `scripts/check_sbom_license_policy.py` enforces the engineering allowlist and current policy summary reports 136 allowed components, 6 review-required components, and 0 unlisted violations. | Six flagged components still need legal approve, replace, or remove decisions before buyer-release mode can require zero review-required components. | Legal sign-off and buyer-release license-policy mode. |
 | Is data handling documented? | Partial | `docs/security/2026-07-02-threat-model-data-handling.md` maps current data classes, trust boundaries, and retention limits. | Production retention policy, tenant ACLs, and durable encrypted stores are not implemented. | Production data-retention policy. |
 
@@ -70,14 +70,15 @@ strict: partial evidence is marked partial, not complete.
 | SAST evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json` |
 | Buyer-demo implementation | `src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`, `src/main/resources/static/assets/viewer/demo.js`, `src/main/resources/static/assets/viewer/viewer.css` |
 | KPI API implementation | `src/main/java/com/clearfolio/viewer/controller/AnalyticsController.java`, `src/main/java/com/clearfolio/viewer/api/KpiSnapshotResponse.java` |
-| Auth/tenant runtime slice | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`, `src/main/java/com/clearfolio/viewer/auth/TenantContext.java`, `src/main/java/com/clearfolio/viewer/model/ConversionJob.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java` |
+| Auth/tenant runtime slice | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`, `src/main/java/com/clearfolio/viewer/auth/TenantContext.java`, `src/main/java/com/clearfolio/viewer/model/ConversionJob.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java`; includes optional gateway HMAC validation when `clearfolio.tenant-claims.hmac-secret` is set. |
 | Signed artifact runtime slice | `src/main/java/com/clearfolio/viewer/artifact/ArtifactLinkService.java`, `src/main/java/com/clearfolio/viewer/controller/ArtifactController.java`, `src/main/java/com/clearfolio/viewer/api/ArtifactLinkResponse.java` |
 
 ## Next Closure Order
 
 1. Get legal sign-off or replacement decisions for the six review-required SBOM
    components, then run license-policy buyer-release mode.
-2. Replace demo tenant headers with validated gateway/OIDC JWT claims.
+2. Use configured gateway-signed tenant headers for buyer deployments, then
+   replace the scaffold with validated gateway/OIDC JWT claims.
 3. Add durable artifact metadata and persist token revocation plus artifact
    read audit events outside process memory.
 4. Implement durable metrics events.

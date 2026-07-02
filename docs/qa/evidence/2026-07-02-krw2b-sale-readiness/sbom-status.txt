@@ -1,5 +1,4 @@
 bomFormat=CycloneDX
 specVersion=1.6
-component_count=142
-components_without_license_metadata=0
-unique_license_metadata_entries=20
+componentCount=142
+componentsWithoutLicenseMetadata=0

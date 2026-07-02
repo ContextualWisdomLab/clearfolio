@@ -245,7 +245,7 @@ public class ArtifactLinkService {
                 Instant.now(clock),
                 tenantContext.subjectId(),
                 reasonOf(request == null ? null : request.reason())
-        ).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "artifact link not found"));
+        ).orElse(record);
 
         return new ArtifactLinkRevocationResponse(
                 revoked.tokenId(),

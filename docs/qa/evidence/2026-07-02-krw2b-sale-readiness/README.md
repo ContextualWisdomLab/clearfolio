@@ -2,7 +2,7 @@
 
 Date: 2026-07-02
 Verification source head SHA before this evidence refresh:
-`bc6f8f0de03b7ee99891cf13b729ab7ebaa1f82b`
+`87af619e3aa3c6c3a7981db3072120d77a36f927`
 
 ## Gate Summary
 
@@ -16,7 +16,7 @@ Verification source head SHA before this evidence refresh:
 | SAST | Pass, 0 findings | `semgrep.log`, `semgrep.json` |
 | SBOM | Pass, CycloneDX 1.6, 142 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
 | License review | Partial, policy checker reports 136 allowed components, 6 review-required components, 0 unlisted violations; legal decisions still needed | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
-| Auth/tenant and signed artifacts | Partial, runtime tenant enforcement, signed artifact tokens, token revocation, and artifact read audit API implemented; OIDC/JWT, durable revocation, and persisted audit pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact tests |
+| Auth/tenant and signed artifacts | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, and artifact read audit API implemented; OIDC/JWT, durable revocation, and persisted audit pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact tests |
 | Local smoke | Pass | `smoke-local.txt` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
@@ -74,16 +74,21 @@ Evidence:
 - `docs/security/2026-07-02-license-allowlist-review.md`
 - `docs/security/2026-07-02-license-policy.json`
 - `docs/security/2026-07-02-auth-tenant-model.md`
+- FigJam diagram:
+  [Clearfolio Gateway Signed Tenant Claims Flow](https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM)
 
 ## Local Smoke
 
 Command path:
 
-- Start app on `localhost:18080`.
+- Start app on a random local port with
+  `clearfolio.tenant-claims.hmac-secret` configured.
+- Runtime Java: 21.0.11.
 - Verify `GET /`, `/assets/viewer/demo.js`, missing-auth KPI denial,
-  authenticated empty KPI snapshot, document upload with tenant headers, status
-  polling to `SUCCEEDED`, `/viewer/{docId}`, authenticated viewer bootstrap,
-  signed artifact URL creation, unsigned artifact denial, signed artifact range
+  unsigned tenant-claim KPI denial, authenticated empty KPI snapshot with signed
+  tenant claims, document upload with signed tenant headers, status polling to
+  `SUCCEEDED`, `/viewer/{docId}`, authenticated viewer bootstrap, signed
+  artifact URL creation, unsigned artifact denial, signed artifact range
   access, artifact read audit lookup, artifact token revocation, revoked-token
   denial, cross-tenant status denial, and post-upload KPI snapshot.
 
@@ -92,6 +97,7 @@ Result:
 - Root shell: 200.
 - Demo JS: 200.
 - Missing-auth KPI: 401.
+- Unsigned tenant-claim KPI with secret configured: 401.
 - Authenticated empty KPI: 200.
 - Final conversion status: `SUCCEEDED`.
 - Status tenant: `buyer-demo`.

@@ -15,7 +15,7 @@ Clearfolio Viewer,com.clearfolio.viewer.artifact,PdfBoxArtifactGenerator,0,161,0
 Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactTokenClaims,0,30,0,0,0,1,0,1,0,1
 Clearfolio Viewer,com.clearfolio.viewer.artifact,PdfBoxArtifactGenerator.OutputTarget,0,32,0,0,0,6,0,4,0,4
 Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactReadEvent,0,27,0,0,0,1,0,1,0,1
-Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactLinkService,6,828,0,72,0,186,1,64,1,28
+Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactLinkService,0,828,0,72,0,186,0,64,0,28
 Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactTokenException,0,10,0,0,0,4,0,2,0,2
 Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactLinkRecord,0,76,0,2,0,3,0,4,0,3
 Clearfolio Viewer,com.clearfolio.viewer.artifact,ArtifactLinkLedger,0,84,0,6,0,18,0,12,0,9
@@ -30,8 +30,8 @@ Clearfolio Viewer,com.clearfolio.viewer.api,KpiSnapshotResponse,0,149,0,18,0,33,
 Clearfolio Viewer,com.clearfolio.viewer.api,ConversionJobStatusResponse,0,73,0,0,0,15,0,2,0,2
 Clearfolio Viewer,com.clearfolio.viewer.api,ArtifactReadEventResponse,0,27,0,0,0,1,0,1,0,1
 Clearfolio Viewer,com.clearfolio.viewer.api,ViewerBootstrapResponse,0,153,0,22,0,31,0,18,0,5
-Clearfolio Viewer,com.clearfolio.viewer.auth,TenantContext,0,119,0,18,0,31,0,15,0,6
-Clearfolio Viewer,com.clearfolio.viewer.auth,TenantAccessService,0,44,0,8,0,9,0,8,0,4
+Clearfolio Viewer,com.clearfolio.viewer.auth,TenantContext,0,124,0,18,0,32,0,16,0,7
+Clearfolio Viewer,com.clearfolio.viewer.auth,TenantAccessService,0,231,0,24,0,52,0,24,0,12
 Clearfolio Viewer,com.clearfolio.viewer,ClearfolioViewerApplication,0,8,0,0,0,3,0,2,0,2
 Clearfolio Viewer,com.clearfolio.viewer.repository,ConversionJobRepository,0,11,0,0,0,1,0,2,0,2
 Clearfolio Viewer,com.clearfolio.viewer.repository,InMemoryConversionJobRepository,0,179,0,22,0,36,0,20,0,9

@@ -35,7 +35,11 @@ Protected JSON APIs require Clearfolio tenant headers in the current buyer-demo
 runtime: `X-Clearfolio-Tenant-Id`, `X-Clearfolio-Subject-Id`, and
 `X-Clearfolio-Permissions`. The built-in demo shell sends `buyer-demo` headers
 automatically. These headers are a runtime enforcement scaffold, not production
-OIDC/JWT validation.
+OIDC/JWT validation. Deployments can set
+`clearfolio.tenant-claims.hmac-secret` to require gateway-signed tenant headers
+with `X-Clearfolio-Claims-Issued-At` and `X-Clearfolio-Claims-Signature`;
+validated OIDC/JWT issuer, audience, expiry, revocation, and role mapping remain
+production gaps.
 
 ## Compatibility notes
 
@@ -49,6 +53,9 @@ OIDC/JWT validation.
   `X-Clearfolio-Operator-Id` via `/api/v1/convert/jobs/{jobId}/retry`.
 - Status, viewer bootstrap, retry, and KPI JSON APIs enforce tenant permission
   headers and hide cross-tenant jobs as `404`.
+- Tenant headers can be HMAC-signed by a trusted gateway when
+  `clearfolio.tenant-claims.hmac-secret` is configured; unsigned local demo mode
+  should not be exposed as a production internet boundary.
 - `GET /viewer/{docId}` returns an HTML shell without checking job existence;
   the protected JSON APIs determine visible state.
 - Artifact reads now require a signed `artifactToken` query parameter or bearer

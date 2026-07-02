@@ -29,6 +29,16 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
     public static final String PERMISSIONS_HEADER = "X-Clearfolio-Permissions";
 
     /**
+     * Header carrying the epoch-second issue time for signed gateway claims.
+     */
+    public static final String CLAIMS_ISSUED_AT_HEADER = "X-Clearfolio-Claims-Issued-At";
+
+    /**
+     * Header carrying the HMAC signature for signed gateway claims.
+     */
+    public static final String CLAIMS_SIGNATURE_HEADER = "X-Clearfolio-Claims-Signature";
+
+    /**
      * Demo tenant used by the built-in buyer-demo shell.
      */
     public static final String DEMO_TENANT_ID = "buyer-demo";
@@ -82,6 +92,15 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
      */
     public boolean hasPermission(String permission) {
         return permissions.contains(permission);
+    }
+
+    /**
+     * Returns the canonical comma-separated permission claim string.
+     *
+     * @return canonical permission string
+     */
+    public String canonicalPermissions() {
+        return String.join(",", permissions);
     }
 
     private static Set<String> permissionsOf(String raw) {

@@ -34,10 +34,11 @@ bounded upload size, blocked HWP/HWPX defaults, policy override audit
 fingerprints, warning-free compile gates, 100 percent production package
 JaCoCo line/branch coverage, JavaDoc gates, Semgrep evidence, no-store artifact
 responses, signed artifact tokens, runtime artifact-token revocation, artifact
-read audit events, tenant-scoped JSON APIs, and viewer CSP headers. The largest
-production gaps are no validated OIDC/JWT, no durable encrypted store, no
-durable revocation/audit persistence for artifact tokens, no AV or file-type
-deep inspection, and no isolated real converter runtime.
+read audit events, tenant-scoped JSON APIs, optional HMAC validation for
+gateway-signed tenant headers, and viewer CSP headers. The largest production
+gaps are no validated OIDC/JWT, no durable encrypted store, no durable
+revocation/audit persistence for artifact tokens, no AV or file-type deep
+inspection, and no isolated real converter runtime.
 
 ## Threat Model, Trust Boundaries, and Assumptions
 
@@ -52,12 +53,14 @@ deep inspection, and no isolated real converter runtime.
 | Operator retry authority | `X-Clearfolio-Operator-Id` header | Requeues dead-lettered jobs and affects audit trail. |
 | Browser session history | User browser session | Contains local demo history and document/job labels. |
 | Runtime KPI snapshot | Repository state projected by analytics API | Reveals operational volume, success rate, and latency. |
+| Tenant-claim HMAC secret | Runtime configuration when enabled | Lets the gateway prove tenant headers were not forged by the client. |
 
 ### Trust boundaries
 
 | Boundary | Untrusted side | Trusted side | Controls currently present |
 | --- | --- | --- | --- |
-| Public HTTP request to WebFlux controllers | Browser, API client, uploaded file, headers, path IDs, range header | Controller and service layer | UUID binding, multipart size cap, extension blocklist, range parsing, stable error responses. |
+| Public HTTP request to WebFlux controllers | Browser, API client, uploaded file, headers, path IDs, range header | Controller and service layer | UUID binding, multipart size cap, extension blocklist, range parsing, stable error responses, tenant permission checks, optional signed tenant headers. |
+| Gateway tenant claims to service | Browser-facing gateway or host platform | `TenantAccessService` | Optional HMAC over tenant id, subject id, permissions, and issue time when `clearfolio.tenant-claims.hmac-secret` is configured. |
 | Upload validation to background conversion | User-provided file and filename | Validation service, job repository, worker executor | HWP/HWPX block by default, max upload bytes, SHA-256 content hash dedupe, async queue. |
 | Worker to artifact store | Conversion output bytes | In-memory PDF artifact store | Generated PDF is synthetic in current MVP, cloned on put/get. |
 | Viewer HTML to browser | Static JS/CSS, PDF.js iframe, signed artifact URL | User browser | CSP on `/viewer`, artifact token verification, `no-store`, `nosniff`, `no-referrer`, same-origin defaults. |
@@ -68,6 +71,10 @@ deep inspection, and no isolated real converter runtime.
 
 - The current service is an MVP running behind a trusted network or demo
   environment. It is not internet-hardened as a standalone SaaS service.
+- Tenant headers are unsigned in the default local buyer-demo profile. If
+  `clearfolio.tenant-claims.hmac-secret` is configured, the service requires
+  gateway HMAC signatures and rejects missing, stale, future, or invalid
+  signed claims.
 - `docId` is no longer sufficient to read artifacts; artifact reads require a
   signed token bound to document, tenant, expiry, scope, and checksum. Issued
   tokens are recorded in a runtime ledger and can be revoked by `tokenId`;
@@ -91,6 +98,8 @@ deep inspection, and no isolated real converter runtime.
 - Policy override headers: `X-Clearfolio-Policy-Override`,
   `X-Clearfolio-Approval-Token`, and `X-Clearfolio-Approver-Id`.
 - Operator retry header `X-Clearfolio-Operator-Id`.
+- Tenant signing headers `X-Clearfolio-Claims-Issued-At` and
+  `X-Clearfolio-Claims-Signature`.
 - `jobId` and `docId` path variables.
 - `artifactToken` query parameter or bearer token for artifact reads.
 - HTTP `Range` header for artifact reads.
@@ -108,6 +117,9 @@ deep inspection, and no isolated real converter runtime.
 - Override audit logs sanitize control characters and log only an 8-byte
   SHA-256 token fingerprint.
 - `ConversionJob` strips NUL characters from persisted strings.
+- `TenantAccessService` can require gateway-signed tenant claims with HMAC,
+  300-second default skew, and constant-time signature comparison when a shared
+  secret is configured.
 - `DefaultDocumentConversionService` hashes content with SHA-256 and dedupes by
   content hash.
 - `DefaultConversionWorker` uses a bounded executor, retry backoff, and
@@ -133,8 +145,13 @@ deep inspection, and no isolated real converter runtime.
   must run in an isolated sandbox with file-type verification, timeout, and AV
   or malware-scanning evidence.
 - A client guesses or obtains a `docId` and fetches a preview artifact. UUID
-  entropy helps against guessing, but this is still a missing authorization and
-  signed-link control for production.
+  entropy helps against guessing, and artifact reads now require a signed token;
+  production still needs durable token metadata, revocation, and read-audit
+  persistence across restarts and replicas.
+- A public client forges `X-Clearfolio-*` tenant headers to impersonate another
+  tenant. Tenant ownership checks limit cross-tenant object access, and the
+  optional HMAC mode rejects forged headers when enabled; unsigned local demo
+  mode must not be exposed as a production internet boundary.
 - A caller abuses policy override headers to push blocked HWP/HWPX files through
   the system. Current code requires header presence and creates audit evidence,
   but token validation and policy-owner approval live outside the repository.
@@ -147,9 +164,6 @@ deep inspection, and no isolated real converter runtime.
 
 ### Out-of-scope or lower-realism stories
 
-- Cross-tenant data exposure is not yet a runtime tenant-boundary bug because
-  tenants are not implemented. It is a blocking production gap, not a completed
-  control.
 - SQL injection is not currently applicable because the repository has no SQL
   persistence layer.
 - Stored XSS through converted documents is lower risk in the current synthetic
@@ -162,6 +176,7 @@ deep inspection, and no isolated real converter runtime.
 | --- | --- | --- | --- | --- | --- |
 | Upload request | Source bytes, filename, content type, override headers | `ConversionController` | In-memory multipart wrapper | Request scope | Large payload and malicious file risk. |
 | Validation | File metadata, size, extension, override headers | `DefaultDocumentValidationService` | No source bytes persisted | Request scope | Policy-token validation is external. |
+| Tenant claim validation | Tenant id, subject id, permissions, issue time, signature | `TenantAccessService` | No request claims persisted by the auth service | Request scope | Unsigned demo mode must stay local; production secrets need managed configuration. |
 | Job creation | Filename, content type, hash, size, tenant id, subject id | `DefaultDocumentConversionService` | `ConversionJob` metadata | Process lifetime | No durable retention policy. |
 | Queue and retry | Job id, status, attempt count, retry time | `DefaultConversionWorker` | Job lifecycle fields | Process lifetime | Worker saturation and retry audit gaps. |
 | Artifact generation | Job metadata | `PdfBoxArtifactGenerator` | Synthetic PDF bytes | Process lifetime | Real converter sandbox not present. |
@@ -181,6 +196,7 @@ deep inspection, and no isolated real converter runtime.
 | Job status and timings | Operational metadata | In-memory job repository | Until process restart | Durable event table for audit and KPI reporting. |
 | Approval token | Secret-like policy credential | Not persisted raw | Request only | External policy validation and secret redaction evidence. |
 | Approval token fingerprint | Audit metadata | Log line only | Log retention policy | Central audit log with owner and review workflow. |
+| Tenant-claim HMAC secret | Secret configuration | Runtime config only | Deployment secret lifetime | Managed secret storage and rotation before production. |
 | Operator id | Operator audit metadata | Job status message and logs | Until process restart/log retention | Authenticated operator identity and immutable audit log. |
 | Browser session history | Local demo metadata | Browser session | Browser session | Do not treat as buyer evidence; seed server demo data instead. |
 
@@ -199,6 +215,8 @@ deep inspection, and no isolated real converter runtime.
 - Artifact token leakage can expose a preview until token expiry or runtime
   revocation; production deployments still need durable revocation state across
   restarts and replicas.
+- Forged tenant headers remain high risk if unsigned local demo mode is exposed
+  outside a trusted local/demo network.
 - Malicious uploads can exhaust memory, worker capacity, or artifact storage
   without rate limiting.
 - Policy override accepts blocked formats without external token validation or
@@ -233,7 +251,8 @@ This document moves the following diligence items forward:
 Next implementation slices, in order:
 
 1. Complete license policy and allowlist review for the generated SBOM.
-2. Replace demo tenant headers with validated gateway/OIDC claims.
+2. Move buyer deployments to configured gateway-signed tenant headers, then
+   replace the scaffold with validated gateway/OIDC claims.
 3. Add durable artifact metadata and persist artifact token revocation plus read
    audit events outside process memory.
 4. Implement durable metrics events for job lifecycle and commercial KPIs.

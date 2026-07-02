@@ -20,8 +20,8 @@ Ponytail operating principles. Figma Code Connect is explicitly out of scope.
   JaCoCo line and branch coverage for production package, JavaDoc with no
   warnings or errors, changed-doc Markdown lint, and PR security evidence.
 - Current deferred production items: durable database and queue, real converter
-  runtime, artifact store, signed links, admin APIs, observability, RBAC, tenant
-  isolation, and production security integrations.
+  runtime, durable artifact store, admin APIs, observability, validated OIDC/JWT,
+  production role mapping, and production security integrations.
 - Current buyer gap: the product has a credible conversion/viewer backend, but
   does not yet show a complete buyer demo loop from upload to governed preview,
   operator recovery, analytics proof, and due-diligence evidence.
@@ -221,6 +221,11 @@ Progress as of 2026-07-02:
   Signed artifact tokens are now enforced for artifact reads. Validated
   OIDC/JWT claims, role mapping, durable revocation, and audit persistence
   remain open.
+- Optional gateway-signed tenant headers are now implemented when
+  `clearfolio.tenant-claims.hmac-secret` is configured, with HMAC validation,
+  issued-at skew checks, and tests for signed, unsigned, expired, malformed, and
+  invalid-signature paths. This is still a gateway scaffold, not production
+  OIDC/JWT.
 - Durable metrics event model is now captured in
   `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
 

@@ -11,13 +11,16 @@
   `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`
 - Buyer connector OpenAPI seed:
   `docs/deployment/clearfolio-buyer-connector.openapi.yaml`
+- Durable job repository design:
+  `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`
 - Buyer sandbox Spring profile:
   `src/main/resources/application-buyer-demo.yml`
 - Buyer deployment supplemental verification:
   `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/buyer-deployment-slice-verification.md`
 - FigJam signed tenant claims, file-backed artifact ledger, KPI snapshot
   evidence ledger, KPI snapshot export evidence API, buyer-demo KPI evidence
-  panel, operator recovery evidence, and buyer integration deployment flows:
+  panel, operator recovery evidence, buyer integration deployment, and durable
+  job repository target architecture flows:
   <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>
 - Verification source head SHA before latest evidence refresh:
   `73d11f53e864f99e576e6f3d3329f9efe40a7c79`

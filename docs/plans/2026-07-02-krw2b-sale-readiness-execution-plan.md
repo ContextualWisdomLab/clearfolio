@@ -258,6 +258,11 @@ Progress as of 2026-07-02:
   `docs/deployment/clearfolio-buyer-connector.openapi.yaml`. It is an import
   candidate for a buyer-owned gateway or Power Platform custom connector, not a
   buyer-tenant-tested production connector.
+- Durable conversion job repository design is now captured in
+  `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`.
+  The plan keeps persistence in-repo, avoids a premature library split, and
+  requires explicit lifecycle transition persistence before any SQL profile is
+  claimed production-ready.
 
 ## Library and submodule decision
 
@@ -339,6 +344,13 @@ Replace MVP internals that buyers will discount.
   audit events outside process memory.
 - Add metrics and observability.
 - Add converter runtime integration behind a stable adapter boundary.
+
+Progress as of 2026-07-02:
+
+- Durable job repository design and migration sequence are now available at
+  `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`.
+- The design explicitly avoids a direct SQL snapshot port until worker lifecycle
+  transitions are persisted through a dedicated state store.
 
 ### Phase 4: Commercial proof
 

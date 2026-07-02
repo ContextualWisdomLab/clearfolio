@@ -19,6 +19,7 @@ Verification source head SHA before this evidence refresh:
 | License review | Partial, policy checker reports 136 allowed components, 6 review-required components, 0 unlisted violations; legal decisions still needed | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
 | Auth/tenant, signed artifacts, and KPI snapshots | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, artifact read audit API, optional file-backed artifact-link ledger replay, optional file-backed KPI snapshot ledger replay, and tenant-scoped KPI snapshot export API implemented; OIDC/JWT and centralized durable revocation/audit/analytics persistence pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact/analytics tests |
 | Buyer deployment integration | Pass for buyer sandbox scope; `buyer-demo` Spring profile, gateway-signed header contract, connector API table, OpenAPI connector seed, smoke path, and cutover gates are documented; buyer tenant import and production OIDC/JWT profile remain follow-up | `src/main/resources/application-buyer-demo.yml`, `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`, `docs/deployment/clearfolio-buyer-connector.openapi.yaml` |
+| Durable job repository design | Partial, design artifact only; target SQL tables, lifecycle event contract, worker recovery model, and migration sequence are documented; SQL implementation is pending | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md` |
 | Local smoke | Pass, signed tenant claims plus file-backed artifact/KPI ledgers, KPI snapshot export API, buyer-demo KPI evidence panel, and operator recovery evidence panel | `smoke-local.txt`, `smoke-app.log`, `smoke-ui-root.txt` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
@@ -79,6 +80,7 @@ Evidence:
 - `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`
 - `docs/deployment/clearfolio-buyer-connector.openapi.yaml`
 - `src/main/resources/application-buyer-demo.yml`
+- `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`
 - `buyer-deployment-slice-verification.md`
 - FigJam diagrams:
   [Clearfolio Gateway Signed Tenant Claims Flow](https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM)

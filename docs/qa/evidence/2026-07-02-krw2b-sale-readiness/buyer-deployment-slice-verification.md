@@ -92,3 +92,41 @@ Claim boundary:
   headers.
 - It is not a buyer-tenant-imported connector package yet.
 - It is not a production OIDC/JWT deployment profile.
+
+## Durable Job Repository Design Verification
+
+Date: 2026-07-02T21:39:41+0900
+
+Source head before this design slice:
+`0555b8e5e86fce57e647074844e8312f85d55f92`
+
+This slice adds a durable conversion job repository migration plan and links it
+from the architecture, diligence, sale-readiness plan, FigJam handoff, README,
+and latest evidence index.
+
+Validation:
+
+| Gate | Result |
+| --- | --- |
+| Git whitespace | `git diff --check` passed with no output. |
+| Markdown lint | `npx markdownlint-cli2 ... docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md` passed, 8 files, 0 errors. |
+| Compile | `mvn -DskipTests compile` passed, build success, no compile warnings in output. |
+| Tests and coverage | `mvn test` passed, 312 tests, 0 failures, 0 errors; JaCoCo remained `missed_instr=0 missed_branch=0 missed_line=0`. |
+| JavaDoc | `mvn -q -DskipTests javadoc:javadoc` passed, no output. |
+| SAST | `uvx semgrep --config p/java --metrics=off --error --json --output /tmp/clearfolio-durable-repository-semgrep.json src/main/java src/test/java` passed, 60 Java rules, 50 tracked files, 0 findings. |
+| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json` passed in engineering-review mode: 136 allowed, 6 review-required, 0 violations. |
+
+FigJam evidence:
+
+- Added `Clearfolio Durable Job Repository Target Architecture` to:
+  <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>
+- Figma Code Connect was not used.
+
+Claim boundary:
+
+- The durable repository package is a design and migration artifact, not a
+  completed SQL repository implementation.
+- It records the decision to keep the first implementation in-repo and avoid a
+  premature library, submodule, or dependency split.
+- It identifies explicit lifecycle transition persistence as a prerequisite
+  before claiming production-grade durable job recovery.

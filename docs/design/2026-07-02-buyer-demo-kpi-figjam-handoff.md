@@ -33,6 +33,8 @@ Date: 2026-07-02
   `Clearfolio Operator Recovery Evidence Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Buyer Integration Deployment Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Durable Job Repository Target Architecture`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -275,6 +277,51 @@ flowchart LR
     clearfolioApp -.->|"GitHub: Gate Proof"| qaPack
     clearfolioApp -.->|"Future: Produce Jobs"| durableQueue
     durableQueue -.->|"Future: Consume Jobs"| clearfolioApp
+```
+
+### Durable Job Repository Target Architecture
+
+```mermaid
+flowchart LR
+    subgraph client ["Buyer Surfaces"]
+        buyerBrowser["Buyer Browser"]
+        powerPlatform["Power Platform"]
+    end
+    subgraph gateway ["Buyer Gateway"]
+        buyerGateway["OIDC or S2S Gateway"]
+    end
+    subgraph service ["Clearfolio Services"]
+        clearfolioApi["Clearfolio Viewer API"]
+        conversionWorker["Conversion Worker"]
+    end
+    subgraph datastore ["Durable Stores"]
+        jobDb["Conversion Job DB"]
+        objectStore["Artifact Object Store"]
+        auditDb["Lifecycle and Audit Events"]
+        metricsStore["KPI Projection Store"]
+    end
+    subgraph async ["Durable Queue"]
+        jobQueue["Conversion Job Queue"]
+    end
+    subgraph external ["Diligence Evidence"]
+        figjamBoard["FigJam Board"]
+        prEvidence["PR Gate Evidence"]
+    end
+
+    buyerBrowser -->|"HTTPS Demo"| buyerGateway
+    powerPlatform -->|"Embedded Flow"| buyerGateway
+    buyerGateway -->|"Signed Claims"| clearfolioApi
+    clearfolioApi -->|"Writes Jobs"| jobDb
+    clearfolioApi -->|"Reads Artifacts"| objectStore
+    clearfolioApi -->|"Writes Audit"| auditDb
+    clearfolioApi -->|"Reads KPIs"| metricsStore
+    clearfolioApi -.->|"Produces Jobs"| jobQueue
+    jobQueue -.->|"Consumes Jobs"| conversionWorker
+    conversionWorker -->|"Persists Transitions"| jobDb
+    conversionWorker -->|"Writes Artifacts"| objectStore
+    conversionWorker -->|"Writes Events"| auditDb
+    clearfolioApi -.->|"FigJam: Explains Target"| figjamBoard
+    clearfolioApi -.->|"GitHub: Gate Proof"| prEvidence
 ```
 
 ### Threat Boundaries and Data Handling

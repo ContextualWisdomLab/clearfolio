@@ -7,8 +7,8 @@
 - License policy: `docs/security/2026-07-02-license-policy.json`
 - Auth/tenant model: `docs/security/2026-07-02-auth-tenant-model.md`
 - Signed artifact link runtime: `docs/security/2026-07-02-signed-artifact-link-design.md`
-- FigJam signed tenant claims, file-backed artifact ledger, and KPI snapshot
-  evidence ledger flows:
+- FigJam signed tenant claims, file-backed artifact ledger, KPI snapshot
+  evidence ledger, and KPI snapshot export evidence API flows:
   <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>
 - Verification source head SHA before latest evidence refresh:
-  `dc9366933cf14fbf27dcee342cb72d814e75579d`
+  `393c034ba9ae6c4011e7c8e866e4cefad9d730a5`

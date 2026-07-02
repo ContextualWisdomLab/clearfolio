@@ -26,6 +26,7 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
 - `GET /api/v1/viewer/{docId}` and `GET /api/v1/convert/viewer/{docId}`: viewer bootstrap JSON with a short-lived signed artifact URL.
 - `POST /api/v1/viewer/{docId}/artifact-links`: create a tenant-bound signed artifact URL for succeeded jobs.
 - `GET /api/v1/analytics/kpi-snapshot`: current conversion KPI counters and optional snapshot evidence for demo and diligence evidence.
+- `GET /api/v1/analytics/kpi-snapshot-exports`: tenant-scoped exported KPI snapshot evidence.
 - `GET /artifacts/{docId}.pdf`: serves converted PDF bytes (SUCCEEDED jobs only) with single-range support after artifact token verification.
 - Errors follow shared shape (`errorCode`, optional `code`, `message`, `traceId`, `details`) for 404/409/400/500 paths.
 - `GET /healthz`: readiness probe.
@@ -67,8 +68,10 @@ production gaps.
   object-store metadata remain open.
 - Deployments can set `clearfolio.analytics-snapshot-ledger.path` to append
   exported KPI snapshots to a local file and replay them after a single-process
-  restart. This is buyer-demo evidence continuity, not the full durable metrics
-  event stream described in `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
+  restart. `GET /api/v1/analytics/kpi-snapshot-exports` exposes the same
+  evidence to authorized tenant callers. This is buyer-demo evidence
+  continuity, not the full durable metrics event stream described in
+  `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
 
 ## Acceptance gates (current)
 

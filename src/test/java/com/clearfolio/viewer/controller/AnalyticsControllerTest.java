@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.api.KpiSnapshotResponse;
 import com.clearfolio.viewer.analytics.KpiSnapshotLedger;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
@@ -118,6 +120,35 @@ class AnalyticsControllerTest {
     }
 
     @Test
+    void kpiSnapshotExportsReturnsTenantScopedEvidence() {
+        repository.save(newJob("current-tenant.docx"));
+
+        webTestClient.get()
+                .uri("/api/v1/analytics/kpi-snapshot")
+                .headers(AnalyticsControllerTest::addAnalyticsAuth)
+                .exchange()
+                .expectStatus().isOk();
+
+        snapshotLedger.recordSnapshot(
+                new TenantContext("tenant-b", "subject-b", Set.of(TenantPermissions.ANALYTICS_READ)),
+                new KpiSnapshotResponse(7, 6, 0, 1, 0, 0, 0.14285714285714285, null)
+        );
+
+        webTestClient.get()
+                .uri("/api/v1/analytics/kpi-snapshot-exports")
+                .headers(AnalyticsControllerTest::addAnalyticsAuth)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$[0].subjectId").isEqualTo(TenantContext.DEMO_SUBJECT_ID)
+                .jsonPath("$[0].totalJobs").isEqualTo(1)
+                .jsonPath("$[0].submittedJobs").isEqualTo(1)
+                .jsonPath("$[0].conversionSuccessRate").isEqualTo(0.0)
+                .jsonPath("$[0].tenantId").doesNotExist()
+                .jsonPath("$[1]").doesNotExist();
+    }
+
+    @Test
     void kpiSnapshotRejectsMissingAnalyticsPermission() {
         webTestClient.get()
                 .uri("/api/v1/analytics/kpi-snapshot")
@@ -128,6 +159,17 @@ class AnalyticsControllerTest {
                 .jsonPath("$.message").isEqualTo("missing permission: " + TenantPermissions.ANALYTICS_READ);
 
         assertTrue(snapshotLedger.snapshotsFor(TenantContext.DEMO_TENANT_ID).isEmpty());
+    }
+
+    @Test
+    void kpiSnapshotExportsRejectsMissingAnalyticsPermission() {
+        webTestClient.get()
+                .uri("/api/v1/analytics/kpi-snapshot-exports")
+                .headers(headers -> addAuth(headers, TenantPermissions.JOB_READ))
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.message").isEqualTo("missing permission: " + TenantPermissions.ANALYTICS_READ);
     }
 
     private ConversionJob newJob(String fileName) {

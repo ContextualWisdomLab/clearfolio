@@ -1,7 +1,7 @@
-Clearfolio local signed-tenant/auth/signed-artifact-revocation-audit/file-ledger/kpi-ledger smoke
+Clearfolio local signed-tenant/auth/signed-artifact-revocation-audit/file-ledger/kpi-ledger/kpi-export smoke
 Date: 2026-07-02
 java_version=21.0.11 2026-04-21
-port=62257
+port=51232
 signed_claims_mode=configured
 artifact_link_ledger_mode=file-backed
 analytics_snapshot_ledger_mode=file-backed
@@ -10,9 +10,12 @@ demo_js_http=200
 missing_auth_kpi_http=401
 unsigned_claims_kpi_http=401
 auth_empty_kpi_http=200
+auth_empty_exports_http=200
+auth_empty_exports_count=1
+auth_empty_exports_last_has_tenant=false
 upload_http=202
-job_id=3513b415-0b8f-4362-8cfe-fa6cc93f8e6c
-status_url=/api/v1/convert/jobs/3513b415-0b8f-4362-8cfe-fa6cc93f8e6c
+job_id=2138f06d-acbe-4b6a-9bd9-ad9eb2817871
+status_url=/api/v1/convert/jobs/2138f06d-acbe-4b6a-9bd9-ad9eb2817871
 final_status=SUCCEEDED
 status_tenant_id=buyer-demo
 viewer_html_http=200
@@ -33,6 +36,10 @@ artifact_revoke_flag=true
 revoked_artifact_http=403
 cross_tenant_status_http=404
 auth_post_kpi_http=200
+auth_post_exports_http=200
+auth_post_exports_count=2
+auth_post_exports_last_totalJobs=1
+auth_post_exports_last_has_tenant=false
 artifact_ledger_file_exists=true
 artifact_ledger_issued_lines=2
 artifact_ledger_revoked_lines=1
@@ -43,4 +50,4 @@ kpi_ledger_snapshot_lines=2
 totalJobs=1
 succeededJobs=1
 conversionSuccessRate=1.0
-p95TimeToPreviewMs=279
+p95TimeToPreviewMs=191

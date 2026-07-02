@@ -193,6 +193,9 @@ Progress as of 2026-07-02:
   append-only ledger when `clearfolio.analytics-snapshot-ledger.path` is
   configured. This gives the buyer demo restart-replay evidence for exported
   snapshots while the full lifecycle event stream remains open.
+- `GET /api/v1/analytics/kpi-snapshot-exports` now exposes tenant-scoped KPI
+  snapshot export evidence so buyer reviewers can inspect what snapshots were
+  exported without reading raw documents or cross-tenant records.
 - The buyer-demo root shell now consumes that KPI endpoint directly and falls
   back to browser-session history only when the runtime snapshot is unavailable.
 - Figma evidence flow is now captured as a FigJam artifact and mirrored in
@@ -238,8 +241,10 @@ Progress as of 2026-07-02:
   `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
 - Optional KPI snapshot ledger runtime is now implemented in
   `src/main/java/com/clearfolio/viewer/analytics/KpiSnapshotLedger.java`;
-  it records export metadata only and does not introduce a separate library,
-  submodule, or production analytics database.
+  it records export metadata only and is now exposed through
+  `src/main/java/com/clearfolio/viewer/api/KpiSnapshotExportResponse.java`
+  without introducing a separate library, submodule, or production analytics
+  database.
 
 ## Library and submodule decision
 

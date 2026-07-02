@@ -7,7 +7,9 @@ tenant-filtered, runtime-only KPI snapshot into buyer-grade analytics evidence.
 It is a design artifact. The current implementation still calculates KPI values
 from in-memory jobs through `GET /api/v1/analytics/kpi-snapshot`, but each
 authorized export can now be recorded to an optional local append-only snapshot
-ledger when `clearfolio.analytics-snapshot-ledger.path` is configured.
+ledger when `clearfolio.analytics-snapshot-ledger.path` is configured, and the
+recorded exports can be read through
+`GET /api/v1/analytics/kpi-snapshot-exports`.
 
 ## Goal
 
@@ -75,7 +77,7 @@ Rules:
 | `conversion.job.failed` | `durationMs`, `attemptCount`, `failureCategory`, `deadLettered` | Failure and dead-letter rate. |
 | `artifact.link.created` | `ttlSeconds`, `purpose`, `scope` | Controlled preview evidence. |
 | `artifact.read` | `rangeRequested`, `servedBytes`, `statusCode` | Usage and cost inputs. |
-| `analytics.snapshot.exported` | `windowStart`, `windowEnd`, `consumer` | Evidence freshness; first runtime slice is optional local KPI snapshot ledger evidence, not the full event stream. |
+| `analytics.snapshot.exported` | `windowStart`, `windowEnd`, `consumer` | Evidence freshness; first runtime slice is optional local KPI snapshot ledger evidence with a tenant-scoped export lookup API, not the full event stream. |
 
 ## Privacy and Classification
 
@@ -177,6 +179,7 @@ optimization.
 | Signed artifact link endpoint | `artifact.link.created`. |
 | `ArtifactController.getPdf` | `artifact.read`. |
 | `AnalyticsController.kpiSnapshot` | `analytics.snapshot.exported`; current slice records exported snapshot fields in `KpiSnapshotLedger` when a local ledger path is configured. |
+| `AnalyticsController.kpiSnapshotExports` | Read model for tenant-scoped exported snapshot evidence. |
 
 ## Buyer Acceptance Criteria
 
@@ -185,6 +188,8 @@ optimization.
   source from tenant-filtered in-memory jobs to durable projections.
 - Authorized KPI exports leave local append-only evidence when the snapshot
   ledger path is configured.
+- Authorized tenants can inspect exported snapshot evidence without raw document
+  content through `GET /api/v1/analytics/kpi-snapshot-exports`.
 - Events are tenant-scoped before paid pilots.
 - Metrics events do not carry raw customer document content or secrets.
 - Failure categories are controlled values, not raw exception strings.
@@ -193,7 +198,8 @@ optimization.
 ## Implementation Sequence
 
 1. Keep the KPI response contract stable while recording authorized exports in
-   `KpiSnapshotLedger`.
+   `KpiSnapshotLedger` and exposing tenant-scoped export evidence through
+   `GET /api/v1/analytics/kpi-snapshot-exports`.
 2. Define `AnalyticsEvent` and `AnalyticsEventRepository` in the existing app.
 3. Add an in-memory implementation for tests and MVP parity.
 4. Emit lifecycle events at the code points listed above.

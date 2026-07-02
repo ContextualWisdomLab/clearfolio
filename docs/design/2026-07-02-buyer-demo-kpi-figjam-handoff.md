@@ -25,6 +25,8 @@ Date: 2026-07-02
   `Clearfolio File Backed Artifact Ledger Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio KPI Snapshot Evidence Ledger Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio KPI Snapshot Export Evidence API Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -43,6 +45,9 @@ Date: 2026-07-02
   runtime metrics are primary, browser-session history is fallback only.
 - KPI snapshot evidence ledger behavior must remain clearly labeled as local
   restart-replay evidence, not as the final durable analytics event store.
+- KPI snapshot export lookup must remain tenant-scoped and should not expose
+  raw source documents, converted artifacts, signed artifact tokens, or
+  cross-tenant identifiers.
 
 ## Data Analytics Mapping
 
@@ -53,6 +58,7 @@ Date: 2026-07-02
 | Success rate | `conversionSuccessRate` | Shows conversion reliability as an acquisition diligence metric. |
 | P95 preview | `p95TimeToPreviewMs` | Shows latency evidence for the demo path. |
 | Snapshot export | `KpiSnapshotRecord` | Shows when a buyer-visible KPI snapshot was exported under tenant scope. |
+| Snapshot evidence lookup | `KpiSnapshotExportResponse` | Lets an authorized buyer inspect exported KPI evidence without raw content. |
 
 ## Mermaid Source
 
@@ -487,6 +493,7 @@ flowchart LR
     config{"Path configured?"}
     memory["Runtime ledger"]
     file[("Append-only snapshot file")]
+    evidence["GET /api/v1/analytics/kpi-snapshot-exports"]
     replay["Replay on startup"]
     future["Future durable event stream"]
 
@@ -497,6 +504,9 @@ flowchart LR
     api -->|"Records export"| config
     config -->|"No"| memory
     config -->|"Yes"| file
+    buyer -->|"Inspect exports"| evidence
+    evidence -->|"Tenant-scoped read"| memory
+    evidence -->|"Tenant-scoped read"| file
     file -->|"Boot"| replay
     replay -.->|"Partial evidence"| future
     snapshot -->|"Returned to buyer"| buyer
@@ -504,6 +514,36 @@ flowchart LR
     style auth fill:#C2E5FF,stroke:#3DADFF
     style config fill:#FFECBD,stroke:#FFC943
     style snapshot fill:#CDF4D3,stroke:#66D575
+    style evidence fill:#C6FAF6,stroke:#5AD8CC
     style file fill:#FFF3E3,stroke:#B95D00
     style future fill:#DCCCFF,stroke:#874FFF
+```
+
+### KPI Snapshot Export Evidence API Flow
+
+```mermaid
+flowchart LR
+    reviewer["Buyer reviewer"]
+    exports["GET /api/v1/analytics/kpi-snapshot-exports"]
+    auth["TenantAccessService"]
+    ledger["KpiSnapshotLedger"]
+    filter{"Same tenant?"}
+    response["KpiSnapshotExportResponse"]
+    hidden["Excluded export"]
+    durable["Future analytics events"]
+
+    reviewer -->|"Signed analytics:read"| exports
+    exports -->|"Requires permission"| auth
+    auth -->|"Tenant id"| ledger
+    ledger -->|"Snapshot records"| filter
+    filter -->|"Yes"| response
+    filter -->|"No"| hidden
+    response -.->|"Temporary read model"| durable
+
+    style auth fill:#C2E5FF,stroke:#3DADFF
+    style ledger fill:#FFF3E3,stroke:#B95D00
+    style filter fill:#FFECBD,stroke:#FFC943
+    style response fill:#CDF4D3,stroke:#66D575
+    style hidden fill:#FFCDC2,stroke:#FF7556
+    style durable fill:#DCCCFF,stroke:#874FFF
 ```

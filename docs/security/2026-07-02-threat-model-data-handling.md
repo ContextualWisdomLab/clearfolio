@@ -31,6 +31,8 @@ Primary runtime surfaces:
 - `GET /api/v1/analytics/kpi-snapshot`: read-only runtime KPI counters.
   Authorized calls can append snapshot metadata to the optional local KPI
   snapshot ledger.
+- `GET /api/v1/analytics/kpi-snapshot-exports`: tenant-scoped exported KPI
+  snapshot evidence without raw document content.
 - `GET /healthz`: readiness probe.
 
 The current security posture is MVP-grade and evidence-oriented. It has
@@ -73,6 +75,7 @@ inspection, and no isolated real converter runtime.
 | Worker to artifact store | Conversion output bytes | In-memory PDF artifact store | Generated PDF is synthetic in current MVP, cloned on put/get. |
 | Artifact ledger to local file | Issued link, revocation, and read-event metadata | Optional append-only file configured by `clearfolio.artifact-link-ledger.path` | Text fields are encoded and replayed locally; this is not a centralized production audit store. |
 | KPI snapshot ledger to local file | Tenant id, subject id, export time, aggregate counts, success rate, p95 preview latency | Optional append-only file configured by `clearfolio.analytics-snapshot-ledger.path` | Text fields are encoded and replayed locally; this is not a durable analytics event stream. |
+| KPI snapshot evidence lookup | Request tenant id and analytics permission | `AnalyticsController` and `KpiSnapshotLedger` | Returns only the caller tenant's exported snapshot metadata and omits tenant id from the response body. |
 | Viewer HTML to browser | Static JS/CSS, PDF.js iframe, signed artifact URL | User browser | CSP on `/viewer`, artifact token verification, `no-store`, `nosniff`, `no-referrer`, same-origin defaults. |
 | Operator retry | Operator-supplied identifier | Dead-letter retry transition | Non-blank operator header required; retry only for failed dead-lettered jobs. |
 | Analytics API | Any caller with network access | In-memory job repository | Read-only projection, no raw upload bytes, no token output. |
@@ -196,6 +199,7 @@ inspection, and no isolated real converter runtime.
 | Viewer shell | `docId`, status, artifact path | `ViewerUiController`, `viewer.js` | Browser-rendered state | Browser tab lifetime | Embedding domain matrix not finalized. |
 | Demo shell | User file picker state, session jobs, KPI snapshot | `demo.js` | Browser session history | Browser session | Session history is not auditable server data. |
 | KPI snapshot | Tenant-filtered job metadata aggregate | `AnalyticsController` | Optional snapshot ledger record | Response scope by default; local-file replay when configured | No durable lifecycle metrics event store. |
+| KPI snapshot export lookup | Tenant id and analytics permission | `AnalyticsController` | No new storage; reads `KpiSnapshotLedger` | Response scope | Exposes commercial metadata; production needs durable audit and retention policy. |
 
 ## Retention and Classification
 

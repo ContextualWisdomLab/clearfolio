@@ -88,6 +88,7 @@ Current release claim boundary:
 - `docs/security/2026-07-02-signed-artifact-link-design.md`
 - `docs/security/2026-07-02-auth-tenant-model.md`
 - `docs/security/2026-07-02-license-allowlist-review.md`
+- `docs/security/2026-07-02-license-policy.json`
 - `docs/analytics/2026-07-02-durable-metrics-event-model.md`
 
 ## Transfer metadata

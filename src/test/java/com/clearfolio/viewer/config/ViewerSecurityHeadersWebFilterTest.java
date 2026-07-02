@@ -45,6 +45,9 @@ class ViewerSecurityHeadersWebFilterTest {
         assertEquals("no-store", headers.getFirst(HttpHeaders.CACHE_CONTROL));
         assertEquals("nosniff", headers.getFirst("X-Content-Type-Options"));
         assertEquals("no-referrer", headers.getFirst("Referrer-Policy"));
+        assertEquals("0", headers.getFirst("X-XSS-Protection"));
+        assertEquals("max-age=31536000; includeSubDomains", headers.getFirst("Strict-Transport-Security"));
+        assertEquals("SAMEORIGIN", headers.getFirst("X-Frame-Options"));
 
         String csp = headers.getFirst("Content-Security-Policy");
         assertNotNull(csp);
@@ -70,6 +73,9 @@ class ViewerSecurityHeadersWebFilterTest {
         HttpHeaders headers = exchange.getResponse().getHeaders();
         assertEquals("no-store", headers.getFirst(HttpHeaders.CACHE_CONTROL));
         assertNull(headers.getFirst("Content-Security-Policy"));
+        assertEquals("0", headers.getFirst("X-XSS-Protection"));
+        assertEquals("max-age=31536000; includeSubDomains", headers.getFirst("Strict-Transport-Security"));
+        assertEquals("SAMEORIGIN", headers.getFirst("X-Frame-Options"));
     }
 
     @Test
@@ -90,6 +96,7 @@ class ViewerSecurityHeadersWebFilterTest {
         String csp = exchange.getResponse().getHeaders().getFirst("Content-Security-Policy");
         assertNotNull(csp);
         assertTrue(csp.contains("frame-ancestors 'self'"));
+        assertEquals("SAMEORIGIN", exchange.getResponse().getHeaders().getFirst("X-Frame-Options"));
     }
 
     @Test
@@ -112,6 +119,7 @@ class ViewerSecurityHeadersWebFilterTest {
             String csp = exchange.getResponse().getHeaders().getFirst("Content-Security-Policy");
             assertNotNull(csp);
             assertTrue(csp.contains("frame-ancestors 'self'"));
+            assertEquals("SAMEORIGIN", exchange.getResponse().getHeaders().getFirst("X-Frame-Options"));
         }
     }
 
@@ -131,6 +139,9 @@ class ViewerSecurityHeadersWebFilterTest {
         String csp = exchange.getResponse().getHeaders().getFirst("Content-Security-Policy");
         assertNotNull(csp);
         assertTrue(csp.contains("frame-ancestors https://example.test"));
+        assertEquals("0", exchange.getResponse().getHeaders().getFirst("X-XSS-Protection"));
+        assertEquals("max-age=31536000; includeSubDomains", exchange.getResponse().getHeaders().getFirst("Strict-Transport-Security"));
+        assertNull(exchange.getResponse().getHeaders().getFirst("X-Frame-Options"));
     }
 
     @Test
@@ -197,5 +208,25 @@ class ViewerSecurityHeadersWebFilterTest {
         assertNull(headers.getFirst("Content-Security-Policy"));
         assertNull(headers.getFirst("X-Content-Type-Options"));
         assertNull(headers.getFirst("Referrer-Policy"));
+        assertNull(headers.getFirst("X-XSS-Protection"));
+        assertNull(headers.getFirst("Strict-Transport-Security"));
+        assertNull(headers.getFirst("X-Frame-Options"));
+    }
+
+    @Test
+    void setsXFrameOptionsDenyWhenFrameAncestorsIsNone() {
+        ViewerSecurityHeadersWebFilter filter = new ViewerSecurityHeadersWebFilter("'none'");
+        org.springframework.mock.web.server.MockServerWebExchange exchange = org.springframework.mock.web.server.MockServerWebExchange.from(
+                org.springframework.mock.http.server.reactive.MockServerHttpRequest.get("/viewer").build()
+        );
+        org.springframework.web.server.WebFilterChain chain = webExchange -> {
+            webExchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.OK);
+            return webExchange.getResponse().setComplete();
+        };
+
+        filter.filter(exchange, chain).block();
+
+        org.springframework.http.HttpHeaders headers = exchange.getResponse().getHeaders();
+        org.junit.jupiter.api.Assertions.assertEquals("DENY", headers.getFirst("X-Frame-Options"));
     }
 }

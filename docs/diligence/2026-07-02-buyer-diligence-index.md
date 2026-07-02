@@ -37,11 +37,11 @@ strict: partial evidence is marked partial, not complete.
 | Buyer question | Status | Current evidence | Gap | Next artifact |
 | --- | --- | --- | --- | --- |
 | Is there SAST evidence? | Ready | Semgrep evidence under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json`; 0 findings. | GitHub security checks are queued on PR #74. | Check-run snapshot when workflows complete. |
-| Are risky formats controlled? | Ready | HWP/HWPX default block and policy-override headers with token fingerprint logging. | Policy ownership and approval workflow are not externalized. | Threat model and policy-owner matrix. |
+| Are risky formats controlled? | Ready | HWP/HWPX default block, policy-override headers with token fingerprint logging, and `docs/security/2026-07-02-threat-model-data-handling.md`. | Policy ownership and approval workflow are not externalized. | Policy-owner matrix. |
 | Are browser security headers present? | Ready | `ViewerSecurityHeadersWebFilter` applies viewer browser headers. | CSP/frame policy still needs production domain matrix. | Deployment security profile. |
 | Is auth/RBAC implemented? | Missing | PRD defines S2S/user-context target. | No tenant, RBAC, or signed S2S session model in runtime. | Auth/RBAC and tenant model design. |
-| Is there license/SBOM evidence? | Missing | OSS references and disallowed AGPL note exist in docs. | No generated SBOM or license scan artifact. | CycloneDX or Maven license evidence. |
-| Is data handling documented? | Partial | PRD describes no raw PII requirement for user context; NUL sanitization exists. | No data-flow map or retention classification. | Data handling map and retention policy. |
+| Is there license/SBOM evidence? | Partial | CycloneDX SBOM evidence exists under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; 142 components, 0 components without license metadata. | Legal allowlist review is not complete; GPL/LGPL/UnRar license metadata requires buyer/legal review. | License policy and allowlist review. |
+| Is data handling documented? | Partial | `docs/security/2026-07-02-threat-model-data-handling.md` maps current data classes, trust boundaries, and retention limits. | Production retention policy, tenant ACLs, and durable encrypted stores are not implemented. | Production data-retention policy. |
 
 ## Commercial Diligence
 
@@ -60,14 +60,16 @@ strict: partial evidence is marked partial, not complete.
 | Sale-readiness plan | `docs/plans/2026-07-02-krw2b-sale-readiness-execution-plan.md` |
 | Business model | `docs/business/2026-07-02-krw2b-valuation-kpi-model.md` |
 | FigJam handoff | `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md` |
+| Threat model and data handling | `docs/security/2026-07-02-threat-model-data-handling.md` |
+| SBOM evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-status.txt` |
 | SAST evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json` |
 | Buyer-demo implementation | `src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`, `src/main/resources/static/assets/viewer/demo.js` |
 | KPI API implementation | `src/main/java/com/clearfolio/viewer/controller/AnalyticsController.java`, `src/main/java/com/clearfolio/viewer/api/KpiSnapshotResponse.java` |
 
 ## Next Closure Order
 
-1. Add threat model and data handling map.
-2. Add SBOM/license evidence.
-3. Add signed artifact link design.
-4. Add durable metrics event model.
-5. Add seeded demo screenshots and Figma high-fidelity frames.
+1. Add license policy and allowlist review.
+2. Add signed artifact link design.
+3. Add durable metrics event model.
+4. Add seeded demo screenshots and Figma high-fidelity frames.
+5. Add production retention policy and policy-owner matrix.

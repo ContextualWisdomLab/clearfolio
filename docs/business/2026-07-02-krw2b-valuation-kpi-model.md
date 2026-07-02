@@ -97,15 +97,16 @@ threshold or just accumulating code.
    prove active tenants, tenant expansion, or tenant-specific reliability.
 3. **Cost model:** Current conversion artifacts are in memory; gross margin
    proof requires artifact storage, conversion compute, and support-cost inputs.
-4. **Security posture:** PR evidence includes Semgrep and Maven gates, but buyer
-   diligence still needs threat model, SBOM/license review, and data handling map.
+4. **Security posture:** PR evidence includes Semgrep, Maven gates, threat
+   model, data handling map, and generated SBOM evidence, but buyer diligence
+   still needs license allowlist review, signed artifacts, auth/RBAC, and
+   tenant isolation.
 5. **Integration packaging:** A buyer still needs a deployment and integration
    playbook for Power Platform, mobile/tablet, and internal workflow embedding.
 
 ## Next Evidence Slices
 
-1. Add a due-diligence index that maps every buyer concern to current evidence,
-   missing evidence, and the owner artifact.
+1. Complete license allowlist review against the generated CycloneDX SBOM.
 2. Add durable metric event design before adding a database implementation.
 3. Add tenant-aware KPI fields only when the tenant model exists.
 4. Add signed artifact link design before implementing preview sharing.

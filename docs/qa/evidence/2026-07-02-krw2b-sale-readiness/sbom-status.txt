@@ -1,0 +1,6 @@
+bom_format=CycloneDX
+spec_version=1.6
+component_count=142
+components_without_license=0
+unique_license_count=20
+unique_licenses=0BSD,Apache License v2,Apache-2.0,BSD 3-clause License w/nuclear disclaimer,BSD-3-Clause,BSD-4-Clause,Bouncy Castle Licence,CDDL, v1.0,EPL-1.0,EPL-2.0,GENERAL PUBLIC LICENSE, version 3 (GPL-3.0),GNU LESSER GENERAL PUBLIC LICENSE, version 3 (LGPL-3.0),GNU Lesser General Public License,GPL-2.0-with-classpath-exception,LGPL-2.1-or-later,MIT,MIT-0,Mozilla Public License Version 1.1,Similar to Apache License but with the acknowledgment clause removed,UnRar License

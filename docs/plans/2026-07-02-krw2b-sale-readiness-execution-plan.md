@@ -197,6 +197,12 @@ Progress as of 2026-07-02:
   `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`.
 - Buyer diligence questions, current evidence, gaps, and next closure artifacts
   are now indexed in `docs/diligence/2026-07-02-buyer-diligence-index.md`.
+- Threat model, trust boundaries, data handling, and retention classification
+  are now captured in
+  `docs/security/2026-07-02-threat-model-data-handling.md`.
+- CycloneDX SBOM evidence is now generated under
+  `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; license allowlist review
+  remains open because GPL/LGPL/UnRar metadata needs buyer/legal review.
 
 ## Library and submodule decision
 

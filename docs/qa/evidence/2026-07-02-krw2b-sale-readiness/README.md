@@ -1,7 +1,8 @@
 # KRW 2B Sale-Readiness Evidence
 
 Date: 2026-07-02
-Head SHA: `7236dea339dad2584c772b3d44ce1f98063b5ba9`
+Verification source head SHA before this evidence refresh:
+`00f4bc9c555e47a147e4afbbae8e191e0c3765d3`
 
 ## Gate Summary
 
@@ -13,6 +14,7 @@ Head SHA: `7236dea339dad2584c772b3d44ce1f98063b5ba9`
 | Markdown lint | Pass, 0 errors across changed docs | `markdownlint.log` |
 | JS syntax | Pass | `node-check.log` |
 | SAST | Pass, 0 findings | `semgrep.log`, `semgrep.json` |
+| SBOM | Pass, CycloneDX 1.6, 142 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
 | Local smoke | Pass | `smoke-local.txt` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
@@ -35,6 +37,29 @@ Result:
 Evidence:
 
 - `semgrep.json`
+
+## SBOM
+
+Command:
+
+```bash
+mvn -DskipTests org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom -Dcyclonedx.skipAttach=true -Dcyclonedx.outputFormat=json -Dcyclonedx.outputName=clearfolio-viewer-sbom
+```
+
+Result:
+
+- CycloneDX BOM format: 1.6.
+- Components: 142.
+- Components without license metadata: 0.
+- Unique license metadata entries: 20.
+- License policy review remains open because GPL/LGPL/UnRar metadata appears
+  in the generated SBOM and needs an allowlist/legal decision before buyer use.
+
+Evidence:
+
+- `sbom-cyclonedx.log`
+- `sbom-cyclonedx.json`
+- `sbom-status.txt`
 
 ## Local Smoke
 

@@ -68,6 +68,7 @@ Current release claim boundary:
 - `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`
 - `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`
 - `docs/diligence/2026-07-02-buyer-diligence-index.md`
+- `docs/security/2026-07-02-threat-model-data-handling.md`
 
 ## Transfer metadata
 

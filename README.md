@@ -92,6 +92,9 @@ profile and follow
 Current release claim boundary:
 - Mandatory gates are validated through committed evidence under `docs/qa/evidence/`.
 - Optional DB pooler/PostgreSQL 17 tracks are documented only and not executed in this MVP release.
+- Conversion lifecycle transitions now use an explicit in-repo state-store
+  boundary, but the default runtime remains process-local until a SQL profile is
+  introduced.
 
 ## Delivery schedule
 

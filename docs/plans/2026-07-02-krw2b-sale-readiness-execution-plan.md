@@ -263,6 +263,9 @@ Progress as of 2026-07-02:
   The plan keeps persistence in-repo, avoids a premature library split, and
   requires explicit lifecycle transition persistence before any SQL profile is
   claimed production-ready.
+- `ConversionJobStateStore` is now implemented in-repo and used by the worker
+  and operator retry path. This closes the first pre-SQL persistence
+  prerequisite without adding a database dependency, submodule, or library split.
 
 ## Library and submodule decision
 
@@ -349,8 +352,13 @@ Progress as of 2026-07-02:
 
 - Durable job repository design and migration sequence are now available at
   `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`.
-- The design explicitly avoids a direct SQL snapshot port until worker lifecycle
-  transitions are persisted through a dedicated state store.
+- Worker and operator retry lifecycle transitions now route through
+  `ConversionJobStateStore`, with `InMemoryConversionJobRepository` implementing
+  the interface and `RepositoryBackedConversionJobStateStore` preserving
+  compatibility for repository implementations that have not yet moved to the
+  explicit transition contract.
+- The remaining production closure is SQL-backed state, append-only lifecycle
+  events, restart recovery tests, and buyer-sandbox profile activation.
 
 ### Phase 4: Commercial proof
 

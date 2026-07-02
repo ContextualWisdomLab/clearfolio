@@ -130,3 +130,44 @@ Claim boundary:
   premature library, submodule, or dependency split.
 - It identifies explicit lifecycle transition persistence as a prerequisite
   before claiming production-grade durable job recovery.
+
+## Conversion Job State Store Implementation Verification
+
+Date: 2026-07-02T21:57:11+0900
+
+Source head before this implementation slice:
+`e9607c0cdc8231458b30dfbf07eec2a1d8b6cfa7`
+
+This slice implements the first pre-SQL durable-persistence prerequisite:
+`ConversionJobStateStore` now owns conversion lifecycle transitions for worker
+claims, retry scheduling, success, dead-lettering, and operator retry
+acceptance. The default runtime is still in-memory; no SQL dependency,
+submodule, or separate library was added.
+
+Validation:
+
+| Gate | Result |
+| --- | --- |
+| TDD red checks | Repository test first failed because `ConversionJobStateStore` did not exist; worker test then failed because the state-store constructor path did not exist; document service retry test then failed because explicit state-store injection did not exist. |
+| Targeted tests | `mvn -Dtest=InMemoryConversionJobRepositoryTest,RepositoryBackedConversionJobStateStoreTest,DefaultConversionWorkerTest,DefaultDocumentConversionServiceTest test` passed, 66 tests, 0 failures, 0 errors. |
+| Git whitespace | `git diff --check` passed with no output. |
+| Markdown lint | `npx markdownlint-cli2 ... docs/superpowers/plans/2026-07-02-conversion-job-state-store.md` passed, 9 files, 0 errors. |
+| Compile | `mvn -DskipTests compile` passed, build success, no compile warnings in output. |
+| Tests and coverage | `mvn test` passed, 327 tests, 0 failures, 0 errors; JaCoCo remained `missed_instr=0 missed_branch=0 missed_line=0`. |
+| JavaDoc | `mvn -q -DskipTests javadoc:javadoc` passed, no output. |
+| SAST | `uvx semgrep --config p/java --metrics=off --error --json --output /tmp/clearfolio-state-store-semgrep.json src/main/java src/test/java` passed, 60 Java rules, 52 tracked files, 0 findings. |
+| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json` passed in engineering-review mode: 136 allowed, 6 review-required, 0 violations. |
+
+FigJam evidence:
+
+- Added `Clearfolio Conversion State Store Implementation Flow` to:
+  <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>
+- Figma Code Connect was not used.
+
+Claim boundary:
+
+- The lifecycle transition boundary is implemented in code and covered by
+  repository, worker, adapter, and operator retry tests.
+- The implementation remains process-local with `InMemoryConversionJobRepository`.
+- Production-grade persistence still requires SQL state, append-only lifecycle
+  events, restart recovery tests, and buyer-sandbox activation.

@@ -8,12 +8,15 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
+import com.clearfolio.viewer.repository.ConversionJobStateStore;
+import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
 import com.clearfolio.viewer.config.ConversionProperties;
 
 /**
@@ -24,6 +27,7 @@ import com.clearfolio.viewer.config.ConversionProperties;
 public class DefaultDocumentConversionService implements DocumentConversionService {
 
     private final ConversionJobRepository repository;
+    private final ConversionJobStateStore stateStore;
     private final DocumentValidationService validationService;
     private final ConversionWorker conversionWorker;
     private final int maxRetryAttempts;
@@ -32,19 +36,37 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * Creates the conversion service with repository, validation, and worker dependencies.
      *
      * @param repository conversion job repository
+     * @param stateStore conversion job lifecycle state store
      * @param validationService document validation service
      * @param conversionWorker conversion worker
      * @param conversionProperties conversion configuration values
      */
+    @Autowired
+    public DefaultDocumentConversionService(
+            ConversionJobRepository repository,
+            ConversionJobStateStore stateStore,
+            DocumentValidationService validationService,
+            ConversionWorker conversionWorker,
+            ConversionProperties conversionProperties) {
+        this.repository = repository;
+        this.stateStore = stateStore;
+        this.validationService = validationService;
+        this.conversionWorker = conversionWorker;
+        this.maxRetryAttempts = conversionProperties.getMaxRetryAttempts();
+    }
+
     public DefaultDocumentConversionService(
             ConversionJobRepository repository,
             DocumentValidationService validationService,
             ConversionWorker conversionWorker,
             ConversionProperties conversionProperties) {
-        this.repository = repository;
-        this.validationService = validationService;
-        this.conversionWorker = conversionWorker;
-        this.maxRetryAttempts = conversionProperties.getMaxRetryAttempts();
+        this(
+                repository,
+                stateStoreFrom(repository),
+                validationService,
+                conversionWorker,
+                conversionProperties
+        );
     }
 
     /**
@@ -119,11 +141,10 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         }
 
         ConversionJob job = existing.get();
-        if (!job.retryDeadLetteredToSubmitted(operatorId)) {
+        if (!stateStore.retryDeadLettered(job.getJobId(), operatorId)) {
             return RetryDeadLetterResult.NOT_ELIGIBLE;
         }
 
-        repository.save(job);
         conversionWorker.enqueue(job.getJobId());
         return RetryDeadLetterResult.ACCEPTED;
     }
@@ -150,5 +171,13 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         } catch (IOException ex) {
             throw new IllegalStateException("Unable to read upload for hashing", ex);
         }
+    }
+
+    private static ConversionJobStateStore stateStoreFrom(ConversionJobRepository repository) {
+        if (repository instanceof ConversionJobStateStore conversionJobStateStore) {
+            return conversionJobStateStore;
+        }
+
+        return new RepositoryBackedConversionJobStateStore(repository);
     }
 }

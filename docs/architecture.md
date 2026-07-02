@@ -57,8 +57,9 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 - Queue policy baseline: bounded executor, retry scheduling with backoff, dead-letter fallback.
 - DB/transaction policy (for future persistent DB phase): keep transactions short, avoid external calls inside transactions, use timeout/retry and `SKIP LOCKED` where applicable.
 - Durable job repository target: keep `ConversionJobRepository` as the read and
-  dedupe boundary, then introduce explicit lifecycle transition persistence
-  before adding a SQL implementation. See
+  dedupe boundary. `ConversionJobStateStore` is now the explicit lifecycle
+  transition boundary for worker claims, success, retry, dead-lettering, and
+  operator retry acceptance before adding a SQL implementation. See
   `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`.
 - Read-only routing policy (future DB phase): use provided read-only endpoint/DSN for read-biased traffic; strong consistency/DDL/lock-sensitive paths stay on primary.
 - Pooler detection policy (best effort, future DB phase): in management DB `pgbouncer`/`pgcat`, try `SHOW VERSION;`; if detection fails, treat as `unknown` and keep safe fallback.

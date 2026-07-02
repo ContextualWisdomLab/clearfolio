@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,12 +11,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.stereotype.Repository;
 
 import com.clearfolio.viewer.model.ConversionJob;
+import com.clearfolio.viewer.model.ConversionJobStatus;
 
 /**
  * In-memory repository implementation for conversion job persistence.
  */
 @Repository
-public class InMemoryConversionJobRepository implements ConversionJobRepository {
+public class InMemoryConversionJobRepository implements ConversionJobRepository, ConversionJobStateStore {
 
     private final ConcurrentHashMap<UUID, ConversionJob> jobs = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, UUID> jobsByTenantAndContentHash = new ConcurrentHashMap<>();
@@ -106,6 +108,60 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository 
     @Override
     public List<ConversionJob> findAll() {
         return List.copyOf(jobs.values());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<ConversionJob> claimForProcessing(UUID jobId, Instant now) {
+        Optional<ConversionJob> job = findById(jobId);
+        if (job.isEmpty() || !job.get().isReadyForProcessing(now)) {
+            return Optional.empty();
+        }
+
+        return job.get().markProcessing("conversion started")
+                ? job
+                : Optional.empty();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void scheduleRetry(UUID jobId, String message, Instant retryAt) {
+        findById(jobId).ifPresent(job -> job.markRetryScheduled(message, retryAt));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void markSucceeded(UUID jobId, String resourcePath, String message) {
+        findById(jobId).ifPresent(job -> job.markSucceeded(resourcePath, message));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void markDeadLettered(UUID jobId, String message) {
+        findById(jobId).ifPresent(job -> {
+            ConversionJobStatus status = job.getStatus();
+            if (status == ConversionJobStatus.SUBMITTED || status == ConversionJobStatus.PROCESSING) {
+                job.markDeadLettered(message);
+            }
+        });
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean retryDeadLettered(UUID jobId, String operatorId) {
+        return findById(jobId)
+                .map(job -> job.retryDeadLetteredToSubmitted(operatorId))
+                .orElse(false);
     }
 
     private String contentKey(String tenantId, String contentHash) {

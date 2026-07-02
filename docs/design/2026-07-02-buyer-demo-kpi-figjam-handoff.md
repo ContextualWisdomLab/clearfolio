@@ -35,6 +35,8 @@ Date: 2026-07-02
   `Clearfolio Buyer Integration Deployment Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Durable Job Repository Target Architecture`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Conversion State Store Implementation Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -322,6 +324,53 @@ flowchart LR
     conversionWorker -->|"Writes Events"| auditDb
     clearfolioApi -.->|"FigJam: Explains Target"| figjamBoard
     clearfolioApi -.->|"GitHub: Gate Proof"| prEvidence
+```
+
+### Conversion State Store Implementation Flow
+
+```mermaid
+flowchart LR
+    subgraph api ["API and Worker Entrypoints"]
+        submit["submit upload"]
+        retry["operator retry"]
+        worker["conversion worker"]
+    end
+    subgraph readBoundary ["Read and Dedupe Boundary"]
+        repository["ConversionJobRepository"]
+        dedupe["findOrStoreByContentHash"]
+    end
+    subgraph transitionBoundary ["Lifecycle Transition Boundary"]
+        stateStore["ConversionJobStateStore"]
+        adapter["RepositoryBacked Adapter"]
+        inMemory["InMemory Repository"]
+    end
+    subgraph jobState ["Job State"]
+        submitted["SUBMITTED"]
+        processing["PROCESSING"]
+        succeeded["SUCCEEDED"]
+        failed["FAILED dead-lettered"]
+    end
+    subgraph buyerProof ["Buyer Evidence"]
+        tests["Targeted Tests"]
+        gates["Maven Gates"]
+        plan["Durable SQL Plan"]
+    end
+
+    submit -->|"Stores or reuses"| dedupe
+    dedupe -->|"Reads jobs"| repository
+    retry -->|"Accepts retry"| stateStore
+    worker -->|"Claims job"| stateStore
+    stateStore -->|"Delegates fallback"| adapter
+    stateStore -->|"Implemented by"| inMemory
+    stateStore -->|"Claims"| processing
+    stateStore -->|"Schedules retry"| submitted
+    stateStore -->|"Marks success"| succeeded
+    stateStore -->|"Dead letters"| failed
+    processing -.->|"Artifact path"| succeeded
+    processing -.->|"Retry exhausted"| failed
+    stateStore -->|"Verified by"| tests
+    tests -->|"Feeds"| gates
+    plan -->|"Next step"| stateStore
 ```
 
 ### Threat Boundaries and Data Handling

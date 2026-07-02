@@ -5,7 +5,9 @@ Date: 2026-07-02
 This document closes the current durable-persistence design artifact for buyer
 diligence. It does not implement a production database yet. The current runtime
 still uses `InMemoryConversionJobRepository`, while `ConversionJobRepository`
-provides the boundary that a durable implementation must satisfy.
+provides the read and dedupe boundary and `ConversionJobStateStore` provides the
+explicit lifecycle transition boundary that a durable implementation must
+satisfy.
 
 ## Current State
 
@@ -16,20 +18,23 @@ Current implementation:
   `findOrStoreByContentHash`.
 - `InMemoryConversionJobRepository` stores jobs in process memory and dedupes
   by `tenantId + contentHash`.
+- `ConversionJobStateStore` exists in code and exposes explicit transition
+  methods for processing claims, retry scheduling, success, dead-lettering, and
+  operator retry acceptance.
 - `DefaultDocumentConversionService` creates a mutable `ConversionJob` and
   enqueues work only when the repository reports a new canonical job.
-- `DefaultConversionWorker` mutates job state through `markProcessing`,
-  `markSucceeded`, `markRetryScheduled`, and `markDeadLettered`.
-- `retryDeadLettered` mutates a dead-lettered job back to `SUBMITTED`, calls
-  `repository.save(job)`, and re-enqueues it.
+- `DefaultConversionWorker` routes lifecycle changes through
+  `ConversionJobStateStore` instead of directly mutating job lifecycle state.
+- `retryDeadLettered` routes operator retry acceptance through
+  `ConversionJobStateStore` and re-enqueues only after the transition succeeds.
 
 Buyer risk:
 
 - process restart loses conversion jobs;
 - conversion status is not recoverable after worker crash;
 - retry schedule is not durable;
-- status changes made inside the mutable domain object are not persisted through
-  a repository call today, except operator retry;
+- lifecycle status changes now have an explicit code boundary, but the current
+  implementation is still process-local until a SQL implementation is added;
 - analytics and audit evidence can only be partial until lifecycle events are
   durable.
 
@@ -135,7 +140,7 @@ Keep current API for compatibility:
 - `findAll`
 - `findOrStoreByContentHash`
 
-Add a durable transition service before adding a SQL implementation:
+The code now includes this transition service before any SQL implementation:
 
 ```java
 interface ConversionJobStateStore {
@@ -147,9 +152,10 @@ interface ConversionJobStateStore {
 }
 ```
 
-This keeps mutation persistence explicit and lets the in-memory implementation
-remain the fast test baseline while a SQL implementation is introduced behind
-the same service contract.
+This keeps mutation persistence explicit. `InMemoryConversionJobRepository`
+implements the interface for the current runtime, and
+`RepositoryBackedConversionJobStateStore` preserves compatibility for repository
+implementations that have not yet implemented transition methods directly.
 
 ## Worker Recovery Model
 
@@ -172,8 +178,9 @@ then use the normal max-attempt/dead-letter policy.
 
 ## Migration Sequence
 
-1. Add `ConversionJobStateStore` with in-memory implementation and tests.
-2. Refactor `DefaultConversionWorker` to use explicit transition methods.
+1. Done: add `ConversionJobStateStore` with in-memory implementation and tests.
+2. Done: refactor `DefaultConversionWorker` and operator retry to use explicit
+   transition methods.
 3. Keep `ConversionJobRepository` read methods stable for controllers and KPI
    snapshots.
 4. Add SQL schema migration scripts and a disabled SQL repository profile.

@@ -2,16 +2,20 @@ package com.clearfolio.viewer.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
+import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.junit.jupiter.api.Test;
 
 import com.clearfolio.viewer.model.ConversionJob;
+import com.clearfolio.viewer.model.ConversionJobStatus;
 
 class InMemoryConversionJobRepositoryTest {
 
@@ -181,6 +185,71 @@ class InMemoryConversionJobRepositoryTest {
         assertTrue(result.created());
         assertTrue(repository.findById(candidate.getJobId()).isPresent());
         assertTrue(jobsByContentHash(repository).isEmpty());
+    }
+
+    @Test
+    void stateStoreClaimForProcessingUpdatesStoredJob() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-claim");
+        repository.save(job);
+        ConversionJobStateStore stateStore = repository;
+
+        Optional<ConversionJob> claimed = stateStore.claimForProcessing(job.getJobId(), Instant.now());
+
+        assertTrue(claimed.isPresent());
+        assertSame(job, claimed.orElseThrow());
+        assertEquals(ConversionJobStatus.PROCESSING, job.getStatus());
+        assertEquals(1, job.getAttemptCount());
+        assertNull(job.getRetryAt());
+    }
+
+    @Test
+    void stateStoreScheduleRetryPersistsSubmittedRetryTime() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-retry-state");
+        assertTrue(job.markProcessing("started"));
+        repository.save(job);
+        ConversionJobStateStore stateStore = repository;
+        Instant retryAt = Instant.now().plusSeconds(5);
+
+        stateStore.scheduleRetry(job.getJobId(), "retry later", retryAt);
+
+        assertEquals(ConversionJobStatus.SUBMITTED, job.getStatus());
+        assertSame(job, repository.findById(job.getJobId()).orElseThrow());
+        assertEquals(retryAt, job.getRetryAt());
+        assertEquals("retry later", job.getStatusMessage());
+    }
+
+    @Test
+    void stateStoreRetryDeadLetteredResetsJob() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-retry-dead-letter");
+        assertTrue(job.markProcessing("started"));
+        job.markDeadLettered("retries exhausted");
+        repository.save(job);
+        ConversionJobStateStore stateStore = repository;
+
+        assertTrue(stateStore.retryDeadLettered(job.getJobId(), "operator-7"));
+
+        assertEquals(ConversionJobStatus.SUBMITTED, job.getStatus());
+        assertFalse(job.isDeadLettered());
+        assertEquals(0, job.getAttemptCount());
+        assertEquals("operator retry queued by operator-7", job.getStatusMessage());
+    }
+
+    @Test
+    void stateStoreDeadLetterDoesNotDowngradeSucceededJob() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-succeeded-saturation");
+        job.markSucceeded("/artifacts/" + job.getJobId() + ".pdf", "done");
+        repository.save(job);
+        ConversionJobStateStore stateStore = repository;
+
+        stateStore.markDeadLettered(job.getJobId(), "worker queue saturated");
+
+        assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
+        assertFalse(job.isDeadLettered());
+        assertEquals("done", job.getStatusMessage());
     }
 
     private ConversionJob newJob(String contentHash) {

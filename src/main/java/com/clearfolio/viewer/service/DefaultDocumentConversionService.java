@@ -1,12 +1,12 @@
 package com.clearfolio.viewer.service;
 
-import java.util.Optional;
-import java.util.UUID;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -62,6 +62,8 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         PolicyOverrideRequest effectiveOverride = overrideRequest == null
                 ? PolicyOverrideRequest.none()
                 : overrideRequest;
+        // Security: File type, size limits, and basic content validation are enforced here.
+        // Processing sandboxing is handled by the worker environment.
         validationService.validateOrThrow(file, effectiveOverride);
 
         String contentHash = contentHash(file);
@@ -120,13 +122,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
                 digest.update(buffer, 0, read);
             }
 
-            byte[] raw = digest.digest();
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString();
+            return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

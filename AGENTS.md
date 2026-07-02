@@ -18,6 +18,8 @@ including mandatory quality and security merge gates.
   Buyer-release evidence must also pass with `--require-no-review`.
 - Third-party attribution drift check must pass:
   `python3 scripts/render_third_party_attribution.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --output docs/legal/2026-07-03-third-party-attribution.md --check`.
+- Buyer data-room manifest check must pass:
+  `python3 scripts/check_buyer_dataroom_manifest.py --manifest docs/diligence/2026-07-03-buyer-data-room-manifest.json`.
 - `mvn test` includes `DependencyPolicyTest`, which prevents reintroducing the
   broad `tika-parsers-standard-package`, default Logback starter, or excluded
   Jakarta annotation dependency unless a future PR updates the license policy,

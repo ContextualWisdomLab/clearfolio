@@ -149,6 +149,33 @@ Claim boundary:
 - Validated OIDC/JWT issuer, audience, expiry, key rotation, and role mapping
   remain the next production-auth implementation gap.
 
+## Buyer Data-Room Manifest Verification
+
+Date: 2026-07-03T08:27:38+0900
+
+Source head before this manifest slice:
+`69b1dfc6b60aeb0df805ae45e15392647f1cbec5`
+
+This slice adds a buyer data-room manifest so Product Design, Figma, Data
+Analytics, security, deployment, and QA evidence can be inspected as one
+package instead of a loose list of links. It is intentionally in-repo and uses a
+standard-library checker; no library split, submodule, or new dependency was
+added.
+
+Validation:
+
+| Gate | Result |
+| --- | --- |
+| TDD red check | `python3 scripts/test_check_buyer_dataroom_manifest.py` first failed because `check_buyer_dataroom_manifest` did not exist. |
+| Targeted manifest tests | `python3 scripts/test_check_buyer_dataroom_manifest.py` passed, 4 tests. |
+| Manifest check | `python3 scripts/check_buyer_dataroom_manifest.py --manifest docs/diligence/2026-07-03-buyer-data-room-manifest.json` passed with 19 artifacts, 7 gates, and 0 errors. |
+
+Claim boundary:
+
+- The manifest proves evidence package completeness, not buyer legal approval.
+- External URLs such as GitHub PR #82 and the Figma FigJam board are checked for
+  URL shape, while live availability remains an external service concern.
+
 ## Durable Job Repository Design Verification
 
 Date: 2026-07-02T21:39:41+0900

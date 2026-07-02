@@ -160,6 +160,8 @@ python3 scripts/render_third_party_attribution.py \
   --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json \
   --output docs/legal/2026-07-03-third-party-attribution.md \
   --check
+python3 scripts/check_buyer_dataroom_manifest.py \
+  --manifest docs/diligence/2026-07-03-buyer-data-room-manifest.json
 ```
 
 Buyer-release mode must keep `--require-no-review` enabled so any future
@@ -172,6 +174,7 @@ Before a buyer sandbox is shown, attach:
 
 - PR #74 URL and latest head SHA;
 - `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md`;
+- `docs/diligence/2026-07-03-buyer-data-room-manifest.json`;
 - this playbook;
 - `docs/deployment/clearfolio-buyer-connector.openapi.yaml`;
 - `src/main/resources/application-buyer-demo.yml`;

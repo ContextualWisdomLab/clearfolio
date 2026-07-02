@@ -239,6 +239,10 @@ Progress as of 2026-07-02:
   `docs/legal/2026-07-03-third-party-attribution.md` from the current SBOM and
   provides a `--check` mode so the buyer data-room attribution file cannot
   drift silently.
+- A buyer data-room manifest is now captured in
+  `docs/diligence/2026-07-03-buyer-data-room-manifest.json` with a
+  standard-library checker in `scripts/check_buyer_dataroom_manifest.py`, so
+  sale-readiness evidence cannot silently omit required local artifacts.
 - Signed artifact link runtime is now implemented for current in-memory PDF
   artifacts and captured in
   `docs/security/2026-07-02-signed-artifact-link-design.md`.

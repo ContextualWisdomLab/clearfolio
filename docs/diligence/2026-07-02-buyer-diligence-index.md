@@ -59,6 +59,7 @@ strict: partial evidence is marked partial, not complete.
 | Active PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/82> |
 | Baseline sale-readiness PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/74> |
 | Sale-readiness plan | `docs/plans/2026-07-02-krw2b-sale-readiness-execution-plan.md` |
+| Buyer data-room manifest | `docs/diligence/2026-07-03-buyer-data-room-manifest.json`, `scripts/check_buyer_dataroom_manifest.py` |
 | Business model | `docs/business/2026-07-02-krw2b-valuation-kpi-model.md` |
 | FigJam handoff | `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md` |
 | Buyer diligence Slides and closure map handoff | `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md` |
@@ -82,8 +83,8 @@ strict: partial evidence is marked partial, not complete.
 
 ## Next Closure Order
 
-1. Keep buyer-release license-policy and attribution drift checks current, then
-   obtain final legal release review.
+1. Keep buyer-release license-policy, attribution drift, and buyer data-room
+   manifest checks current, then obtain final legal release review.
 2. Use configured gateway-signed tenant headers for buyer deployments, then
    replace the scaffold with validated gateway/OIDC JWT claims.
 3. Import-test the connector seed and add a buyer-specific gateway/OIDC

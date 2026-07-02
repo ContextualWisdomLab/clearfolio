@@ -27,6 +27,37 @@ class InMemoryConversionJobRepositoryTest {
     }
 
     @Test
+    void findByTenantAndContentHashFallsBackToDemoTenantWhenTenantIsNull() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-default-tenant");
+        repository.save(job);
+
+        assertSame(job, repository.findByTenantAndContentHash(null, "hash-default-tenant").orElseThrow());
+    }
+
+    @Test
+    void findByTenantAndContentHashFallsBackToDemoTenantWhenTenantIsBlank() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-blank-tenant");
+        repository.save(job);
+
+        assertSame(job, repository.findByTenantAndContentHash(" ", "hash-blank-tenant").orElseThrow());
+    }
+
+    @Test
+    void findAllReturnsStoredJobsSnapshot() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob first = newJob("hash-a");
+        ConversionJob second = newJob("hash-b");
+        repository.save(first);
+        repository.save(second);
+
+        assertTrue(repository.findAll().contains(first));
+        assertTrue(repository.findAll().contains(second));
+        assertEquals(2, repository.findAll().size());
+    }
+
+    @Test
     void findByContentHashReturnsEmptyForBlankOrMissingHash() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
 
@@ -61,6 +92,23 @@ class InMemoryConversionJobRepositoryTest {
     }
 
     @Test
+    void findOrStoreCreatesSeparateJobForSameHashInDifferentTenant() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob first = newJob("hash-shared");
+        ConversionJob second = newTenantJob("tenant-b", "hash-shared");
+        repository.save(first);
+
+        ConversionJobRepository.FindOrStoreResult result = repository.findOrStoreByContentHash(second);
+
+        assertSame(second, result.canonicalJob());
+        assertTrue(result.created());
+        assertTrue(repository.findById(first.getJobId()).isPresent());
+        assertTrue(repository.findById(second.getJobId()).isPresent());
+        assertSame(first, repository.findByContentHash("hash-shared").orElseThrow());
+        assertSame(second, repository.findByTenantAndContentHash("tenant-b", "hash-shared").orElseThrow());
+    }
+
+    @Test
     void findOrStoreMarksCreatedWhenHashIsStoredFirstTime() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
         ConversionJob candidate = newJob("hash-created");
@@ -84,7 +132,7 @@ class InMemoryConversionJobRepositoryTest {
 
         assertSame(candidate, result.canonicalJob());
         assertTrue(result.created());
-        assertEquals(candidate.getJobId(), jobsByContentHash(repository).get("hash-d"));
+        assertEquals(candidate.getJobId(), jobsByContentHash(repository).get("buyer-demo\u001fhash-d"));
         assertTrue(repository.findById(candidate.getJobId()).isPresent());
     }
 
@@ -146,6 +194,19 @@ class InMemoryConversionJobRepositoryTest {
         );
     }
 
+    private ConversionJob newTenantJob(String tenantId, String contentHash) {
+        return new ConversionJob(
+                UUID.randomUUID(),
+                tenantId,
+                "subject-1",
+                "report.docx",
+                "application/octet-stream",
+                contentHash,
+                42L,
+                3
+        );
+    }
+
     @SuppressWarnings("unchecked")
     private ConcurrentHashMap<UUID, ConversionJob> jobs(InMemoryConversionJobRepository repository) throws Exception {
         Field jobsField = InMemoryConversionJobRepository.class.getDeclaredField("jobs");
@@ -155,7 +216,7 @@ class InMemoryConversionJobRepositoryTest {
 
     @SuppressWarnings("unchecked")
     private ConcurrentHashMap<String, UUID> jobsByContentHash(InMemoryConversionJobRepository repository) throws Exception {
-        Field hashField = InMemoryConversionJobRepository.class.getDeclaredField("jobsByContentHash");
+        Field hashField = InMemoryConversionJobRepository.class.getDeclaredField("jobsByTenantAndContentHash");
         hashField.setAccessible(true);
         return (ConcurrentHashMap<String, UUID>) hashField.get(repository);
     }

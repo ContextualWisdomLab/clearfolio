@@ -18,7 +18,10 @@ public record ViewerBootstrapResponse(
         Instant startedAt,
         Instant completedAt,
         String sourceExtension,
-        String rendererAdapter
+        String rendererAdapter,
+        String artifactLinkUrl,
+        Instant artifactLinkExpiresAt,
+        String artifactLinkScope
 ) {
 
     private static final String PDF_JS = "PDF_JS";
@@ -30,19 +33,36 @@ public record ViewerBootstrapResponse(
      * @return mapped viewer bootstrap payload
      */
     public static ViewerBootstrapResponse from(ConversionJob job) {
+        return from(job, null);
+    }
+
+    /**
+     * Creates a viewer bootstrap response from a conversion job and signed artifact link.
+     *
+     * @param job completed conversion job
+     * @param artifactLink signed artifact link
+     * @return mapped viewer bootstrap payload
+     */
+    public static ViewerBootstrapResponse from(ConversionJob job, ArtifactLinkResponse artifactLink) {
         String sourceExtension = sourceExtensionOf(job.getOriginalFileName());
         String rendererAdapter = rendererAdapterFor(sourceExtension);
+        String previewResourcePath = artifactLink == null
+                ? job.getConvertedResourcePath()
+                : artifactLink.artifactUrl();
         return new ViewerBootstrapResponse(
                 job.getJobId().toString(),
                 job.getStatus().name(),
                 job.getOriginalFileName(),
                 PDF_JS,
-                job.getConvertedResourcePath(),
+                previewResourcePath,
                 job.getCreatedAt(),
                 job.getStartedAt(),
                 job.getCompletedAt(),
                 sourceExtension,
-                rendererAdapter
+                rendererAdapter,
+                artifactLink == null ? null : artifactLink.artifactUrl(),
+                artifactLink == null ? null : artifactLink.expiresAt(),
+                artifactLink == null ? null : artifactLink.scope()
         );
     }
 

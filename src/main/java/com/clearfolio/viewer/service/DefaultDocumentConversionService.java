@@ -11,6 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.config.ConversionProperties;
@@ -59,14 +60,31 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      */
     @Override
     public UUID submit(MultipartFile file, PolicyOverrideRequest overrideRequest) {
+        return submit(file, overrideRequest, new TenantContext(
+                TenantContext.DEMO_TENANT_ID,
+                TenantContext.DEMO_SUBJECT_ID,
+                java.util.Set.of()
+        ));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public UUID submit(MultipartFile file, PolicyOverrideRequest overrideRequest, TenantContext tenantContext) {
         PolicyOverrideRequest effectiveOverride = overrideRequest == null
                 ? PolicyOverrideRequest.none()
                 : overrideRequest;
+        TenantContext effectiveTenant = tenantContext == null
+                ? new TenantContext(TenantContext.DEMO_TENANT_ID, TenantContext.DEMO_SUBJECT_ID, java.util.Set.of())
+                : tenantContext;
         validationService.validateOrThrow(file, effectiveOverride);
 
         String contentHash = contentHash(file);
         ConversionJob job = new ConversionJob(
                 UUID.randomUUID(),
+                effectiveTenant.tenantId(),
+                effectiveTenant.subjectId(),
                 file.getOriginalFilename(),
                 file.getContentType(),
                 contentHash,

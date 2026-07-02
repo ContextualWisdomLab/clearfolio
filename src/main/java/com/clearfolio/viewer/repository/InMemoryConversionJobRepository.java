@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,7 +18,7 @@ import com.clearfolio.viewer.model.ConversionJob;
 public class InMemoryConversionJobRepository implements ConversionJobRepository {
 
     private final ConcurrentHashMap<UUID, ConversionJob> jobs = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, UUID> jobsByContentHash = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, UUID> jobsByTenantAndContentHash = new ConcurrentHashMap<>();
 
     /**
      * {@inheritDoc}
@@ -26,7 +27,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository 
     public ConversionJob save(ConversionJob job) {
         jobs.put(job.getJobId(), job);
         if (job.getContentHash() != null && !job.getContentHash().isBlank()) {
-            jobsByContentHash.putIfAbsent(job.getContentHash(), job.getJobId());
+            jobsByTenantAndContentHash.putIfAbsent(contentKey(job.getTenantId(), job.getContentHash()), job.getJobId());
         }
         return job;
     }
@@ -42,10 +43,11 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository 
             return new ConversionJobRepository.FindOrStoreResult(candidate, true);
         }
 
+        String contentKey = contentKey(candidate.getTenantId(), contentHash);
         AtomicBoolean created = new AtomicBoolean(false);
         AtomicReference<ConversionJob> canonical = new AtomicReference<>();
-        jobsByContentHash.compute(
-                contentHash,
+        jobsByTenantAndContentHash.compute(
+                contentKey,
                 (key, existingJobId) -> {
                     if (existingJobId != null) {
                         ConversionJob existing = jobs.get(existingJobId);
@@ -78,15 +80,36 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository 
      */
     @Override
     public Optional<ConversionJob> findByContentHash(String contentHash) {
+        return findByTenantAndContentHash("buyer-demo", contentHash);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<ConversionJob> findByTenantAndContentHash(String tenantId, String contentHash) {
         if (contentHash == null || contentHash.isBlank()) {
             return Optional.empty();
         }
 
-        UUID jobId = jobsByContentHash.get(contentHash);
+        UUID jobId = jobsByTenantAndContentHash.get(contentKey(tenantId, contentHash));
         if (jobId == null) {
             return Optional.empty();
         }
 
         return findById(jobId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<ConversionJob> findAll() {
+        return List.copyOf(jobs.values());
+    }
+
+    private String contentKey(String tenantId, String contentHash) {
+        String normalizedTenantId = tenantId == null || tenantId.isBlank() ? "buyer-demo" : tenantId.strip();
+        return normalizedTenantId + "\u001f" + contentHash;
     }
 }

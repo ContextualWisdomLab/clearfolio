@@ -1,0 +1,3 @@
+## 2026-07-02 - Use HexFormat instead of String.format
+**Learning:** Using `String.format("%02x", b)` inside a loop to convert byte arrays to hex strings is a significant performance bottleneck due to excessive object allocation and format string parsing overhead.
+**Action:** Use `java.util.HexFormat.of().formatHex(bytes)` instead for highly optimized, zero-allocation hex string generation in Java 17+.

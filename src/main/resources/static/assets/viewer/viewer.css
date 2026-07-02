@@ -322,6 +322,32 @@ a:hover {
   overflow-wrap: anywhere;
 }
 
+.evidence-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.evidence-summary__item {
+  min-width: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.evidence-summary dt {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.evidence-summary dd {
+  margin: 6px 0 0;
+  font-size: 18px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
 .table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -450,7 +476,8 @@ a:hover {
   }
 
   .upload-form,
-  .kpi-strip {
+  .kpi-strip,
+  .evidence-summary {
     grid-template-columns: 1fr;
   }
 

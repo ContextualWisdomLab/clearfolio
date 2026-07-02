@@ -1,5 +1,5 @@
-20:29:47.966 [main] INFO org.hibernate.validator.internal.util.Version -- HV000001: Hibernate Validator 8.0.2.Final
-20:29:51.304 [main] ERROR com.clearfolio.viewer.controller.ApiExceptionHandler -- Unexpected error on path=/test/path traceId=trace-7
+20:46:26.113 [main] INFO org.hibernate.validator.internal.util.Version -- HV000001: Hibernate Validator 8.0.2.Final
+20:46:28.640 [main] ERROR com.clearfolio.viewer.controller.ApiExceptionHandler -- Unexpected error on path=/test/path traceId=trace-7
 java.lang.RuntimeException: boom
 	at com.clearfolio.viewer.controller.ApiExceptionHandlerTest.handleUnexpectedReturnsInternalErrorPayload(ApiExceptionHandlerTest.java:313)
 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
@@ -76,7 +76,7 @@ java.lang.RuntimeException: boom
 	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
 	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
 	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
-20:29:51.314 [main] ERROR com.clearfolio.viewer.controller.ApiExceptionHandler -- Unexpected error on path= traceId=6b0ea4df-7a1c-49ba-98c3-0f4a68ccd613
+20:46:28.650 [main] ERROR com.clearfolio.viewer.controller.ApiExceptionHandler -- Unexpected error on path= traceId=6220676b-485a-4f1c-8cd8-a83080534c0e
 java.lang.RuntimeException: boom
 	at com.clearfolio.viewer.controller.ApiExceptionHandlerTest.handleUnexpectedSupportsNullRequestUri(ApiExceptionHandlerTest.java:354)
 	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
@@ -163,9 +163,9 @@ java.lang.RuntimeException: boom
 
  :: Spring Boot ::                (v3.5.0)
 
-2026-07-02T20:29:51.848+09:00  INFO 85503 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : Starting ConversionControllerMultipartLimitTest using Java 21.0.11 with PID 85503 (started by seonghobae in /Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2)
-2026-07-02T20:29:51.849+09:00  INFO 85503 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : No active profile set, falling back to 1 default profile: "default"
-2026-07-02T20:29:52.916+09:00  INFO 85503 --- [clearfolio-viewer] [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 50562 (http)
-2026-07-02T20:29:52.924+09:00  INFO 85503 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : Started ConversionControllerMultipartLimitTest in 1.393 seconds (process running for 12.88)
-2026-07-02T20:29:52.959+09:00  INFO 85503 --- [clearfolio-viewer] [oundedElastic-1] c.c.v.s.DefaultDocumentValidationService : Blocked-format override accepted extension=hwp approverId=approver-99 tokenFingerprint=0f55333bafabf797
-2026-07-02T20:29:56.461+09:00  INFO 85503 --- [clearfolio-viewer] [           main] c.c.v.s.DefaultDocumentValidationService : Blocked-format override accepted extension=hwp approverId=approver-1 tokenFingerprint=034192845dc489de
+2026-07-02T20:46:29.230+09:00  INFO 41781 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : Starting ConversionControllerMultipartLimitTest using Java 21.0.11 with PID 41781 (started by seonghobae in /Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2)
+2026-07-02T20:46:29.232+09:00  INFO 41781 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : No active profile set, falling back to 1 default profile: "default"
+2026-07-02T20:46:30.289+09:00  INFO 41781 --- [clearfolio-viewer] [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 52953 (http)
+2026-07-02T20:46:30.296+09:00  INFO 41781 --- [clearfolio-viewer] [           main] c.ConversionControllerMultipartLimitTest : Started ConversionControllerMultipartLimitTest in 1.442 seconds (process running for 7.21)
+2026-07-02T20:46:30.322+09:00  INFO 41781 --- [clearfolio-viewer] [oundedElastic-1] c.c.v.s.DefaultDocumentValidationService : Blocked-format override accepted extension=hwp approverId=approver-99 tokenFingerprint=0f55333bafabf797
+2026-07-02T20:46:30.995+09:00  INFO 41781 --- [clearfolio-viewer] [           main] c.c.v.s.DefaultDocumentValidationService : Blocked-format override accepted extension=hwp approverId=approver-1 tokenFingerprint=034192845dc489de

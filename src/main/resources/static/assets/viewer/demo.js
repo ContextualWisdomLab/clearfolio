@@ -1,5 +1,6 @@
 const STORAGE_KEY = "clearfolio-demo-history-v1";
 const KPI_ENDPOINT = "/api/v1/analytics/kpi-snapshot";
+const KPI_EXPORTS_ENDPOINT = "/api/v1/analytics/kpi-snapshot-exports";
 const POLL_DELAY_MS = 1500;
 const ACTIVE_STATUSES = new Set(["ACCEPTED", "SUBMITTED", "PROCESSING"]);
 const DEMO_AUTH_HEADERS = {
@@ -23,6 +24,12 @@ const el = {
   kpiReady: document.getElementById("kpi-ready"),
   kpiSuccessRate: document.getElementById("kpi-success-rate"),
   kpiP95: document.getElementById("kpi-p95"),
+  kpiExportCount: document.getElementById("kpi-export-count"),
+  kpiExportLatest: document.getElementById("kpi-export-latest"),
+  kpiExportSubject: document.getElementById("kpi-export-subject"),
+  kpiExportJobs: document.getElementById("kpi-export-jobs"),
+  kpiExportStatus: document.getElementById("kpi-export-status"),
+  refreshEvidenceBtn: document.getElementById("refresh-evidence-btn"),
   jobDetail: document.getElementById("job-detail"),
   jobDetailCaption: document.getElementById("job-detail-caption"),
   jobDetailBody: document.getElementById("job-detail-body"),
@@ -269,6 +276,19 @@ function renderKpiSnapshot(snapshot) {
   el.kpiP95.textContent = formatMilliseconds(snapshot.p95TimeToPreviewMs);
 }
 
+function renderKpiEvidence(exports) {
+  const snapshots = Array.isArray(exports) ? exports : [];
+  const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
+
+  el.kpiExportCount.textContent = String(snapshots.length);
+  el.kpiExportLatest.textContent = latest ? formatTimestamp(latest.exportedAt) : "n/a";
+  el.kpiExportSubject.textContent = latest ? formatDetailValue(latest.subjectId) : "n/a";
+  el.kpiExportJobs.textContent = latest ? String(latest.totalJobs ?? 0) : "0";
+  el.kpiExportStatus.textContent = latest
+    ? "Latest evidence reflects an authorized tenant-scoped KPI snapshot export."
+    : "No exported KPI snapshots for this tenant yet.";
+}
+
 function formatPercent(value) {
   const rate = Number(value);
   return Number.isFinite(rate) ? `${Math.round(rate * 100)}%` : "0%";
@@ -283,6 +303,15 @@ function formatMilliseconds(value) {
   return Number.isFinite(milliseconds) ? `${Math.round(milliseconds)} ms` : "n/a";
 }
 
+function formatTimestamp(value) {
+  if (!value) {
+    return "n/a";
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "n/a" : date.toLocaleString();
+}
+
 async function refreshKpis() {
   try {
     const { res, data } = await fetchJson(KPI_ENDPOINT);
@@ -292,8 +321,23 @@ async function refreshKpis() {
     }
 
     renderKpiSnapshot(data);
+    void refreshKpiEvidence();
   } catch (err) {
     renderSessionKpiFallback();
+  }
+}
+
+async function refreshKpiEvidence() {
+  try {
+    const { res, data } = await fetchJson(KPI_EXPORTS_ENDPOINT);
+    if (!res.ok) {
+      el.kpiExportStatus.textContent = "Snapshot evidence is unavailable for the current tenant claim.";
+      return;
+    }
+
+    renderKpiEvidence(data);
+  } catch (err) {
+    el.kpiExportStatus.textContent = "Snapshot evidence is unavailable while the service is unreachable.";
   }
 }
 
@@ -406,10 +450,14 @@ function init() {
     activeJobDetail = null;
     el.jobDetail.hidden = true;
     void refreshKpis();
+    void refreshKpiEvidence();
     setStatus("Session history cleared.");
   });
   el.retryJobBtn.addEventListener("click", () => {
     void retryActiveJob();
+  });
+  el.refreshEvidenceBtn.addEventListener("click", () => {
+    void refreshKpiEvidence();
   });
 }
 

@@ -17,7 +17,7 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
 
 ## Scope
 
-- `GET /`: buyer-demo upload, status, KPI, and session-history shell.
+- `GET /`: buyer-demo upload, status, KPI, KPI snapshot evidence, and session-history shell.
 - `POST /api/v1/convert/jobs`: upload document and receive async job id.
 - `GET /api/v1/convert/jobs/{jobId}`: poll conversion status and lifecycle fields.
 - `POST /api/v1/convert/jobs` response includes `jobId`, `status`, and `statusUrl`.
@@ -69,8 +69,10 @@ production gaps.
 - Deployments can set `clearfolio.analytics-snapshot-ledger.path` to append
   exported KPI snapshots to a local file and replay them after a single-process
   restart. `GET /api/v1/analytics/kpi-snapshot-exports` exposes the same
-  evidence to authorized tenant callers. This is buyer-demo evidence
-  continuity, not the full durable metrics event stream described in
+  evidence to authorized tenant callers, and the buyer-demo shell renders the
+  latest export count, subject, export time, and runtime job count without
+  showing tenant ids. This is buyer-demo evidence continuity, not the full
+  durable metrics event stream described in
   `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
 
 ## Acceptance gates (current)

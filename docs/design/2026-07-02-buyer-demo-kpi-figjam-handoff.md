@@ -27,6 +27,8 @@ Date: 2026-07-02
   `Clearfolio KPI Snapshot Evidence Ledger Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio KPI Snapshot Export Evidence API Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Buyer Demo KPI Evidence Panel Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -48,6 +50,8 @@ Date: 2026-07-02
 - KPI snapshot export lookup must remain tenant-scoped and should not expose
   raw source documents, converted artifacts, signed artifact tokens, or
   cross-tenant identifiers.
+- The buyer-demo KPI evidence panel must show export count, latest export time,
+  exporting subject, and runtime job count without requiring a raw JSON tab.
 
 ## Data Analytics Mapping
 
@@ -59,6 +63,7 @@ Date: 2026-07-02
 | P95 preview | `p95TimeToPreviewMs` | Shows latency evidence for the demo path. |
 | Snapshot export | `KpiSnapshotRecord` | Shows when a buyer-visible KPI snapshot was exported under tenant scope. |
 | Snapshot evidence lookup | `KpiSnapshotExportResponse` | Lets an authorized buyer inspect exported KPI evidence without raw content. |
+| KPI evidence panel | `/api/v1/analytics/kpi-snapshot-exports` | Turns export evidence into a buyer-readable UI panel while omitting tenant ids. |
 
 ## Mermaid Source
 
@@ -111,6 +116,57 @@ flowchart LR
     style diligence fill:#FFECBD,stroke:#FFC943
     style qa fill:#DCCCFF,stroke:#874FFF
     style pr fill:#CDF4D3,stroke:#66D575
+```
+
+### Buyer Demo KPI Evidence Panel Flow
+
+```mermaid
+flowchart LR
+    buyer["Buyer reviewer"]
+
+    subgraph demoSurface ["Buyer-demo surface"]
+        root["GET /"]
+        kpiStrip["Live KPI strip"]
+        evidencePanel["KPI snapshot evidence panel"]
+        history["Session history"]
+    end
+
+    subgraph analyticsApi ["Analytics API"]
+        snapshot["GET /api/v1/analytics/kpi-snapshot"]
+        exports["GET /api/v1/analytics/kpi-snapshot-exports"]
+    end
+
+    subgraph evidenceStore ["Local evidence mode"]
+        ledger[("KPI snapshot ledger")]
+        record["Authorized snapshot record"]
+    end
+
+    subgraph buyerProof ["Buyer proof"]
+        latest["Latest export time"]
+        subject["Export subject"]
+        jobs["Runtime job count"]
+        noTenant["Tenant id omitted"]
+    end
+
+    buyer -->|"Opens"| root
+    root -->|"Loads"| kpiStrip
+    root -->|"Loads"| evidencePanel
+    root -->|"Shows"| history
+    kpiStrip -->|"Reads counters"| snapshot
+    snapshot -->|"Records export"| ledger
+    ledger -->|"Stores"| record
+    evidencePanel -->|"Reads exports"| exports
+    exports -->|"Filters by tenant"| ledger
+    exports -->|"Returns evidence"| latest
+    exports -->|"Returns evidence"| subject
+    exports -->|"Returns evidence"| jobs
+    exports -->|"Suppresses"| noTenant
+
+    style demoSurface fill:#C2E5FF,stroke:#3DADFF
+    style analyticsApi fill:#CDF4D3,stroke:#66D575
+    style evidenceStore fill:#FFECBD,stroke:#FFC943
+    style buyerProof fill:#DCCCFF,stroke:#874FFF
+    style noTenant fill:#FFCDC2,stroke:#FF7556
 ```
 
 ### Threat Boundaries and Data Handling

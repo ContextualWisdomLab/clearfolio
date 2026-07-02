@@ -198,6 +198,9 @@ Progress as of 2026-07-02:
   exported without reading raw documents or cross-tenant records.
 - The buyer-demo root shell now consumes that KPI endpoint directly and falls
   back to browser-session history only when the runtime snapshot is unavailable.
+- The buyer-demo root shell now also renders a KPI snapshot evidence panel from
+  `GET /api/v1/analytics/kpi-snapshot-exports`, showing export count, latest
+  export time, export subject, and runtime job count without exposing tenant ids.
 - Figma evidence flow is now captured as a FigJam artifact and mirrored in
   `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`.
 - Market, valuation, pricing, and KPI thresholds are now captured in

@@ -1,12 +1,14 @@
-Clearfolio local signed-tenant/auth/signed-artifact-revocation-audit/file-ledger/kpi-ledger/kpi-export smoke
+Clearfolio local signed-tenant/auth/signed-artifact-revocation-audit/file-ledger/kpi-ledger/kpi-export/ui-evidence smoke
 Date: 2026-07-02
 java_version=21.0.11 2026-04-21
-port=51232
+port=53332
 signed_claims_mode=configured
 artifact_link_ledger_mode=file-backed
 analytics_snapshot_ledger_mode=file-backed
 root_shell_http=200
+root_shell_has_evidence_panel=true
 demo_js_http=200
+demo_js_has_kpi_exports_endpoint=true
 missing_auth_kpi_http=401
 unsigned_claims_kpi_http=401
 auth_empty_kpi_http=200
@@ -14,8 +16,8 @@ auth_empty_exports_http=200
 auth_empty_exports_count=1
 auth_empty_exports_last_has_tenant=false
 upload_http=202
-job_id=2138f06d-acbe-4b6a-9bd9-ad9eb2817871
-status_url=/api/v1/convert/jobs/2138f06d-acbe-4b6a-9bd9-ad9eb2817871
+job_id=3acec7f2-f1f4-4c75-a0bb-29ee94502fe4
+status_url=/api/v1/convert/jobs/3acec7f2-f1f4-4c75-a0bb-29ee94502fe4
 final_status=SUCCEEDED
 status_tenant_id=buyer-demo
 viewer_html_http=200
@@ -50,4 +52,4 @@ kpi_ledger_snapshot_lines=2
 totalJobs=1
 succeededJobs=1
 conversionSuccessRate=1.0
-p95TimeToPreviewMs=191
+p95TimeToPreviewMs=242

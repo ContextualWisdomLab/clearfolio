@@ -2,7 +2,7 @@
 
 Date: 2026-07-02
 Verification source head SHA before this evidence refresh:
-`393c034ba9ae6c4011e7c8e866e4cefad9d730a5`
+`b0f23488b8f9fe13dd3a629f0305c43e3c72b9ae`
 
 ## Gate Summary
 
@@ -18,7 +18,7 @@ Verification source head SHA before this evidence refresh:
 | SBOM | Pass, CycloneDX 1.6, 142 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
 | License review | Partial, policy checker reports 136 allowed components, 6 review-required components, 0 unlisted violations; legal decisions still needed | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
 | Auth/tenant, signed artifacts, and KPI snapshots | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, artifact read audit API, optional file-backed artifact-link ledger replay, optional file-backed KPI snapshot ledger replay, and tenant-scoped KPI snapshot export API implemented; OIDC/JWT and centralized durable revocation/audit/analytics persistence pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact/analytics tests |
-| Local smoke | Pass, signed tenant claims plus file-backed artifact/KPI ledgers and KPI snapshot export API | `smoke-local.txt`, `smoke-app.log` |
+| Local smoke | Pass, signed tenant claims plus file-backed artifact/KPI ledgers, KPI snapshot export API, and buyer-demo evidence panel | `smoke-local.txt`, `smoke-app.log` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
 ## SAST
@@ -78,7 +78,8 @@ Evidence:
 - FigJam diagrams:
   [Clearfolio Gateway Signed Tenant Claims Flow](https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM)
   and `Clearfolio KPI Snapshot Evidence Ledger Flow` plus
-  `Clearfolio KPI Snapshot Export Evidence API Flow`.
+  `Clearfolio KPI Snapshot Export Evidence API Flow` and
+  `Clearfolio Buyer Demo KPI Evidence Panel Flow`.
 
 ## Local Smoke
 
@@ -89,20 +90,23 @@ Command path:
   `clearfolio.artifact-link-ledger.path` plus
   `clearfolio.analytics-snapshot-ledger.path` configured.
 - Runtime Java: 21.0.11.
-- Verify `GET /`, `/assets/viewer/demo.js`, missing-auth KPI denial,
-  unsigned tenant-claim KPI denial, authenticated empty KPI snapshot with signed
-  tenant claims, authenticated empty KPI export lookup, document upload with
-  signed tenant headers, status polling to `SUCCEEDED`, `/viewer/{docId}`,
-  authenticated viewer bootstrap, signed artifact URL creation, unsigned
-  artifact denial, signed artifact range access, artifact read audit lookup,
-  artifact token revocation, revoked-token denial, cross-tenant status denial,
-  post-upload KPI snapshot, post-upload KPI export lookup, and file-backed KPI
-  snapshot ledger append evidence.
+- Verify `GET /`, buyer-demo KPI evidence panel markup,
+  `/assets/viewer/demo.js`, demo JS KPI export endpoint reference,
+  missing-auth KPI denial, unsigned tenant-claim KPI denial, authenticated empty
+  KPI snapshot with signed tenant claims, authenticated empty KPI export lookup,
+  document upload with signed tenant headers, status polling to `SUCCEEDED`,
+  `/viewer/{docId}`, authenticated viewer bootstrap, signed artifact URL
+  creation, unsigned artifact denial, signed artifact range access, artifact
+  read audit lookup, artifact token revocation, revoked-token denial,
+  cross-tenant status denial, post-upload KPI snapshot, post-upload KPI export
+  lookup, and file-backed KPI snapshot ledger append evidence.
 
 Result:
 
 - Root shell: 200.
+- Root shell evidence panel: present.
 - Demo JS: 200.
+- Demo JS KPI export endpoint reference: present.
 - Missing-auth KPI: 401.
 - Unsigned tenant-claim KPI with secret configured: 401.
 - Authenticated empty KPI: 200.

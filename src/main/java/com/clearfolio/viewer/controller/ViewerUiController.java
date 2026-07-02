@@ -192,6 +192,36 @@ public class ViewerUiController {
                         </div>
                       </section>
 
+                      <section class="panel evidence-panel" aria-labelledby="kpi-evidence-title">
+                        <div class="panel-header">
+                          <div>
+                            <h2 id="kpi-evidence-title" class="panel__title">KPI snapshot evidence</h2>
+                            <p class="panel__caption">Tenant-scoped local evidence from authorized KPI snapshot exports.</p>
+                          </div>
+                          <button type="button" class="btn btn-secondary btn-compact" id="refresh-evidence-btn">Refresh evidence</button>
+                        </div>
+
+                        <dl class="evidence-summary" aria-label="KPI snapshot export evidence">
+                          <div class="evidence-summary__item">
+                            <dt>Exports</dt>
+                            <dd id="kpi-export-count">0</dd>
+                          </div>
+                          <div class="evidence-summary__item">
+                            <dt>Latest export</dt>
+                            <dd id="kpi-export-latest">n/a</dd>
+                          </div>
+                          <div class="evidence-summary__item">
+                            <dt>Subject</dt>
+                            <dd id="kpi-export-subject">n/a</dd>
+                          </div>
+                          <div class="evidence-summary__item">
+                            <dt>Runtime jobs</dt>
+                            <dd id="kpi-export-jobs">0</dd>
+                          </div>
+                        </dl>
+                        <p class="panel__caption" id="kpi-export-status">Snapshot evidence has not been loaded.</p>
+                      </section>
+
                       <section class="panel" aria-labelledby="history-title">
                         <div class="panel-header">
                           <div>

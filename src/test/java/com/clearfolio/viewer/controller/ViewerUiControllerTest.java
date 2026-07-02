@@ -42,6 +42,12 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("id=\"kpi-total\""));
                     assertTrue(body.contains("id=\"kpi-success-rate\""));
                     assertTrue(body.contains("id=\"kpi-p95\""));
+                    assertTrue(body.contains("id=\"kpi-evidence-title\""));
+                    assertTrue(body.contains("id=\"kpi-export-count\""));
+                    assertTrue(body.contains("id=\"kpi-export-latest\""));
+                    assertTrue(body.contains("id=\"kpi-export-subject\""));
+                    assertTrue(body.contains("id=\"kpi-export-jobs\""));
+                    assertTrue(body.contains("id=\"refresh-evidence-btn\""));
                     assertTrue(body.contains("/assets/viewer/demo.js"));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                 });
@@ -88,6 +94,7 @@ class ViewerUiControllerTest {
 
             assertTrue(script.contains("/api/v1/convert/jobs"));
             assertTrue(script.contains("/api/v1/analytics/kpi-snapshot"));
+            assertTrue(script.contains("/api/v1/analytics/kpi-snapshot-exports"));
             assertTrue(script.contains("/viewer/"));
             assertTrue(script.contains("FormData"));
             assertTrue(script.contains("localStorage"));
@@ -95,6 +102,8 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("setTimeout"));
             assertTrue(script.contains("formatPercent"));
             assertTrue(script.contains("formatMilliseconds"));
+            assertTrue(script.contains("renderKpiEvidence"));
+            assertTrue(script.contains("formatTimestamp"));
             assertTrue(script.contains("openJobDetail"));
             assertTrue(script.contains("retryActiveJob"));
             assertTrue(script.contains("/retry"));

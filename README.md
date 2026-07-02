@@ -65,6 +65,8 @@ Current release claim boundary:
 - `docs/diagrams/status-flow.md`
 - `docs/diagrams/preview-flow.md`
 - `docs/diagrams/retry-deadletter-flow.md`
+- `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`
+- `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`
 
 ## Transfer metadata
 

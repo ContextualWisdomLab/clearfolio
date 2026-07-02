@@ -193,6 +193,8 @@ Progress as of 2026-07-02:
   back to browser-session history only when the runtime snapshot is unavailable.
 - Figma evidence flow is now captured as a FigJam artifact and mirrored in
   `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`.
+- Market, valuation, pricing, and KPI thresholds are now captured in
+  `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`.
 
 ## Library and submodule decision
 

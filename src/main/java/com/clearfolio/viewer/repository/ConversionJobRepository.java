@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,7 +37,7 @@ public interface ConversionJobRepository {
     Optional<ConversionJob> findById(UUID jobId);
 
     /**
-     * Finds a conversion job by uploaded file content hash.
+     * Finds a demo-tenant conversion job by uploaded file content hash.
      *
      * @param contentHash uploaded file content hash
      * @return matching conversion job when found
@@ -44,7 +45,26 @@ public interface ConversionJobRepository {
     Optional<ConversionJob> findByContentHash(String contentHash);
 
     /**
-     * Stores a new job or returns the existing canonical job for the same hash.
+     * Finds a conversion job by tenant and uploaded file content hash.
+     *
+     * @param tenantId tenant identifier
+     * @param contentHash uploaded file content hash
+     * @return matching conversion job when found
+     */
+    default Optional<ConversionJob> findByTenantAndContentHash(String tenantId, String contentHash) {
+        return findByContentHash(contentHash).filter(job -> job.belongsToTenant(tenantId));
+    }
+
+    /**
+     * Returns a snapshot of all known conversion jobs.
+     *
+     * @return current conversion jobs
+     */
+    List<ConversionJob> findAll();
+
+    /**
+     * Stores a new job or returns the existing canonical job for the same tenant
+     * and hash.
      *
      * @param candidate candidate conversion job
      * @return canonical stored conversion job and whether the candidate was created

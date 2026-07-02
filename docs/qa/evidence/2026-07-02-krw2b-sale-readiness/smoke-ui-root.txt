@@ -1,0 +1,11 @@
+Clearfolio buyer-demo root UI smoke
+Date: 2026-07-02
+java_version=openjdk version "21.0.11" 2026-04-21
+port=55338
+root_shell_http=200
+root_shell_has_kpi_evidence_panel=true
+root_shell_has_recovery_panel=true
+root_shell_has_recovery_needs_action=true
+demo_js_http=200
+demo_js_has_recovery_renderer=true
+demo_js_has_latest_timestamp_helper=true

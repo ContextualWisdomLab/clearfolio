@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.Provider;
 import java.security.Security;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
@@ -33,11 +34,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
+import com.clearfolio.viewer.repository.ConversionJobStateStore;
 
 class DefaultDocumentConversionServiceTest {
 
@@ -116,6 +120,59 @@ class DefaultDocumentConversionServiceTest {
         assertNotEquals(new UUID(0L, 0L), jobId);
         assertSame(PolicyOverrideRequest.none(), capturedOverride.get());
         assertEquals(1, worker.enqueuedCount());
+    }
+
+    @Test
+    void submitStoresTenantAndSubjectMetadataOnJob() {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DefaultDocumentValidationService(new ConversionProperties()),
+                worker,
+                new ConversionProperties()
+        );
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "contract.docx",
+                "application/octet-stream",
+                "hello-viewer".getBytes()
+        );
+        TenantContext tenantContext = new TenantContext(
+                "tenant-a",
+                "subject-a",
+                Set.of(TenantPermissions.JOB_CREATE)
+        );
+
+        UUID jobId = service.submit(file, PolicyOverrideRequest.none(), tenantContext);
+
+        ConversionJob job = repository.findById(jobId).orElseThrow();
+        assertEquals("tenant-a", job.getTenantId());
+        assertEquals("subject-a", job.getSubjectId());
+    }
+
+    @Test
+    void submitWithNullTenantContextFallsBackToDemoOwnership() {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DefaultDocumentValidationService(new ConversionProperties()),
+                worker,
+                new ConversionProperties()
+        );
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "contract.docx",
+                "application/octet-stream",
+                "hello-viewer".getBytes()
+        );
+
+        UUID jobId = service.submit(file, PolicyOverrideRequest.none(), null);
+
+        ConversionJob job = repository.findById(jobId).orElseThrow();
+        assertEquals(TenantContext.DEMO_TENANT_ID, job.getTenantId());
+        assertEquals(TenantContext.DEMO_SUBJECT_ID, job.getSubjectId());
     }
 
     @Test
@@ -334,6 +391,38 @@ class DefaultDocumentConversionServiceTest {
         assertTrue(job.getStatusMessage().contains("operator-9"));
         assertEquals(1, worker.enqueuedCount());
         assertEquals(job.getJobId(), worker.lastEnqueuedJobId());
+    }
+
+    @Test
+    void retryDeadLetteredUsesStateStoreTransition() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingStateStore stateStore = new RecordingStateStore(repository);
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                stateStore,
+                new DefaultDocumentValidationService(new ConversionProperties()),
+                worker,
+                new ConversionProperties()
+        );
+
+        ConversionJob job = new ConversionJob(
+                UUID.randomUUID(),
+                "contract.docx",
+                "application/octet-stream",
+                "hash-state-store-retry",
+                1L,
+                3
+        );
+        assertTrue(job.markProcessing("first attempt"));
+        job.markDeadLettered("retries exhausted");
+        repository.save(job);
+
+        RetryDeadLetterResult retryResult = service.retryDeadLettered(job.getJobId(), "operator-9");
+
+        assertEquals(RetryDeadLetterResult.ACCEPTED, retryResult);
+        assertEquals(List.of("retryDeadLettered"), stateStore.calls());
+        assertEquals(1, worker.enqueuedCount());
     }
 
     @Test
@@ -575,8 +664,56 @@ class DefaultDocumentConversionServiceTest {
         }
 
         @Override
+        public java.util.List<ConversionJob> findAll() {
+            return java.util.List.of();
+        }
+
+        @Override
         public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
             return finder.apply(candidate);
+        }
+    }
+
+    private static class RecordingStateStore implements ConversionJobStateStore {
+        private final ConversionJobStateStore delegate;
+        private final List<String> calls = new ArrayList<>();
+
+        RecordingStateStore(ConversionJobStateStore delegate) {
+            this.delegate = delegate;
+        }
+
+        List<String> calls() {
+            return List.copyOf(calls);
+        }
+
+        @Override
+        public Optional<ConversionJob> claimForProcessing(UUID jobId, Instant now) {
+            calls.add("claimForProcessing");
+            return delegate.claimForProcessing(jobId, now);
+        }
+
+        @Override
+        public void scheduleRetry(UUID jobId, String message, Instant retryAt) {
+            calls.add("scheduleRetry");
+            delegate.scheduleRetry(jobId, message, retryAt);
+        }
+
+        @Override
+        public void markSucceeded(UUID jobId, String resourcePath, String message) {
+            calls.add("markSucceeded");
+            delegate.markSucceeded(jobId, resourcePath, message);
+        }
+
+        @Override
+        public void markDeadLettered(UUID jobId, String message) {
+            calls.add("markDeadLettered");
+            delegate.markDeadLettered(jobId, message);
+        }
+
+        @Override
+        public boolean retryDeadLettered(UUID jobId, String operatorId) {
+            calls.add("retryDeadLettered");
+            return delegate.retryDeadLettered(jobId, operatorId);
         }
     }
 }

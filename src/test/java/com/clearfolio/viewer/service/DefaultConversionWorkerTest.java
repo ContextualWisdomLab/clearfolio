@@ -10,6 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -26,6 +29,7 @@ import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
+import com.clearfolio.viewer.repository.ConversionJobStateStore;
 import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
 
 class DefaultConversionWorkerTest {
@@ -84,6 +88,72 @@ class DefaultConversionWorkerTest {
         byte[] stored = artifactStore.getPdf(jobId).orElseThrow();
         assertTrue(stored.length > 4);
         assertEquals("%PDF", new String(stored, 0, 4));
+        assertEquals("/artifacts/" + jobId + ".pdf", job.getConvertedResourcePath());
+    }
+
+    @Test
+    void workerRoutesSuccessfulLifecycleThroughStateStore() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingStateStore stateStore = new RecordingStateStore(repository);
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setMaxRetryAttempts(1);
+
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "report.docx",
+                "application/octet-stream",
+                "hash-state-store-worker",
+                12L,
+                1
+        );
+        repository.save(job);
+
+        DefaultConversionWorker worker = new DefaultConversionWorker(
+                repository,
+                stateStore,
+                Runnable::run,
+                new InMemoryArtifactStore(),
+                new PdfBoxArtifactGenerator(),
+                conversionProperties,
+                id -> "/artifacts/" + id + ".pdf"
+        );
+
+        worker.enqueue(jobId);
+
+        assertEquals(List.of("claimForProcessing", "markSucceeded"), stateStore.calls());
+        assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
+    }
+
+    @Test
+    void legacyConstructorAdaptsRepositoryWithoutStateStore() {
+        DelegatingRepository repository = new DelegatingRepository();
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setMaxRetryAttempts(1);
+
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "report.docx",
+                "application/octet-stream",
+                "hash-adapter-worker",
+                12L,
+                1
+        );
+        repository.save(job);
+
+        DefaultConversionWorker worker = new DefaultConversionWorker(
+                repository,
+                Runnable::run,
+                new InMemoryArtifactStore(),
+                new PdfBoxArtifactGenerator(),
+                conversionProperties,
+                id -> "/artifacts/" + id + ".pdf"
+        );
+
+        worker.enqueue(jobId);
+
+        assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
         assertEquals("/artifacts/" + jobId + ".pdf", job.getConvertedResourcePath());
     }
 
@@ -812,6 +882,83 @@ class DefaultConversionWorkerTest {
             throw new RuntimeException(cause);
         } catch (ReflectiveOperationException ex) {
             throw new RuntimeException(ex);
+        }
+    }
+
+    private static class RecordingStateStore implements ConversionJobStateStore {
+        private final ConversionJobStateStore delegate;
+        private final List<String> calls = new ArrayList<>();
+
+        RecordingStateStore(ConversionJobStateStore delegate) {
+            this.delegate = delegate;
+        }
+
+        List<String> calls() {
+            return List.copyOf(calls);
+        }
+
+        @Override
+        public Optional<ConversionJob> claimForProcessing(UUID jobId, Instant now) {
+            calls.add("claimForProcessing");
+            return delegate.claimForProcessing(jobId, now);
+        }
+
+        @Override
+        public void scheduleRetry(UUID jobId, String message, Instant retryAt) {
+            calls.add("scheduleRetry");
+            delegate.scheduleRetry(jobId, message, retryAt);
+        }
+
+        @Override
+        public void markSucceeded(UUID jobId, String resourcePath, String message) {
+            calls.add("markSucceeded");
+            delegate.markSucceeded(jobId, resourcePath, message);
+        }
+
+        @Override
+        public void markDeadLettered(UUID jobId, String message) {
+            calls.add("markDeadLettered");
+            delegate.markDeadLettered(jobId, message);
+        }
+
+        @Override
+        public boolean retryDeadLettered(UUID jobId, String operatorId) {
+            calls.add("retryDeadLettered");
+            return delegate.retryDeadLettered(jobId, operatorId);
+        }
+    }
+
+    private static class DelegatingRepository implements ConversionJobRepository {
+        private final InMemoryConversionJobRepository delegate = new InMemoryConversionJobRepository();
+
+        @Override
+        public ConversionJob save(ConversionJob job) {
+            return delegate.save(job);
+        }
+
+        @Override
+        public Optional<ConversionJob> findById(UUID jobId) {
+            return delegate.findById(jobId);
+        }
+
+        @Override
+        public Optional<ConversionJob> findByContentHash(String contentHash) {
+            return delegate.findByContentHash(contentHash);
+        }
+
+        @Override
+        public Optional<ConversionJob> findByTenantAndContentHash(String tenantId, String contentHash) {
+            return delegate.findByTenantAndContentHash(tenantId, contentHash);
+        }
+
+        @Override
+        public List<ConversionJob> findAll() {
+            return delegate.findAll();
+        }
+
+        @Override
+        public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
+            return delegate.findOrStoreByContentHash(candidate);
         }
     }
 }

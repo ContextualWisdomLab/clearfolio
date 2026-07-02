@@ -1,0 +1,3 @@
+coverage-evidence	pending	0	https://github.com/ContextualWisdomLab/clearfolio/actions/runs/28588776855/job/84766834306
+scan-pr-queue	pending	0	https://github.com/ContextualWisdomLab/clearfolio/actions/runs/28588776951/job/84766836811
+strix	pending	0	https://github.com/ContextualWisdomLab/clearfolio/actions/runs/28588777269/job/84766835464

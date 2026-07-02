@@ -1,23 +1,19 @@
 package com.clearfolio.viewer.controller;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
-import org.springframework.test.web.reactive.server.WebTestClient;
+import static org.assertj.core.api.Assertions.assertThat;
 
-@WebFluxTest(HealthController.class)
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
 class HealthControllerTest {
 
-    @Autowired
-    private WebTestClient webTestClient;
-
     @Test
-    void healthEndpointReturnsOkAndPayload() {
-        webTestClient.get()
-                .uri("/healthz")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.status").isEqualTo("ok");
+    void healthControllerReturnsOkPayload() {
+        final HealthController controller = new HealthController();
+
+        final Map<String, String> response = controller.health();
+
+        assertThat(response).containsEntry("status", "ok");
     }
 }

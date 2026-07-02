@@ -9,6 +9,11 @@ import org.springframework.boot.SpringApplication;
 class ClearfolioViewerApplicationTest {
 
     @Test
+    void constructorIsAvailableForFrameworkInstantiation() {
+        new ClearfolioViewerApplication();
+    }
+
+    @Test
     void mainDelegatesToSpringApplicationRun() {
         String[] args = {"--spring.main.web-application-type=none"};
 

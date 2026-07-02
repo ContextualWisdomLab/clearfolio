@@ -12,6 +12,8 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.clearfolio.viewer.auth.TenantContext;
+
 class ConversionJobTest {
 
     @Test
@@ -38,6 +40,58 @@ class ConversionJobTest {
         job.markFailed("failed\u0000");
         assertEquals("failed", job.getStatusMessage());
         assertEquals("FAILED", job.getStatus().name());
+    }
+
+    @Test
+    void constructorSetsDefaultDemoTenantMetadata() {
+        ConversionJob job = new ConversionJob(
+                UUID.randomUUID(),
+                "report.docx",
+                "application/octet-stream",
+                "hash",
+                10L
+        );
+
+        assertEquals(TenantContext.DEMO_TENANT_ID, job.getTenantId());
+        assertEquals(TenantContext.DEMO_SUBJECT_ID, job.getSubjectId());
+        assertTrue(job.belongsToTenant(TenantContext.DEMO_TENANT_ID));
+    }
+
+    @Test
+    void constructorAcceptsExplicitTenantMetadata() {
+        ConversionJob job = new ConversionJob(
+                UUID.randomUUID(),
+                "tenant-a",
+                "subject-a",
+                "report.docx",
+                "application/octet-stream",
+                "hash",
+                10L,
+                3
+        );
+
+        assertEquals("tenant-a", job.getTenantId());
+        assertEquals("subject-a", job.getSubjectId());
+        assertTrue(job.belongsToTenant("tenant-a"));
+        assertFalse(job.belongsToTenant("tenant-b"));
+    }
+
+    @Test
+    void constructorFallsBackToDemoMetadataForBlankTenantClaims() {
+        ConversionJob job = new ConversionJob(
+                UUID.randomUUID(),
+                " \u0000 ",
+                null,
+                "report.docx",
+                "application/octet-stream",
+                "hash",
+                10L,
+                3
+        );
+
+        assertEquals(TenantContext.DEMO_TENANT_ID, job.getTenantId());
+        assertEquals(TenantContext.DEMO_SUBJECT_ID, job.getSubjectId());
+        assertFalse(job.belongsToTenant(null));
     }
 
     @Test

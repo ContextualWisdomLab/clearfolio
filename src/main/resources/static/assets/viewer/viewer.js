@@ -1,4 +1,9 @@
 const POLL_DELAY_MS = 1500;
+const DEMO_AUTH_HEADERS = {
+  "X-Clearfolio-Tenant-Id": "buyer-demo",
+  "X-Clearfolio-Subject-Id": "buyer-demo-operator",
+  "X-Clearfolio-Permissions": "job:read,viewer:read",
+};
 
 const el = {
   docMeta: document.getElementById("doc-meta"),
@@ -121,6 +126,7 @@ async function fetchJson(url, signal) {
   const res = await fetch(url, {
     headers: {
       Accept: "application/json",
+      ...DEMO_AUTH_HEADERS,
     },
     credentials: "same-origin",
     signal,
@@ -130,6 +136,25 @@ async function fetchJson(url, signal) {
   const data = contentType.includes("application/json") ? await res.json() : null;
 
   return { res, data };
+}
+
+async function openJsonDocument(url) {
+  const popup = window.open("", "_blank");
+  if (!popup) {
+    showError("Allow popups to inspect JSON evidence in a new tab.");
+    return;
+  }
+
+  popup.opener = null;
+  popup.document.title = "Clearfolio viewer bootstrap JSON";
+  const pre = popup.document.createElement("pre");
+  pre.textContent = "Loading...";
+  popup.document.body.appendChild(pre);
+
+  const { res, data } = await fetchJson(url);
+  pre.textContent = res.ok && data
+    ? JSON.stringify(data, null, 2)
+    : "Unable to load JSON evidence with the current tenant claim.";
 }
 
 async function poll(docId, abortSignal) {
@@ -220,6 +245,10 @@ function init() {
   el.docMeta.textContent = `docId: ${docId}`;
   el.openJsonLink.hidden = false;
   el.openJsonLink.href = `/api/v1/viewer/${encodeURIComponent(docId)}`;
+  el.openJsonLink.addEventListener("click", event => {
+    event.preventDefault();
+    void openJsonDocument(el.openJsonLink.href);
+  });
 
   const initialState = getInitialState();
 

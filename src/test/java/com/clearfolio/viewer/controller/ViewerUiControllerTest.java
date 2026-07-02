@@ -1,11 +1,15 @@
 package com.clearfolio.viewer.controller;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +48,22 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("clearfolio-initial-state\" content=\"NOT_FOUND\""));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
+                    assertTrue(body.contains("target=\"_blank\" rel=\"noopener noreferrer\""));
+                    assertTrue(body.contains("aria-label=\"Open JSON bootstrap in a new tab\""));
                 });
+    }
+
+    @Test
+    void viewerScriptOpensArtifactLinksInNewContextAndClearsHelpText() throws Exception {
+        try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/viewer.js")) {
+            assertNotNull(input);
+            String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+
+            assertTrue(Pattern.compile("link\\.target\\s*=\\s*\"_blank\"").matcher(script).find());
+            assertTrue(Pattern.compile("link\\.rel\\s*=\\s*\"noopener noreferrer\"").matcher(script).find());
+            assertTrue(Pattern.compile("aria-label\"\\s*,\\s*\"Open artifact in a new tab\"").matcher(script).find());
+            assertTrue(Pattern.compile("querySelector\\(\\s*\"#preview-help\"\\s*\\)").matcher(script).find());
+        }
     }
 
     @Test

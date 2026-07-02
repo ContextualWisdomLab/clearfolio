@@ -110,7 +110,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         return RetryDeadLetterResult.ACCEPTED;
     }
 
-    private String contentHash(MultipartFile file) {
+    private String contentHash(final MultipartFile file) {
         try (InputStream stream = file.getInputStream()) {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] buffer = new byte[8192];
@@ -121,12 +121,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString();
+            return java.util.HexFormat.of().formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

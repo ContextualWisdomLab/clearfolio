@@ -3,6 +3,7 @@ package com.clearfolio.viewer.service;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -38,15 +39,27 @@ class DefaultDocumentValidationServiceTest {
         assertEquals("hwp", ex.getExtension());
     }
 
+    private String validToken(String approverId, String extension, String secret) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest((approverId + ":" + extension + ":" + secret).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash);
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
     @Test
     void allowsBlockedExtensionWhenOverrideHeadersAreValid() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
+        String token = validToken("approver-1", "hwp", conversionProperties.getPolicyOverrideSecret());
+
         assertDoesNotThrow(() -> validationService.validateOrThrow(
                 new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                PolicyOverrideRequest.of("true", "token-123", "approver-1")
+                PolicyOverrideRequest.of("true", token, "approver-1")
         ));
     }
 
@@ -56,11 +69,13 @@ class DefaultDocumentValidationServiceTest {
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
+        String token = validToken("approver-1", "hwp", conversionProperties.getPolicyOverrideSecret());
+
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
                         new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                        PolicyOverrideRequest.of("not-boolean", "token-123", "approver-1")
+                        PolicyOverrideRequest.of("not-boolean", token, "approver-1")
                 )
         );
 
@@ -173,6 +188,69 @@ class DefaultDocumentValidationServiceTest {
         assertDoesNotThrow(() -> validationService.validateOrThrow(
                 new MockMultipartFile("file", "contract.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", new byte[] {1})
         ));
+    }
+
+    @Test
+    void allowsUnblockedExtensionWhenAllowedExtensionsIsEmpty() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setAllowedExtensions(java.util.Set.of());
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        assertDoesNotThrow(() -> validationService.validateOrThrow(
+                new MockMultipartFile("file", "contract.docx", "application/octet-stream", new byte[] {1})
+        ));
+    }
+
+    @Test
+    void rejectsBlockedExtensionWhenAllowedExtensionsIsEmpty() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setAllowedExtensions(java.util.Set.of());
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        UnsupportedDocumentFormatException ex = assertThrows(
+                UnsupportedDocumentFormatException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1})
+                )
+        );
+
+        assertEquals("hwp", ex.getExtension());
+    }
+
+    @Test
+    void rejectsValidExtensionNotInAllowlist() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setAllowedExtensions(java.util.Set.of("pdf", "doc"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        UnsupportedDocumentFormatException ex = assertThrows(
+                UnsupportedDocumentFormatException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract.docx", "application/octet-stream", new byte[] {1})
+                )
+        );
+
+        assertEquals("docx", ex.getExtension());
+    }
+
+    @Test
+    void rejectsInvalidTokenSignature() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        PolicyOverrideRequest.of("true", "invalid-token", "approver-1")
+                )
+        );
+
+        assertEquals("Invalid approval token signature.", ex.getMessage());
     }
 
     @Test
@@ -373,6 +451,35 @@ class DefaultDocumentValidationServiceTest {
     }
 
     @Test
+    void throwsWhenSha256DigestIsUnavailableForTokenFingerprint() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        Method method = DefaultDocumentValidationService.class.getDeclaredMethod("tokenFingerprint", String.class);
+        method.setAccessible(true);
+
+        synchronized (SECURITY_PROVIDERS_LOCK) {
+            Provider[] providers = Security.getProviders();
+            for (Provider provider : providers) {
+                Security.removeProvider(provider.getName());
+            }
+
+            try {
+                java.lang.reflect.InvocationTargetException ex = assertThrows(
+                        java.lang.reflect.InvocationTargetException.class,
+                        () -> method.invoke(validationService, "token-123")
+                );
+
+                assertTrue(ex.getCause() instanceof IllegalStateException);
+                assertEquals("SHA-256 digest unavailable", ex.getCause().getMessage());
+            } finally {
+                for (int index = 0; index < providers.length; index++) {
+                    Security.insertProviderAt(providers[index], index + 1);
+                }
+            }
+        }
+    }
+
+    @Test
     void throwsWhenSha256DigestIsUnavailableForOverrideAuditFingerprint() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
@@ -385,6 +492,8 @@ class DefaultDocumentValidationServiceTest {
             }
 
             try {
+                // Cannot pre-compute token without SHA-256 available, so just use an invalid token.
+                // The unavailable digest should throw before validating the token itself.
                 IllegalStateException ex = assertThrows(
                         IllegalStateException.class,
                         () -> validationService.validateOrThrow(

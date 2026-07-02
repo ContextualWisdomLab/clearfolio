@@ -26,4 +26,11 @@ public interface ArtifactStore {
      * @return PDF bytes when present
      */
     Optional<byte[]> getPdf(UUID docId);
+
+    /**
+     * Deletes the stored PDF bytes for a document.
+     *
+     * @param docId document identifier
+     */
+    void deletePdf(UUID docId);
 }

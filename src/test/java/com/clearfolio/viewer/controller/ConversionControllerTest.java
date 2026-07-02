@@ -52,15 +52,15 @@ class ConversionControllerTest {
     }
 
     @Test
-    void constructorCapsMaxInMemorySizeAtIntegerMaxValue() throws Exception {
+    void constructorCapsMaxInMemorySizeAt5MB() throws Exception {
         ConversionController controller = new ConversionController(
                 conversionService,
-                DataSize.ofBytes((long) Integer.MAX_VALUE + 1)
+                DataSize.ofBytes(10 * 1024 * 1024L)
         );
         Field field = ConversionController.class.getDeclaredField("maxInMemorySizeBytes");
         field.setAccessible(true);
 
-        assertEquals(Integer.MAX_VALUE, field.getInt(controller));
+        assertEquals(5 * 1024 * 1024, field.getInt(controller));
     }
 
     @Test
@@ -311,6 +311,34 @@ class ConversionControllerTest {
                 .jsonPath("$.errorCode").isEqualTo("BAD_REQUEST")
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
                 .jsonPath("$.message").isEqualTo(ConversionController.OPERATOR_ID_HEADER + " header is required.")
+                .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+    }
+
+    @Test
+    void deleteJobReturnsNoContentWhenFound() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.deleteJob(jobId)).thenReturn(true);
+
+        webTestClient.delete()
+                .uri("/api/v1/convert/jobs/{jobId}", jobId)
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectBody().isEmpty();
+    }
+
+    @Test
+    void deleteJobReturnsNotFoundWhenMissing() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.deleteJob(jobId)).thenReturn(false);
+
+        webTestClient.delete()
+                .uri("/api/v1/convert/jobs/{jobId}", jobId)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND")
+                .jsonPath("$.code").isEqualTo("NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("job not found")
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
     }
 

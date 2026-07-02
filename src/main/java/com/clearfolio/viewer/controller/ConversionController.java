@@ -10,6 +10,7 @@ import org.springframework.util.unit.DataSize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -56,7 +57,7 @@ public class ConversionController {
             @Value("${spring.codec.max-in-memory-size:262144B}") DataSize maxInMemorySize) {
         this.conversionService = conversionService;
         long bytes = Math.max(1L, maxInMemorySize.toBytes());
-        this.maxInMemorySizeBytes = bytes > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) bytes;
+        this.maxInMemorySizeBytes = Math.min((int) bytes, 5 * 1024 * 1024);
     }
 
     /**
@@ -112,6 +113,20 @@ public class ConversionController {
     }
 
     /**
+     * Deletes a conversion job and its generated artifacts.
+     *
+     * @param jobId conversion job identifier
+     * @return no content response
+     */
+    @DeleteMapping("/api/v1/convert/jobs/{jobId}")
+    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId) {
+        if (!conversionService.deleteJob(jobId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * Retries a dead-lettered conversion job as a new background submission.
      *
      * @param jobId conversion job identifier
@@ -126,6 +141,7 @@ public class ConversionController {
             throw new IllegalArgumentException(OPERATOR_ID_HEADER + " header is required.");
         }
 
+        operatorId = operatorId.replaceAll("[^a-zA-Z0-9_-]", "");
         RetryDeadLetterResult retryResult = conversionService.retryDeadLettered(jobId, operatorId.strip());
         if (retryResult == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");

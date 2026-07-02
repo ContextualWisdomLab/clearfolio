@@ -32,6 +32,11 @@ class ServiceInterfaceDefaultMethodsTest {
             public RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId) {
                 return RetryDeadLetterResult.NOT_FOUND;
             }
+
+            @Override
+            public boolean deleteJob(UUID jobId) {
+                return false;
+            }
         };
 
         UUID actual = service.submit(

@@ -25,6 +25,8 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
     private static final int FINGERPRINT_TRUNCATE_BYTES = 8;
 
     private final Set<String> blockedExtensions;
+    private final Set<String> allowedExtensions;
+    private final String policyOverrideSecret;
     private final long maxUploadSizeBytes;
 
     /**
@@ -34,6 +36,8 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
      */
     public DefaultDocumentValidationService(ConversionProperties conversionProperties) {
         this.blockedExtensions = conversionProperties.getBlockedExtensions();
+        this.allowedExtensions = conversionProperties.getAllowedExtensions();
+        this.policyOverrideSecret = conversionProperties.getPolicyOverrideSecret();
         this.maxUploadSizeBytes = conversionProperties.getMaxUploadSizeBytes();
     }
 
@@ -60,7 +64,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             throw new IllegalArgumentException("File extension is required.");
         }
 
-        boolean blockedExtension = blockedExtensions.contains(extension);
+        boolean blockedExtension = !allowedExtensions.isEmpty() ? !allowedExtensions.contains(extension) : blockedExtensions.contains(extension);
         String overrideApproverIdForAudit = null;
         String overrideTokenForAudit = null;
         if (blockedExtension) {
@@ -79,6 +83,19 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
                     effectiveOverride.approverId(),
                     PolicyOverrideRequest.APPROVER_ID_HEADER + " is required when policy override is true."
             );
+
+            approverId = approverId.replaceAll("[^a-zA-Z0-9_-]", "");
+
+            try {
+                String expectedToken = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                        .digest((approverId + ":" + extension + ":" + policyOverrideSecret).getBytes(StandardCharsets.UTF_8)));
+                if (!MessageDigest.isEqual(approvalToken.getBytes(StandardCharsets.UTF_8), expectedToken.getBytes(StandardCharsets.UTF_8))) {
+                    throw new IllegalArgumentException("Invalid approval token signature.");
+                }
+            } catch (NoSuchAlgorithmException ex) {
+                throw new IllegalStateException("SHA-256 digest unavailable", ex);
+            }
+
             overrideApproverIdForAudit = approverId;
             overrideTokenForAudit = approvalToken;
         }

@@ -13,6 +13,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ConversionProperties {
 
     private Set<String> blockedExtensions = new LinkedHashSet<>(Set.of("hwp", "hwpx"));
+    private Set<String> allowedExtensions = new LinkedHashSet<>(Set.of("pdf", "doc", "docx", "txt", "xls", "xlsx", "ppt", "pptx", "rtf", "csv"));
+    private String policyOverrideSecret = "default-secret-change-in-prod";
     private int workerThreads = 4;
     private int queueCapacity = 200;
     private int maxRetryAttempts = 3;
@@ -52,6 +54,60 @@ public class ConversionProperties {
             }
         }
         this.blockedExtensions = normalized;
+    }
+
+    /**
+     * Returns file extensions that are allowed for upload.
+     *
+     * @return allowed extension set
+     */
+    public Set<String> getAllowedExtensions() {
+        return allowedExtensions;
+    }
+
+    /**
+     * Sets file extensions that are allowed for upload.
+     *
+     * @param allowedExtensions allowed extension set
+     */
+    public void setAllowedExtensions(Set<String> allowedExtensions) {
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        if (allowedExtensions != null) {
+            for (String extension : allowedExtensions) {
+                if (extension == null) {
+                    continue;
+                }
+                String sanitized = extension
+                        .replace("\u0000", "")
+                        .trim()
+                        .toLowerCase(Locale.ROOT);
+                if (!sanitized.isEmpty()) {
+                    normalized.add(sanitized);
+                }
+            }
+        }
+        this.allowedExtensions = normalized;
+    }
+
+    /**
+     * Returns the secret used for policy override signatures.
+     *
+     * @return policy override secret
+     */
+    public String getPolicyOverrideSecret() {
+        return policyOverrideSecret;
+    }
+
+    /**
+     * Sets the secret used for policy override signatures.
+     *
+     * @param policyOverrideSecret policy override secret
+     */
+    public void setPolicyOverrideSecret(String policyOverrideSecret) {
+        if (policyOverrideSecret == null || policyOverrideSecret.isBlank()) {
+            throw new IllegalArgumentException("Policy override secret cannot be blank");
+        }
+        this.policyOverrideSecret = policyOverrideSecret;
     }
 
     /**

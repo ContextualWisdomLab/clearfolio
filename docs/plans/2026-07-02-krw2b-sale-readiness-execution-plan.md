@@ -191,6 +191,8 @@ Progress as of 2026-07-02:
   scoped to current in-memory runtime data until durable persistence exists.
 - The buyer-demo root shell now consumes that KPI endpoint directly and falls
   back to browser-session history only when the runtime snapshot is unavailable.
+- Figma evidence flow is now captured as a FigJam artifact and mirrored in
+  `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`.
 
 ## Library and submodule decision
 

@@ -254,6 +254,10 @@ Progress as of 2026-07-02:
   `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`.
   This reduces buyer integration cost without adding a separate library,
   submodule, or speculative connector package.
+- An OpenAPI connector seed is now captured in
+  `docs/deployment/clearfolio-buyer-connector.openapi.yaml`. It is an import
+  candidate for a buyer-owned gateway or Power Platform custom connector, not a
+  buyer-tenant-tested production connector.
 
 ## Library and submodule decision
 
@@ -352,9 +356,11 @@ Progress as of 2026-07-02:
   `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`.
 - Buyer sandbox profile is now available at
   `src/main/resources/application-buyer-demo.yml`.
-- Power Platform connector packaging remains a follow-up because no buyer
-  gateway hostname, OIDC issuer, or tenant-specific embedding allowlist has been
-  provided yet.
+- OpenAPI connector seed is now available at
+  `docs/deployment/clearfolio-buyer-connector.openapi.yaml`.
+- Power Platform connector import testing and production connector packaging
+  remain follow-ups because no buyer gateway hostname, OIDC issuer, or
+  tenant-specific embedding allowlist has been provided yet.
 
 ## Immediate autonomous PR sequence
 

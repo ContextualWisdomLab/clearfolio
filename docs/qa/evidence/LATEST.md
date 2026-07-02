@@ -9,6 +9,8 @@
 - Signed artifact link runtime: `docs/security/2026-07-02-signed-artifact-link-design.md`
 - Buyer deployment playbook:
   `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`
+- Buyer connector OpenAPI seed:
+  `docs/deployment/clearfolio-buyer-connector.openapi.yaml`
 - Buyer sandbox Spring profile:
   `src/main/resources/application-buyer-demo.yml`
 - Buyer deployment supplemental verification:

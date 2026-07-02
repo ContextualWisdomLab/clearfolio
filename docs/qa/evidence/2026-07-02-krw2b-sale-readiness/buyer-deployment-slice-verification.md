@@ -71,3 +71,24 @@ Verification after the follow-up:
 | JavaDoc | `mvn -q -DskipTests javadoc:javadoc` passed, no output. |
 | SAST | Semgrep passed, 60 Java rules, 50 tracked files, 0 findings, 0 errors. |
 | Full tests and coverage | `mvn test` passed, 312 tests, 0 failures, 0 errors; `missed_instr=0 missed_branch=0 missed_line=0`. |
+
+## Connector Seed Verification
+
+The repository now includes
+`docs/deployment/clearfolio-buyer-connector.openapi.yaml` as an OpenAPI 3.0
+import seed for a buyer-owned gateway or Power Platform custom connector.
+
+Validation:
+
+| Gate | Result |
+| --- | --- |
+| YAML parse | `ruby -e 'require "yaml"; YAML.load_file("docs/deployment/clearfolio-buyer-connector.openapi.yaml")'` passed. |
+| OpenAPI lint | `npx @redocly/cli lint docs/deployment/clearfolio-buyer-connector.openapi.yaml` passed with no warnings or errors. |
+| Markdown lint | `npx markdownlint-cli2 ...` passed for changed Markdown files; OpenAPI YAML is validated by the OpenAPI linter, not Markdown lint. |
+
+Claim boundary:
+
+- The connector seed reflects current Clearfolio JSON APIs and signed tenant
+  headers.
+- It is not a buyer-tenant-imported connector package yet.
+- It is not a production OIDC/JWT deployment profile.

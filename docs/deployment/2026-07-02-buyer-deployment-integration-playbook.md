@@ -162,6 +162,7 @@ Before a buyer sandbox is shown, attach:
 - PR #74 URL and latest head SHA;
 - `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md`;
 - this playbook;
+- `docs/deployment/clearfolio-buyer-connector.openapi.yaml`;
 - `src/main/resources/application-buyer-demo.yml`;
 - `docs/security/2026-07-02-auth-tenant-model.md`;
 - `docs/security/2026-07-02-signed-artifact-link-design.md`;
@@ -172,6 +173,26 @@ Before a buyer sandbox is shown, attach:
 The FigJam board includes `Clearfolio Buyer Integration Deployment Flow`, which
 mirrors this playbook's gateway, runtime, evidence-ledger, and diligence
 artifact path. Figma Code Connect is not used.
+
+## Connector Seed
+
+The repository includes `docs/deployment/clearfolio-buyer-connector.openapi.yaml`
+as an OpenAPI 3.0 import seed for a buyer-owned gateway or Power Platform custom
+connector. It covers:
+
+- document submission through multipart upload;
+- conversion status polling;
+- dead-letter retry;
+- viewer bootstrap with signed artifact URL;
+- signed artifact-link creation and revocation;
+- artifact read audit lookup;
+- KPI snapshot and KPI export lookup.
+
+The seed intentionally models the current signed Clearfolio tenant-header
+scaffold. It is not a validated production OIDC/JWT connector profile, and it
+has not been imported into a buyer Power Platform tenant. A buyer-specific
+connector package should be created only after the gateway hostname, OIDC issuer,
+role mapping, and `frame-ancestors` allowlist are known.
 
 ## Library and Submodule Decision
 
@@ -194,5 +215,5 @@ The buyer sandbox should not be promoted to production until these gates close:
   persistence;
 - durable metrics event stream and daily KPI projections;
 - buyer-specific `frame-ancestors` allowlist and security owner approval;
-- connector package or runbook tested against the buyer's actual gateway and
+- connector seed imported and tested against the buyer's actual gateway and
   Power Platform tenant.

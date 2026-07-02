@@ -99,8 +99,8 @@ When Figma plan selection is available, generate the deck with this structure:
 
 ## Next Closure Order
 
-1. Legal approve, replace, or remove the 6 review-required SBOM components,
-   then run buyer-release license-policy mode.
+1. Legal approve, replace, or remove the 3 remaining review-required SBOM
+   components, then run buyer-release license-policy mode.
 2. Import-test the connector seed in a buyer tenant or buyer-like sandbox.
 3. Replace gateway HMAC tenant scaffolding with validated OIDC/JWT claims,
    role mapping, and managed secret rotation.

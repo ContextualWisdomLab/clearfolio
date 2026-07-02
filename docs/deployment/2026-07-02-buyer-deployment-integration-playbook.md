@@ -28,7 +28,7 @@ The deployment cannot yet prove:
 
 - production OIDC/JWT issuer, audience, expiry, `kid`, and role validation;
 - centralized durable job, artifact, revocation, audit, or analytics storage;
-- legal approval for the six review-required SBOM components;
+- legal approval for the three remaining review-required SBOM components;
 - a packaged Power Platform connector.
 
 ## Runtime Profile
@@ -206,7 +206,7 @@ contracts independently.
 
 The buyer sandbox should not be promoted to production until these gates close:
 
-- legal approve, replace, or remove decisions for the six review-required SBOM
+- legal approve, replace, or remove decisions for the three remaining review-required SBOM
   components;
 - validated gateway or OIDC JWT issuer, audience, expiry, key rotation, and role
   mapping;

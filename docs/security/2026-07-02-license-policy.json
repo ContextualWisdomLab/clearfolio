@@ -25,18 +25,6 @@
     {
       "purl": "pkg:maven/jakarta.annotation/jakarta.annotation-api@2.1.1?type=jar",
       "reason": "GPL classpath-exception metadata; legal must confirm exception scope."
-    },
-    {
-      "purl": "pkg:maven/org.codelibs/jhighlight@1.1.0?type=jar",
-      "reason": "CDDL/LGPL metadata; review or remove if not needed for supported preview paths."
-    },
-    {
-      "purl": "pkg:maven/com.github.junrar/junrar@7.5.5?type=jar",
-      "reason": "UnRar license metadata; legal must confirm archive-format usage route."
-    },
-    {
-      "purl": "pkg:maven/com.github.albfernandez/juniversalchardet@2.5.0?type=jar",
-      "reason": "MPL/GPL/LGPL metadata; legal must confirm selected license route or replacement."
     }
   ]
 }

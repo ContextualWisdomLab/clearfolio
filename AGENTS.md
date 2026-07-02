@@ -17,6 +17,9 @@ including mandatory quality and security merge gates.
   `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json`.
   Buyer-release mode adds `--require-no-review` after legal approval or
   dependency replacement clears all review-required components.
+- `mvn test` includes `DependencyPolicyTest`, which prevents reintroducing the
+  broad `tika-parsers-standard-package` dependency unless a future PR updates
+  the license policy, SBOM evidence, and buyer diligence docs together.
 
 ## Change management rule
 

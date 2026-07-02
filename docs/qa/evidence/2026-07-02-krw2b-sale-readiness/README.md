@@ -10,13 +10,13 @@ Verification source head SHA before this evidence refresh:
 | --- | --- | --- |
 | Java runtime | Pass, OpenJDK 21.0.11 | `java-version.txt` |
 | Compile warnings/deprecations | Pass | `compile.log` |
-| Tests + JaCoCo | Pass, 335 tests, `classes=49`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
+| Tests + JaCoCo | Pass, `classes=49`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
 | JavaDoc | Pass, `javadoc_warnings_or_errors=none` | `javadoc.log`, `javadoc-status.txt` |
 | Markdown lint | Pass, 0 errors across changed docs | `markdownlint.log` |
 | JS syntax | Pass | `node-check.log` |
 | SAST | Pass, 0 findings | `semgrep.log`, `semgrep.json` |
-| SBOM | Pass, CycloneDX 1.6, 142 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
-| License review | Partial, policy checker reports 136 allowed components, 6 review-required components, 0 unlisted violations; legal decisions still needed | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
+| SBOM | Pass, CycloneDX 1.6, 63 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
+| License review | Partial, policy checker reports 60 allowed components, 3 review-required components, 0 unlisted violations; legal decisions still needed | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
 | Auth/tenant, signed artifacts, and KPI snapshots | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, artifact read audit API, optional file-backed artifact-link ledger replay, optional file-backed KPI snapshot ledger replay, and tenant-scoped KPI snapshot export API implemented; OIDC/JWT and centralized durable revocation/audit/analytics persistence pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact/analytics tests |
 | Buyer deployment integration | Pass for buyer sandbox scope; `buyer-demo` Spring profile, gateway-signed header contract, connector API table, OpenAPI connector seed, smoke path, and cutover gates are documented; buyer tenant import and production OIDC/JWT profile remain follow-up | `src/main/resources/application-buyer-demo.yml`, `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`, `docs/deployment/clearfolio-buyer-connector.openapi.yaml` |
 | Durable job repository design, state-store, and lifecycle event slice | Partial, code boundary implemented; `ConversionJobStateStore` routes worker success/failure and operator retry transitions, and `ConversionJobLifecycleEvent` now records process-local append-only transition evidence, while SQL persistence and restart recovery remain pending | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`, state-store and lifecycle event tests |
@@ -56,15 +56,18 @@ mvn -DskipTests org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom -Dcy
 Result:
 
 - CycloneDX BOM format: 1.6.
-- Components: 142.
+- Components: 63.
 - Components without license metadata: 0.
-- Unique license metadata entries: 20.
+- Unique license metadata entries: 7.
 - Engineering license review is now documented in
   `docs/security/2026-07-02-license-allowlist-review.md`.
-- License clearance remains open because 6 flagged components need legal
+- License clearance remains open because 3 flagged components need legal
   approve, replace, or remove decisions before buyer use.
+- The unused `tika-parsers-standard-package` dependency was removed, which
+  eliminated Tika transitive review-required components `jhighlight`, `junrar`,
+  and `juniversalchardet` from the current SBOM.
 - The standard-library license policy checker passes engineering-review mode:
-  136 allowed components, 6 review-required components, and 0 unlisted
+  60 allowed components, 3 review-required components, and 0 unlisted
   violations. Buyer-release mode should add `--require-no-review` after legal
   approval or dependency replacement.
 

@@ -226,13 +226,14 @@ Progress as of 2026-07-02:
   `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`.
 - Engineering license allowlist review is now captured in
   `docs/security/2026-07-02-license-allowlist-review.md`; legal clearance
-  remains open for 6 flagged components.
+  remains open for 3 flagged Spring runtime components after removing the
+  unused broad Tika parser package and its flagged transitive dependencies.
 - A standard-library license policy checker is now captured in
   `scripts/check_sbom_license_policy.py` and
   `docs/security/2026-07-02-license-policy.json`; current evidence reports
-  136 allowed components, 6 review-required components, and 0 unlisted
+  60 allowed components, 3 review-required components, and 0 unlisted
   violations. Buyer-release mode still requires legal approval or replacement
-  for the 6 review-required components.
+  for the 3 review-required components.
 - Signed artifact link runtime is now implemented for current in-memory PDF
   artifacts and captured in
   `docs/security/2026-07-02-signed-artifact-link-design.md`.

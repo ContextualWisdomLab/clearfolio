@@ -134,6 +134,14 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * {@inheritDoc}
      */
     @Override
+    public void deleteJob(UUID jobId) {
+        repository.deleteById(jobId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId) {
         Optional<ConversionJob> existing = repository.findById(jobId);
         if (existing.isEmpty()) {

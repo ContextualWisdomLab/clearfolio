@@ -70,4 +70,11 @@ public interface ConversionJobRepository {
      * @return canonical stored conversion job and whether the candidate was created
      */
     FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate);
+
+    /**
+     * Deletes a conversion job by identifier.
+     *
+     * @param jobId conversion job identifier
+     */
+    void deleteById(UUID jobId);
 }

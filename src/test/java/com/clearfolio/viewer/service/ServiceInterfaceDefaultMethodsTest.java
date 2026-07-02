@@ -32,6 +32,10 @@ class ServiceInterfaceDefaultMethodsTest {
             public RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId) {
                 return RetryDeadLetterResult.NOT_FOUND;
             }
+
+            @Override
+            public void deleteJob(UUID jobId) {
+            }
         };
 
         UUID actual = service.submit(
@@ -66,6 +70,10 @@ class ServiceInterfaceDefaultMethodsTest {
             @Override
             public RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId) {
                 return RetryDeadLetterResult.NOT_FOUND;
+            }
+
+            @Override
+            public void deleteJob(UUID jobId) {
             }
         };
         PolicyOverrideRequest overrideRequest = PolicyOverrideRequest.of("true", "token-123", "approver-1");

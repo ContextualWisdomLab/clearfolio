@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
@@ -51,6 +52,7 @@ public class ConversionController {
     private final DocumentConversionService conversionService;
     private final TenantAccessService tenantAccessService;
     private final ArtifactLinkService artifactLinkService;
+    private final com.clearfolio.viewer.artifact.ArtifactStore artifactStore;
     private final int maxInMemorySizeBytes;
 
     /**
@@ -59,16 +61,19 @@ public class ConversionController {
      * @param conversionService conversion service
      * @param tenantAccessService tenant and permission guard
      * @param artifactLinkService signed artifact link service
+     * @param artifactStore artifact store
      * @param maxInMemorySize maximum in-memory multipart size
      */
     public ConversionController(
             DocumentConversionService conversionService,
             TenantAccessService tenantAccessService,
             ArtifactLinkService artifactLinkService,
+            com.clearfolio.viewer.artifact.ArtifactStore artifactStore,
             @Value("${spring.codec.max-in-memory-size:262144B}") DataSize maxInMemorySize) {
         this.conversionService = conversionService;
         this.tenantAccessService = tenantAccessService;
         this.artifactLinkService = artifactLinkService;
+        this.artifactStore = artifactStore;
         long bytes = Math.max(1L, maxInMemorySize.toBytes());
         this.maxInMemorySizeBytes = bytes > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) bytes;
     }
@@ -158,6 +163,26 @@ public class ConversionController {
         }
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(SubmitConversionResponse.accepted(jobId));
+    }
+
+    /**
+     * Deletes a conversion job and its associated generated artifacts.
+     *
+     * @param jobId conversion job identifier
+     * @param headers request headers carrying tenant claims
+     * @return no content on success
+     */
+    @DeleteMapping("/api/v1/convert/jobs/{jobId}")
+    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId, @RequestHeader HttpHeaders headers) {
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_DELETE);
+        ConversionJob job = conversionService.getJob(jobId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
+        tenantAccessService.requireSameTenant(tenantContext, job);
+
+        conversionService.deleteJob(jobId);
+        artifactStore.deletePdf(jobId);
+
+        return ResponseEntity.noContent().build();
     }
 
     /**

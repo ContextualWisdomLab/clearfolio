@@ -672,6 +672,11 @@ class DefaultDocumentConversionServiceTest {
         public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
             return finder.apply(candidate);
         }
+
+        @Override
+        public void deleteById(UUID jobId) {
+            throw new UnsupportedOperationException("not used");
+        }
     }
 
     private static class RecordingStateStore implements ConversionJobStateStore {

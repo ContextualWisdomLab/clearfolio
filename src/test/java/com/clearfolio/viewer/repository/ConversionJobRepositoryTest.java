@@ -50,6 +50,10 @@ class ConversionJobRepositoryTest {
             public List<ConversionJob> findAll() {
                 return List.of(job);
             }
+
+            @Override
+            public void deleteById(UUID jobId) {
+            }
         };
 
         assertSame(job, repository.findByTenantAndContentHash("tenant-a", "hash").orElseThrow());

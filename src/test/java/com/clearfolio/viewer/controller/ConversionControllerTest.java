@@ -57,6 +57,7 @@ class ConversionControllerTest {
                 conversionService,
                 new TenantAccessService(),
                 new ArtifactLinkService(artifactStore, "test-secret"),
+                artifactStore,
                 DataSize.ofBytes(262_144L)
         );
         webTestClient = WebTestClient.bindToController(
@@ -70,6 +71,7 @@ class ConversionControllerTest {
                 conversionService,
                 new TenantAccessService(),
                 new ArtifactLinkService(new InMemoryArtifactStore(), "test-secret"),
+                new InMemoryArtifactStore(),
                 DataSize.ofBytes((long) Integer.MAX_VALUE + 1)
         );
         Field field = ConversionController.class.getDeclaredField("maxInMemorySizeBytes");
@@ -642,6 +644,64 @@ class ConversionControllerTest {
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
                 .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
         }
+    }
+
+    @Test
+    void deleteJobRequiresDeletePermission() {
+        UUID jobId = UUID.randomUUID();
+
+        webTestClient.delete()
+                .uri("/api/v1/convert/jobs/{jobId}", jobId)
+                .header(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID)
+                .header(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID)
+                .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_READ) // Missing JOB_DELETE
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("FORBIDDEN")
+                .jsonPath("$.message").value(value -> assertContains((String) value, TenantPermissions.JOB_DELETE));
+    }
+
+    @Test
+    void deleteJobReturnsNotFoundWhenJobMissing() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.delete()
+                .uri("/api/v1/convert/jobs/{jobId}", jobId)
+                .headers(headers -> addAuth(headers, TenantPermissions.JOB_DELETE))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("job not found");
+    }
+
+    @Test
+    void deleteJobDeletesJobAndArtifact() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                TenantContext.DEMO_TENANT_ID,
+                TenantContext.DEMO_SUBJECT_ID,
+                "report.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "abc",
+                12L,
+                3
+        );
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        artifactStore.putPdf(jobId, new byte[] {1, 2, 3});
+
+        webTestClient.delete()
+                .uri("/api/v1/convert/jobs/{jobId}", jobId)
+                .headers(headers -> addAuth(headers, TenantPermissions.JOB_DELETE))
+                .exchange()
+                .expectStatus().isNoContent()
+                .expectBody().isEmpty();
+
+        verify(conversionService).deleteJob(jobId);
+        assertFalse(artifactStore.getPdf(jobId).isPresent());
     }
 
     private WebTestClient.ResponseSpec submit(String filename, byte[] content) {

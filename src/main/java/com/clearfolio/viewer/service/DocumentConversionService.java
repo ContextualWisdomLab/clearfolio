@@ -59,4 +59,11 @@ public interface DocumentConversionService {
      * @return retry outcome
      */
     RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId);
+
+    /**
+     * Deletes a conversion job.
+     *
+     * @param jobId conversion job identifier
+     */
+    void deleteJob(UUID jobId);
 }

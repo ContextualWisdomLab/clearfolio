@@ -47,6 +47,7 @@ function setLoading(message) {
   el.preview.setAttribute("aria-busy", "true");
   el.retryBtn.disabled = true;
   el.retryBtn.textContent = "Refreshing...";
+  el.retryBtn.classList.add("is-loading");
 }
 
 function showError(message) {
@@ -57,6 +58,7 @@ function showError(message) {
   el.errorTitle.focus();
   el.retryBtn.disabled = false;
   el.retryBtn.textContent = "Refresh";
+  el.retryBtn.classList.remove("is-loading");
 }
 
 function clearPreview() {
@@ -186,6 +188,7 @@ async function poll(docId, abortSignal) {
     el.liveStatus.textContent = "Ready.";
     el.retryBtn.disabled = false;
     el.retryBtn.textContent = "Refresh";
+    el.retryBtn.classList.remove("is-loading");
 
     clearPreview();
     const path = bootstrap.data.previewResourcePath;

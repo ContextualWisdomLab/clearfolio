@@ -287,3 +287,25 @@ a:hover {
     animation: none;
   }
 }
+
+.btn.is-loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.btn.is-loading::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 2px solid currentColor;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.8s linear infinite;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}

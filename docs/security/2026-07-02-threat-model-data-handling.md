@@ -228,7 +228,7 @@ This document moves the following diligence items forward:
 Next implementation slices, in order:
 
 1. Complete license policy and allowlist review for the generated SBOM.
-2. Design signed artifact links with expiry, tenant binding, and revocation.
-3. Design durable metrics events for job lifecycle and commercial KPIs.
+2. Implement signed artifact links after auth and tenant design.
+3. Implement durable metrics events for job lifecycle and commercial KPIs.
 4. Add deployment security profile with production `frame-ancestors` matrix.
 5. Add auth/RBAC and tenant model design before any production persistence work.

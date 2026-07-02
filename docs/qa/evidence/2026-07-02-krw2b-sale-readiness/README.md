@@ -2,7 +2,7 @@
 
 Date: 2026-07-02
 Verification source head SHA before this evidence refresh:
-`00f4bc9c555e47a147e4afbbae8e191e0c3765d3`
+`98c5eb497c6d5fae3f2f21f1f71bfcf5d42ddf86`
 
 ## Gate Summary
 

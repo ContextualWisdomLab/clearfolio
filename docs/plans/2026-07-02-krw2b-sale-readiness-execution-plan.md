@@ -203,6 +203,10 @@ Progress as of 2026-07-02:
 - CycloneDX SBOM evidence is now generated under
   `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; license allowlist review
   remains open because GPL/LGPL/UnRar metadata needs buyer/legal review.
+- Signed artifact link design is now captured in
+  `docs/security/2026-07-02-signed-artifact-link-design.md`.
+- Durable metrics event model is now captured in
+  `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
 
 ## Library and submodule decision
 

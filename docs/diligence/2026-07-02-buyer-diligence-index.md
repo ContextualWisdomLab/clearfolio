@@ -17,7 +17,7 @@ strict: partial evidence is marked partial, not complete.
 | Buyer question | Status | Current evidence | Gap | Next artifact |
 | --- | --- | --- | --- | --- |
 | Can a buyer run a demo from upload to preview? | Ready | `GET /`, `POST /api/v1/convert/jobs`, `/viewer/{docId}`; local smoke proof in PR #74. | Demo uses in-memory runtime. | Seeded demo data and screenshot set. |
-| Does the UI expose buyer-readable KPIs? | Ready | `GET /api/v1/analytics/kpi-snapshot`; root shell reads runtime KPI snapshot. | KPI history is not durable. | Durable metric event design. |
+| Does the UI expose buyer-readable KPIs? | Ready | `GET /api/v1/analytics/kpi-snapshot`; root shell reads runtime KPI snapshot; durable model in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | KPI history is not implemented durably yet. | Durable metric event implementation. |
 | Is the Figma design story available without Code Connect? | Ready | FigJam evidence flow and `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`. | High-fidelity screen frames are not complete. | Figma frames for desktop/mobile happy and negative paths. |
 | Are unsupported and failed states explained? | Partial | HWP/HWPX block behavior, error schema, failed job retry flow, buyer-demo status table. | Operator retry is not yet surfaced as an admin UI. | Operator job detail drawer design and implementation slice. |
 
@@ -30,7 +30,7 @@ strict: partial evidence is marked partial, not complete.
 | Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=32`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
 | Is request handling non-blocking? | Ready | WebFlux controller path and `DefaultDocumentConversionService` enqueue behavior. | Real converter runtime is not integrated. | Converter adapter contract and load-test plan. |
 | Is persistence production-grade? | Missing | `ConversionJobRepository` abstraction exists. | In-memory repository only. | Durable repository design and migration plan. |
-| Are artifacts production-grade? | Missing | In-memory PDF artifact store and range-serving controller exist. | No durable object store, signed URLs, retention, or tenant isolation. | Signed artifact link design. |
+| Are artifacts production-grade? | Partial | In-memory PDF artifact store, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, signed URL runtime, retention, or tenant isolation. | Signed artifact link implementation. |
 
 ## Security and Compliance Diligence
 
@@ -49,7 +49,7 @@ strict: partial evidence is marked partial, not complete.
 | --- | --- | --- | --- | --- |
 | Is there a KRW 2B valuation logic? | Ready | `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`. | Comparable transactions are not refreshed beyond public multiple anchors. | Transaction comparable refresh before buyer use. |
 | Is there a pricing path? | Partial | Pricing scenarios in valuation/KPI model. | No customer interviews, pilots, or signed LOIs. | Pilot evidence and ICP qualification pack. |
-| Are buyer KPIs measurable? | Partial | Runtime KPI snapshot exposes reliability and latency fields. | No tenant, retention, monthly volume, cost, or margin data. | Durable analytics event model. |
+| Are buyer KPIs measurable? | Partial | Runtime KPI snapshot exposes reliability and latency fields; durable event model is documented in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | Durable event persistence, tenant dimension, monthly volume, cost, and margin data are not implemented. | Durable analytics event implementation. |
 | Can a buyer integrate it cheaply? | Partial | API routes and Power Platform delivery chain are documented. | No deployment playbook or connector guide. | Integration and deployment playbook. |
 
 ## Current PR Evidence
@@ -61,6 +61,8 @@ strict: partial evidence is marked partial, not complete.
 | Business model | `docs/business/2026-07-02-krw2b-valuation-kpi-model.md` |
 | FigJam handoff | `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md` |
 | Threat model and data handling | `docs/security/2026-07-02-threat-model-data-handling.md` |
+| Signed artifact design | `docs/security/2026-07-02-signed-artifact-link-design.md` |
+| Durable metrics event model | `docs/analytics/2026-07-02-durable-metrics-event-model.md` |
 | SBOM evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-status.txt` |
 | SAST evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json` |
 | Buyer-demo implementation | `src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`, `src/main/resources/static/assets/viewer/demo.js` |
@@ -69,7 +71,7 @@ strict: partial evidence is marked partial, not complete.
 ## Next Closure Order
 
 1. Add license policy and allowlist review.
-2. Add signed artifact link design.
-3. Add durable metrics event model.
+2. Implement signed artifact links after auth and tenant design.
+3. Implement durable metrics events.
 4. Add seeded demo screenshots and Figma high-fidelity frames.
 5. Add production retention policy and policy-owner matrix.

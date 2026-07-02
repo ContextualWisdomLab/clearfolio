@@ -107,7 +107,7 @@ threshold or just accumulating code.
 ## Next Evidence Slices
 
 1. Complete license allowlist review against the generated CycloneDX SBOM.
-2. Add durable metric event design before adding a database implementation.
+2. Implement durable metric events after tenant and deployment design are ready.
 3. Add tenant-aware KPI fields only when the tenant model exists.
-4. Add signed artifact link design before implementing preview sharing.
+4. Implement signed artifact links after auth and tenant design.
 5. Add seeded demo data so local demo, FigJam, and buyer deck tell the same story.

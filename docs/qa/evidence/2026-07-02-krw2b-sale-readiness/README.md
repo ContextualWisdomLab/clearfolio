@@ -2,7 +2,7 @@
 
 Date: 2026-07-02
 Verification source head SHA before this evidence refresh:
-`6e2b3d9d485f3ce2e2c2517d696c9de4d8f0ff06`
+`7b77202af670186c7715a1dfecc08534f904c143`
 
 ## Gate Summary
 
@@ -16,6 +16,7 @@ Verification source head SHA before this evidence refresh:
 | SAST | Pass, 0 findings | `semgrep.log`, `semgrep.json` |
 | SBOM | Pass, CycloneDX 1.6, 142 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
 | License review | Partial, 6 flagged components need legal decision | `docs/security/2026-07-02-license-allowlist-review.md` |
+| Auth/tenant model | Partial, design complete and runtime enforcement pending | `docs/security/2026-07-02-auth-tenant-model.md` |
 | Local smoke | Pass | `smoke-local.txt` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
@@ -64,6 +65,7 @@ Evidence:
 - `sbom-cyclonedx.json`
 - `sbom-status.txt`
 - `docs/security/2026-07-02-license-allowlist-review.md`
+- `docs/security/2026-07-02-auth-tenant-model.md`
 
 ## Local Smoke
 

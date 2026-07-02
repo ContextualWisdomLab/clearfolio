@@ -39,7 +39,7 @@ strict: partial evidence is marked partial, not complete.
 | Is there SAST evidence? | Ready | Semgrep evidence under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json`; 0 findings. | GitHub security checks are queued on PR #74. | Check-run snapshot when workflows complete. |
 | Are risky formats controlled? | Ready | HWP/HWPX default block, policy-override headers with token fingerprint logging, and `docs/security/2026-07-02-threat-model-data-handling.md`. | Policy ownership and approval workflow are not externalized. | Policy-owner matrix. |
 | Are browser security headers present? | Ready | `ViewerSecurityHeadersWebFilter` applies viewer browser headers. | CSP/frame policy still needs production domain matrix. | Deployment security profile. |
-| Is auth/RBAC implemented? | Missing | PRD defines S2S/user-context target. | No tenant, RBAC, or signed S2S session model in runtime. | Auth/RBAC and tenant model design. |
+| Is auth/RBAC implemented? | Partial | PRD defines S2S/user-context target; auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | No runtime token validation, tenant enforcement, or RBAC checks are implemented. | Auth/tenant runtime enforcement. |
 | Is there license/SBOM evidence? | Partial | CycloneDX SBOM evidence exists under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; engineering review exists in `docs/security/2026-07-02-license-allowlist-review.md`. | Six flagged components still need legal approve, replace, or remove decisions. | Legal sign-off and CI allowlist enforcement. |
 | Is data handling documented? | Partial | `docs/security/2026-07-02-threat-model-data-handling.md` maps current data classes, trust boundaries, and retention limits. | Production retention policy, tenant ACLs, and durable encrypted stores are not implemented. | Production data-retention policy. |
 
@@ -62,6 +62,7 @@ strict: partial evidence is marked partial, not complete.
 | FigJam handoff | `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md` |
 | Threat model and data handling | `docs/security/2026-07-02-threat-model-data-handling.md` |
 | Signed artifact design | `docs/security/2026-07-02-signed-artifact-link-design.md` |
+| Auth and tenant model | `docs/security/2026-07-02-auth-tenant-model.md` |
 | License allowlist review | `docs/security/2026-07-02-license-allowlist-review.md` |
 | Durable metrics event model | `docs/analytics/2026-07-02-durable-metrics-event-model.md` |
 | SBOM evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-status.txt` |
@@ -72,7 +73,7 @@ strict: partial evidence is marked partial, not complete.
 ## Next Closure Order
 
 1. Get legal sign-off or replacement decisions for flagged SBOM components.
-2. Implement signed artifact links after auth and tenant design.
-3. Implement durable metrics events.
-4. Add seeded demo screenshots and Figma high-fidelity frames.
-5. Add production retention policy and policy-owner matrix.
+2. Implement auth/tenant runtime enforcement.
+3. Implement signed artifact links after auth and tenant runtime enforcement.
+4. Implement durable metrics events.
+5. Add seeded demo screenshots and Figma high-fidelity frames.

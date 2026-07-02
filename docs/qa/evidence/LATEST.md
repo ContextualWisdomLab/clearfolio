@@ -4,5 +4,6 @@
 - Folder: `docs/qa/evidence/2026-07-02-krw2b-sale-readiness`
 - Summary: `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md`
 - License review: `docs/security/2026-07-02-license-allowlist-review.md`
+- Auth/tenant model: `docs/security/2026-07-02-auth-tenant-model.md`
 - Verification source head SHA before latest evidence refresh:
-  `6e2b3d9d485f3ce2e2c2517d696c9de4d8f0ff06`
+  `7b77202af670186c7715a1dfecc08534f904c143`

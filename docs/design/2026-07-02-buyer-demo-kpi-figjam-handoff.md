@@ -9,6 +9,8 @@ Date: 2026-07-02
   `Clearfolio Threat Boundaries and Data Handling`.
 - Added FigJam diagram on the same board:
   `Clearfolio License Diligence Closure Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Auth Tenant Boundary Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -183,4 +185,44 @@ flowchart LR
     style remove fill:#FFCDC2,stroke:#FF7556
     style gate fill:#C2E5FF,stroke:#3DADFF
     style buyer fill:#DCCCFF,stroke:#874FFF
+```
+
+### Auth Tenant Boundary Flow
+
+```mermaid
+flowchart LR
+    caller["Browser or workflow"]
+    token["OIDC or S2S token"]
+    validate{"Token valid?"}
+    principal["Request principal"]
+    permission{"Permission allowed?"}
+    tenant{"Tenant matches?"}
+    route["Viewer API route"]
+    audit["Audit event"]
+    deny["Stable denial"]
+    artifact["Signed artifact link"]
+    kpi["Tenant KPI view"]
+
+    caller -->|"Sends bearer"| token
+    token -->|"Verify issuer"| validate
+    validate -->|"No"| deny
+    validate -->|"Yes"| principal
+    principal -->|"Checks scope"| permission
+    permission -->|"No"| deny
+    permission -->|"Yes"| tenant
+    tenant -->|"Wrong tenant"| deny
+    tenant -->|"Same tenant"| route
+    route -->|"Creates"| artifact
+    route -->|"Filters"| kpi
+    route -->|"Records"| audit
+    deny -->|"Records"| audit
+
+    style validate fill:#FFECBD,stroke:#FFC943
+    style permission fill:#FFECBD,stroke:#FFC943
+    style tenant fill:#FFECBD,stroke:#FFC943
+    style deny fill:#FFCDC2,stroke:#FF7556
+    style route fill:#C2E5FF,stroke:#3DADFF
+    style artifact fill:#CDF4D3,stroke:#66D575
+    style kpi fill:#DCCCFF,stroke:#874FFF
+    style audit fill:#D9D9D9,stroke:#B3B3B3
 ```

@@ -207,6 +207,9 @@ Progress as of 2026-07-02:
   remains open for 6 flagged components.
 - Signed artifact link design is now captured in
   `docs/security/2026-07-02-signed-artifact-link-design.md`.
+- Auth, RBAC, and tenant model design is now captured in
+  `docs/security/2026-07-02-auth-tenant-model.md`; runtime enforcement remains
+  open.
 - Durable metrics event model is now captured in
   `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
 

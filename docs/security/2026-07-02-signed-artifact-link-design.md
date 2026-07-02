@@ -189,7 +189,8 @@ Do not reveal whether a different tenant owns the document.
 
 ## Implementation Sequence
 
-1. Add auth and tenant model design.
+1. Implement the auth and tenant model defined in
+   `docs/security/2026-07-02-auth-tenant-model.md`.
 2. Add durable artifact metadata with checksum and tenant id.
 3. Add `POST /api/v1/viewer/{docId}/artifact-links`.
 4. Add token verification to artifact serving.

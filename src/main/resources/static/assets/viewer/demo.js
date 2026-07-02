@@ -77,13 +77,16 @@ function updateJob(jobId, patch) {
   void refreshKpis();
 }
 
-function createLink(href, label) {
+function createLink(href, label, accessibleName) {
   const link = document.createElement("a");
   link.href = href;
   link.textContent = label;
   link.className = "table-link";
   link.target = "_blank";
   link.rel = "noopener noreferrer";
+  if (accessibleName) {
+    link.setAttribute("aria-label", accessibleName);
+  }
   return link;
 }
 
@@ -106,12 +109,15 @@ async function openJsonDocument(url, title) {
     : "Unable to load JSON evidence with the current tenant claim.";
 }
 
-function createActionButton(label, onClick) {
+function createActionButton(label, onClick, accessibleName) {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
   button.className = "btn btn-secondary btn-compact";
   button.addEventListener("click", onClick);
+  if (accessibleName) {
+    button.setAttribute("aria-label", accessibleName);
+  }
   return button;
 }
 
@@ -140,15 +146,17 @@ function renderHistory(history = loadHistory()) {
     actionsCell.className = "table-actions";
 
     if (job.statusUrl) {
+      const docName = job.fileName || "document";
       actionsCell.appendChild(createActionButton("Details", () => {
         void openJobDetail(job);
-      }));
+      }, `View details for ${docName}`));
       actionsCell.appendChild(createActionButton("Status JSON", () => {
         void openJsonDocument(job.statusUrl, "Clearfolio status JSON");
-      }));
+      }, `Open status JSON for ${docName} in a new tab`));
     }
     if (job.jobId) {
-      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer"));
+      const docName = job.fileName || "document";
+      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer", `Open viewer for ${docName} in a new tab`));
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);

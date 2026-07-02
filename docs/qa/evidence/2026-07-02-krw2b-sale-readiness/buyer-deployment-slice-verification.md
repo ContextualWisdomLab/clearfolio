@@ -121,6 +121,34 @@ Claim boundary:
 - No separate library, submodule, or new dependency was added; the renderer uses
   only the Python standard library.
 
+## Production Auth Readiness Verification
+
+Date: 2026-07-03T08:20:12+0900
+
+Source head before this production-auth slice:
+`947f26b68c60e4b233b3728ff61a46ab1639388a`
+
+This slice prevents the current gateway-signed tenant-header scaffold from being
+misrepresented as production auth when the signing secret is absent. It does not
+implement OIDC/JWT; it makes the production profile fail closed until signed
+tenant claims are configured.
+
+Validation:
+
+| Gate | Result |
+| --- | --- |
+| TDD red check | `mvn -Dtest=ProductionAuthReadinessConfigTest test` first failed because `ProductionAuthReadinessConfig` did not exist. |
+| Targeted production-auth tests | `mvn -Dtest=ProductionAuthReadinessConfigTest test` passed, 2 tests, 0 failures, 0 errors. |
+
+Claim boundary:
+
+- `SPRING_PROFILES_ACTIVE=production` now requires
+  `clearfolio.tenant-claims.hmac-secret`.
+- The local buyer-demo profile can still run unsigned for screenshots and
+  design evidence.
+- Validated OIDC/JWT issuer, audience, expiry, key rotation, and role mapping
+  remain the next production-auth implementation gap.
+
 ## Durable Job Repository Design Verification
 
 Date: 2026-07-02T21:39:41+0900

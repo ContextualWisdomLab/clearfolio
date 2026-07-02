@@ -254,6 +254,10 @@ Progress as of 2026-07-02:
   issued-at skew checks, and tests for signed, unsigned, expired, malformed, and
   invalid-signature paths. This is still a gateway scaffold, not production
   OIDC/JWT.
+- The `production` Spring profile now fails startup unless
+  `clearfolio.tenant-claims.hmac-secret` is configured. This prevents unsigned
+  local demo tenant headers from being promoted as a production auth boundary,
+  while validated OIDC/JWT remains the next implementation gap.
 - Optional file-backed artifact link ledger replay is now implemented when
   `clearfolio.artifact-link-ledger.path` is configured. Issued-link,
   revocation, and artifact-read metadata can survive a single-process restart,

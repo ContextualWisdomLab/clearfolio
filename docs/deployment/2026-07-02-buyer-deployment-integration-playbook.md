@@ -89,6 +89,11 @@ job:create,job:read,job:retry,viewer:read,artifact-link:create,analytics:read
 Production role mapping should later replace this scaffold with validated
 gateway or OIDC claims. Do not hand-roll JWT parsing in this service.
 
+For any environment that sets `SPRING_PROFILES_ACTIVE=production`, the service
+fails startup unless `CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET` is present. The
+buyer-demo profile can still run unsigned for local screenshots, but production
+cannot accidentally inherit that unsigned mode.
+
 ## Integration Flow
 
 1. Buyer browser, Power Platform, or internal workflow authenticates at the
@@ -216,6 +221,8 @@ The buyer sandbox should not be promoted to production until these gates close:
 - buyer-release license-policy evidence remains green with
   `--require-no-review`, attribution drift check remains green, and final legal
   release review is obtained;
+- `SPRING_PROFILES_ACTIVE=production` starts only with configured signed tenant
+  claims and later replaces the scaffold with validated OIDC/JWT claims;
 - validated gateway or OIDC JWT issuer, audience, expiry, key rotation, and role
   mapping;
 - durable conversion job repository with persisted state transitions;

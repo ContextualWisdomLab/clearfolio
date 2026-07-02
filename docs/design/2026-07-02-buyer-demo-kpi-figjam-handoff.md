@@ -41,6 +41,8 @@ Date: 2026-07-02
   `Clearfolio Conversion Lifecycle Event Trail Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Seeded Buyer Demo Story Flow`.
+- Added seeded buyer-demo screenshots on the same board:
+  desktop node `25:1423`, mobile node `25:1422`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -69,6 +71,8 @@ Date: 2026-07-02
   coverage.
 - The seeded buyer-demo story must be labeled as local browser-session demo
   evidence, not production data or a durable analytics source.
+- Desktop and mobile screenshot evidence must come from the running local
+  product surface after clicking `Load demo story`, not from static mockups.
 
 ## Data Analytics Mapping
 

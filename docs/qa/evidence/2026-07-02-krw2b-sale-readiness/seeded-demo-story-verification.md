@@ -23,6 +23,13 @@ fixture, frontend framework, separate library, or Git submodule.
 - FigJam:
   `Clearfolio Seeded Buyer Demo Story Flow`
   on <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>
+- Screenshots:
+  `screenshots/seeded-demo-desktop-viewport.png`,
+  `screenshots/seeded-demo-mobile-viewport.png`,
+  `screenshots/seeded-demo-desktop.png`, and
+  `screenshots/seeded-demo-mobile.png`
+- FigJam screenshot nodes:
+  desktop `25:1423`, mobile `25:1422`
 
 ## TDD Evidence
 
@@ -47,10 +54,50 @@ GREEN:
 | JaCoCo | `awk -F, 'NR>1 && $2 ~ /com.clearfolio.viewer/ {line_missed += $4; branch_missed += $6; classes += 1} END {printf("classes=%d line_missed=%d branch_missed=%d\\n", classes, line_missed, branch_missed)}' target/site/jacoco/jacoco.csv` | `classes=49 line_missed=0 branch_missed=0`. |
 | JavaScript syntax | `node --check src/main/resources/static/assets/viewer/demo.js` | Exit 0. |
 | JavaDoc | `mvn -q -DskipTests javadoc:javadoc` | Exit 0; no output. |
-| Markdown lint | `npx markdownlint-cli2 README.md docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md docs/diligence/2026-07-02-buyer-diligence-index.md docs/plans/2026-07-02-krw2b-sale-readiness-execution-plan.md docs/superpowers/plans/2026-07-03-seeded-buyer-demo-story.md` | 5 files, 0 errors. |
+| Markdown lint | `npx markdownlint-cli2 $(git diff --name-only origin/main -- '*.md')` | 7 files, 0 errors. |
 | Semgrep | `uvx semgrep --config p/java --metrics=off --error --json --output /tmp/clearfolio-seeded-demo-semgrep.json src/main/java src/test/java` | 53 Java files scanned, 60 rules, 0 findings. |
 | License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json` | 142 components, 136 allowed, 6 review-required, 0 violations. |
 | Diff hygiene | `git diff --check` | Exit 0. |
+
+## Browser Screenshot Evidence
+
+Target flow:
+
+`GET /` -> `Load demo story` -> seeded KPI, evidence, recovery, and history
+state renders for desktop and mobile screenshots.
+
+Environment:
+
+- Browser path: in-app Browser.
+- URL: <http://localhost:18086/>
+- Desktop: default browser viewport.
+- Mobile: explicit `390x844` viewport.
+
+Checks:
+
+| Check | Result |
+| --- | --- |
+| Page identity | URL `http://localhost:18086/`, title `Clearfolio Viewer`. |
+| Not blank | DOM contained `Load demo story`, `Runtime jobs`, and `Session history`. |
+| Framework overlay | No framework error overlay observed. |
+| Console health | 0 warning/error entries before and after seed load. |
+| Interaction proof | `Load demo story` clicked; status text became `Seeded buyer-demo story loaded for screenshot and Figma review.` |
+| Seeded KPI proof | `total=4`, `ready=1`, `successRate=50%`, `p95=4200 ms`, `exports=1`. |
+| Seeded recovery proof | `needsAction=2`, `retryReady=1`. |
+| Seeded state proof | `board-pack-q3.pdf`, `supplier-contract.docx`, `legacy-approval.hwpx`, and `scanned-invoice.pdf` rendered with expected states. |
+| Mobile layout proof | `clientWidth=375`, `scrollWidth=375`, `hasHorizontalOverflow=false`, first panel width `351`. |
+
+Screenshot files:
+
+- `screenshots/seeded-demo-desktop-viewport.png`
+- `screenshots/seeded-demo-mobile-viewport.png`
+- `screenshots/seeded-demo-desktop.png`
+- `screenshots/seeded-demo-mobile.png`
+
+FigJam upload:
+
+- Desktop screenshot placed on node `25:1423`.
+- Mobile screenshot placed on node `25:1422`.
 
 ## Claim Boundary
 

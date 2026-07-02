@@ -293,7 +293,7 @@ a:hover {
 
 .kpi-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin: 14px 0;
 }
@@ -317,7 +317,9 @@ a:hover {
 .kpi__value {
   display: block;
   margin-top: 6px;
-  font-size: 28px;
+  font-size: 26px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
 .table-wrap {

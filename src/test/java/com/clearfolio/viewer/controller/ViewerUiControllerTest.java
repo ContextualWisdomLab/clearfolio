@@ -46,6 +46,9 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("name=\"file\""));
                     assertTrue(body.contains("id=\"session-history\""));
                     assertTrue(body.contains("id=\"kpi-strip\""));
+                    assertTrue(body.contains("id=\"kpi-total\""));
+                    assertTrue(body.contains("id=\"kpi-success-rate\""));
+                    assertTrue(body.contains("id=\"kpi-p95\""));
                     assertTrue(body.contains("/assets/viewer/demo.js"));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                 });
@@ -92,11 +95,14 @@ class ViewerUiControllerTest {
             String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
 
             assertTrue(script.contains("/api/v1/convert/jobs"));
+            assertTrue(script.contains("/api/v1/analytics/kpi-snapshot"));
             assertTrue(script.contains("/viewer/"));
             assertTrue(script.contains("FormData"));
             assertTrue(script.contains("localStorage"));
             assertTrue(script.contains("clearfolio-demo-history-v1"));
             assertTrue(script.contains("setTimeout"));
+            assertTrue(script.contains("formatPercent"));
+            assertTrue(script.contains("formatMilliseconds"));
         }
     }
 

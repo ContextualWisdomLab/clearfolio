@@ -1,4 +1,5 @@
 const STORAGE_KEY = "clearfolio-demo-history-v1";
+const KPI_ENDPOINT = "/api/v1/analytics/kpi-snapshot";
 const POLL_DELAY_MS = 1500;
 const ACTIVE_STATUSES = new Set(["ACCEPTED", "SUBMITTED", "PROCESSING"]);
 
@@ -13,9 +14,10 @@ const el = {
   historyBody: document.getElementById("history-body"),
   emptyHistory: document.getElementById("empty-history"),
   clearHistoryBtn: document.getElementById("clear-history-btn"),
-  kpiSubmitted: document.getElementById("kpi-submitted"),
+  kpiTotal: document.getElementById("kpi-total"),
   kpiReady: document.getElementById("kpi-ready"),
-  kpiAction: document.getElementById("kpi-action"),
+  kpiSuccessRate: document.getElementById("kpi-success-rate"),
+  kpiP95: document.getElementById("kpi-p95"),
 };
 
 function loadHistory() {
@@ -49,6 +51,7 @@ function updateJob(jobId, patch) {
   const next = history.map(job => (job.jobId === jobId ? { ...job, ...patch } : job));
   saveHistory(next);
   renderHistory(next);
+  void refreshKpis();
 }
 
 function createLink(href, label) {
@@ -65,17 +68,7 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
-  let ready = 0;
-  let action = 0;
-
   for (const job of history) {
-    if (job.status === "SUCCEEDED") {
-      ready++;
-    }
-    if (job.status === "FAILED" || job.status === "UNSUPPORTED_FORMAT" || job.status === "BAD_REQUEST") {
-      action++;
-    }
-
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
     const statusCell = document.createElement("td");
@@ -97,10 +90,51 @@ function renderHistory(history = loadHistory()) {
     row.append(fileCell, statusCell, submittedCell, actionsCell);
     el.historyBody.appendChild(row);
   }
+}
 
-  el.kpiSubmitted.textContent = String(history.length);
+function renderSessionKpiFallback(history = loadHistory()) {
+  const ready = history.filter(job => job.status === "SUCCEEDED").length;
+  const total = history.length;
+
+  el.kpiTotal.textContent = String(total);
   el.kpiReady.textContent = String(ready);
-  el.kpiAction.textContent = String(action);
+  el.kpiSuccessRate.textContent = total > 0 ? formatPercent(ready / total) : "0%";
+  el.kpiP95.textContent = "n/a";
+}
+
+function renderKpiSnapshot(snapshot) {
+  el.kpiTotal.textContent = String(snapshot.totalJobs ?? 0);
+  el.kpiReady.textContent = String(snapshot.succeededJobs ?? 0);
+  el.kpiSuccessRate.textContent = formatPercent(snapshot.conversionSuccessRate);
+  el.kpiP95.textContent = formatMilliseconds(snapshot.p95TimeToPreviewMs);
+}
+
+function formatPercent(value) {
+  const rate = Number(value);
+  return Number.isFinite(rate) ? `${Math.round(rate * 100)}%` : "0%";
+}
+
+function formatMilliseconds(value) {
+  if (value === null || value === undefined) {
+    return "n/a";
+  }
+
+  const milliseconds = Number(value);
+  return Number.isFinite(milliseconds) ? `${Math.round(milliseconds)} ms` : "n/a";
+}
+
+async function refreshKpis() {
+  try {
+    const { res, data } = await fetchJson(KPI_ENDPOINT);
+    if (!res.ok || !data) {
+      renderSessionKpiFallback();
+      return;
+    }
+
+    renderKpiSnapshot(data);
+  } catch (err) {
+    renderSessionKpiFallback();
+  }
 }
 
 async function fetchJson(url) {
@@ -173,6 +207,7 @@ async function submitDocument(event) {
     const history = [job, ...loadHistory()];
     saveHistory(history);
     renderHistory(history);
+    void refreshKpis();
     setStatus("Submitted. Tracking conversion status...");
     void pollJob(job.jobId, job.statusUrl);
     el.form.reset();
@@ -192,10 +227,12 @@ function addFailedHistory(fileName, status) {
   }, ...loadHistory()];
   saveHistory(history);
   renderHistory(history);
+  void refreshKpis();
 }
 
 function init() {
   renderHistory();
+  void refreshKpis();
   for (const job of loadHistory()) {
     if (job.jobId && job.statusUrl && ACTIVE_STATUSES.has(job.status)) {
       void pollJob(job.jobId, job.statusUrl);
@@ -206,6 +243,7 @@ function init() {
   el.clearHistoryBtn.addEventListener("click", () => {
     saveHistory([]);
     renderHistory([]);
+    void refreshKpis();
     setStatus("Session history cleared.");
   });
 }

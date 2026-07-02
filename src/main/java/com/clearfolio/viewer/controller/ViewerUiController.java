@@ -204,18 +204,22 @@ public class ViewerUiController {
                         </div>
                       </section>
 
-                      <section class="kpi-strip" id="kpi-strip" aria-label="Session KPIs">
+                      <section class="kpi-strip" id="kpi-strip" aria-label="Conversion KPIs">
                         <div class="kpi">
-                          <span class="kpi__label">Submitted</span>
-                          <strong class="kpi__value" id="kpi-submitted">0</strong>
+                          <span class="kpi__label">Runtime jobs</span>
+                          <strong class="kpi__value" id="kpi-total">0</strong>
                         </div>
                         <div class="kpi">
                           <span class="kpi__label">Ready</span>
                           <strong class="kpi__value" id="kpi-ready">0</strong>
                         </div>
                         <div class="kpi">
-                          <span class="kpi__label">Needs action</span>
-                          <strong class="kpi__value" id="kpi-action">0</strong>
+                          <span class="kpi__label">Success rate</span>
+                          <strong class="kpi__value" id="kpi-success-rate">0%</strong>
+                        </div>
+                        <div class="kpi">
+                          <span class="kpi__label">P95 preview</span>
+                          <strong class="kpi__value" id="kpi-p95">n/a</strong>
                         </div>
                       </section>
 

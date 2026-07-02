@@ -189,6 +189,8 @@ Progress as of 2026-07-02:
   for total, submitted, processing, succeeded, failed, dead-lettered,
   conversion success rate, and p95 time-to-preview. This is intentionally
   scoped to current in-memory runtime data until durable persistence exists.
+- The buyer-demo root shell now consumes that KPI endpoint directly and falls
+  back to browser-session history only when the runtime snapshot is unavailable.
 
 ## Library and submodule decision
 

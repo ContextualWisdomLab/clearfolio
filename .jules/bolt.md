@@ -1,0 +1,3 @@
+## 2026-06-27 - Avoid Chained String Replacements for Sanitization
+**Learning:** Chained `.replace(char, char)` calls in Java allocate intermediate `String` objects for every replacement step, even if no replacements were made. This was leading to unnecessary memory allocations (up to 11 new `String` objects per sanitized string) during request logging and sanitization.
+**Action:** Use a single-pass `char[]` iteration when sanitizing strings for multiple specific control characters. Modify the characters in-place in the array and return a `new String(chars)` only if modifications occurred. This approach eliminates all intermediate allocations and significantly improves memory efficiency on hot paths like error logging and header parsing.

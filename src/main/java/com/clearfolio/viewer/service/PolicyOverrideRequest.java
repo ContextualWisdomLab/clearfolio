@@ -82,10 +82,16 @@ public final class PolicyOverrideRequest {
             return null;
         }
 
-        return value
-                .replace('\r', '_')
-                .replace('\n', '_')
-                .replace('\t', '_');
+        char[] chars = value.toCharArray();
+        boolean modified = false;
+        for (int i = 0; i < chars.length; i++) {
+            char c = chars[i];
+            if (c == '\r' || c == '\n' || c == '\t') {
+                chars[i] = '_';
+                modified = true;
+            }
+        }
+        return modified ? new String(chars) : value;
     }
 
     @Override

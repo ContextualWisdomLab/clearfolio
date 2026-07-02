@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,7 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
                     assertTrue(body.contains("target=\"_blank\" rel=\"noopener noreferrer\""));
+                    assertTrue(body.contains("aria-label=\"Open JSON bootstrap in a new tab\""));
                 });
     }
 
@@ -57,9 +59,10 @@ class ViewerUiControllerTest {
             assertNotNull(input);
             String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
 
-            assertTrue(script.contains("link.target = \"_blank\";"));
-            assertTrue(script.contains("link.rel = \"noopener noreferrer\";"));
-            assertTrue(script.contains("el.preview.querySelector(\"#preview-help\")"));
+            assertTrue(Pattern.compile("link\\.target\\s*=\\s*\"_blank\"").matcher(script).find());
+            assertTrue(Pattern.compile("link\\.rel\\s*=\\s*\"noopener noreferrer\"").matcher(script).find());
+            assertTrue(Pattern.compile("aria-label\"\\s*,\\s*\"Open artifact in a new tab\"").matcher(script).find());
+            assertTrue(Pattern.compile("querySelector\\(\\s*\"#preview-help\"\\s*\\)").matcher(script).find());
         }
     }
 

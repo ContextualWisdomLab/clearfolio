@@ -41,7 +41,9 @@ OIDC/JWT validation. Deployments can set
 `clearfolio.tenant-claims.hmac-secret` to require gateway-signed tenant headers
 with `X-Clearfolio-Claims-Issued-At` and `X-Clearfolio-Claims-Signature`;
 validated OIDC/JWT issuer, audience, expiry, revocation, and role mapping remain
-production gaps.
+production gaps. Buyer sandbox deployments should use the `buyer-demo` Spring
+profile and follow
+`docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`.
 
 ## Compatibility notes
 
@@ -107,6 +109,7 @@ Current release claim boundary:
 - `docs/diagrams/retry-deadletter-flow.md`
 - `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`
 - `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`
+- `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`
 - `docs/diligence/2026-07-02-buyer-diligence-index.md`
 - `docs/security/2026-07-02-threat-model-data-handling.md`
 - `docs/security/2026-07-02-signed-artifact-link-design.md`

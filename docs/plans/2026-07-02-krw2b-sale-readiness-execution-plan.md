@@ -248,6 +248,12 @@ Progress as of 2026-07-02:
   `src/main/java/com/clearfolio/viewer/api/KpiSnapshotExportResponse.java`
   without introducing a separate library, submodule, or production analytics
   database.
+- A buyer sandbox deployment profile is now captured in
+  `src/main/resources/application-buyer-demo.yml`, and the buyer integration
+  runbook is captured in
+  `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`.
+  This reduces buyer integration cost without adding a separate library,
+  submodule, or speculative connector package.
 
 ## Library and submodule decision
 
@@ -339,6 +345,16 @@ Prepare acquisition/licensing package evidence.
 - Add buyer diligence index.
 - Add deployment and integration playbook for Power Platform and mobile/tablet.
 - Add partner/customer pilot evidence when available.
+
+Progress as of 2026-07-02:
+
+- Buyer deployment and integration playbook is now available at
+  `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`.
+- Buyer sandbox profile is now available at
+  `src/main/resources/application-buyer-demo.yml`.
+- Power Platform connector packaging remains a follow-up because no buyer
+  gateway hostname, OIDC issuer, or tenant-specific embedding allowlist has been
+  provided yet.
 
 ## Immediate autonomous PR sequence
 

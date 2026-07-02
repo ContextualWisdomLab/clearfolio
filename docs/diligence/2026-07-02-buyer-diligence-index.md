@@ -50,7 +50,7 @@ strict: partial evidence is marked partial, not complete.
 | Is there a KRW 2B valuation logic? | Ready | `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`. | Comparable transactions are not refreshed beyond public multiple anchors. | Transaction comparable refresh before buyer use. |
 | Is there a pricing path? | Partial | Pricing scenarios in valuation/KPI model. | No customer interviews, pilots, or signed LOIs. | Pilot evidence and ICP qualification pack. |
 | Are buyer KPIs measurable? | Partial | Runtime KPI snapshot exposes reliability and latency fields, is filtered by request tenant, can record exported snapshots to an optional local ledger, exposes those exports through a tenant-scoped evidence API, and renders latest export evidence in the buyer-demo UI; durable event model is documented in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | Durable lifecycle event persistence, monthly volume, cost, and margin data are not implemented. | Durable analytics event implementation. |
-| Can a buyer integrate it cheaply? | Partial | API routes and Power Platform delivery chain are documented. | No deployment playbook or connector guide. | Integration and deployment playbook. |
+| Can a buyer integrate it cheaply? | Ready | API routes, Power Platform delivery chain, `src/main/resources/application-buyer-demo.yml`, and `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md` are documented. | Packaged connector and production OIDC/JWT deployment profile are not complete. | Power Platform connector sample and production gateway/OIDC profile. |
 
 ## Current PR Evidence
 
@@ -73,6 +73,7 @@ strict: partial evidence is marked partial, not complete.
 | KPI snapshot evidence ledger | `src/main/java/com/clearfolio/viewer/analytics/KpiSnapshotLedger.java`, `src/main/java/com/clearfolio/viewer/analytics/KpiSnapshotRecord.java`; includes optional `clearfolio.analytics-snapshot-ledger.path` file-backed replay and tenant-scoped lookup for exported KPI snapshots. |
 | Auth/tenant runtime slice | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`, `src/main/java/com/clearfolio/viewer/auth/TenantContext.java`, `src/main/java/com/clearfolio/viewer/model/ConversionJob.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java`; includes optional gateway HMAC validation when `clearfolio.tenant-claims.hmac-secret` is set. |
 | Signed artifact runtime slice | `src/main/java/com/clearfolio/viewer/artifact/ArtifactLinkService.java`, `src/main/java/com/clearfolio/viewer/artifact/ArtifactLinkLedger.java`, `src/main/java/com/clearfolio/viewer/controller/ArtifactController.java`, `src/main/java/com/clearfolio/viewer/api/ArtifactLinkResponse.java`; includes optional `clearfolio.artifact-link-ledger.path` file-backed replay for issued/revoked/read metadata. |
+| Buyer deployment integration pack | `src/main/resources/application-buyer-demo.yml`, `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`; includes buyer sandbox profile, gateway-signed header contract, connector API table, smoke path, and cutover gates. |
 
 ## Next Closure Order
 
@@ -80,9 +81,11 @@ strict: partial evidence is marked partial, not complete.
    components, then run license-policy buyer-release mode.
 2. Use configured gateway-signed tenant headers for buyer deployments, then
    replace the scaffold with validated gateway/OIDC JWT claims.
-3. Promote optional file-backed artifact-link ledger evidence into durable
+3. Add a Power Platform connector sample and buyer-specific gateway/OIDC
+   deployment profile once buyer infrastructure details are known.
+4. Promote optional file-backed artifact-link ledger evidence into durable
    artifact metadata and centralized token revocation plus artifact read audit
    persistence.
-4. Promote optional file-backed KPI snapshot ledger evidence into durable
+5. Promote optional file-backed KPI snapshot ledger evidence into durable
    metrics events and daily projections.
-5. Add seeded demo screenshots and Figma high-fidelity frames.
+6. Add seeded demo screenshots and Figma high-fidelity frames.

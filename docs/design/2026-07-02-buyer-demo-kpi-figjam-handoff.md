@@ -31,6 +31,8 @@ Date: 2026-07-02
   `Clearfolio Buyer Demo KPI Evidence Panel Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Operator Recovery Evidence Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Buyer Integration Deployment Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -232,6 +234,47 @@ flowchart LR
     style sessionEvidence fill:#FFECBD,stroke:#FFC943
     style buyerProof fill:#DCCCFF,stroke:#874FFF
     style noAdminClaim fill:#FFCDC2,stroke:#FF7556
+```
+
+### Buyer Integration Deployment Flow
+
+```mermaid
+flowchart LR
+    subgraph client ["Buyer Surfaces"]
+        buyerBrowser["Buyer Browser"]
+        powerPlatform["Power Platform"]
+        workflowClient["Internal Workflow"]
+    end
+    subgraph gateway ["Buyer Gateway"]
+        buyerGateway["OIDC or S2S Gateway"]
+    end
+    subgraph service ["Clearfolio Runtime"]
+        clearfolioApp["Clearfolio Viewer App"]
+    end
+    subgraph datastore ["Evidence and Runtime Stores"]
+        jobStore["Conversion Job Repository"]
+        artifactStore["PDF Artifact Store"]
+        localLedgers["Append-only Evidence Ledgers"]
+    end
+    subgraph external ["Diligence Artifacts"]
+        figjamBoard["FigJam Board"]
+        qaPack["PR Gate Evidence"]
+    end
+    subgraph async ["Future Durable Async"]
+        durableQueue["Production Queue"]
+    end
+
+    buyerBrowser -->|"HTTPS Demo"| buyerGateway
+    powerPlatform -->|"Embedded Viewer"| buyerGateway
+    workflowClient -->|"S2S Calls"| buyerGateway
+    buyerGateway -->|"Signed Tenant Headers"| clearfolioApp
+    clearfolioApp -->|"Writes Jobs"| jobStore
+    clearfolioApp -->|"Writes Artifacts"| artifactStore
+    clearfolioApp -->|"Appends Evidence"| localLedgers
+    clearfolioApp -.->|"FigJam: Explains Flow"| figjamBoard
+    clearfolioApp -.->|"GitHub: Gate Proof"| qaPack
+    clearfolioApp -.->|"Future: Produce Jobs"| durableQueue
+    durableQueue -.->|"Future: Consume Jobs"| clearfolioApp
 ```
 
 ### Threat Boundaries and Data Handling

@@ -70,6 +70,7 @@ Current release claim boundary:
 - `docs/diligence/2026-07-02-buyer-diligence-index.md`
 - `docs/security/2026-07-02-threat-model-data-handling.md`
 - `docs/security/2026-07-02-signed-artifact-link-design.md`
+- `docs/security/2026-07-02-license-allowlist-review.md`
 - `docs/analytics/2026-07-02-durable-metrics-event-model.md`
 
 ## Transfer metadata

@@ -2,7 +2,7 @@
 
 Date: 2026-07-02
 Verification source head SHA before this evidence refresh:
-`98c5eb497c6d5fae3f2f21f1f71bfcf5d42ddf86`
+`6e2b3d9d485f3ce2e2c2517d696c9de4d8f0ff06`
 
 ## Gate Summary
 
@@ -15,6 +15,7 @@ Verification source head SHA before this evidence refresh:
 | JS syntax | Pass | `node-check.log` |
 | SAST | Pass, 0 findings | `semgrep.log`, `semgrep.json` |
 | SBOM | Pass, CycloneDX 1.6, 142 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
+| License review | Partial, 6 flagged components need legal decision | `docs/security/2026-07-02-license-allowlist-review.md` |
 | Local smoke | Pass | `smoke-local.txt` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
@@ -52,14 +53,17 @@ Result:
 - Components: 142.
 - Components without license metadata: 0.
 - Unique license metadata entries: 20.
-- License policy review remains open because GPL/LGPL/UnRar metadata appears
-  in the generated SBOM and needs an allowlist/legal decision before buyer use.
+- Engineering license review is now documented in
+  `docs/security/2026-07-02-license-allowlist-review.md`.
+- License clearance remains open because 6 flagged components need legal
+  approve, replace, or remove decisions before buyer use.
 
 Evidence:
 
 - `sbom-cyclonedx.log`
 - `sbom-cyclonedx.json`
 - `sbom-status.txt`
+- `docs/security/2026-07-02-license-allowlist-review.md`
 
 ## Local Smoke
 

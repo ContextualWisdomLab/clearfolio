@@ -7,6 +7,8 @@ Date: 2026-07-02
 - FigJam: [Clearfolio Buyer Demo Evidence Flow](https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM?utm_source=codex&utm_content=edit_in_figjam&oai_id=&request_id=41b7cd77-c07e-475e-bd77-460b5911666c)
 - Added FigJam diagram on the same board:
   `Clearfolio Threat Boundaries and Data Handling`.
+- Added FigJam diagram on the same board:
+  `Clearfolio License Diligence Closure Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -145,4 +147,40 @@ flowchart LR
     style appLayer fill:#DFF6DD,stroke:#2DA44E
     style memoryLayer fill:#DDF4FF,stroke:#0969DA
     style futureControls fill:#FFEBE9,stroke:#CF222E
+```
+
+### License Diligence Closure Flow
+
+```mermaid
+flowchart LR
+    sbom["CycloneDX SBOM"]
+    metadata["License metadata complete"]
+    flagged{"Flagged components?"}
+    review["Engineering review"]
+    legal{"Legal decision"}
+    approve["Approve route"]
+    replace["Replace dependency"]
+    remove["Remove dependency"]
+    gate["CI allowlist gate"]
+    buyer["Buyer data-room package"]
+
+    sbom -->|"Shows 142 components"| metadata
+    metadata -->|"0 unknown"| flagged
+    flagged -->|"6 flagged"| review
+    review -->|"Classifies risk"| legal
+    legal -->|"Allowed"| approve
+    legal -->|"Not allowed"| replace
+    legal -->|"Not needed"| remove
+    approve -->|"Locks policy"| gate
+    replace -->|"Rerun SBOM"| sbom
+    remove -->|"Rerun SBOM"| sbom
+    gate -->|"Prevents drift"| buyer
+
+    style metadata fill:#CDF4D3,stroke:#66D575
+    style flagged fill:#FFECBD,stroke:#FFC943
+    style legal fill:#FFECBD,stroke:#FFC943
+    style replace fill:#FFCDC2,stroke:#FF7556
+    style remove fill:#FFCDC2,stroke:#FF7556
+    style gate fill:#C2E5FF,stroke:#3DADFF
+    style buyer fill:#DCCCFF,stroke:#874FFF
 ```

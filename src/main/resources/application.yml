@@ -9,6 +9,7 @@ conversion:
     - hwp
     - hwpx
   worker-threads: 4
+  policy-override-secret: "test-secret"
   queue-capacity: 200
   max-retry-attempts: 3
   retry-initial-delay-ms: 500

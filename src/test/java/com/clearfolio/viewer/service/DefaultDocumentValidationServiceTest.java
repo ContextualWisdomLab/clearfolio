@@ -42,12 +42,49 @@ class DefaultDocumentValidationServiceTest {
     void allowsBlockedExtensionWhenOverrideHeadersAreValid() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         assertDoesNotThrow(() -> validationService.validateOrThrow(
                 new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                PolicyOverrideRequest.of("true", "token-123", "approver-1")
+                PolicyOverrideRequest.of("true", "99527dc13dcbb31fe5311cf26db26cac5e4fa5f46cd0a15c6757e3804808c242", "approver-1")
         ));
+    }
+
+    @Test
+    void rejectsBlockedExtensionWhenOverrideSignatureIsInvalid() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        PolicyOverrideRequest.of("true", "invalid-token", "approver-1")
+                )
+        );
+
+        assertEquals("Invalid policy override signature.", ex.getMessage());
+    }
+
+    @Test
+    void rejectsBlockedExtensionWhenSecretIsNotConfigured() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("");
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        PolicyOverrideRequest.of("true", "any-token", "approver-1")
+                )
+        );
+
+        assertEquals("Policy override secret is not configured.", ex.getMessage());
     }
 
     @Test
@@ -376,6 +413,7 @@ class DefaultDocumentValidationServiceTest {
     void throwsWhenSha256DigestIsUnavailableForOverrideAuditFingerprint() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         synchronized (SECURITY_PROVIDERS_LOCK) {
@@ -389,7 +427,7 @@ class DefaultDocumentValidationServiceTest {
                         IllegalStateException.class,
                         () -> validationService.validateOrThrow(
                                 new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
-                                PolicyOverrideRequest.of("true", "token-123", "approver-1")
+                                PolicyOverrideRequest.of("true", "99527dc13dcbb31fe5311cf26db26cac5e4fa5f46cd0a15c6757e3804808c242", "approver-1")
                         )
                 );
 

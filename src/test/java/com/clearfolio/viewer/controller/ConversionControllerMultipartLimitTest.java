@@ -137,7 +137,7 @@ class ConversionControllerMultipartLimitTest {
 
     @Test
     void submitAcceptsBlockedExtensionWhenPolicyOverrideHeadersAreValid() {
-        submit("contract.hwp", "hello".getBytes(), "true", "token-xyz", "approver-99")
+        submit("contract.hwp", "hello".getBytes(), "true", "1208e46cd0aae497a241c52b26d1271359adba6a3a5600ada82e58d24603eb6e", "approver-99")
                 .expectStatus().isAccepted()
                 .expectBody()
                 .jsonPath("$.status").isEqualTo("ACCEPTED")

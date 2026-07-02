@@ -26,6 +26,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
 
     private final Set<String> blockedExtensions;
     private final long maxUploadSizeBytes;
+    private final String policyOverrideSecret;
 
     /**
      * Creates the validation service from conversion configuration values.
@@ -35,6 +36,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
     public DefaultDocumentValidationService(ConversionProperties conversionProperties) {
         this.blockedExtensions = conversionProperties.getBlockedExtensions();
         this.maxUploadSizeBytes = conversionProperties.getMaxUploadSizeBytes();
+        this.policyOverrideSecret = conversionProperties.getPolicyOverrideSecret();
     }
 
     /**
@@ -79,6 +81,16 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
                     effectiveOverride.approverId(),
                     PolicyOverrideRequest.APPROVER_ID_HEADER + " is required when policy override is true."
             );
+
+            if (policyOverrideSecret == null || policyOverrideSecret.isBlank()) {
+                throw new IllegalStateException("Policy override secret is not configured.");
+            }
+
+            String expectedSignature = computeSignature(approverId, extension, policyOverrideSecret);
+            if (!MessageDigest.isEqual(approvalToken.getBytes(StandardCharsets.UTF_8), expectedSignature.getBytes(StandardCharsets.UTF_8))) {
+                throw new IllegalArgumentException("Invalid policy override signature.");
+            }
+
             overrideApproverIdForAudit = approverId;
             overrideTokenForAudit = approvalToken;
         }
@@ -134,6 +146,17 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             throw new IllegalArgumentException(message);
         }
         return value.trim();
+    }
+
+    private String computeSignature(String approverId, String extension, String secret) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            String payload = approverId + ":" + extension + ":" + secret;
+            byte[] hashed = digest.digest(payload.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hashed);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 digest unavailable", ex);
+        }
     }
 
     private String tokenFingerprint(String approvalToken) {

@@ -43,6 +43,32 @@ import com.clearfolio.viewer.repository.ConversionJobRepository;
 class DefaultDocumentConversionServiceTest {
 
     @Test
+    void submitThrowsWhenUploadExceedsMaxSizeLimit() {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        ConversionProperties props = new ConversionProperties();
+        props.setMaxUploadSizeBytes(10L); // Very small limit for test
+
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DefaultDocumentValidationService(props),
+                worker,
+                props
+        );
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "large.txt",
+                "text/plain",
+                "this-content-is-definitely-larger-than-10-bytes".getBytes(StandardCharsets.UTF_8)
+        );
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> service.submit(file));
+        assertTrue(error.getMessage().contains("File is too large."));
+        assertEquals(0, worker.enqueuedCount());
+    }
+
+    @Test
     void submitGeneratesExpectedSha256HexContentHash() {
         ConversionJobRepository repository = mock(ConversionJobRepository.class);
         RecordingConversionWorker worker = new RecordingConversionWorker();

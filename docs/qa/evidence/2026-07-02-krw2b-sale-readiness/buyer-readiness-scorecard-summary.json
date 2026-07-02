@@ -1,9 +1,9 @@
 {
-  "artifactCount": 21,
+  "artifactCount": 23,
   "artifactStatusCounts": {
     "external": 0,
     "partial": 8,
-    "ready": 13
+    "ready": 15
   },
   "conservativeGateReadinessPercent": 38,
   "discountRiskGates": [
@@ -49,6 +49,8 @@
       "buyerInterpretation": "Discount risk until closed.",
       "evidenceStatuses": [
         "design-handoff=partial",
+        "figma-slides-payload=ready",
+        "figma-slides-payload-check=ready",
         "figjam-handoff=ready",
         "figjam-board=ready"
       ],

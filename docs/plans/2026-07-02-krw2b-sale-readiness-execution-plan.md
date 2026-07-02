@@ -213,6 +213,14 @@ Progress as of 2026-07-02:
   Slides deck plan, Product Design acceptance, KPI frame, claim boundaries, and
   Ponytail no-split decision. Figma Slides generation is prepared but waiting
   for team or organization plan selection in the Figma widget.
+- The Figma buyer diligence Slides payload is now captured in
+  `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json`, with
+  a standard-library checker in `scripts/check_figma_deck_payload.py`. The
+  payload check reports 11 slides, 4 objectives, and 0 errors; actual editable
+  Slides generation still requires Figma team or organization plan selection.
+- The FigJam evidence board now also includes
+  `Clearfolio Buyer Diligence Slides Storyboard`, mirroring the checked deck
+  payload without using Figma Code Connect.
 - Figma evidence flow is now captured as a FigJam artifact and mirrored in
   `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`.
 - Market, valuation, pricing, and KPI thresholds are now captured in
@@ -246,7 +254,7 @@ Progress as of 2026-07-02:
 - A buyer readiness scorecard is now generated from the same manifest in
   `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, with a
   standard-library drift check in `scripts/summarize_buyer_readiness.py`.
-  Current evidence reports 21 artifacts, 8 readiness gates, and 38 percent
+  Current evidence reports 23 artifacts, 8 readiness gates, and 38 percent
   conservative gate readiness while preserving partial gates as discount risks.
 - Signed artifact link runtime is now implemented for current in-memory PDF
   artifacts and captured in

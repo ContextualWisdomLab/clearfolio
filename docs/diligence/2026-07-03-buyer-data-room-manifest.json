@@ -52,6 +52,18 @@
       "title": "Product Design and Slides handoff"
     },
     {
+      "id": "figma-slides-payload",
+      "path": "docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json",
+      "status": "ready",
+      "title": "Figma Slides generation payload"
+    },
+    {
+      "id": "figma-slides-payload-check",
+      "path": "docs/qa/evidence/2026-07-02-krw2b-sale-readiness/figma-deck-payload-check.json",
+      "status": "ready",
+      "title": "Figma Slides generation payload check"
+    },
+    {
       "id": "figjam-handoff",
       "path": "docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md",
       "status": "ready",
@@ -145,6 +157,8 @@
       "status": "partial",
       "evidence": [
         "design-handoff",
+        "figma-slides-payload",
+        "figma-slides-payload-check",
         "figjam-handoff",
         "figjam-board"
       ]

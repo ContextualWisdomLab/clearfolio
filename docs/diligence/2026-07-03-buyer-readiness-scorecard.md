@@ -10,7 +10,7 @@ Only `ready` gates count toward the conservative readiness percentage.
 
 | Metric | Result |
 | --- | --- |
-| Artifacts | 21 total; ready=13, partial=8, external=0 |
+| Artifacts | 23 total; ready=15, partial=8, external=0 |
 | Readiness gates | 8 total; ready=3, partial=5, external=0 |
 | Conservative gate readiness | 38 percent |
 
@@ -19,7 +19,7 @@ Only `ready` gates count toward the conservative readiness percentage.
 | Gate | Status | Evidence status | Buyer interpretation |
 | --- | --- | --- | --- |
 | product-demo | ready | seeded-demo-evidence=ready, figjam-board=ready, qa-evidence=ready | Ready for buyer walkthrough. |
-| design-handoff | partial | design-handoff=partial, figjam-handoff=ready, figjam-board=ready | Discount risk until closed. |
+| design-handoff | partial | design-handoff=partial, figma-slides-payload=ready, figma-slides-payload-check=ready, figjam-handoff=ready, figjam-board=ready | Discount risk until closed. |
 | data-analytics-kpi | partial | valuation-kpi-model=ready, durable-metrics-model=partial, qa-evidence=ready | Discount risk until closed. |
 | security-compliance | partial | auth-tenant-model=partial, threat-model=partial, signed-artifact-design=partial | Discount risk until closed. |
 | license-attribution | ready | sbom=ready, license-review=ready, third-party-attribution=ready | Ready for buyer walkthrough. |

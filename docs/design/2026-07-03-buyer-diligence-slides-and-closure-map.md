@@ -19,13 +19,17 @@ Figma Code Connect is not used.
   `Clearfolio KRW 2B Buyer Diligence Closure Map`.
 - Added FigJam diagram on the same board:
   `Clearfolio Buyer Readiness Scorecard Gate Map`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Buyer Diligence Slides Storyboard`.
 - Existing seeded screenshot nodes on the same board:
   desktop `25:1423`, mobile `25:1422`.
-- Figma Slides request prepared:
-  `Clearfolio Buyer Demo Diligence Pack`.
+- Figma Slides generation payload:
+  `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json`.
+- Figma Slides payload check:
+  `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/figma-deck-payload-check.json`.
 - Figma Slides generation status:
-  waiting for Figma team or organization plan selection in the widget before
-  generation can run.
+  attempted from the Figma tool, but generation requires Figma team or
+  organization plan selection in the widget before the deck can be created.
 
 ## Product Design Brief
 
@@ -65,7 +69,8 @@ Acceptance:
 | P95 preview latency | Seeded demo shows 4200 ms | Less than 10 seconds for small pilot files | Needs real pilot files for production claim. |
 | KPI snapshot export | Seeded demo shows 1 export | Repeatable tenant-scoped evidence exports | Current ledger is optional local replay evidence. |
 | Commercial proof | Pricing scenarios documented | 3 design partners, then 10 paid tenants | No pilots, LOIs, or buyer import test yet. |
-| Evidence readiness | Scorecard reports 21 artifacts, 8 gates, and 38 percent conservative gate readiness | 100 percent ready gates before buyer-release claim | Current score is repository evidence readiness, not valuation proof. |
+| Evidence readiness | Scorecard reports 23 artifacts, 8 gates, and 38 percent conservative gate readiness | 100 percent ready gates before buyer-release claim | Current score is repository evidence readiness, not valuation proof. |
+| Slides generation readiness | Payload check reports 11 slides, 4 objectives, and 0 errors | Editable Figma Slides deck generated after plan selection | Current payload is ready; actual Slides URL is pending Figma plan selection. |
 
 ## Ponytail Architecture Decision
 
@@ -83,7 +88,9 @@ Rationale:
 
 ## Slides Deck Plan
 
-When Figma plan selection is available, generate the deck with this structure:
+When Figma plan selection is available, generate the deck from
+`docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json` with
+this structure:
 
 1. Cover: `Clearfolio Buyer Demo Diligence Pack`.
 2. What the buyer can inspect today: upload, governed preview, operational

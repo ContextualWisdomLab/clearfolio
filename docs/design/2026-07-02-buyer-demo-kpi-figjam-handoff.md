@@ -23,6 +23,8 @@ Date: 2026-07-02
   `Clearfolio Artifact Revocation and Read Audit Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio File Backed Artifact Ledger Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio KPI Snapshot Evidence Ledger Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -39,6 +41,8 @@ Date: 2026-07-02
   announcements for upload and conversion state changes.
 - KPI fallback behavior must not create contradictory buyer evidence: backend
   runtime metrics are primary, browser-session history is fallback only.
+- KPI snapshot evidence ledger behavior must remain clearly labeled as local
+  restart-replay evidence, not as the final durable analytics event store.
 
 ## Data Analytics Mapping
 
@@ -48,6 +52,7 @@ Date: 2026-07-02
 | Ready | `succeededJobs` | Shows previewable documents available for buyer inspection. |
 | Success rate | `conversionSuccessRate` | Shows conversion reliability as an acquisition diligence metric. |
 | P95 preview | `p95TimeToPreviewMs` | Shows latency evidence for the demo path. |
+| Snapshot export | `KpiSnapshotRecord` | Shows when a buyer-visible KPI snapshot was exported under tenant scope. |
 
 ## Mermaid Source
 
@@ -468,4 +473,37 @@ flowchart LR
     style recovered fill:#CDF4D3,stroke:#66D575
     style fail fill:#FFE2E2,stroke:#D92D20
     style production fill:#DCCCFF,stroke:#874FFF
+```
+
+### KPI Snapshot Evidence Ledger Flow
+
+```mermaid
+flowchart LR
+    buyer["Buyer or operator"]
+    api["GET /api/v1/analytics/kpi-snapshot"]
+    auth["TenantAccessService"]
+    repo[("Tenant jobs")]
+    snapshot["KPI snapshot response"]
+    config{"Path configured?"}
+    memory["Runtime ledger"]
+    file[("Append-only snapshot file")]
+    replay["Replay on startup"]
+    future["Future durable event stream"]
+
+    buyer -->|"Signed tenant headers"| api
+    api -->|"Requires analytics:read"| auth
+    auth -->|"Tenant filter"| repo
+    repo -->|"Counts jobs"| snapshot
+    api -->|"Records export"| config
+    config -->|"No"| memory
+    config -->|"Yes"| file
+    file -->|"Boot"| replay
+    replay -.->|"Partial evidence"| future
+    snapshot -->|"Returned to buyer"| buyer
+
+    style auth fill:#C2E5FF,stroke:#3DADFF
+    style config fill:#FFECBD,stroke:#FFC943
+    style snapshot fill:#CDF4D3,stroke:#66D575
+    style file fill:#FFF3E3,stroke:#B95D00
+    style future fill:#DCCCFF,stroke:#874FFF
 ```

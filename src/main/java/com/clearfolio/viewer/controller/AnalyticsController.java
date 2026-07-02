@@ -9,6 +9,7 @@ import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.api.KpiSnapshotResponse;
+import com.clearfolio.viewer.analytics.KpiSnapshotLedger;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 
 /**
@@ -19,16 +20,22 @@ public class AnalyticsController {
 
     private final ConversionJobRepository repository;
     private final TenantAccessService tenantAccessService;
+    private final KpiSnapshotLedger snapshotLedger;
 
     /**
      * Creates an analytics controller backed by the conversion job repository.
      *
      * @param repository conversion job repository
      * @param tenantAccessService tenant and permission guard
+     * @param snapshotLedger KPI snapshot evidence ledger
      */
-    public AnalyticsController(ConversionJobRepository repository, TenantAccessService tenantAccessService) {
+    public AnalyticsController(
+            ConversionJobRepository repository,
+            TenantAccessService tenantAccessService,
+            KpiSnapshotLedger snapshotLedger) {
         this.repository = repository;
         this.tenantAccessService = tenantAccessService;
+        this.snapshotLedger = snapshotLedger;
     }
 
     /**
@@ -40,8 +47,10 @@ public class AnalyticsController {
     @GetMapping("/api/v1/analytics/kpi-snapshot")
     public KpiSnapshotResponse kpiSnapshot(@RequestHeader HttpHeaders headers) {
         TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ANALYTICS_READ);
-        return KpiSnapshotResponse.from(repository.findAll().stream()
+        KpiSnapshotResponse snapshot = KpiSnapshotResponse.from(repository.findAll().stream()
                 .filter(job -> job.belongsToTenant(tenantContext.tenantId()))
                 .toList());
+        snapshotLedger.recordSnapshot(tenantContext, snapshot);
+        return snapshot;
     }
 }

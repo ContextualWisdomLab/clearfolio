@@ -32,6 +32,8 @@ Clearfolio Viewer,com.clearfolio.viewer.api,ArtifactReadEventResponse,0,27,0,0,0
 Clearfolio Viewer,com.clearfolio.viewer.api,ViewerBootstrapResponse,0,153,0,22,0,31,0,18,0,5
 Clearfolio Viewer,com.clearfolio.viewer.auth,TenantContext,0,124,0,18,0,32,0,16,0,7
 Clearfolio Viewer,com.clearfolio.viewer.auth,TenantAccessService,0,231,0,24,0,52,0,24,0,12
+Clearfolio Viewer,com.clearfolio.viewer.analytics,KpiSnapshotRecord,0,36,0,0,0,1,0,1,0,1
+Clearfolio Viewer,com.clearfolio.viewer.analytics,KpiSnapshotLedger,0,409,0,26,0,105,0,36,0,23
 Clearfolio Viewer,com.clearfolio.viewer,ClearfolioViewerApplication,0,8,0,0,0,3,0,2,0,2
 Clearfolio Viewer,com.clearfolio.viewer.repository,ConversionJobRepository,0,11,0,0,0,1,0,2,0,2
 Clearfolio Viewer,com.clearfolio.viewer.repository,InMemoryConversionJobRepository,0,179,0,22,0,36,0,20,0,9
@@ -41,7 +43,7 @@ Clearfolio Viewer,com.clearfolio.viewer.controller,ConversionController,0,275,0,
 Clearfolio Viewer,com.clearfolio.viewer.controller,HealthController,0,7,0,0,0,2,0,2,0,2
 Clearfolio Viewer,com.clearfolio.viewer.controller,InMemoryMultipartFile,0,78,0,4,0,17,0,12,0,10
 Clearfolio Viewer,com.clearfolio.viewer.controller,ViewerUiController,0,35,0,0,0,14,0,5,0,5
-Clearfolio Viewer,com.clearfolio.viewer.controller,AnalyticsController,0,30,0,0,0,8,0,3,0,3
+Clearfolio Viewer,com.clearfolio.viewer.controller,AnalyticsController,0,40,0,0,0,11,0,3,0,3
 Clearfolio Viewer,com.clearfolio.viewer.controller,ArtifactController.ResolvedRange,0,39,0,0,0,4,0,4,0,4
 Clearfolio Viewer,com.clearfolio.viewer.controller,ArtifactController,0,572,0,42,0,122,0,35,0,14
 Clearfolio Viewer,com.clearfolio.viewer.controller,ApiExceptionHandler,0,345,0,34,0,97,0,33,0,16

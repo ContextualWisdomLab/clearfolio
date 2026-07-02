@@ -2,7 +2,7 @@
 
 Date: 2026-07-02
 Verification source head SHA before this evidence refresh:
-`e7aefbc1962601789e6c80ca7ba8dea0f94dc2be`
+`dc9366933cf14fbf27dcee342cb72d814e75579d`
 
 ## Gate Summary
 
@@ -10,15 +10,15 @@ Verification source head SHA before this evidence refresh:
 | --- | --- | --- |
 | Java runtime | Pass, OpenJDK 21.0.11 | `java-version.txt` |
 | Compile warnings/deprecations | Pass | `compile.log` |
-| Tests + JaCoCo | Pass, `classes=46`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
+| Tests + JaCoCo | Pass, 310 tests, `classes=48`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
 | JavaDoc | Pass, `javadoc_warnings_or_errors=none` | `javadoc.log`, `javadoc-status.txt` |
 | Markdown lint | Pass, 0 errors across changed docs | `markdownlint.log` |
 | JS syntax | Pass | `node-check.log` |
 | SAST | Pass, 0 findings | `semgrep.log`, `semgrep.json` |
 | SBOM | Pass, CycloneDX 1.6, 142 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
 | License review | Partial, policy checker reports 136 allowed components, 6 review-required components, 0 unlisted violations; legal decisions still needed | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
-| Auth/tenant and signed artifacts | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, artifact read audit API, and optional file-backed artifact-link ledger replay implemented; OIDC/JWT and centralized durable revocation/audit pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact tests |
-| Local smoke | Pass, signed tenant claims plus file-backed artifact ledger | `smoke-local.txt`, `smoke-app.log` |
+| Auth/tenant, signed artifacts, and KPI snapshots | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, artifact read audit API, optional file-backed artifact-link ledger replay, and optional file-backed KPI snapshot ledger replay implemented; OIDC/JWT and centralized durable revocation/audit/analytics persistence pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact/analytics tests |
+| Local smoke | Pass, signed tenant claims plus file-backed artifact and KPI snapshot ledgers | `smoke-local.txt`, `smoke-app.log` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
 ## SAST
@@ -33,7 +33,7 @@ Result:
 
 - Semgrep completed successfully.
 - Rules run: 60 Java rules.
-- Targets scanned: 47 tracked files.
+- Targets scanned: 49 tracked files.
 - Findings: 0.
 - Errors: 0.
 
@@ -75,8 +75,9 @@ Evidence:
 - `docs/security/2026-07-02-license-allowlist-review.md`
 - `docs/security/2026-07-02-license-policy.json`
 - `docs/security/2026-07-02-auth-tenant-model.md`
-- FigJam diagram:
+- FigJam diagrams:
   [Clearfolio Gateway Signed Tenant Claims Flow](https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM)
+  and `Clearfolio KPI Snapshot Evidence Ledger Flow`.
 
 ## Local Smoke
 
@@ -84,7 +85,8 @@ Command path:
 
 - Start app on a random local port with
   `clearfolio.tenant-claims.hmac-secret` and
-  `clearfolio.artifact-link-ledger.path` configured.
+  `clearfolio.artifact-link-ledger.path` plus
+  `clearfolio.analytics-snapshot-ledger.path` configured.
 - Runtime Java: 21.0.11.
 - Verify `GET /`, `/assets/viewer/demo.js`, missing-auth KPI denial,
   unsigned tenant-claim KPI denial, authenticated empty KPI snapshot with signed
@@ -92,7 +94,8 @@ Command path:
   `SUCCEEDED`, `/viewer/{docId}`, authenticated viewer bootstrap, signed
   artifact URL creation, unsigned artifact denial, signed artifact range
   access, artifact read audit lookup, artifact token revocation, revoked-token
-  denial, cross-tenant status denial, and post-upload KPI snapshot.
+  denial, cross-tenant status denial, post-upload KPI snapshot, and file-backed
+  KPI snapshot ledger append evidence.
 
 Result:
 
@@ -116,6 +119,7 @@ Result:
   `conversionSuccessRate=1.0`, numeric `p95TimeToPreviewMs`.
 - Artifact ledger file: present, 2 `ISSUED` lines, 1 `REVOKED` line,
   and 1 `READ` line.
+- KPI snapshot ledger file: present, 2 `SNAPSHOT` lines.
 
 Evidence:
 

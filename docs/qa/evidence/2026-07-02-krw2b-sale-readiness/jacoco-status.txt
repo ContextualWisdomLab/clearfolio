@@ -1,1 +1,1 @@
-classes=46 line_missed=0 branch_missed=0
+classes=48 line_missed=0 branch_missed=0

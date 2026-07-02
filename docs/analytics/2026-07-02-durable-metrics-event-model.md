@@ -4,8 +4,10 @@ Date: 2026-07-02
 
 This document defines the durable event model needed to turn the current
 tenant-filtered, runtime-only KPI snapshot into buyer-grade analytics evidence.
-It is a design artifact. The current implementation still reads in-memory jobs
-through `GET /api/v1/analytics/kpi-snapshot`.
+It is a design artifact. The current implementation still calculates KPI values
+from in-memory jobs through `GET /api/v1/analytics/kpi-snapshot`, but each
+authorized export can now be recorded to an optional local append-only snapshot
+ledger when `clearfolio.analytics-snapshot-ledger.path` is configured.
 
 ## Goal
 
@@ -73,7 +75,7 @@ Rules:
 | `conversion.job.failed` | `durationMs`, `attemptCount`, `failureCategory`, `deadLettered` | Failure and dead-letter rate. |
 | `artifact.link.created` | `ttlSeconds`, `purpose`, `scope` | Controlled preview evidence. |
 | `artifact.read` | `rangeRequested`, `servedBytes`, `statusCode` | Usage and cost inputs. |
-| `analytics.snapshot.exported` | `windowStart`, `windowEnd`, `consumer` | Evidence freshness. |
+| `analytics.snapshot.exported` | `windowStart`, `windowEnd`, `consumer` | Evidence freshness; first runtime slice is optional local KPI snapshot ledger evidence, not the full event stream. |
 
 ## Privacy and Classification
 
@@ -174,13 +176,15 @@ optimization.
 | `ConversionJob.markSucceeded` | `conversion.job.succeeded`. |
 | Signed artifact link endpoint | `artifact.link.created`. |
 | `ArtifactController.getPdf` | `artifact.read`. |
-| KPI export job | `analytics.snapshot.exported`. |
+| `AnalyticsController.kpiSnapshot` | `analytics.snapshot.exported`; current slice records exported snapshot fields in `KpiSnapshotLedger` when a local ledger path is configured. |
 
 ## Buyer Acceptance Criteria
 
 - A buyer can audit every KPI back to immutable event types and formulas.
 - Runtime KPI endpoint can keep its current response shape while switching its
   source from tenant-filtered in-memory jobs to durable projections.
+- Authorized KPI exports leave local append-only evidence when the snapshot
+  ledger path is configured.
 - Events are tenant-scoped before paid pilots.
 - Metrics events do not carry raw customer document content or secrets.
 - Failure categories are controlled values, not raw exception strings.
@@ -188,10 +192,12 @@ optimization.
 
 ## Implementation Sequence
 
-1. Define `AnalyticsEvent` and `AnalyticsEventRepository` in the existing app.
-2. Add an in-memory implementation for tests and MVP parity.
-3. Emit lifecycle events at the code points listed above.
-4. Keep the existing KPI response contract stable.
-5. Add PostgreSQL persistence only after tenant and deployment design are ready.
-6. Add daily projection generation and evidence export.
-7. Add event schema version tests and redaction tests.
+1. Keep the KPI response contract stable while recording authorized exports in
+   `KpiSnapshotLedger`.
+2. Define `AnalyticsEvent` and `AnalyticsEventRepository` in the existing app.
+3. Add an in-memory implementation for tests and MVP parity.
+4. Emit lifecycle events at the code points listed above.
+5. Promote snapshot export evidence into the same append-only event contract.
+6. Add PostgreSQL persistence only after tenant and deployment design are ready.
+7. Add daily projection generation and evidence export.
+8. Add event schema version tests and redaction tests.

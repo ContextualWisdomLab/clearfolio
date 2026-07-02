@@ -8,11 +8,9 @@
 
  :: Spring Boot ::                (v3.5.0)
 
-2026-07-02T19:53:53.424+09:00  INFO 40456 --- [clearfolio-viewer] [           main] c.c.viewer.ClearfolioViewerApplication   : Starting ClearfolioViewerApplication using Java 21.0.11 with PID 40456 (/Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2/target/classes started by seonghobae in /Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2)
-2026-07-02T19:53:53.425+09:00  INFO 40456 --- [clearfolio-viewer] [           main] c.c.viewer.ClearfolioViewerApplication   : No active profile set, falling back to 1 default profile: "default"
-2026-07-02T19:53:54.247+09:00  INFO 40456 --- [clearfolio-viewer] [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 56414 (http)
-2026-07-02T19:53:54.258+09:00  INFO 40456 --- [clearfolio-viewer] [           main] c.c.viewer.ClearfolioViewerApplication   : Started ClearfolioViewerApplication in 1.22 seconds (process running for 1.524)
-2026-07-02T19:54:01.886+09:00  INFO 40456 --- [clearfolio-viewer] [ionShutdownHook] o.s.b.w.embedded.netty.GracefulShutdown  : Commencing graceful shutdown. Waiting for active requests to complete
-2026-07-02T19:54:01.907+09:00  INFO 40456 --- [clearfolio-viewer] [ netty-shutdown] o.s.b.w.embedded.netty.GracefulShutdown  : Graceful shutdown complete
-[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.0:run (default-cli) on project clearfolio-viewer: Process terminated with exit code: 143 -> [Help 1]
-[ERROR]
+2026-07-02T20:14:07.202+09:00  INFO 77357 --- [clearfolio-viewer] [           main] c.c.viewer.ClearfolioViewerApplication   : Starting ClearfolioViewerApplication using Java 21.0.11 with PID 77357 (/Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2/target/classes started by seonghobae in /Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2)
+2026-07-02T20:14:07.202+09:00  INFO 77357 --- [clearfolio-viewer] [           main] c.c.viewer.ClearfolioViewerApplication   : No active profile set, falling back to 1 default profile: "default"
+2026-07-02T20:14:07.983+09:00  INFO 77357 --- [clearfolio-viewer] [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 62257 (http)
+2026-07-02T20:14:07.996+09:00  INFO 77357 --- [clearfolio-viewer] [           main] c.c.viewer.ClearfolioViewerApplication   : Started ClearfolioViewerApplication in 1.012 seconds (process running for 1.197)
+2026-07-02T20:14:09.810+09:00  INFO 77357 --- [clearfolio-viewer] [ionShutdownHook] o.s.b.w.embedded.netty.GracefulShutdown  : Commencing graceful shutdown. Waiting for active requests to complete
+2026-07-02T20:14:09.811+09:00  INFO 77357 --- [clearfolio-viewer] [ netty-shutdown] o.s.b.w.embedded.netty.GracefulShutdown  : Graceful shutdown complete

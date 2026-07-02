@@ -189,6 +189,10 @@ Progress as of 2026-07-02:
   for total, submitted, processing, succeeded, failed, dead-lettered,
   conversion success rate, and p95 time-to-preview. This is intentionally
   scoped to current in-memory runtime data until durable persistence exists.
+- Authorized KPI snapshot exports can now be written to an optional local
+  append-only ledger when `clearfolio.analytics-snapshot-ledger.path` is
+  configured. This gives the buyer demo restart-replay evidence for exported
+  snapshots while the full lifecycle event stream remains open.
 - The buyer-demo root shell now consumes that KPI endpoint directly and falls
   back to browser-session history only when the runtime snapshot is unavailable.
 - Figma evidence flow is now captured as a FigJam artifact and mirrored in
@@ -232,6 +236,10 @@ Progress as of 2026-07-02:
   while centralized durable revocation/audit persistence remains open.
 - Durable metrics event model is now captured in
   `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
+- Optional KPI snapshot ledger runtime is now implemented in
+  `src/main/java/com/clearfolio/viewer/analytics/KpiSnapshotLedger.java`;
+  it records export metadata only and does not introduce a separate library,
+  submodule, or production analytics database.
 
 ## Library and submodule decision
 

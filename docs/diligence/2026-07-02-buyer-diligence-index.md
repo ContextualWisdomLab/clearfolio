@@ -17,7 +17,7 @@ strict: partial evidence is marked partial, not complete.
 | Buyer question | Status | Current evidence | Gap | Next artifact |
 | --- | --- | --- | --- | --- |
 | Can a buyer run a demo from upload to preview? | Ready | `GET /`, `POST /api/v1/convert/jobs`, `/viewer/{docId}`; local smoke proof in PR #74. | Demo uses in-memory runtime. | Seeded demo data and screenshot set. |
-| Does the UI expose buyer-readable KPIs? | Ready | `GET /api/v1/analytics/kpi-snapshot`; root shell reads tenant-scoped runtime KPI snapshot; durable model in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | KPI history is not implemented durably yet. | Durable metric event implementation. |
+| Does the UI expose buyer-readable KPIs? | Ready | `GET /api/v1/analytics/kpi-snapshot`; root shell reads tenant-scoped runtime KPI snapshot; optional `clearfolio.analytics-snapshot-ledger.path` records exported snapshots; durable model in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | Full lifecycle KPI history is not implemented durably yet. | Durable metric event implementation. |
 | Is the Figma design story available without Code Connect? | Ready | FigJam evidence flow and `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`. | High-fidelity screen frames are not complete. | Figma frames for desktop/mobile happy and negative paths. |
 | Are unsupported and failed states explained? | Partial | HWP/HWPX block behavior, error schema, failed job retry flow, buyer-demo status table, and root-shell job detail drawer. | Retry is surfaced in the buyer-demo shell, but not yet as a production admin UI. | Production operator job management surface. |
 
@@ -27,7 +27,7 @@ strict: partial evidence is marked partial, not complete.
 | --- | --- | --- | --- | --- |
 | Is the architecture inspectable? | Ready | `docs/architecture.md`, PRD/TRD, diagrams, package boundaries. | Target production architecture is still partly roadmap. | Target architecture diagram for durable queue/store. |
 | Are the mandatory gates reproducible? | Ready | Maven compile/test/JaCoCo/JavaDoc commands in PR #74, AGENTS gate policy, and `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md`. | GitHub hosted checks are queued. | Attach CI pass or queued-check explanation when available. |
-| Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=46`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
+| Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=48`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
 | Is request handling non-blocking? | Ready | WebFlux controller path and `DefaultDocumentConversionService` enqueue behavior. | Real converter runtime is not integrated. | Converter adapter contract and load-test plan. |
 | Is persistence production-grade? | Missing | `ConversionJobRepository` abstraction exists. | In-memory repository only. | Durable repository design and migration plan. |
 | Are artifacts production-grade? | Partial | In-memory PDF artifact store, signed artifact-token runtime, optional file-backed artifact link ledger replay, tenant-scoped token revocation, artifact read audit API, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, centralized revocation table, centralized read audit, or retention policy. | Durable artifact metadata and centralized revocation/audit implementation. |
@@ -49,7 +49,7 @@ strict: partial evidence is marked partial, not complete.
 | --- | --- | --- | --- | --- |
 | Is there a KRW 2B valuation logic? | Ready | `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`. | Comparable transactions are not refreshed beyond public multiple anchors. | Transaction comparable refresh before buyer use. |
 | Is there a pricing path? | Partial | Pricing scenarios in valuation/KPI model. | No customer interviews, pilots, or signed LOIs. | Pilot evidence and ICP qualification pack. |
-| Are buyer KPIs measurable? | Partial | Runtime KPI snapshot exposes reliability and latency fields and is filtered by request tenant; durable event model is documented in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | Durable event persistence, monthly volume, cost, and margin data are not implemented. | Durable analytics event implementation. |
+| Are buyer KPIs measurable? | Partial | Runtime KPI snapshot exposes reliability and latency fields, is filtered by request tenant, and can record exported snapshots to an optional local ledger; durable event model is documented in `docs/analytics/2026-07-02-durable-metrics-event-model.md`. | Durable lifecycle event persistence, monthly volume, cost, and margin data are not implemented. | Durable analytics event implementation. |
 | Can a buyer integrate it cheaply? | Partial | API routes and Power Platform delivery chain are documented. | No deployment playbook or connector guide. | Integration and deployment playbook. |
 
 ## Current PR Evidence
@@ -70,6 +70,7 @@ strict: partial evidence is marked partial, not complete.
 | SAST evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json` |
 | Buyer-demo implementation | `src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`, `src/main/resources/static/assets/viewer/demo.js`, `src/main/resources/static/assets/viewer/viewer.css` |
 | KPI API implementation | `src/main/java/com/clearfolio/viewer/controller/AnalyticsController.java`, `src/main/java/com/clearfolio/viewer/api/KpiSnapshotResponse.java` |
+| KPI snapshot evidence ledger | `src/main/java/com/clearfolio/viewer/analytics/KpiSnapshotLedger.java`, `src/main/java/com/clearfolio/viewer/analytics/KpiSnapshotRecord.java`; includes optional `clearfolio.analytics-snapshot-ledger.path` file-backed replay for exported KPI snapshots. |
 | Auth/tenant runtime slice | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`, `src/main/java/com/clearfolio/viewer/auth/TenantContext.java`, `src/main/java/com/clearfolio/viewer/model/ConversionJob.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java`; includes optional gateway HMAC validation when `clearfolio.tenant-claims.hmac-secret` is set. |
 | Signed artifact runtime slice | `src/main/java/com/clearfolio/viewer/artifact/ArtifactLinkService.java`, `src/main/java/com/clearfolio/viewer/artifact/ArtifactLinkLedger.java`, `src/main/java/com/clearfolio/viewer/controller/ArtifactController.java`, `src/main/java/com/clearfolio/viewer/api/ArtifactLinkResponse.java`; includes optional `clearfolio.artifact-link-ledger.path` file-backed replay for issued/revoked/read metadata. |
 
@@ -82,5 +83,6 @@ strict: partial evidence is marked partial, not complete.
 3. Promote optional file-backed artifact-link ledger evidence into durable
    artifact metadata and centralized token revocation plus artifact read audit
    persistence.
-4. Implement durable metrics events.
+4. Promote optional file-backed KPI snapshot ledger evidence into durable
+   metrics events and daily projections.
 5. Add seeded demo screenshots and Figma high-fidelity frames.

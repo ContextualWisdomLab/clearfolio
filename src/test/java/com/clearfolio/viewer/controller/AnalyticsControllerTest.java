@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.analytics.KpiSnapshotLedger;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
@@ -20,13 +21,15 @@ import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
 class AnalyticsControllerTest {
 
     private InMemoryConversionJobRepository repository;
+    private KpiSnapshotLedger snapshotLedger;
     private WebTestClient webTestClient;
 
     @BeforeEach
     void setUp() {
         repository = new InMemoryConversionJobRepository();
+        snapshotLedger = new KpiSnapshotLedger();
         webTestClient = WebTestClient.bindToController(
-                new AnalyticsController(repository, new TenantAccessService())
+                new AnalyticsController(repository, new TenantAccessService(), snapshotLedger)
         ).controllerAdvice(new ApiExceptionHandler()).build();
     }
 
@@ -46,6 +49,8 @@ class AnalyticsControllerTest {
                 .jsonPath("$.deadLetteredJobs").isEqualTo(0)
                 .jsonPath("$.conversionSuccessRate").isEqualTo(0.0)
                 .jsonPath("$.p95TimeToPreviewMs").isEmpty();
+
+        assertEquals(1, snapshotLedger.snapshotsFor(TenantContext.DEMO_TENANT_ID).size());
     }
 
     @Test
@@ -82,6 +87,8 @@ class AnalyticsControllerTest {
                     assertNotNull(value);
                     assertTrue(((Number) value).longValue() >= 0L);
                 });
+
+        assertEquals(1, snapshotLedger.snapshotsFor(TenantContext.DEMO_TENANT_ID).size());
     }
 
     @Test
@@ -106,6 +113,8 @@ class AnalyticsControllerTest {
                 .expectBody()
                 .jsonPath("$.totalJobs").isEqualTo(1)
                 .jsonPath("$.submittedJobs").isEqualTo(1);
+
+        assertEquals(1, snapshotLedger.snapshotsFor(TenantContext.DEMO_TENANT_ID).size());
     }
 
     @Test
@@ -117,6 +126,8 @@ class AnalyticsControllerTest {
                 .expectStatus().isForbidden()
                 .expectBody()
                 .jsonPath("$.message").isEqualTo("missing permission: " + TenantPermissions.ANALYTICS_READ);
+
+        assertTrue(snapshotLedger.snapshotsFor(TenantContext.DEMO_TENANT_ID).isEmpty());
     }
 
     private ConversionJob newJob(String fileName) {

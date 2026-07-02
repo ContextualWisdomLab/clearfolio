@@ -13,6 +13,8 @@ Clearfolio Viewer is a Java 21 / Spring Boot WebFlux document-preview service.
 Its current runtime lets a user upload a document, receive an asynchronous job
 identifier, poll conversion status, open an HTML viewer shell, and fetch an
 in-memory PDF preview artifact after conversion succeeds.
+Authorized KPI snapshot exports may also be recorded as local append-only
+metadata when `clearfolio.analytics-snapshot-ledger.path` is configured.
 
 Primary runtime surfaces:
 
@@ -27,6 +29,8 @@ Primary runtime surfaces:
 - `GET /artifacts/{docId}.pdf`: converted PDF artifact with signed-token
   verification and single-range support.
 - `GET /api/v1/analytics/kpi-snapshot`: read-only runtime KPI counters.
+  Authorized calls can append snapshot metadata to the optional local KPI
+  snapshot ledger.
 - `GET /healthz`: readiness probe.
 
 The current security posture is MVP-grade and evidence-oriented. It has
@@ -35,6 +39,7 @@ fingerprints, warning-free compile gates, 100 percent production package
 JaCoCo line/branch coverage, JavaDoc gates, Semgrep evidence, no-store artifact
 responses, signed artifact tokens, runtime artifact-token revocation, artifact
 read audit events, optional file-backed artifact-link ledger replay,
+optional file-backed KPI snapshot ledger replay,
 tenant-scoped JSON APIs, optional HMAC validation for gateway-signed tenant
 headers, and viewer CSP headers. The largest production gaps are no validated
 OIDC/JWT, no durable encrypted store, no centralized multi-replica
@@ -55,6 +60,7 @@ inspection, and no isolated real converter runtime.
 | Operator retry authority | `X-Clearfolio-Operator-Id` header | Requeues dead-lettered jobs and affects audit trail. |
 | Browser session history | User browser session | Contains local demo history and document/job labels. |
 | Runtime KPI snapshot | Repository state projected by analytics API | Reveals operational volume, success rate, and latency. |
+| KPI snapshot ledger | `KpiSnapshotLedger` | Tracks authorized KPI export metadata and can optionally replay local file evidence across restart. |
 | Tenant-claim HMAC secret | Runtime configuration when enabled | Lets the gateway prove tenant headers were not forged by the client. |
 
 ### Trust boundaries
@@ -66,6 +72,7 @@ inspection, and no isolated real converter runtime.
 | Upload validation to background conversion | User-provided file and filename | Validation service, job repository, worker executor | HWP/HWPX block by default, max upload bytes, SHA-256 content hash dedupe, async queue. |
 | Worker to artifact store | Conversion output bytes | In-memory PDF artifact store | Generated PDF is synthetic in current MVP, cloned on put/get. |
 | Artifact ledger to local file | Issued link, revocation, and read-event metadata | Optional append-only file configured by `clearfolio.artifact-link-ledger.path` | Text fields are encoded and replayed locally; this is not a centralized production audit store. |
+| KPI snapshot ledger to local file | Tenant id, subject id, export time, aggregate counts, success rate, p95 preview latency | Optional append-only file configured by `clearfolio.analytics-snapshot-ledger.path` | Text fields are encoded and replayed locally; this is not a durable analytics event stream. |
 | Viewer HTML to browser | Static JS/CSS, PDF.js iframe, signed artifact URL | User browser | CSP on `/viewer`, artifact token verification, `no-store`, `nosniff`, `no-referrer`, same-origin defaults. |
 | Operator retry | Operator-supplied identifier | Dead-letter retry transition | Non-blank operator header required; retry only for failed dead-lettered jobs. |
 | Analytics API | Any caller with network access | In-memory job repository | Read-only projection, no raw upload bytes, no token output. |
@@ -188,7 +195,7 @@ inspection, and no isolated real converter runtime.
 | Artifact serving | `docId`, `artifactToken`, optional range | `ArtifactController` | Runtime ledger and read audit event; optional local append-only ledger file | Process lifetime by default; local-file replay when configured | No centralized multi-replica revocation or read-audit persistence. |
 | Viewer shell | `docId`, status, artifact path | `ViewerUiController`, `viewer.js` | Browser-rendered state | Browser tab lifetime | Embedding domain matrix not finalized. |
 | Demo shell | User file picker state, session jobs, KPI snapshot | `demo.js` | Browser session history | Browser session | Session history is not auditable server data. |
-| KPI snapshot | Tenant-filtered job metadata aggregate | `AnalyticsController` | No new server storage | Response scope | No durable metrics event store. |
+| KPI snapshot | Tenant-filtered job metadata aggregate | `AnalyticsController` | Optional snapshot ledger record | Response scope by default; local-file replay when configured | No durable lifecycle metrics event store. |
 
 ## Retention and Classification
 
@@ -200,6 +207,7 @@ inspection, and no isolated real converter runtime.
 | File name and content type | Customer metadata | In-memory job repository | Until process restart | Tenant-scoped metadata table with retention policy. |
 | Content hash | Derived document identifier | In-memory job repository | Until process restart | Treat as sensitive metadata; avoid cross-tenant dedupe. |
 | Job status and timings | Operational metadata | In-memory job repository | Until process restart | Durable event table for audit and KPI reporting. |
+| KPI snapshot export metadata | Commercial and operational aggregate metadata | JVM memory by default; optional local append-only ledger file | Process lifetime by default; local-file retention follows host file policy when configured | Durable analytics event table and tenant-scoped daily projections. |
 | Approval token | Secret-like policy credential | Not persisted raw | Request only | External policy validation and secret redaction evidence. |
 | Approval token fingerprint | Audit metadata | Log line only | Log retention policy | Central audit log with owner and review workflow. |
 | Tenant-claim HMAC secret | Secret configuration | Runtime config only | Deployment secret lifetime | Managed secret storage and rotation before production. |
@@ -234,7 +242,8 @@ inspection, and no isolated real converter runtime.
 - CSP `frame-ancestors` is not configured to the buyer's exact production
   embedding domains.
 - Runtime KPI endpoint exposes internal operational volume in a public
-  deployment.
+  deployment. The optional snapshot ledger also records export metadata and must
+  be handled as tenant-scoped commercial evidence.
 - Trace ids, filenames, or operator ids appear in API payloads or logs without
   consistent downstream redaction.
 
@@ -262,5 +271,6 @@ Next implementation slices, in order:
    replace the scaffold with validated gateway/OIDC claims.
 3. Promote the optional local artifact-link ledger into durable artifact
    metadata and centralized token revocation plus read-audit persistence.
-4. Implement durable metrics events for job lifecycle and commercial KPIs.
+4. Promote the optional local KPI snapshot ledger into durable analytics events,
+   job lifecycle events, and commercial KPI projections.
 5. Add deployment security profile with production `frame-ancestors` matrix.

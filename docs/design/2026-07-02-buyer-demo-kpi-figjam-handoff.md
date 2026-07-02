@@ -29,6 +29,8 @@ Date: 2026-07-02
   `Clearfolio KPI Snapshot Export Evidence API Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Buyer Demo KPI Evidence Panel Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Operator Recovery Evidence Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -52,6 +54,9 @@ Date: 2026-07-02
   cross-tenant identifiers.
 - The buyer-demo KPI evidence panel must show export count, latest export time,
   exporting subject, and runtime job count without requiring a raw JSON tab.
+- The operator recovery evidence panel must stay scoped to the current browser
+  session and should summarize retry posture without claiming production admin
+  coverage.
 
 ## Data Analytics Mapping
 
@@ -64,6 +69,7 @@ Date: 2026-07-02
 | Snapshot export | `KpiSnapshotRecord` | Shows when a buyer-visible KPI snapshot was exported under tenant scope. |
 | Snapshot evidence lookup | `KpiSnapshotExportResponse` | Lets an authorized buyer inspect exported KPI evidence without raw content. |
 | KPI evidence panel | `/api/v1/analytics/kpi-snapshot-exports` | Turns export evidence into a buyer-readable UI panel while omitting tenant ids. |
+| Recovery evidence panel | Browser session history plus job status payloads | Shows needs-action jobs, retry-ready dead letters, last accepted retry, and latest inspected detail without a new admin system. |
 
 ## Mermaid Source
 
@@ -167,6 +173,65 @@ flowchart LR
     style evidenceStore fill:#FFECBD,stroke:#FFC943
     style buyerProof fill:#DCCCFF,stroke:#874FFF
     style noTenant fill:#FFCDC2,stroke:#FF7556
+```
+
+### Operator Recovery Evidence Flow
+
+```mermaid
+flowchart LR
+    buyer["Buyer reviewer"]
+
+    subgraph demoSurface ["Buyer-demo surface"]
+        root["GET /"]
+        recoveryPanel["Recovery evidence panel"]
+        history["Session history"]
+        detailDrawer["Job detail drawer"]
+        retryButton["Retry action"]
+    end
+
+    subgraph statusApi ["Status API"]
+        statusEndpoint["GET job status"]
+        retryEndpoint["POST retry"]
+    end
+
+    subgraph sessionEvidence ["Browser session evidence"]
+        needsAction["Needs action count"]
+        retryReady["Retry-ready count"]
+        lastRetry["Last retry"]
+        latestInspect["Latest inspected"]
+    end
+
+    subgraph buyerProof ["Buyer proof"]
+        visibleRecovery["Recoverable failures"]
+        scopedDemo["Demo-scoped evidence"]
+        noAdminClaim["No admin claim"]
+    end
+
+    buyer -->|"Opens"| root
+    root -->|"Shows"| recoveryPanel
+    root -->|"Shows"| history
+    history -->|"Loads"| detailDrawer
+    detailDrawer -->|"Reads"| statusEndpoint
+    statusEndpoint -->|"Returns"| needsAction
+    statusEndpoint -->|"Returns"| retryReady
+    detailDrawer -->|"Enables"| retryButton
+    retryButton -->|"Calls"| retryEndpoint
+    retryEndpoint -->|"Records"| lastRetry
+    detailDrawer -->|"Records"| latestInspect
+    recoveryPanel -->|"Summarizes"| needsAction
+    recoveryPanel -->|"Summarizes"| retryReady
+    recoveryPanel -->|"Summarizes"| lastRetry
+    recoveryPanel -->|"Summarizes"| latestInspect
+    needsAction -->|"Supports"| visibleRecovery
+    retryReady -->|"Supports"| visibleRecovery
+    lastRetry -->|"Limits"| scopedDemo
+    scopedDemo -->|"Clarifies"| noAdminClaim
+
+    style demoSurface fill:#C2E5FF,stroke:#3DADFF
+    style statusApi fill:#CDF4D3,stroke:#66D575
+    style sessionEvidence fill:#FFECBD,stroke:#FFC943
+    style buyerProof fill:#DCCCFF,stroke:#874FFF
+    style noAdminClaim fill:#FFCDC2,stroke:#FF7556
 ```
 
 ### Threat Boundaries and Data Handling

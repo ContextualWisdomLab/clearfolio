@@ -30,6 +30,11 @@ const el = {
   kpiExportJobs: document.getElementById("kpi-export-jobs"),
   kpiExportStatus: document.getElementById("kpi-export-status"),
   refreshEvidenceBtn: document.getElementById("refresh-evidence-btn"),
+  recoveryNeedsAction: document.getElementById("recovery-needs-action"),
+  recoveryRetryReady: document.getElementById("recovery-retry-ready"),
+  recoveryLastAction: document.getElementById("recovery-last-action"),
+  recoveryLatestInspected: document.getElementById("recovery-latest-inspected"),
+  recoveryStatus: document.getElementById("recovery-status"),
   jobDetail: document.getElementById("job-detail"),
   jobDetailCaption: document.getElementById("job-detail-caption"),
   jobDetailBody: document.getElementById("job-detail-body"),
@@ -149,6 +154,8 @@ function renderHistory(history = loadHistory()) {
     row.append(fileCell, statusCell, submittedCell, actionsCell);
     el.historyBody.appendChild(row);
   }
+
+  renderRecoveryEvidence(history);
 }
 
 function addDetailRow(label, value) {
@@ -194,6 +201,41 @@ function renderJobDetail(detail) {
   el.retryJobBtn.hidden = !detail.deadLettered;
 }
 
+function isNeedsAction(job) {
+  return job.deadLettered === true || job.status === "FAILED" || job.status === "UNSUPPORTED_FORMAT";
+}
+
+function renderRecoveryEvidence(history = loadHistory()) {
+  const needsAction = history.filter(isNeedsAction).length;
+  const retryReady = history.filter(job => job.deadLettered === true).length;
+  const latestRecovery = latestByTimestamp(history, "lastRecoveryAt");
+  const latestInspected = latestByTimestamp(history, "lastInspectedAt");
+
+  el.recoveryNeedsAction.textContent = String(needsAction);
+  el.recoveryRetryReady.textContent = String(retryReady);
+  el.recoveryLastAction.textContent = latestRecovery
+    ? formatDetailValue(latestRecovery.lastRecoveryAction || latestRecovery.lastRecoveryAt)
+    : "n/a";
+  el.recoveryLatestInspected.textContent = latestInspected
+    ? formatTimestamp(latestInspected.lastInspectedAt)
+    : "n/a";
+  el.recoveryStatus.textContent = retryReady > 0
+    ? "Dead-lettered jobs are retry-ready from the job detail drawer."
+    : "No dead-lettered retry action is pending in this session.";
+}
+
+function latestByTimestamp(history, fieldName) {
+  return history.reduce((latest, job) => {
+    if (!job[fieldName]) {
+      return latest;
+    }
+    if (!latest || new Date(job[fieldName]).getTime() > new Date(latest[fieldName]).getTime()) {
+      return job;
+    }
+    return latest;
+  }, null);
+}
+
 async function openJobDetail(job) {
   if (!job.statusUrl) {
     return;
@@ -210,6 +252,12 @@ async function openJobDetail(job) {
   updateJob(data.jobId, {
     status: data.status,
     statusUrl,
+    attemptCount: data.attemptCount,
+    maxAttempts: data.maxAttempts,
+    retryAt: data.retryAt,
+    deadLettered: Boolean(data.deadLettered),
+    message: data.message,
+    lastInspectedAt: new Date().toISOString(),
   });
   renderJobDetail(data);
   setStatus("Job detail loaded.");
@@ -242,6 +290,10 @@ async function retryActiveJob() {
     updateJob(jobId, {
       status: data.status || "ACCEPTED",
       statusUrl,
+      deadLettered: false,
+      retryAt: null,
+      lastRecoveryAction: "Retry accepted",
+      lastRecoveryAt: new Date().toISOString(),
     });
     renderJobDetail({
       ...activeJobDetail,
@@ -359,7 +411,14 @@ async function pollJob(jobId, statusUrl) {
   }
 
   const status = data.status || "SUBMITTED";
-  updateJob(jobId, { status });
+  updateJob(jobId, {
+    status,
+    attemptCount: data.attemptCount,
+    maxAttempts: data.maxAttempts,
+    retryAt: data.retryAt,
+    deadLettered: Boolean(data.deadLettered),
+    message: data.message,
+  });
 
   if (ACTIVE_STATUSES.has(status)) {
     window.setTimeout(() => {

@@ -17,7 +17,8 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
 
 ## Scope
 
-- `GET /`: buyer-demo upload, status, KPI, KPI snapshot evidence, and session-history shell.
+- `GET /`: buyer-demo upload, status, KPI, KPI snapshot evidence,
+  operator recovery evidence, and session-history shell.
 - `POST /api/v1/convert/jobs`: upload document and receive async job id.
 - `GET /api/v1/convert/jobs/{jobId}`: poll conversion status and lifecycle fields.
 - `POST /api/v1/convert/jobs` response includes `jobId`, `status`, and `statusUrl`.
@@ -52,6 +53,10 @@ production gaps.
   `deadLettered=true` when retries are exhausted.
 - Dead-lettered jobs can be re-queued by an operator with
   `X-Clearfolio-Operator-Id` via `/api/v1/convert/jobs/{jobId}/retry`.
+- The buyer-demo shell summarizes session-scoped operator recovery evidence:
+  needs-action documents, retry-ready dead-lettered jobs, last accepted retry,
+  and latest inspected job detail. This is demo evidence, not a production admin
+  console.
 - Status, viewer bootstrap, retry, and KPI JSON APIs enforce tenant permission
   headers and hide cross-tenant jobs as `404`.
 - Tenant headers can be HMAC-signed by a trusted gateway when

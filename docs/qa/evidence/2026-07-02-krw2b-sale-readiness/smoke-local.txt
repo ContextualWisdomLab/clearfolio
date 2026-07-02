@@ -7,6 +7,7 @@ artifact_link_ledger_mode=file-backed
 analytics_snapshot_ledger_mode=file-backed
 root_shell_http=200
 root_shell_has_evidence_panel=true
+root_shell_has_recovery_panel=true
 demo_js_http=200
 demo_js_has_kpi_exports_endpoint=true
 missing_auth_kpi_http=401

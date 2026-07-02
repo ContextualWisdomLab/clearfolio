@@ -293,6 +293,10 @@ Progress as of 2026-07-02:
 - Session history rows now expose a job detail drawer backed by the existing
   status API, including attempts, retry schedule, dead-letter state, artifact
   path, and an operator retry action for dead-lettered jobs.
+- The buyer-demo shell now also summarizes operator recovery evidence from the
+  current browser session, including needs-action count, retry-ready count, last
+  accepted retry, and latest inspected job detail. This intentionally remains a
+  demo-surface summary, not a new production admin system.
 - Demo JS now sends `buyer-demo` tenant headers to protected JSON APIs, and the
   viewer shell no longer reveals job existence before the protected status API
   decides state.

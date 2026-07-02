@@ -48,6 +48,11 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("id=\"kpi-export-subject\""));
                     assertTrue(body.contains("id=\"kpi-export-jobs\""));
                     assertTrue(body.contains("id=\"refresh-evidence-btn\""));
+                    assertTrue(body.contains("id=\"operator-recovery-title\""));
+                    assertTrue(body.contains("id=\"recovery-needs-action\""));
+                    assertTrue(body.contains("id=\"recovery-retry-ready\""));
+                    assertTrue(body.contains("id=\"recovery-last-action\""));
+                    assertTrue(body.contains("id=\"recovery-latest-inspected\""));
                     assertTrue(body.contains("/assets/viewer/demo.js"));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                 });
@@ -104,6 +109,11 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("formatMilliseconds"));
             assertTrue(script.contains("renderKpiEvidence"));
             assertTrue(script.contains("formatTimestamp"));
+            assertTrue(script.contains("renderRecoveryEvidence"));
+            assertTrue(script.contains("isNeedsAction"));
+            assertTrue(script.contains("latestByTimestamp"));
+            assertTrue(script.contains("lastRecoveryAction"));
+            assertTrue(script.contains("lastInspectedAt"));
             assertTrue(script.contains("openJobDetail"));
             assertTrue(script.contains("retryActiveJob"));
             assertTrue(script.contains("/retry"));

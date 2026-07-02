@@ -9,7 +9,7 @@
 - Signed artifact link runtime: `docs/security/2026-07-02-signed-artifact-link-design.md`
 - FigJam signed tenant claims, file-backed artifact ledger, KPI snapshot
   evidence ledger, KPI snapshot export evidence API, and buyer-demo KPI
-  evidence panel flows:
+  evidence panel plus operator recovery evidence flows:
   <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>
 - Verification source head SHA before latest evidence refresh:
-  `b0f23488b8f9fe13dd3a629f0305c43e3c72b9ae`
+  `73d11f53e864f99e576e6f3d3329f9efe40a7c79`

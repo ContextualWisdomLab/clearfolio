@@ -222,6 +222,35 @@ public class ViewerUiController {
                         <p class="panel__caption" id="kpi-export-status">Snapshot evidence has not been loaded.</p>
                       </section>
 
+                      <section class="panel recovery-panel" aria-labelledby="operator-recovery-title">
+                        <div class="panel-header">
+                          <div>
+                            <h2 id="operator-recovery-title" class="panel__title">Operator recovery evidence</h2>
+                            <p class="panel__caption">Buyer-readable recovery posture from the current demo session.</p>
+                          </div>
+                        </div>
+
+                        <dl class="evidence-summary" aria-label="Operator recovery evidence">
+                          <div class="evidence-summary__item">
+                            <dt>Needs action</dt>
+                            <dd id="recovery-needs-action">0</dd>
+                          </div>
+                          <div class="evidence-summary__item">
+                            <dt>Retry-ready</dt>
+                            <dd id="recovery-retry-ready">0</dd>
+                          </div>
+                          <div class="evidence-summary__item">
+                            <dt>Last retry</dt>
+                            <dd id="recovery-last-action">n/a</dd>
+                          </div>
+                          <div class="evidence-summary__item">
+                            <dt>Latest inspected</dt>
+                            <dd id="recovery-latest-inspected">n/a</dd>
+                          </div>
+                        </dl>
+                        <p class="panel__caption" id="recovery-status">No recovery evidence has been collected in this session.</p>
+                      </section>
+
                       <section class="panel" aria-labelledby="history-title">
                         <div class="panel-header">
                           <div>

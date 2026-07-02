@@ -36,7 +36,8 @@ merge gates.
 ## Recommended Next Implementation Path
 
 1. Treat the Figma file as the visual decision board, not a Code Connect source.
-2. Merge or close duplicate Palette UX PRs before writing new UI code.
+2. Treat PR #57, `palette/viewer-ux-improvements-2659630210570478270`, as the
+   canonical UX source unless a newer live re-check supersedes it.
 3. If code work is still needed after consolidation, touch only:
    - `src/main/resources/static/assets/viewer/viewer.css`
    - `src/main/resources/static/assets/viewer/viewer.js`

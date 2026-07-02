@@ -33,6 +33,10 @@ Date: 2026-07-02
 
 ## Follow-Up Usage
 
-Use the file to decide which existing Palette UX PR should become canonical.
-After that decision, update the Figma board with the chosen PR number and only
-then implement the smallest code patch needed in the existing viewer files.
+Use PR #57, `palette/viewer-ux-improvements-2659630210570478270`, as the
+canonical UX source unless a later live re-check shows a better current-head
+candidate. The Figma board now includes this note.
+
+Implementation mode: rebase PR #57 or extract its minimal viewer patch after
+security/Sentinel conflicts are checked. Do not blindly merge it while it is
+`DIRTY`.

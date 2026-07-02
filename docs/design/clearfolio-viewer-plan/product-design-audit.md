@@ -78,6 +78,15 @@ not a source-generated component map.
 
 ## Recommended UI Scope
 
+Canonical UX source: PR #57,
+`palette/viewer-ux-improvements-2659630210570478270`.
+
+Reason: PR #57 is the approved UX candidate with current successful checks and
+the broadest useful viewer surface: refresh disabling, secure new-tab JSON
+bootstrap behavior, preview help cleanup, and a controller assertion. It is
+still `DIRTY`, so adoption should be by rebase or minimal patch extraction, not
+blind merge.
+
 If the team proceeds to code after queue consolidation, implement only:
 
 1. a clearer disabled/loading affordance for the refresh action,

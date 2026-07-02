@@ -17,6 +17,8 @@ Figma Code Connect is not used.
   [Clearfolio Buyer Demo Evidence Flow](https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM)
 - Added FigJam diagram on the same board:
   `Clearfolio KRW 2B Buyer Diligence Closure Map`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Buyer Readiness Scorecard Gate Map`.
 - Existing seeded screenshot nodes on the same board:
   desktop `25:1423`, mobile `25:1422`.
 - Figma Slides request prepared:
@@ -63,6 +65,7 @@ Acceptance:
 | P95 preview latency | Seeded demo shows 4200 ms | Less than 10 seconds for small pilot files | Needs real pilot files for production claim. |
 | KPI snapshot export | Seeded demo shows 1 export | Repeatable tenant-scoped evidence exports | Current ledger is optional local replay evidence. |
 | Commercial proof | Pricing scenarios documented | 3 design partners, then 10 paid tenants | No pilots, LOIs, or buyer import test yet. |
+| Evidence readiness | Scorecard reports 21 artifacts, 8 gates, and 38 percent conservative gate readiness | 100 percent ready gates before buyer-release claim | Current score is repository evidence readiness, not valuation proof. |
 
 ## Ponytail Architecture Decision
 
@@ -90,12 +93,14 @@ When Figma plan selection is available, generate the deck with this structure:
 4. Buyer demo journey: root shell, seeded story or upload path, evidence panel,
    job detail, viewer, recovery posture.
 5. Diligence evidence map: gates, security, compliance, integration.
-6. KRW 2B operating hurdle: KRW 400M to KRW 650M ARR path or equivalent
+6. Buyer readiness scorecard: ready evidence, partial discount risks, and claim
+   boundary.
+7. KRW 2B operating hurdle: KRW 400M to KRW 650M ARR path or equivalent
    strategic licensing value.
-7. Why no library or submodule split now.
-8. Remaining gaps that still discount the asset.
-9. Next closure order.
-10. Buyer-readiness claim boundary.
+8. Why no library or submodule split now.
+9. Remaining gaps that still discount the asset.
+10. Next closure order.
+11. Buyer-readiness claim boundary.
 
 ## Next Closure Order
 
@@ -117,6 +122,8 @@ When Figma plan selection is available, generate the deck with this structure:
   data.
 - Runtime KPI snapshots are not durable analytics until the event model is
   implemented with persistent projections.
+- The readiness scorecard measures evidence readiness only; it is not a
+  valuation opinion or production-readiness certification.
 - Gateway HMAC tenant headers are an integration scaffold, not production
   OIDC/JWT.
 - Review process and queued GitHub checks are not blockers for continuing

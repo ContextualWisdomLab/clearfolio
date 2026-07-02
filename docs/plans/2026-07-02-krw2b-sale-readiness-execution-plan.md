@@ -243,6 +243,11 @@ Progress as of 2026-07-02:
   `docs/diligence/2026-07-03-buyer-data-room-manifest.json` with a
   standard-library checker in `scripts/check_buyer_dataroom_manifest.py`, so
   sale-readiness evidence cannot silently omit required local artifacts.
+- A buyer readiness scorecard is now generated from the same manifest in
+  `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, with a
+  standard-library drift check in `scripts/summarize_buyer_readiness.py`.
+  Current evidence reports 21 artifacts, 8 readiness gates, and 38 percent
+  conservative gate readiness while preserving partial gates as discount risks.
 - Signed artifact link runtime is now implemented for current in-memory PDF
   artifacts and captured in
   `docs/security/2026-07-02-signed-artifact-link-design.md`.

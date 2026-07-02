@@ -19,11 +19,12 @@ Verification source head SHA before this evidence refresh:
 | License review | Pass, buyer-release policy checker reports 61 allowed components, 0 review-required components, 0 unlisted violations, and passes `--require-no-review` | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
 | Third-party attribution | Pass, generated buyer data-room attribution contains all 61 current SBOM components and passes drift check | `docs/legal/2026-07-03-third-party-attribution.md`, `third-party-attribution-check.log` |
 | Buyer data-room manifest | Pass, manifest references required buyer evidence artifacts and all local paths exist | `docs/diligence/2026-07-03-buyer-data-room-manifest.json`, `buyer-dataroom-manifest-check.log` |
+| Buyer readiness scorecard | Pass, generated scorecard reports 21 artifacts, 8 readiness gates, and 38 percent conservative gate readiness from the current data-room manifest | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, `buyer-readiness-scorecard-summary.json` |
 | Auth/tenant, signed artifacts, and KPI snapshots | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, production-profile fail-closed startup without signed tenant secret, signed artifact tokens, token revocation, artifact read audit API, optional file-backed artifact-link ledger replay, optional file-backed KPI snapshot ledger replay, and tenant-scoped KPI snapshot export API implemented; OIDC/JWT and centralized durable revocation/audit/analytics persistence pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact/analytics tests |
 | Buyer deployment integration | Pass for buyer sandbox scope; `buyer-demo` Spring profile, gateway-signed header contract, connector API table, OpenAPI connector seed, smoke path, and cutover gates are documented; buyer tenant import and production OIDC/JWT profile remain follow-up | `src/main/resources/application-buyer-demo.yml`, `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`, `docs/deployment/clearfolio-buyer-connector.openapi.yaml` |
 | Durable job repository design, state-store, and lifecycle event slice | Partial, code boundary implemented; `ConversionJobStateStore` routes worker success/failure and operator retry transitions, and `ConversionJobLifecycleEvent` now records process-local append-only transition evidence, while SQL persistence and restart recovery remain pending | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`, state-store and lifecycle event tests |
 | Seeded buyer-demo screenshots | Pass for local screenshot scope; seeded desktop and mobile viewports render after `Load demo story`, with no mobile horizontal overflow and uploaded FigJam screenshot nodes `25:1423` and `25:1422` | `seeded-demo-story-verification.md`, `screenshots/seeded-demo-desktop-viewport.png`, `screenshots/seeded-demo-mobile-viewport.png` |
-| Buyer diligence closure map | Pass for FigJam handoff scope; added `Clearfolio KRW 2B Buyer Diligence Closure Map` on the existing evidence board, and captured Slides generation prerequisites plus deck outline | `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md`, `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md` |
+| Buyer diligence closure map | Pass for FigJam handoff scope; added `Clearfolio KRW 2B Buyer Diligence Closure Map` and `Clearfolio Buyer Readiness Scorecard Gate Map` on the existing evidence board, and captured Slides generation prerequisites plus deck outline | `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md`, `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md` |
 | Local smoke | Pass, signed tenant claims plus file-backed artifact/KPI ledgers, KPI snapshot export API, buyer-demo KPI evidence panel, and operator recovery evidence panel | `smoke-local.txt`, `smoke-app.log`, `smoke-ui-root.txt` |
 | GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
 
@@ -77,6 +78,9 @@ Result:
   the drift check confirms that the data-room attribution file is current.
 - The buyer data-room manifest checker confirms the sale-readiness package links
   to required local evidence and current Figma/GitHub handoff URLs.
+- The buyer readiness scorecard generator reports 21 current data-room
+  artifacts, 8 readiness gates, and 38 percent conservative gate readiness while
+  keeping partial gates as discount risks.
 
 Evidence:
 
@@ -88,6 +92,7 @@ Evidence:
 - `license-policy-test.log`
 - `third-party-attribution-check.log`
 - `buyer-dataroom-manifest-check.log`
+- `buyer-readiness-scorecard-summary.json`
 - `docs/legal/2026-07-03-third-party-attribution.md`
 - `docs/security/2026-07-02-license-allowlist-review.md`
 - `docs/security/2026-07-02-license-policy.json`
@@ -108,7 +113,8 @@ Evidence:
   `Clearfolio Buyer Demo KPI Evidence Panel Flow` plus
   `Clearfolio Operator Recovery Evidence Flow` and
   `Clearfolio Conversion State Store Implementation Flow` plus
-  `Clearfolio Conversion Lifecycle Event Trail Flow`.
+  `Clearfolio Conversion Lifecycle Event Trail Flow` plus
+  `Clearfolio Buyer Readiness Scorecard Gate Map`.
 
 ## Local Smoke
 

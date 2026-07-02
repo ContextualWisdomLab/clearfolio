@@ -28,6 +28,7 @@ strict: partial evidence is marked partial, not complete.
 | Is the architecture inspectable? | Ready | `docs/architecture.md`, PRD/TRD, diagrams, package boundaries. | Target production architecture is still partly roadmap. | Target architecture diagram for durable queue/store. |
 | Are the mandatory gates reproducible? | Ready | Maven compile/test/JaCoCo/JavaDoc commands in PR #74, AGENTS gate policy, and `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md`. | GitHub hosted checks are queued. | Attach CI pass or queued-check explanation when available. |
 | Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=48`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
+| Is buyer-readiness status summarized without hiding gaps? | Ready | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md` reports 21 artifacts, 8 readiness gates, and 38 percent conservative gate readiness from the current data-room manifest. | Scorecard is evidence readiness only, not valuation or production-readiness proof. | Keep scorecard drift check green as manifest contents change. |
 | Is request handling non-blocking? | Ready | WebFlux controller path and `DefaultDocumentConversionService` enqueue behavior. | Real converter runtime is not integrated. | Converter adapter contract and load-test plan. |
 | Is persistence production-grade? | Partial | `ConversionJobRepository` read/dedupe abstraction, `ConversionJobStateStore` lifecycle transition boundary, and process-local `ConversionJobLifecycleEvent` trail exist in code; `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md` defines target tables, transition events, worker recovery, and migration sequence. | Durable SQL implementation is not built, lifecycle events are still process-local, and restart recovery is not implemented. | SQL repository profile, restart recovery tests, and durable event projections. |
 | Are artifacts production-grade? | Partial | In-memory PDF artifact store, signed artifact-token runtime, optional file-backed artifact link ledger replay, tenant-scoped token revocation, artifact read audit API, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, centralized revocation table, centralized read audit, or retention policy. | Durable artifact metadata and centralized revocation/audit implementation. |
@@ -60,6 +61,7 @@ strict: partial evidence is marked partial, not complete.
 | Baseline sale-readiness PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/74> |
 | Sale-readiness plan | `docs/plans/2026-07-02-krw2b-sale-readiness-execution-plan.md` |
 | Buyer data-room manifest | `docs/diligence/2026-07-03-buyer-data-room-manifest.json`, `scripts/check_buyer_dataroom_manifest.py` |
+| Buyer readiness scorecard | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, `scripts/summarize_buyer_readiness.py`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/buyer-readiness-scorecard-summary.json` |
 | Business model | `docs/business/2026-07-02-krw2b-valuation-kpi-model.md` |
 | FigJam handoff | `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md` |
 | Buyer diligence Slides and closure map handoff | `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md` |
@@ -84,7 +86,8 @@ strict: partial evidence is marked partial, not complete.
 ## Next Closure Order
 
 1. Keep buyer-release license-policy, attribution drift, and buyer data-room
-   manifest checks current, then obtain final legal release review.
+   manifest plus readiness scorecard checks current, then obtain final legal
+   release review.
 2. Use configured gateway-signed tenant headers for buyer deployments, then
    replace the scaffold with validated gateway/OIDC JWT claims.
 3. Import-test the connector seed and add a buyer-specific gateway/OIDC

@@ -28,6 +28,18 @@
       "title": "Buyer diligence index"
     },
     {
+      "id": "buyer-data-room-manifest",
+      "path": "docs/diligence/2026-07-03-buyer-data-room-manifest.json",
+      "status": "ready",
+      "title": "Buyer data-room manifest"
+    },
+    {
+      "id": "buyer-readiness-scorecard",
+      "path": "docs/diligence/2026-07-03-buyer-readiness-scorecard.md",
+      "status": "ready",
+      "title": "Buyer readiness scorecard"
+    },
+    {
       "id": "valuation-kpi-model",
       "path": "docs/business/2026-07-02-krw2b-valuation-kpi-model.md",
       "status": "ready",
@@ -162,6 +174,15 @@
         "sbom",
         "license-review",
         "third-party-attribution"
+      ]
+    },
+    {
+      "id": "readiness-scorecard",
+      "status": "ready",
+      "evidence": [
+        "buyer-data-room-manifest",
+        "buyer-readiness-scorecard",
+        "diligence-index"
       ]
     },
     {

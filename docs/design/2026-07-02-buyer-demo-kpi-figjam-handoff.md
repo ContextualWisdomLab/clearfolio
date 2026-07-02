@@ -45,6 +45,8 @@ Date: 2026-07-02
   desktop node `25:1423`, mobile node `25:1422`.
 - Added FigJam diagram on the same board:
   `Clearfolio KRW 2B Buyer Diligence Closure Map`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Buyer Readiness Scorecard Gate Map`.
 - Buyer diligence Slides handoff:
   `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md`.
 - Figma Code Connect: not used.
@@ -96,6 +98,7 @@ Date: 2026-07-02
 | Lifecycle event trail | `ConversionJobLifecycleEvent` | Proves ordered transition evidence in the current runtime without storing filenames, content hashes, artifact paths, signed tokens, or raw converter errors. |
 | Seeded demo story | `demo-fixtures.json` | Gives screenshots, FigJam, and buyer-deck review one deterministic local story covering success, processing, unsupported-format, dead-letter, KPI snapshot, and KPI export evidence. |
 | Buyer diligence closure map | FigJam diagram plus `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md` | Aligns Product Design, Data Analytics, Figma, Superpowers, and Ponytail workstreams around current proof, open gaps, and next closure order. |
+| Buyer readiness scorecard | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md` plus FigJam scorecard gate map | Quantifies 21 data-room artifacts, 8 readiness gates, and 38 percent conservative gate readiness without hiding partial discount risks. |
 
 ## Mermaid Source
 

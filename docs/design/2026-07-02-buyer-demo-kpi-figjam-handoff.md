@@ -582,6 +582,7 @@ flowchart LR
     review["Engineering review"]
     legal{"Legal decision"}
     approve["Approve route"]
+    attribution["Third-party attribution"]
     replace["Replace dependency"]
     remove["Remove dependency"]
     gate["CI allowlist gate"]
@@ -594,7 +595,8 @@ flowchart LR
     legal -->|"Allowed"| approve
     legal -->|"Not allowed"| replace
     legal -->|"Not needed"| remove
-    approve -->|"Locks policy"| gate
+    approve -->|"Renders notices"| attribution
+    attribution -->|"Locks package"| gate
     replace -->|"Rerun SBOM"| sbom
     remove -->|"Rerun SBOM"| sbom
     gate -->|"Prevents drift"| buyer
@@ -604,6 +606,7 @@ flowchart LR
     style legal fill:#FFECBD,stroke:#FFC943
     style replace fill:#FFCDC2,stroke:#FF7556
     style remove fill:#FFCDC2,stroke:#FF7556
+    style attribution fill:#C2E5FF,stroke:#3DADFF
     style gate fill:#C2E5FF,stroke:#3DADFF
     style buyer fill:#DCCCFF,stroke:#874FFF
 ```

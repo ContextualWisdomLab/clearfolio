@@ -93,6 +93,34 @@ Claim boundary:
 - It is not a buyer-tenant-imported connector package yet.
 - It is not a production OIDC/JWT deployment profile.
 
+## Third-Party Attribution Verification
+
+Date: 2026-07-03T08:12:32+0900
+
+Source head before this attribution slice:
+`6cfdcc0e3cf8b9076b5cea2f01277c56772c3671`
+
+This slice adds a buyer data-room attribution package generated from the current
+CycloneDX SBOM, plus a drift check that fails when the generated file no longer
+matches the SBOM.
+
+Validation:
+
+| Gate | Result |
+| --- | --- |
+| TDD red check | `python3 scripts/test_render_third_party_attribution.py` first failed because `render_third_party_attribution` did not exist. |
+| Targeted renderer tests | `python3 scripts/test_render_third_party_attribution.py` passed, 2 tests. |
+| Attribution render | `python3 scripts/render_third_party_attribution.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --output docs/legal/2026-07-03-third-party-attribution.md` generated the current data-room notice. |
+| Attribution drift check | `python3 scripts/render_third_party_attribution.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --output docs/legal/2026-07-03-third-party-attribution.md --check` passed and is recorded in `third-party-attribution-check.log`. |
+
+Claim boundary:
+
+- The attribution package is engineering-generated evidence, not legal advice.
+- Final legal release review is still required before signed sale or enterprise
+  redistribution.
+- No separate library, submodule, or new dependency was added; the renderer uses
+  only the Python standard library.
+
 ## Durable Job Repository Design Verification
 
 Date: 2026-07-02T21:39:41+0900

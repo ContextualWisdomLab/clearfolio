@@ -17,6 +17,7 @@ Verification source head SHA before this evidence refresh:
 | SAST | Pass, 0 findings | `semgrep.log`, `semgrep.json` |
 | SBOM | Pass, CycloneDX 1.6, 61 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
 | License review | Pass, buyer-release policy checker reports 61 allowed components, 0 review-required components, 0 unlisted violations, and passes `--require-no-review` | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
+| Third-party attribution | Pass, generated buyer data-room attribution contains all 61 current SBOM components and passes drift check | `docs/legal/2026-07-03-third-party-attribution.md`, `third-party-attribution-check.log` |
 | Auth/tenant, signed artifacts, and KPI snapshots | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, artifact read audit API, optional file-backed artifact-link ledger replay, optional file-backed KPI snapshot ledger replay, and tenant-scoped KPI snapshot export API implemented; OIDC/JWT and centralized durable revocation/audit/analytics persistence pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact/analytics tests |
 | Buyer deployment integration | Pass for buyer sandbox scope; `buyer-demo` Spring profile, gateway-signed header contract, connector API table, OpenAPI connector seed, smoke path, and cutover gates are documented; buyer tenant import and production OIDC/JWT profile remain follow-up | `src/main/resources/application-buyer-demo.yml`, `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`, `docs/deployment/clearfolio-buyer-connector.openapi.yaml` |
 | Durable job repository design, state-store, and lifecycle event slice | Partial, code boundary implemented; `ConversionJobStateStore` routes worker success/failure and operator retry transitions, and `ConversionJobLifecycleEvent` now records process-local append-only transition evidence, while SQL persistence and restart recovery remain pending | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`, state-store and lifecycle event tests |
@@ -70,6 +71,9 @@ Result:
 - The standard-library license policy checker passes buyer-release mode:
   61 allowed components, 0 review-required components, and 0 unlisted
   violations with `--require-no-review`.
+- The standard-library attribution renderer generates
+  `docs/legal/2026-07-03-third-party-attribution.md` from the same SBOM and
+  the drift check confirms that the data-room attribution file is current.
 
 Evidence:
 
@@ -79,6 +83,8 @@ Evidence:
 - `license-policy.log`
 - `license-policy-summary.json`
 - `license-policy-test.log`
+- `third-party-attribution-check.log`
+- `docs/legal/2026-07-03-third-party-attribution.md`
 - `docs/security/2026-07-02-license-allowlist-review.md`
 - `docs/security/2026-07-02-license-policy.json`
 - `docs/security/2026-07-02-auth-tenant-model.md`

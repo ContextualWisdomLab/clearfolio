@@ -40,7 +40,7 @@ strict: partial evidence is marked partial, not complete.
 | Are risky formats controlled? | Ready | HWP/HWPX default block, policy-override headers with token fingerprint logging, and `docs/security/2026-07-02-threat-model-data-handling.md`. | Policy ownership and approval workflow are not externalized. | Policy-owner matrix. |
 | Are browser security headers present? | Ready | `ViewerSecurityHeadersWebFilter` applies viewer browser headers. | CSP/frame policy still needs production domain matrix. | Deployment security profile. |
 | Is auth/RBAC implemented? | Partial | Header-claim runtime enforcement exists for JSON APIs and artifact links: `TenantAccessService`, tenant-owned `ConversionJob`, tenant-aware dedupe, cross-tenant `404`, tenant-filtered KPI snapshots, optional gateway HMAC validation for tenant headers, signed artifact-token reads, token revocation, optional file-backed artifact ledger replay, and artifact read audit events. Auth/tenant design exists in `docs/security/2026-07-02-auth-tenant-model.md`. | OIDC/JWT issuer/audience/expiry validation, role mapping, managed secret rotation, and centralized audit events are not implemented. | Validated gateway/OIDC claims plus durable audit/revocation store. |
-| Is there license/SBOM evidence? | Ready | CycloneDX SBOM evidence exists under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; engineering review exists in `docs/security/2026-07-02-license-allowlist-review.md`; the unused broad Tika parser package was removed; Spring Boot default Logback and Jakarta annotation paths were replaced or excluded; `DependencyPolicyTest` prevents reintroduction; `scripts/check_sbom_license_policy.py --require-no-review` reports 61 allowed components, 0 review-required components, and 0 unlisted violations. | Final attribution/legal release review still belongs in the buyer data-room process. | Attribution package and final legal release review. |
+| Is there license/SBOM evidence? | Ready | CycloneDX SBOM evidence exists under `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`; engineering review exists in `docs/security/2026-07-02-license-allowlist-review.md`; the unused broad Tika parser package was removed; Spring Boot default Logback and Jakarta annotation paths were replaced or excluded; `DependencyPolicyTest` prevents reintroduction; `scripts/check_sbom_license_policy.py --require-no-review` reports 61 allowed components, 0 review-required components, and 0 unlisted violations; `docs/legal/2026-07-03-third-party-attribution.md` is generated from the same SBOM and has a drift check. | Final legal release review still belongs in the buyer data-room process. | Legal sign-off on the generated attribution and redistribution package. |
 | Is data handling documented? | Partial | `docs/security/2026-07-02-threat-model-data-handling.md` maps current data classes, trust boundaries, and retention limits. | Production retention policy, tenant ACLs, and durable encrypted stores are not implemented. | Production data-retention policy. |
 
 ## Commercial Diligence
@@ -67,6 +67,7 @@ strict: partial evidence is marked partial, not complete.
 | Auth and tenant model | `docs/security/2026-07-02-auth-tenant-model.md` |
 | License allowlist review | `docs/security/2026-07-02-license-allowlist-review.md` |
 | License policy checker | `docs/security/2026-07-02-license-policy.json`, `scripts/check_sbom_license_policy.py`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/license-policy-summary.json` |
+| Third-party attribution package | `docs/legal/2026-07-03-third-party-attribution.md`, `scripts/render_third_party_attribution.py` |
 | Durable metrics event model | `docs/analytics/2026-07-02-durable-metrics-event-model.md` |
 | SBOM evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-status.txt` |
 | SAST evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json` |
@@ -81,8 +82,8 @@ strict: partial evidence is marked partial, not complete.
 
 ## Next Closure Order
 
-1. Keep buyer-release license-policy evidence current and prepare the final
-   attribution/legal release review package.
+1. Keep buyer-release license-policy and attribution drift checks current, then
+   obtain final legal release review.
 2. Use configured gateway-signed tenant headers for buyer deployments, then
    replace the scaffold with validated gateway/OIDC JWT claims.
 3. Import-test the connector seed and add a buyer-specific gateway/OIDC

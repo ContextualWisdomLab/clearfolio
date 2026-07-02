@@ -16,6 +16,8 @@ sale, enterprise license, or buyer data-room handoff.
 | Engineering policy | `docs/security/2026-07-02-license-policy.json` |
 | Policy checker | `scripts/check_sbom_license_policy.py` |
 | Policy check evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/license-policy-summary.json` |
+| Third-party attribution package | `docs/legal/2026-07-03-third-party-attribution.md` |
+| Attribution drift checker | `scripts/render_third_party_attribution.py` |
 
 ## Engineering Policy
 
@@ -58,12 +60,14 @@ Removed before buyer-release mode:
 
 The repository is now SBOM-visible and passes the engineering buyer-release
 license policy with `--require-no-review`. A buyer can inspect the generated
-SBOM, the policy file, and the policy-check evidence without seeing a known
-review-required dependency exception.
+SBOM, the generated third-party attribution package, the policy file, and the
+policy-check evidence without seeing a known review-required dependency
+exception.
 
 Before a signed sale or enterprise redistribution, legal should still review the
-final attribution package and distribution model. That is a normal release
-approval step, not a known dependency replacement blocker in the current SBOM.
+generated attribution package and distribution model. That is a normal release
+approval step, not a missing engineering artifact or known dependency
+replacement blocker in the current SBOM.
 
 ## KRW 2B Sale-Readiness KPI
 
@@ -73,6 +77,7 @@ approval step, not a known dependency replacement blocker in the current SBOM.
 | Flagged components with legal decision | 100 percent | 0 open flagged components | Ready |
 | Disallowed copyleft runtime dependencies | 0 | 0 known policy violations | Ready |
 | Automated allowlist enforcement | Required | Buyer-release mode passes with `--require-no-review` | Ready |
+| Attribution package freshness | Required | `docs/legal/2026-07-03-third-party-attribution.md` matches the current SBOM | Ready |
 
 This KPI belongs in the buyer diligence pack because unresolved license
 questions can directly reduce acquisition value, slow legal review, or force a
@@ -90,9 +95,11 @@ allowlist decision path plus a small standard-library policy checker.
 3. Run `scripts/check_sbom_license_policy.py` against each generated SBOM. It
    passes only when every component is either explicitly allowed or listed as a
    known review-required component.
-4. If a component is rejected, remove or replace it before building a buyer
+4. Run `scripts/render_third_party_attribution.py --check` so the buyer
+   attribution package cannot drift from the current SBOM.
+5. If a component is rejected, remove or replace it before building a buyer
    data-room package.
-5. For buyer-release mode, run the checker with `--require-no-review`; any
+6. For buyer-release mode, run the checker with `--require-no-review`; any
    future review-required component will fail until legal approves it or
    engineering replaces it.
 
@@ -103,5 +110,5 @@ allowlist decision path plus a small standard-library policy checker.
 | Can a buyer see all dependency license metadata? | Yes. |
 | Can Clearfolio claim engineering buyer-release license-policy clearance? | Yes. The current SBOM passes with zero review-required components and zero violations. |
 | Is there automated drift detection? | Yes. The policy checker reports 61 allowed components, 0 review-required components, and 0 unlisted violations for the current SBOM. |
-| Is there an actionable next step? | Yes. Keep the buyer-release policy gate in CI evidence and prepare final attribution/legal review for the buyer data room. |
+| Is there an actionable next step? | Yes. Keep the buyer-release policy gate and attribution drift check in CI evidence, then obtain final legal review for the buyer data room. |
 | Is a repository split or submodule needed for license closure? | No. The risk is dependency policy, not code ownership. |

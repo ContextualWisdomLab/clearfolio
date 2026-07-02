@@ -234,6 +234,11 @@ Progress as of 2026-07-02:
   `docs/security/2026-07-02-license-policy.json`; current evidence reports
   61 allowed components, 0 review-required components, and 0 unlisted
   violations with `--require-no-review`.
+- A standard-library third-party attribution renderer is now captured in
+  `scripts/render_third_party_attribution.py`; it generates
+  `docs/legal/2026-07-03-third-party-attribution.md` from the current SBOM and
+  provides a `--check` mode so the buyer data-room attribution file cannot
+  drift silently.
 - Signed artifact link runtime is now implemented for current in-memory PDF
   artifacts and captured in
   `docs/security/2026-07-02-signed-artifact-link-design.md`.

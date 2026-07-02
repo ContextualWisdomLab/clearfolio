@@ -151,10 +151,15 @@ python3 scripts/check_sbom_license_policy.py \
   --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json \
   --policy docs/security/2026-07-02-license-policy.json \
   --require-no-review
+python3 scripts/render_third_party_attribution.py \
+  --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json \
+  --output docs/legal/2026-07-03-third-party-attribution.md \
+  --check
 ```
 
 Buyer-release mode must keep `--require-no-review` enabled so any future
-review-required component fails before buyer handoff.
+review-required component fails before buyer handoff. The attribution `--check`
+must also pass so the buyer data-room notice matches the current SBOM.
 
 ## Diligence Handoff Checklist
 
@@ -167,6 +172,7 @@ Before a buyer sandbox is shown, attach:
 - `src/main/resources/application-buyer-demo.yml`;
 - `docs/security/2026-07-02-auth-tenant-model.md`;
 - `docs/security/2026-07-02-signed-artifact-link-design.md`;
+- `docs/legal/2026-07-03-third-party-attribution.md`;
 - `docs/analytics/2026-07-02-durable-metrics-event-model.md`;
 - FigJam board:
   <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>.
@@ -208,7 +214,8 @@ contracts independently.
 The buyer sandbox should not be promoted to production until these gates close:
 
 - buyer-release license-policy evidence remains green with
-  `--require-no-review` and final attribution/legal release review is prepared;
+  `--require-no-review`, attribution drift check remains green, and final legal
+  release review is obtained;
 - validated gateway or OIDC JWT issuer, audience, expiry, key rotation, and role
   mapping;
 - durable conversion job repository with persisted state transitions;

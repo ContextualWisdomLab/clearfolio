@@ -35,6 +35,7 @@ def check_manifest(root: Path, manifest: dict) -> dict:
         gates = []
 
     artifact_ids: set[str] = set()
+    artifact_status_by_id: dict[str, str] = {}
     for artifact in artifacts:
         artifact_id = str(artifact.get("id", "")).strip()
         if not artifact_id:
@@ -44,6 +45,7 @@ def check_manifest(root: Path, manifest: dict) -> dict:
             errors.append(f"duplicate artifact id: {artifact_id}")
         artifact_ids.add(artifact_id)
         status = str(artifact.get("status", "")).strip()
+        artifact_status_by_id[artifact_id] = status
         if status not in VALID_STATUSES:
             errors.append(f"artifact {artifact_id} has invalid status: {status}")
         path = str(artifact.get("path", "")).strip()
@@ -73,6 +75,13 @@ def check_manifest(root: Path, manifest: dict) -> dict:
         for artifact_id in evidence:
             if artifact_id not in artifact_ids:
                 errors.append(f"gate {gate_id} references unknown artifact: {artifact_id}")
+                continue
+            artifact_status = artifact_status_by_id.get(artifact_id, "")
+            if status == "ready" and artifact_status != "ready":
+                errors.append(
+                    f"ready gate {gate_id} references non-ready artifact "
+                    f"{artifact_id}: {artifact_status}"
+                )
 
     return {
         "artifactCount": len(artifacts),

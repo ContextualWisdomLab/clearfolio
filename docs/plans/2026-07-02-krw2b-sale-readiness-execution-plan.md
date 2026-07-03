@@ -250,7 +250,8 @@ Progress as of 2026-07-02:
 - A buyer data-room manifest is now captured in
   `docs/diligence/2026-07-03-buyer-data-room-manifest.json` with a
   standard-library checker in `scripts/check_buyer_dataroom_manifest.py`, so
-  sale-readiness evidence cannot silently omit required local artifacts.
+  sale-readiness evidence cannot silently omit required local artifacts or mark
+  a gate ready while citing partial or external evidence.
 - A buyer readiness scorecard is now generated from the same manifest in
   `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, with a
   standard-library drift check in `scripts/summarize_buyer_readiness.py`.

@@ -75,6 +75,28 @@ class BuyerDataRoomManifestTest(unittest.TestCase):
             result["errors"],
         )
 
+    def test_reports_ready_gate_that_references_partial_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "docs").mkdir()
+            (root / "docs" / "draft.md").write_text("draft\n", encoding="utf-8")
+
+            result = check_manifest(root, {
+                "manifestVersion": 1,
+                "packageName": "Clearfolio Buyer Data Room",
+                "artifacts": [
+                    {"id": "draft", "path": "docs/draft.md", "status": "partial"}
+                ],
+                "readinessGates": [
+                    {"id": "buyer-demo", "status": "ready", "evidence": ["draft"]}
+                ],
+            })
+
+            self.assertIn(
+                "ready gate buyer-demo references non-ready artifact draft: partial",
+                result["errors"],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

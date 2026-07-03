@@ -21,6 +21,8 @@ Figma Code Connect is not used.
   `Clearfolio Buyer Readiness Scorecard Gate Map`.
 - Added FigJam diagram on the same board:
   `Clearfolio Buyer Diligence Slides Storyboard`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Ready Gate Evidence Integrity Check`.
 - Existing seeded screenshot nodes on the same board:
   desktop `25:1423`, mobile `25:1422`.
 - Figma Slides generation payload:
@@ -56,6 +58,8 @@ Acceptance:
 - KPI copy must stay buyer-readable and map to implementation fields.
 - Gap labels must remain explicit; partial evidence must not be styled as
   complete.
+- Buyer data-room gates marked `ready` must cite only artifacts that are also
+  marked `ready`.
 - Static seeded demo evidence must be labeled as local demo evidence, not
   production data.
 

@@ -45,7 +45,7 @@ let activeJobDetail = null;
 
 function loadHistory() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed : [];
   } catch (err) {
@@ -54,7 +54,7 @@ function loadHistory() {
 }
 
 function saveHistory(history) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 12)));
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 12)));
 }
 
 function setStatus(message) {

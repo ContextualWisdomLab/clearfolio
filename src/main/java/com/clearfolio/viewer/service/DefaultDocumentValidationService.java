@@ -2,10 +2,14 @@ package com.clearfolio.viewer.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Set;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,8 +90,15 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
                 throw new IllegalStateException("Policy override secret is not configured.");
             }
 
-            String expectedSignature = computeSignature(approverId, extension, policyOverrideSecret);
-            if (!MessageDigest.isEqual(approvalToken.getBytes(StandardCharsets.UTF_8), expectedSignature.getBytes(StandardCharsets.UTF_8))) {
+            byte[] providedBytes;
+            try {
+                providedBytes = HexFormat.of().parseHex(approvalToken);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid policy override signature.", e);
+            }
+
+            byte[] expectedBytes = computeSignature(approverId, extension, policyOverrideSecret);
+            if (!MessageDigest.isEqual(providedBytes, expectedBytes)) {
                 throw new IllegalArgumentException("Invalid policy override signature.");
             }
 
@@ -148,14 +159,14 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         return value.trim();
     }
 
-    private String computeSignature(String approverId, String extension, String secret) {
+    private byte[] computeSignature(String approverId, String extension, String secret) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            String payload = approverId + ":" + extension + ":" + secret;
-            byte[] hashed = digest.digest(payload.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashed);
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 digest unavailable", ex);
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            String payload = approverId + ":" + extension;
+            return mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
+            throw new IllegalStateException("HmacSHA256 unavailable or key invalid", ex);
         }
     }
 

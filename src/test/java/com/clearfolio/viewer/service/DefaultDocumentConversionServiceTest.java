@@ -75,7 +75,7 @@ class DefaultDocumentConversionServiceTest {
     }
 
     @Test
-    void submitGeneratesExpectedSha256HexContentHash() {
+    void testContentHashGeneration() {
         ConversionJobRepository repository = mock(ConversionJobRepository.class);
         RecordingConversionWorker worker = new RecordingConversionWorker();
         DocumentConversionService service = new DefaultDocumentConversionService(

@@ -102,7 +102,7 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("/api/v1/analytics/kpi-snapshot-exports"));
             assertTrue(script.contains("/viewer/"));
             assertTrue(script.contains("FormData"));
-            assertTrue(script.contains("sessionStorage"));
+            assertTrue(script.contains("localStorage"));
             assertTrue(script.contains("clearfolio-demo-history-v1"));
             assertTrue(script.contains("setTimeout"));
             assertTrue(script.contains("formatPercent"));

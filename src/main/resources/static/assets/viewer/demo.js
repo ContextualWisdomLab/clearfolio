@@ -140,12 +140,11 @@ function renderHistory(history = loadHistory()) {
     const submittedCell = document.createElement("td");
     const actionsCell = document.createElement("td");
 
+    const docName = job.fileName || job.jobId || "document";
     fileCell.textContent = job.fileName || "Document";
     statusCell.textContent = job.status || "SUBMITTED";
     submittedCell.textContent = job.submittedAt || "";
     actionsCell.className = "table-actions";
-
-    const docName = job.fileName || job.jobId || "document";
 
     if (job.statusUrl) {
       actionsCell.appendChild(createActionButton("Details", () => {

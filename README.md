@@ -1,6 +1,6 @@
 # Clearfolio Viewer
 
-This repository contains the MVP backend for an integrated document viewer platform.
+This repository contains the backend for an integrated document viewer platform.
 The current implementation includes non-blocking submit, job status polling, and
 asynchronous conversion that produces an in-memory PDF artifact for preview.
 
@@ -91,7 +91,7 @@ profile and follow
 
 Current release claim boundary:
 - Mandatory gates are validated through committed evidence under `docs/qa/evidence/`.
-- Optional DB pooler/PostgreSQL 17 tracks are documented only and not executed in this MVP release.
+- Optional DB pooler/PostgreSQL 17 tracks are documented only and not executed in this release.
 - Conversion lifecycle transitions now use an explicit in-repo state-store
   boundary and append a process-local lifecycle event trail for submission,
   dedupe hits, processing start, retry scheduling, success, failure, and

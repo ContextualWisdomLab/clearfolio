@@ -51,20 +51,26 @@ class DefaultDocumentConversionServiceTest {
 
         DocumentConversionService service = new DefaultDocumentConversionService(
                 repository,
-                new DefaultDocumentValidationService(props),
+                file -> {}, // Mock validation to bypass early getSize() check
                 worker,
                 props
         );
 
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "large.txt",
-                "text/plain",
-                "this-content-is-definitely-larger-than-10-bytes".getBytes(StandardCharsets.UTF_8)
-        );
+        MultipartFile file = mock(MultipartFile.class);
+        when(file.getOriginalFilename()).thenReturn("large.txt");
+        when(file.getContentType()).thenReturn("text/plain");
+        when(file.getSize()).thenReturn(5L); // Fake a small size to bypass preliminary checks
 
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> service.submit(file));
-        assertTrue(error.getMessage().contains("File is too large."));
+        try {
+            when(file.getInputStream()).thenReturn(new ByteArrayInputStream(
+                "this-content-is-definitely-larger-than-10-bytes".getBytes(StandardCharsets.UTF_8)
+            ));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, () -> service.submit(file));
+        assertTrue(error.getMessage().contains("Upload exceeds maximum allowed size"));
         assertEquals(0, worker.enqueuedCount());
     }
 

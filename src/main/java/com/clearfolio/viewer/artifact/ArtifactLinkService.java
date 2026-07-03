@@ -423,7 +423,7 @@ public class ArtifactLinkService {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] raw = digest.digest(bytes);
-            // Bolt optimization: use HexFormat for faster string allocation without looping overhead
+            // Bolt optimization: use HexFormat to avoid per-byte String.format allocations
             return java.util.HexFormat.of().formatHex(raw);
         } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);

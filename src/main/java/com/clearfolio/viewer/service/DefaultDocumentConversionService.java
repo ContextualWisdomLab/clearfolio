@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.clearfolio.viewer.auth.TenantContext;
+import java.util.HexFormat;
+
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
@@ -25,6 +27,8 @@ import com.clearfolio.viewer.config.ConversionProperties;
  */
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
+
+    private static final HexFormat HEX_FORMAT = HexFormat.of();
 
     private final ConversionJobRepository repository;
     private final ConversionJobStateStore stateStore;
@@ -160,12 +164,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString();
+            return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

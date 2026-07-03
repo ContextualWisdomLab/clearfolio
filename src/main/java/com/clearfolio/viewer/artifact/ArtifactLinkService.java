@@ -12,6 +12,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.HexFormat;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -57,6 +58,7 @@ public class ArtifactLinkService {
     private static final int TOKEN_FIELD_COUNT = 10;
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder URL_DECODER = Base64.getUrlDecoder();
+    private static final HexFormat HEX_FORMAT = HexFormat.of();
 
     private final ArtifactStore artifactStore;
     private final ArtifactLinkLedger artifactLinkLedger;
@@ -423,11 +425,7 @@ public class ArtifactLinkService {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] raw = digest.digest(bytes);
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
+            return HEX_FORMAT.formatHex(raw);
         } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

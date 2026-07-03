@@ -145,8 +145,9 @@ function renderHistory(history = loadHistory()) {
     submittedCell.textContent = job.submittedAt || "";
     actionsCell.className = "table-actions";
 
+    const docName = job.fileName || job.jobId || "document";
+
     if (job.statusUrl) {
-      const docName = job.fileName || "document";
       actionsCell.appendChild(createActionButton("Details", () => {
         void openJobDetail(job);
       }, `View details for ${docName}`));
@@ -155,7 +156,6 @@ function renderHistory(history = loadHistory()) {
       }, `Open status JSON for ${docName} in a new tab`));
     }
     if (job.jobId) {
-      const docName = job.fileName || "document";
       actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer", `Open viewer for ${docName} in a new tab`));
     }
 

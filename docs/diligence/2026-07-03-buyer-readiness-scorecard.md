@@ -13,6 +13,7 @@ Only `ready` gates count toward the conservative readiness percentage.
 | Artifacts | 23 total; ready=15, partial=8, external=0 |
 | Readiness gates | 8 total; ready=3, partial=5, external=0 |
 | Conservative gate readiness | 38 percent |
+| Ready gate evidence integrity | Pass: all ready gates cite ready artifacts |
 
 ## Gate Matrix
 
@@ -34,6 +35,10 @@ Only `ready` gates count toward the conservative readiness percentage.
 - `security-compliance` remains `partial`.
 - `buyer-integration` remains `partial`.
 - `production-durability` remains `partial`.
+
+## Ready Gate Evidence Integrity
+
+- All `ready` gates cite only `ready` artifacts.
 
 ## Claim Boundary
 

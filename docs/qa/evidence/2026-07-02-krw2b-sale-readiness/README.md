@@ -19,7 +19,7 @@ Verification source head SHA before this evidence refresh:
 | License review | Pass, buyer-release policy checker reports 61 allowed components, 0 review-required components, 0 unlisted violations, and passes `--require-no-review` | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
 | Third-party attribution | Pass, generated buyer data-room attribution contains all 61 current SBOM components and passes drift check | `docs/legal/2026-07-03-third-party-attribution.md`, `third-party-attribution-check.log` |
 | Buyer data-room manifest | Pass, manifest references required buyer evidence artifacts, all local paths exist, and ready gates reference only ready artifacts | `docs/diligence/2026-07-03-buyer-data-room-manifest.json`, `buyer-dataroom-manifest-check.log` |
-| Buyer readiness scorecard | Pass, generated scorecard reports 23 artifacts, 8 readiness gates, and 38 percent conservative gate readiness from the current data-room manifest | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, `buyer-readiness-scorecard-summary.json` |
+| Buyer readiness scorecard | Pass, generated scorecard reports 23 artifacts, 8 readiness gates, 38 percent conservative gate readiness, and ready-gate evidence integrity pass from the current data-room manifest | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, `buyer-readiness-scorecard-summary.json` |
 | Figma Slides generation payload | Pass, payload check reports 11 slides, 4 objectives, and 0 errors; actual Slides generation still requires Figma team or organization plan selection | `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json`, `figma-deck-payload-check.json` |
 | Auth/tenant, signed artifacts, and KPI snapshots | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, production-profile fail-closed startup without signed tenant secret, signed artifact tokens, token revocation, artifact read audit API, optional file-backed artifact-link ledger replay, optional file-backed KPI snapshot ledger replay, and tenant-scoped KPI snapshot export API implemented; OIDC/JWT and centralized durable revocation/audit/analytics persistence pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact/analytics tests |
 | Buyer deployment integration | Pass for buyer sandbox scope; `buyer-demo` Spring profile, gateway-signed header contract, connector API table, OpenAPI connector seed, smoke path, and cutover gates are documented; buyer tenant import and production OIDC/JWT profile remain follow-up | `src/main/resources/application-buyer-demo.yml`, `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`, `docs/deployment/clearfolio-buyer-connector.openapi.yaml` |
@@ -81,8 +81,9 @@ Result:
   to required local evidence and current Figma/GitHub handoff URLs, and prevents
   ready gates from citing partial or external artifacts as complete evidence.
 - The buyer readiness scorecard generator reports 23 current data-room
-  artifacts, 8 readiness gates, and 38 percent conservative gate readiness while
-  keeping partial gates as discount risks.
+  artifacts, 8 readiness gates, 38 percent conservative gate readiness, and
+  ready-gate evidence integrity pass while keeping partial gates as discount
+  risks.
 - The Figma Slides payload checker confirms the buyer diligence deck payload has
   11 slides, 4 objectives, explicit no-Code-Connect wording, readiness
   scorecard content, discount-risk content, and claim-boundary wording.

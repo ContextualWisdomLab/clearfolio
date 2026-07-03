@@ -34,6 +34,25 @@ def evidence_statuses(gate: dict, artifacts_by_id: dict[str, dict]) -> list[str]
     return statuses
 
 
+def ready_gate_evidence_violations(gates: list[dict], artifacts_by_id: dict[str, dict]) -> list[dict]:
+    violations: list[dict] = []
+    for gate in gates:
+        if str(gate.get("status", "")).strip() != "ready":
+            continue
+        gate_id = str(gate.get("id", ""))
+        for artifact_id in gate.get("evidence", []):
+            artifact_status = str(
+                artifacts_by_id.get(str(artifact_id), {}).get("status", "missing")
+            ).strip() or "missing"
+            if artifact_status != "ready":
+                violations.append({
+                    "gateId": gate_id,
+                    "artifactId": str(artifact_id),
+                    "artifactStatus": artifact_status,
+                })
+    return violations
+
+
 def buyer_interpretation(status: str) -> str:
     if status == "ready":
         return "Ready for buyer walkthrough."
@@ -50,6 +69,7 @@ def summarize_manifest(manifest: dict) -> dict:
     gate_count = len(gates)
     ready_gate_count = gate_status_counts.get("ready", 0)
     readiness_percent = round((ready_gate_count / gate_count) * 100) if gate_count else 0
+    ready_evidence_violations = ready_gate_evidence_violations(gates, artifacts_by_id)
 
     gate_summaries = [
         {
@@ -69,6 +89,8 @@ def summarize_manifest(manifest: dict) -> dict:
         "gateCount": gate_count,
         "gateStatusCounts": gate_status_counts,
         "conservativeGateReadinessPercent": readiness_percent,
+        "readyGateEvidenceIntegrity": not ready_evidence_violations,
+        "readyGateEvidenceViolations": ready_evidence_violations,
         "gateSummaries": gate_summaries,
         "discountRiskGates": [
             {"id": gate["id"], "status": gate["status"]}
@@ -80,6 +102,12 @@ def summarize_manifest(manifest: dict) -> dict:
 
 def format_counts(counts: dict[str, int]) -> str:
     return ", ".join(f"{status}={counts.get(status, 0)}" for status in STATUSES)
+
+
+def format_integrity(summary: dict) -> str:
+    if summary["readyGateEvidenceIntegrity"]:
+        return "Pass: all ready gates cite ready artifacts"
+    return f"Fail: {len(summary['readyGateEvidenceViolations'])} violation(s)"
 
 
 def render_markdown(summary: dict) -> str:
@@ -99,6 +127,7 @@ def render_markdown(summary: dict) -> str:
         f"| Artifacts | {summary['artifactCount']} total; {format_counts(summary['artifactStatusCounts'])} |",
         f"| Readiness gates | {summary['gateCount']} total; {format_counts(summary['gateStatusCounts'])} |",
         f"| Conservative gate readiness | {summary['conservativeGateReadinessPercent']} percent |",
+        f"| Ready gate evidence integrity | {format_integrity(summary)} |",
         "",
         "## Gate Matrix",
         "",
@@ -121,6 +150,21 @@ def render_markdown(summary: dict) -> str:
             lines.append(f"- `{gate['id']}` remains `{gate['status']}`.")
     else:
         lines.append("- None in the current manifest.")
+
+    lines.extend([
+        "",
+        "## Ready Gate Evidence Integrity",
+        "",
+    ])
+    if summary["readyGateEvidenceViolations"]:
+        for violation in summary["readyGateEvidenceViolations"]:
+            lines.append(
+                f"- `{violation['gateId']}` cites "
+                f"`{violation['artifactId']}={violation['artifactStatus']}` "
+                "while marked `ready`."
+            )
+    else:
+        lines.append("- All `ready` gates cite only `ready` artifacts.")
 
     lines.extend([
         "",

@@ -119,5 +119,7 @@
     }
   ],
   "packageName": "Clearfolio KRW 2B Buyer Data Room",
+  "readyGateEvidenceIntegrity": true,
+  "readyGateEvidenceViolations": [],
   "updatedAt": "2026-07-03"
 }

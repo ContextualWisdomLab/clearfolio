@@ -57,6 +57,7 @@ public class ArtifactLinkService {
     private static final int TOKEN_FIELD_COUNT = 10;
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder URL_DECODER = Base64.getUrlDecoder();
+    private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();
 
     private final ArtifactStore artifactStore;
     private final ArtifactLinkLedger artifactLinkLedger;
@@ -424,7 +425,7 @@ public class ArtifactLinkService {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] raw = digest.digest(bytes);
             // HexFormat is much faster than String.format for converting byte arrays to hex strings
-            return java.util.HexFormat.of().formatHex(raw);
+            return HEX_FORMAT.formatHex(raw);
         } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

@@ -26,6 +26,8 @@ import com.clearfolio.viewer.config.ConversionProperties;
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
 
+    private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();
+
     private final ConversionJobRepository repository;
     private final ConversionJobStateStore stateStore;
     private final DocumentValidationService validationService;
@@ -161,7 +163,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
 
             byte[] raw = digest.digest();
             // HexFormat is much faster than String.format for converting byte arrays to hex strings
-            return java.util.HexFormat.of().formatHex(raw);
+            return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

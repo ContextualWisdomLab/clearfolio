@@ -26,6 +26,9 @@ import com.clearfolio.viewer.config.ConversionProperties;
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
 
+    // ⚡ Bolt: HexFormat 인스턴스 재사용을 통한 메모리 할당 최소화
+    private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();
+
     private final ConversionJobRepository repository;
     private final ConversionJobStateStore stateStore;
     private final DocumentValidationService validationService;
@@ -160,12 +163,8 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString();
+            // ⚡ Bolt: 반복적인 String.format 루프를 제거하여 가비지 컬렉션 부하를 획기적으로 개선
+            return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

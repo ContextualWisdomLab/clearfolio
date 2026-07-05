@@ -57,6 +57,8 @@ public class ArtifactLinkService {
     private static final int TOKEN_FIELD_COUNT = 10;
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder URL_DECODER = Base64.getUrlDecoder();
+    // ⚡ Bolt: HexFormat 인스턴스 재사용을 통한 메모리 할당 최소화
+    private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();
 
     private final ArtifactStore artifactStore;
     private final ArtifactLinkLedger artifactLinkLedger;
@@ -423,11 +425,8 @@ public class ArtifactLinkService {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] raw = digest.digest(bytes);
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
+            // ⚡ Bolt: 반복적인 String.format 루프를 제거하여 가비지 컬렉션 부하를 획기적으로 개선
+            return HEX_FORMAT.formatHex(raw);
         } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

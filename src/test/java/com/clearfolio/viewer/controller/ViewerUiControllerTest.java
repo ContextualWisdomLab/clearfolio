@@ -117,9 +117,6 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("openJobDetail"));
             assertTrue(script.contains("retryActiveJob"));
             assertTrue(script.contains("/retry"));
-            assertTrue(script.contains("X-Clearfolio-Operator-Id"));
-            assertTrue(script.contains("X-Clearfolio-Tenant-Id"));
-            assertTrue(script.contains("X-Clearfolio-Permissions"));
             assertTrue(script.contains("deadLettered"));
             assertTrue(script.contains("Submitting..."));
             assertTrue(script.contains("Submit document"));

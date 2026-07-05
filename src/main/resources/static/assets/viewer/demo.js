@@ -515,8 +515,15 @@ function init() {
   el.retryJobBtn.addEventListener("click", () => {
     void retryActiveJob();
   });
-  el.refreshEvidenceBtn.addEventListener("click", () => {
-    void refreshKpiEvidence();
+  el.refreshEvidenceBtn.addEventListener("click", async () => {
+    el.refreshEvidenceBtn.disabled = true;
+    el.refreshEvidenceBtn.textContent = "Refreshing...";
+    try {
+      await refreshKpiEvidence();
+    } finally {
+      el.refreshEvidenceBtn.disabled = false;
+      el.refreshEvidenceBtn.textContent = "Refresh evidence";
+    }
   });
 }
 

@@ -271,6 +271,7 @@ async function retryActiveJob() {
   const jobId = activeJobDetail.jobId;
   setStatus("Requesting operator retry...");
   el.retryJobBtn.disabled = true;
+  el.retryJobBtn.textContent = "Requesting retry...";
   try {
     const res = await fetch(`/api/v1/convert/jobs/${encodeURIComponent(jobId)}/retry`, {
       method: "POST",
@@ -308,6 +309,7 @@ async function retryActiveJob() {
     setError("Network error while requesting retry. Retry when the service is reachable.");
   } finally {
     el.retryJobBtn.disabled = false;
+    el.retryJobBtn.textContent = "Retry dead-lettered job";
   }
 }
 
@@ -436,6 +438,7 @@ async function submitDocument(event) {
   }
 
   el.submitBtn.disabled = true;
+  el.submitBtn.textContent = "Submitting...";
   setStatus("Submitting document...");
 
   try {
@@ -479,6 +482,7 @@ async function submitDocument(event) {
     setError("Network error while submitting. Retry when the service is reachable.");
   } finally {
     el.submitBtn.disabled = false;
+    el.submitBtn.textContent = "Submit document";
   }
 }
 
@@ -515,8 +519,15 @@ function init() {
   el.retryJobBtn.addEventListener("click", () => {
     void retryActiveJob();
   });
-  el.refreshEvidenceBtn.addEventListener("click", () => {
-    void refreshKpiEvidence();
+  el.refreshEvidenceBtn.addEventListener("click", async () => {
+    el.refreshEvidenceBtn.disabled = true;
+    el.refreshEvidenceBtn.textContent = "Refreshing...";
+    try {
+      await refreshKpiEvidence();
+    } finally {
+      el.refreshEvidenceBtn.disabled = false;
+      el.refreshEvidenceBtn.textContent = "Refresh evidence";
+    }
   });
 }
 

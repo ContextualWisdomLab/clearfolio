@@ -422,8 +422,8 @@ public class ArtifactLinkService {
     private static String sha256Hex(byte[] bytes) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] raw = digest.digest(bytes);
-            return java.util.HexFormat.of().formatHex(raw); // Optimization
+            // Optimization: java.util.HexFormat is much faster
+            return java.util.HexFormat.of().formatHex(digest.digest(bytes));
         } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

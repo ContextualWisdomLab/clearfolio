@@ -3,6 +3,12 @@ const KPI_ENDPOINT = "/api/v1/analytics/kpi-snapshot";
 const KPI_EXPORTS_ENDPOINT = "/api/v1/analytics/kpi-snapshot-exports";
 const POLL_DELAY_MS = 1500;
 const ACTIVE_STATUSES = new Set(["ACCEPTED", "SUBMITTED", "PROCESSING"]);
+const DEMO_AUTH_HEADERS = {
+  "X-Clearfolio-Tenant-Id": "buyer-demo",
+  "X-Clearfolio-Subject-Id": "buyer-demo-operator",
+  "X-Clearfolio-Permissions": "job:create,job:read,job:retry,viewer:read,artifact-link:create,artifact-link:revoke,audit:read,analytics:read",
+};
+
 const el = {
   form: document.getElementById("upload-form"),
   fileInput: document.getElementById("file-input"),
@@ -112,6 +118,7 @@ function createActionButton(label, onClick) {
 function jsonHeaders(extra = {}) {
   return {
     Accept: "application/json",
+    ...DEMO_AUTH_HEADERS,
     ...extra,
   };
 }
@@ -269,7 +276,9 @@ async function retryActiveJob() {
     const res = await fetch(`/api/v1/convert/jobs/${encodeURIComponent(jobId)}/retry`, {
       method: "POST",
       credentials: "same-origin",
-      headers: jsonHeaders(),
+      headers: jsonHeaders({
+        "X-Clearfolio-Operator-Id": "buyer-demo-operator",
+      }),
     });
     const data = (res.headers.get("content-type") || "").includes("application/json") ? await res.json() : null;
 

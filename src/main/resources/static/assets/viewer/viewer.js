@@ -1,4 +1,10 @@
 const POLL_DELAY_MS = 1500;
+const DEMO_AUTH_HEADERS = {
+  "X-Clearfolio-Tenant-Id": "buyer-demo",
+  "X-Clearfolio-Subject-Id": "buyer-demo-operator",
+  "X-Clearfolio-Permissions": "job:read,viewer:read",
+};
+
 const el = {
   docMeta: document.getElementById("doc-meta"),
   liveStatus: document.getElementById("live-status"),
@@ -120,6 +126,7 @@ async function fetchJson(url, signal) {
   const res = await fetch(url, {
     headers: {
       Accept: "application/json",
+      ...DEMO_AUTH_HEADERS,
     },
     credentials: "same-origin",
     signal,

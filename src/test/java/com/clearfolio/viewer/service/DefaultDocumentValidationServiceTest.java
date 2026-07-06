@@ -401,4 +401,20 @@ class DefaultDocumentValidationServiceTest {
             }
         }
     }
+
+    @Test
+    void rejectsFilenameWithNullByte() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract.hwp\0.pdf", "application/octet-stream", new byte[] {1})
+                )
+        );
+
+        assertEquals("Filename cannot contain null bytes.", ex.getMessage());
+    }
 }

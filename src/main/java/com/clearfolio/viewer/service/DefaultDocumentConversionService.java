@@ -26,6 +26,8 @@ import com.clearfolio.viewer.config.ConversionProperties;
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
 
+    private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();
+
     private final ConversionJobRepository repository;
     private final ConversionJobStateStore stateStore;
     private final DocumentValidationService validationService;
@@ -160,12 +162,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString();
+            return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

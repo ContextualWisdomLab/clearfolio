@@ -111,7 +111,19 @@ function createActionButton(label, onClick) {
   button.type = "button";
   button.textContent = label;
   button.className = "btn btn-secondary btn-compact";
-  button.addEventListener("click", onClick);
+  button.addEventListener("click", async (event) => {
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.textContent = "Loading...";
+    try {
+      await Promise.resolve(onClick(event));
+    } finally {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.textContent = originalText;
+    }
+  });
   return button;
 }
 
@@ -270,7 +282,10 @@ async function retryActiveJob() {
 
   const jobId = activeJobDetail.jobId;
   setStatus("Requesting operator retry...");
+  const originalText = el.retryJobBtn.textContent;
   el.retryJobBtn.disabled = true;
+  el.retryJobBtn.setAttribute("aria-busy", "true");
+  el.retryJobBtn.textContent = "Retrying...";
   try {
     const res = await fetch(`/api/v1/convert/jobs/${encodeURIComponent(jobId)}/retry`, {
       method: "POST",
@@ -307,6 +322,8 @@ async function retryActiveJob() {
   } catch (err) {
     setError("Network error while requesting retry. Retry when the service is reachable.");
   } finally {
+    el.retryJobBtn.removeAttribute("aria-busy");
+    el.retryJobBtn.textContent = originalText;
     el.retryJobBtn.disabled = false;
   }
 }
@@ -380,7 +397,11 @@ async function refreshKpis() {
 }
 
 async function refreshKpiEvidence() {
+  const originalText = el.refreshEvidenceBtn.textContent;
   try {
+    el.refreshEvidenceBtn.disabled = true;
+    el.refreshEvidenceBtn.setAttribute("aria-busy", "true");
+    el.refreshEvidenceBtn.textContent = "Refreshing...";
     const { res, data } = await fetchJson(KPI_EXPORTS_ENDPOINT);
     if (!res.ok) {
       el.kpiExportStatus.textContent = "Snapshot evidence is unavailable for the current tenant claim.";
@@ -390,6 +411,10 @@ async function refreshKpiEvidence() {
     renderKpiEvidence(data);
   } catch (err) {
     el.kpiExportStatus.textContent = "Snapshot evidence is unavailable while the service is unreachable.";
+  } finally {
+    el.refreshEvidenceBtn.removeAttribute("aria-busy");
+    el.refreshEvidenceBtn.textContent = originalText;
+    el.refreshEvidenceBtn.disabled = false;
   }
 }
 
@@ -435,7 +460,10 @@ async function submitDocument(event) {
     return;
   }
 
+  const originalText = el.submitBtn.textContent;
   el.submitBtn.disabled = true;
+  el.submitBtn.setAttribute("aria-busy", "true");
+  el.submitBtn.textContent = "Submitting...";
   setStatus("Submitting document...");
 
   try {
@@ -478,6 +506,8 @@ async function submitDocument(event) {
     addFailedHistory(file.name, "FAILED");
     setError("Network error while submitting. Retry when the service is reachable.");
   } finally {
+    el.submitBtn.removeAttribute("aria-busy");
+    el.submitBtn.textContent = originalText;
     el.submitBtn.disabled = false;
   }
 }

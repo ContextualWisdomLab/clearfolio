@@ -15,8 +15,9 @@ import org.springframework.stereotype.Component;
 import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.artifact.PdfArtifactGenerator;
 import com.clearfolio.viewer.model.ConversionJob;
-import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
+import com.clearfolio.viewer.repository.ConversionJobStateStore;
+import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
 
 /**
  * Default background worker that executes conversion jobs with retry backoff.
@@ -27,6 +28,7 @@ public class DefaultConversionWorker implements ConversionWorker {
     private static final long MIN_INITIAL_RETRY_DELAY_MS = 250L;
 
     private final ConversionJobRepository repository;
+    private final ConversionJobStateStore stateStore;
     private final Executor conversionExecutor;
     private final ArtifactStore artifactStore;
     private final PdfArtifactGenerator pdfArtifactGenerator;
@@ -39,17 +41,56 @@ public class DefaultConversionWorker implements ConversionWorker {
      * Creates a conversion worker using the default conversion task implementation.
      *
      * @param repository conversion job repository
+     * @param stateStore conversion job lifecycle state store
      * @param conversionExecutor asynchronous conversion executor
      * @param conversionProperties conversion configuration values
      */
     @Autowired
     public DefaultConversionWorker(
             ConversionJobRepository repository,
+            ConversionJobStateStore stateStore,
             Executor conversionExecutor,
             ArtifactStore artifactStore,
             PdfArtifactGenerator pdfArtifactGenerator,
             com.clearfolio.viewer.config.ConversionProperties conversionProperties) {
+        this(
+                repository,
+                stateStore,
+                conversionExecutor,
+                artifactStore,
+                pdfArtifactGenerator,
+                conversionProperties,
+                null
+        );
+    }
+
+    DefaultConversionWorker(
+            ConversionJobRepository repository,
+            Executor conversionExecutor,
+            ArtifactStore artifactStore,
+            PdfArtifactGenerator pdfArtifactGenerator,
+            com.clearfolio.viewer.config.ConversionProperties conversionProperties) {
+        this(
+                repository,
+                stateStoreFrom(repository),
+                conversionExecutor,
+                artifactStore,
+                pdfArtifactGenerator,
+                conversionProperties,
+                null
+        );
+    }
+
+    DefaultConversionWorker(
+            ConversionJobRepository repository,
+            ConversionJobStateStore stateStore,
+            Executor conversionExecutor,
+            ArtifactStore artifactStore,
+            PdfArtifactGenerator pdfArtifactGenerator,
+            com.clearfolio.viewer.config.ConversionProperties conversionProperties,
+            Function<UUID, String> conversionTask) {
         this.repository = repository;
+        this.stateStore = stateStore;
         this.conversionExecutor = conversionExecutor;
         this.artifactStore = artifactStore;
         this.pdfArtifactGenerator = pdfArtifactGenerator;
@@ -62,7 +103,7 @@ public class DefaultConversionWorker implements ConversionWorker {
                 conversionProperties.getRetryMaxDelayMs()
         );
         this.retryBackoffMultiplier = conversionProperties.getRetryBackoffMultiplier();
-        this.conversionTask = this::performDefaultConversion;
+        this.conversionTask = conversionTask == null ? this::performDefaultConversion : conversionTask;
     }
 
     DefaultConversionWorker(
@@ -72,20 +113,15 @@ public class DefaultConversionWorker implements ConversionWorker {
             PdfArtifactGenerator pdfArtifactGenerator,
             com.clearfolio.viewer.config.ConversionProperties conversionProperties,
             Function<UUID, String> conversionTask) {
-        this.repository = repository;
-        this.conversionExecutor = conversionExecutor;
-        this.artifactStore = artifactStore;
-        this.pdfArtifactGenerator = pdfArtifactGenerator;
-        this.retryInitialDelayMs = Math.max(
-                MIN_INITIAL_RETRY_DELAY_MS,
-                conversionProperties.getRetryInitialDelayMs()
+        this(
+                repository,
+                stateStoreFrom(repository),
+                conversionExecutor,
+                artifactStore,
+                pdfArtifactGenerator,
+                conversionProperties,
+                conversionTask
         );
-        this.retryMaxDelayMs = Math.max(
-                retryInitialDelayMs,
-                conversionProperties.getRetryMaxDelayMs()
-        );
-        this.retryBackoffMultiplier = conversionProperties.getRetryBackoffMultiplier();
-        this.conversionTask = conversionTask;
     }
 
     /**
@@ -111,15 +147,16 @@ public class DefaultConversionWorker implements ConversionWorker {
                 return;
             }
 
-            if (!job.markProcessing("conversion started")) {
+            java.util.Optional<ConversionJob> claimed = stateStore.claimForProcessing(jobId, now);
+            if (claimed.isEmpty()) {
                 return;
             }
 
             try {
                 String convertedResourcePath = conversionTask.apply(jobId);
-                job.markSucceeded(convertedResourcePath, "conversion completed");
+                stateStore.markSucceeded(jobId, convertedResourcePath, "conversion completed");
             } catch (Throwable ex) {
-                onFailure(job, failureReason(ex));
+                onFailure(claimed.get(), failureReason(ex));
                 if (ex instanceof VirtualMachineError error) {
                     throw error;
                 }
@@ -139,12 +176,12 @@ public class DefaultConversionWorker implements ConversionWorker {
         if (job.canRetry()) {
             long retryDelayMs = computeRetryDelay(job.getAttemptCount());
             Instant retryAt = Instant.now().plusMillis(retryDelayMs);
-            job.markRetryScheduled("retry scheduled in " + retryDelayMs + "ms", retryAt);
+            stateStore.scheduleRetry(job.getJobId(), "retry scheduled in " + retryDelayMs + "ms", retryAt);
             scheduleRetry(job.getJobId(), retryAt);
             return;
         }
 
-        job.markDeadLettered(reason);
+        stateStore.markDeadLettered(job.getJobId(), reason);
     }
 
     private long computeRetryDelay(int attemptCount) {
@@ -176,13 +213,7 @@ public class DefaultConversionWorker implements ConversionWorker {
     }
 
     private void markDeadLetteredForQueueSaturation(UUID jobId) {
-        repository.findById(jobId)
-                .ifPresent(job -> {
-                    ConversionJobStatus status = job.getStatus();
-                    if (status == ConversionJobStatus.SUBMITTED || status == ConversionJobStatus.PROCESSING) {
-                        job.markDeadLettered("worker queue saturated");
-                    }
-                });
+        stateStore.markDeadLettered(jobId, "worker queue saturated");
     }
 
     private String performDefaultConversion(UUID jobId) {
@@ -196,5 +227,13 @@ public class DefaultConversionWorker implements ConversionWorker {
         byte[] pdfBytes = pdfArtifactGenerator.generatePdf(job);
         artifactStore.putPdf(jobId, pdfBytes);
         return "/artifacts/" + jobId + ".pdf";
+    }
+
+    private static ConversionJobStateStore stateStoreFrom(ConversionJobRepository repository) {
+        if (repository instanceof ConversionJobStateStore conversionJobStateStore) {
+            return conversionJobStateStore;
+        }
+
+        return new RepositoryBackedConversionJobStateStore(repository);
     }
 }

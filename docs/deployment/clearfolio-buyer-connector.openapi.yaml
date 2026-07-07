@@ -1,0 +1,668 @@
+openapi: 3.0.3
+info:
+  title: Clearfolio Buyer Connector Seed
+  version: 0.1.0
+  description: >
+    Import seed for a buyer-owned gateway or Power Platform custom connector.
+    This spec reflects the current Clearfolio Viewer JSON API contract and the
+    buyer-demo signed-header scaffold. It is not a production OIDC/JWT profile.
+  license:
+    name: Proprietary - buyer diligence use only
+    url: https://github.com/ContextualWisdomLab/clearfolio
+servers:
+  - url: https://{gatewayHost}
+    description: Buyer gateway in front of Clearfolio Viewer.
+    variables:
+      gatewayHost:
+        default: clearfolio-buyer-gateway.example.com
+security:
+  - clearfolioTenantHeaders: []
+tags:
+  - name: Conversion
+    description: Document intake, status polling, and retry operations.
+  - name: Viewer
+    description: Viewer bootstrap operations that return signed artifact URLs.
+  - name: ArtifactLinks
+    description: Signed artifact-link creation, revocation, and read evidence.
+  - name: Analytics
+    description: Tenant-scoped KPI snapshot and export evidence operations.
+paths:
+  /api/v1/convert/jobs:
+    post:
+      tags:
+        - Conversion
+      operationId: submitConversionJob
+      summary: Submit a document for asynchronous preview conversion.
+      description: >
+        Requires `job:create`. The buyer gateway must add signed Clearfolio
+        tenant headers when `CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET` is enabled.
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/Permissions"
+        - $ref: "#/components/parameters/ClaimsIssuedAt"
+        - $ref: "#/components/parameters/ClaimsSignature"
+        - $ref: "#/components/parameters/PolicyOverride"
+        - $ref: "#/components/parameters/ApprovalToken"
+        - $ref: "#/components/parameters/ApproverId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Source document to convert.
+      responses:
+        "202":
+          description: Conversion job accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmitConversionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/convert/jobs/{jobId}:
+    get:
+      tags:
+        - Conversion
+      operationId: getConversionJobStatus
+      summary: Read conversion lifecycle status.
+      description: Requires `job:read`; cross-tenant jobs are hidden.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/Permissions"
+        - $ref: "#/components/parameters/ClaimsIssuedAt"
+        - $ref: "#/components/parameters/ClaimsSignature"
+      responses:
+        "200":
+          description: Conversion job status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversionJobStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/convert/jobs/{jobId}/retry:
+    post:
+      tags:
+        - Conversion
+      operationId: retryDeadLetteredConversionJob
+      summary: Retry a dead-lettered conversion job.
+      description: Requires `job:retry` and `X-Clearfolio-Operator-Id`.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/Permissions"
+        - $ref: "#/components/parameters/ClaimsIssuedAt"
+        - $ref: "#/components/parameters/ClaimsSignature"
+        - $ref: "#/components/parameters/OperatorId"
+      responses:
+        "202":
+          description: Dead-lettered job was re-queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmitConversionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/viewer/{docId}:
+    get:
+      tags:
+        - Viewer
+      operationId: getViewerBootstrap
+      summary: Get viewer bootstrap payload for a converted document.
+      description: >
+        Requires `viewer:read`. On success, returns a short-lived signed
+        artifact URL for the browser/PDF.js viewer.
+      parameters:
+        - $ref: "#/components/parameters/DocId"
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/Permissions"
+        - $ref: "#/components/parameters/ClaimsIssuedAt"
+        - $ref: "#/components/parameters/ClaimsSignature"
+      responses:
+        "200":
+          description: Viewer bootstrap payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ViewerBootstrapResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/viewer/{docId}/artifact-links:
+    post:
+      tags:
+        - ArtifactLinks
+      operationId: createArtifactLink
+      summary: Create a short-lived signed artifact URL.
+      description: Requires `artifact-link:create` and a succeeded same-tenant job.
+      parameters:
+        - $ref: "#/components/parameters/DocId"
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/Permissions"
+        - $ref: "#/components/parameters/ClaimsIssuedAt"
+        - $ref: "#/components/parameters/ClaimsSignature"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArtifactLinkRequest"
+      responses:
+        "200":
+          description: Signed artifact link.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactLinkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/viewer/artifact-links/{tokenId}/revoke:
+    post:
+      tags:
+        - ArtifactLinks
+      operationId: revokeArtifactLink
+      summary: Revoke a previously issued artifact link.
+      description: Requires `artifact-link:revoke`; intended for operators.
+      parameters:
+        - $ref: "#/components/parameters/TokenId"
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/Permissions"
+        - $ref: "#/components/parameters/ClaimsIssuedAt"
+        - $ref: "#/components/parameters/ClaimsSignature"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArtifactLinkRevocationRequest"
+      responses:
+        "200":
+          description: Revocation result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtifactLinkRevocationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/viewer/{docId}/artifact-read-events:
+    get:
+      tags:
+        - ArtifactLinks
+      operationId: listArtifactReadEvents
+      summary: List artifact read audit events for one document.
+      description: Requires `audit:read`; intended for operator diligence review.
+      parameters:
+        - $ref: "#/components/parameters/DocId"
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/Permissions"
+        - $ref: "#/components/parameters/ClaimsIssuedAt"
+        - $ref: "#/components/parameters/ClaimsSignature"
+      responses:
+        "200":
+          description: Tenant-scoped artifact read events.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ArtifactReadEventResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/analytics/kpi-snapshot:
+    get:
+      tags:
+        - Analytics
+      operationId: getKpiSnapshot
+      summary: Read current tenant-scoped KPI counters.
+      description: Requires `analytics:read`; records optional export evidence.
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/Permissions"
+        - $ref: "#/components/parameters/ClaimsIssuedAt"
+        - $ref: "#/components/parameters/ClaimsSignature"
+      responses:
+        "200":
+          description: Current KPI snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KpiSnapshotResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/v1/analytics/kpi-snapshot-exports:
+    get:
+      tags:
+        - Analytics
+      operationId: listKpiSnapshotExports
+      summary: List exported tenant KPI snapshot evidence.
+      description: Requires `analytics:read`; omits tenant id from response payloads.
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/Permissions"
+        - $ref: "#/components/parameters/ClaimsIssuedAt"
+        - $ref: "#/components/parameters/ClaimsSignature"
+      responses:
+        "200":
+          description: Exported KPI snapshot evidence.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KpiSnapshotExportResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+components:
+  securitySchemes:
+    clearfolioTenantHeaders:
+      type: apiKey
+      in: header
+      name: X-Clearfolio-Claims-Signature
+      description: >
+        Buyer gateway supplies the full signed Clearfolio tenant header set.
+        The signature alone is not enough without tenant, subject, permissions,
+        and issued-at headers.
+  parameters:
+    TenantId:
+      name: X-Clearfolio-Tenant-Id
+      in: header
+      required: true
+      schema:
+        type: string
+      example: buyer-demo
+    SubjectId:
+      name: X-Clearfolio-Subject-Id
+      in: header
+      required: true
+      schema:
+        type: string
+      example: buyer-demo-operator
+    Permissions:
+      name: X-Clearfolio-Permissions
+      in: header
+      required: true
+      schema:
+        type: string
+      example: job:create,job:read,viewer:read,artifact-link:create,analytics:read
+    ClaimsIssuedAt:
+      name: X-Clearfolio-Claims-Issued-At
+      in: header
+      required: true
+      schema:
+        type: string
+      example: "1782995100"
+    ClaimsSignature:
+      name: X-Clearfolio-Claims-Signature
+      in: header
+      required: true
+      schema:
+        type: string
+      example: base64url-hmac-sha256
+    PolicyOverride:
+      name: X-Clearfolio-Policy-Override
+      in: header
+      required: false
+      schema:
+        type: string
+        enum:
+          - "true"
+          - "false"
+    ApprovalToken:
+      name: X-Clearfolio-Approval-Token
+      in: header
+      required: false
+      schema:
+        type: string
+    ApproverId:
+      name: X-Clearfolio-Approver-Id
+      in: header
+      required: false
+      schema:
+        type: string
+    OperatorId:
+      name: X-Clearfolio-Operator-Id
+      in: header
+      required: true
+      schema:
+        type: string
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DocId:
+      name: docId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TokenId:
+      name: tokenId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Bad request or validation failure.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Unauthorized:
+      description: Missing, unsigned, expired, or invalid tenant claims.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Forbidden:
+      description: Authenticated caller lacks the required permission.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    NotFound:
+      description: Resource not found or hidden by tenant boundary.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+    Conflict:
+      description: Job exists but is not ready for the requested operation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorResponse"
+  schemas:
+    SubmitConversionResponse:
+      type: object
+      required:
+        - jobId
+        - status
+        - statusUrl
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          example: ACCEPTED
+        statusUrl:
+          type: string
+          example: /api/v1/convert/jobs/00000000-0000-0000-0000-000000000000
+    ConversionJobStatusResponse:
+      type: object
+      required:
+        - jobId
+        - tenantId
+        - fileName
+        - status
+        - message
+        - attemptCount
+        - maxAttempts
+        - deadLettered
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+        fileName:
+          type: string
+        status:
+          type: string
+          enum:
+            - SUBMITTED
+            - PROCESSING
+            - SUCCEEDED
+            - FAILED
+        message:
+          type: string
+        convertedResourcePath:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        attemptCount:
+          type: integer
+          format: int32
+        maxAttempts:
+          type: integer
+          format: int32
+        retryAt:
+          type: string
+          format: date-time
+          nullable: true
+        deadLettered:
+          type: boolean
+    ViewerBootstrapResponse:
+      type: object
+      properties:
+        docId:
+          type: string
+        status:
+          type: string
+        fileName:
+          type: string
+        viewerMode:
+          type: string
+          example: PDF_JS
+        previewResourcePath:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        sourceExtension:
+          type: string
+        rendererAdapter:
+          type: string
+        artifactLinkUrl:
+          type: string
+          nullable: true
+        artifactLinkExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        artifactLinkScope:
+          type: string
+          nullable: true
+    ArtifactLinkRequest:
+      type: object
+      properties:
+        purpose:
+          type: string
+          example: viewer-preview
+        ttlSeconds:
+          type: integer
+          format: int32
+          nullable: true
+        viewerSessionId:
+          type: string
+          nullable: true
+    ArtifactLinkResponse:
+      type: object
+      properties:
+        artifactUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        tokenId:
+          type: string
+        scope:
+          type: string
+        docId:
+          type: string
+    ArtifactLinkRevocationRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    ArtifactLinkRevocationResponse:
+      type: object
+      properties:
+        tokenId:
+          type: string
+        revokedAt:
+          type: string
+          format: date-time
+        revokedBy:
+          type: string
+        reason:
+          type: string
+        revoked:
+          type: boolean
+    ArtifactReadEventResponse:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        subjectId:
+          type: string
+        docId:
+          type: string
+        tokenId:
+          type: string
+        rangeRequested:
+          type: string
+          nullable: true
+        statusCode:
+          type: integer
+          format: int32
+        traceId:
+          type: string
+          nullable: true
+        readAt:
+          type: string
+          format: date-time
+    KpiSnapshotResponse:
+      type: object
+      properties:
+        totalJobs:
+          type: integer
+          format: int32
+        submittedJobs:
+          type: integer
+          format: int32
+        processingJobs:
+          type: integer
+          format: int32
+        succeededJobs:
+          type: integer
+          format: int32
+        failedJobs:
+          type: integer
+          format: int32
+        deadLetteredJobs:
+          type: integer
+          format: int32
+        conversionSuccessRate:
+          type: number
+          format: double
+        p95TimeToPreviewMs:
+          type: integer
+          format: int64
+          nullable: true
+    KpiSnapshotExportResponse:
+      allOf:
+        - $ref: "#/components/schemas/KpiSnapshotResponse"
+        - type: object
+          properties:
+            subjectId:
+              type: string
+            exportedAt:
+              type: string
+              format: date-time
+    ApiErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - code
+        - message
+        - traceId
+        - details
+      properties:
+        errorCode:
+          type: string
+        code:
+          type: string
+          description: Backward-compatible alias for `errorCode`.
+        message:
+          type: string
+        traceId:
+          type: string
+        details:
+          type: object
+          additionalProperties: true

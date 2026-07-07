@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.model.ConversionJob;
 
 class ConversionJobStatusResponseTest {
@@ -29,6 +30,7 @@ class ConversionJobStatusResponseTest {
         ConversionJobStatusResponse response = ConversionJobStatusResponse.from(job);
 
         assertEquals(1, response.attemptCount());
+        assertEquals(TenantContext.DEMO_TENANT_ID, response.tenantId());
         assertEquals(5, response.maxAttempts());
         assertEquals(retryAt, response.retryAt());
         assertEquals(false, response.deadLettered());

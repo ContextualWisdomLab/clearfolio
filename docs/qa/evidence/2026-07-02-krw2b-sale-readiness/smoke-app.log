@@ -1,0 +1,16 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.0)
+
+2026-07-02T20:50:07.818+09:00  INFO 53930 --- [clearfolio-viewer] [           main] c.c.viewer.ClearfolioViewerApplication   : Starting ClearfolioViewerApplication using Java 21.0.11 with PID 53930 (/Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2/target/classes started by seonghobae in /Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2)
+2026-07-02T20:50:07.819+09:00  INFO 53930 --- [clearfolio-viewer] [           main] c.c.viewer.ClearfolioViewerApplication   : No active profile set, falling back to 1 default profile: "default"
+2026-07-02T20:50:08.623+09:00  INFO 53930 --- [clearfolio-viewer] [           main] o.s.b.web.embedded.netty.NettyWebServer  : Netty started on port 53332 (http)
+2026-07-02T20:50:08.636+09:00  INFO 53930 --- [clearfolio-viewer] [           main] c.c.viewer.ClearfolioViewerApplication   : Started ClearfolioViewerApplication in 1.029 seconds (process running for 1.21)
+2026-07-02T20:50:10.971+09:00  INFO 53930 --- [clearfolio-viewer] [ionShutdownHook] o.s.b.w.embedded.netty.GracefulShutdown  : Commencing graceful shutdown. Waiting for active requests to complete
+2026-07-02T20:50:10.973+09:00  INFO 53930 --- [clearfolio-viewer] [ netty-shutdown] o.s.b.w.embedded.netty.GracefulShutdown  : Graceful shutdown complete

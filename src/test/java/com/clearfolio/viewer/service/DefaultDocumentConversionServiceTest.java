@@ -46,6 +46,31 @@ import com.clearfolio.viewer.repository.ConversionJobStateStore;
 class DefaultDocumentConversionServiceTest {
 
     @Test
+    void submitStripsDirectoryTraversalFromOriginalFilename() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                file -> {},
+                worker,
+                new ConversionProperties()
+        );
+
+        MultipartFile file = new MockMultipartFile(
+                "file",
+                "../../../etc/passwd.docx",
+                "application/octet-stream",
+                new ByteArrayInputStream("hello".getBytes(StandardCharsets.UTF_8))
+        );
+
+        UUID jobId = service.submit(file);
+
+        ConversionJob job = repository.findById(jobId).orElseThrow();
+        assertEquals("passwd.docx", job.getOriginalFileName());
+    }
+
+
+    @Test
     void submitWithOverrideDelegatesPolicyHeadersToValidationService() {
         ConversionJobRepository repository = new InMemoryConversionJobRepository();
         RecordingConversionWorker worker = new RecordingConversionWorker();

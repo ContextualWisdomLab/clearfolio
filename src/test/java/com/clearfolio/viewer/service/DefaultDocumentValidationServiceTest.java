@@ -20,6 +20,23 @@ import com.clearfolio.viewer.exception.UnsupportedDocumentFormatException;
 
 class DefaultDocumentValidationServiceTest {
 
+    @Test
+    void stripsDirectoryTraversalFromFilename() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        UnsupportedDocumentFormatException ex = assertThrows(
+                UnsupportedDocumentFormatException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "../../../etc/passwd.hwp", "application/octet-stream", new byte[] {1})
+                )
+        );
+
+        assertEquals("hwp", ex.getExtension());
+    }
+
+
     private static final Object SECURITY_PROVIDERS_LOCK = new Object();
 
     @Test

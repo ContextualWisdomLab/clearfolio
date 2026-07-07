@@ -107,7 +107,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
                 UUID.randomUUID(),
                 effectiveTenant.tenantId(),
                 effectiveTenant.subjectId(),
-                file.getOriginalFilename(),
+                sanitizeFilename(file.getOriginalFilename()),
                 file.getContentType(),
                 contentHash,
                 file.getSize(),
@@ -147,6 +147,19 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
 
         conversionWorker.enqueue(job.getJobId());
         return RetryDeadLetterResult.ACCEPTED;
+    }
+
+
+    private String sanitizeFilename(String filename) {
+        if (filename == null) {
+            return null;
+        }
+        String cleanPath = org.springframework.util.StringUtils.cleanPath(filename);
+        int lastSlash = cleanPath.lastIndexOf('/');
+        if (lastSlash != -1) {
+            return cleanPath.substring(lastSlash + 1);
+        }
+        return cleanPath;
     }
 
     private String contentHash(MultipartFile file) {

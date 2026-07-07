@@ -160,9 +160,12 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            // Bolt optimization: Use Java 17+ HexFormat which is faster
-            // and allocates less memory.
-            return java.util.HexFormat.of().formatHex(raw);
+            StringBuilder hex = new StringBuilder(raw.length * 2);
+            for (byte b : raw) {
+                hex.append(String.format("%02x", b));
+            }
+
+            return hex.toString();
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

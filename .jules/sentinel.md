@@ -7,3 +7,8 @@
 **Vulnerability:** File extension validation was vulnerable to null byte injection (`\u0000`) in filenames (e.g. `malicious.exe\0.png`), potentially bypassing format restrictions.
 **Learning:** Checking the extension using `lastIndexOf('.')` after the null byte might allow harmful files to bypass the blocklist because backend file systems or execution contexts could interpret the filename up to the null byte.
 **Prevention:** Always validate input file names for null bytes and explicitly reject them before proceeding with extension parsing.
+
+## 2026-07-07 - Upgrade Dependency Or Exclude Vulnerable Modules
+**Vulnerability:** `org.bouncycastle:bcprov-jdk18on` has a CRITICAL CVE (CVE-2025-14813) that causes the trivy-fs job to fail.
+**Learning:** BouncyCastle modules were included as transitive dependencies via `tika-parsers-standard-package`.
+**Prevention:** To satisfy trivy security scans, vulnerable transitive dependencies should be excluded in `pom.xml` if they are not necessary or upgraded to a secure version.

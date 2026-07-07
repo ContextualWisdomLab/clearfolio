@@ -18,6 +18,9 @@
   <description>사내 통합 문서 뷰어 MVP</description>
 
   <properties>
+    <!-- Security: pin jackson to a trivy-confirmed patched version
+         (CVE-2026-54512..54515 in the parent-managed 2.19.0). -->
+    <jackson-bom.version>2.18.8</jackson-bom.version>
     <java.version>21</java.version>
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

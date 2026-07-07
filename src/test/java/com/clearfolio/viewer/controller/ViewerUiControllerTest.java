@@ -149,4 +149,45 @@ class ViewerUiControllerTest {
                 .expectBody(String.class)
                 .value(body -> assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId)));
     }
+
+    @Test
+    void viewerRejectsNonUuidDocIdWithFriendlyShell() {
+        webTestClient.get()
+                .uri("/viewer/not-a-uuid")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
+                .expectBody(String.class)
+                .value(body -> {
+                    assertTrue(body.contains("clearfolio-doc-id"));
+                    assertTrue(body.contains("not-a-uuid"));
+                    assertTrue(body.contains("clearfolio-initial-state\" content=\"NOT_FOUND"));
+                    assertTrue(body.contains("/assets/viewer/viewer.js"));
+                });
+    }
+
+    @Test
+    void viewerEscapesHtmlInInvalidDocId() {
+        webTestClient.get()
+                .uri("/viewer/{docId}", "\"><script>alert(1)</script>")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody(String.class)
+                .value(body -> {
+                    assertTrue(!body.contains("<script>alert(1)</script>"));
+                    assertTrue(body.contains("&lt;script&gt;"));
+                });
+    }
+
+    @Test
+    void viewerStillServesUuidDocId() {
+        UUID docId = UUID.randomUUID();
+        webTestClient.get()
+                .uri("/viewer/" + docId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
+                .expectBody(String.class)
+                .value(body -> assertTrue(body.contains(docId.toString())));
+    }
 }

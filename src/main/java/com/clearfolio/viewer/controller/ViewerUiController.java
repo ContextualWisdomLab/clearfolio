@@ -2,6 +2,7 @@ package com.clearfolio.viewer.controller;
 
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,15 +36,34 @@ public class ViewerUiController {
      * @param docId document identifier
      * @return HTML payload or redirect
      */
-    @GetMapping(value = "/viewer/{docId:[0-9a-fA-F\u002d]{36}}", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> viewer(@PathVariable UUID docId) {
-        return ResponseEntity.ok()
-                .contentType(MediaType.TEXT_HTML)
-                .body(viewerShellHtml(docId, "LOADING"));
+    @GetMapping(value = "/viewer/{docId}", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> viewer(@PathVariable String docId) {
+        try {
+            UUID parsed = UUID.fromString(docId);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(viewerShellHtml(parsed.toString(), "LOADING"));
+        } catch (IllegalArgumentException ex) {
+            // Friendly invalid-document shell (instead of a raw framework 404)
+            // so integrator deep links, e.g. an admin console linking
+            // /viewer/{docId}, land on a readable page.
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(viewerShellHtml(docId, "NOT_FOUND"));
+        }
     }
 
-    private static String viewerShellHtml(UUID docId, String initialState) {
-        String docIdString = docId.toString();
+    private static String escapeHtmlAttribute(String value) {
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
+
+    private static String viewerShellHtml(String docId, String initialState) {
+        String docIdString = escapeHtmlAttribute(docId);
         String template = """
                 <!doctype html>
                 <html lang="en">

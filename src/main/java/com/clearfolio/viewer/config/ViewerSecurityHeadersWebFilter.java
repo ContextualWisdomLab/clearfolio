@@ -35,20 +35,18 @@ public class ViewerSecurityHeadersWebFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
-        final boolean isViewer = isViewerSurface(path);
+        if (!isViewerSurface(path)) {
+            return chain.filter(exchange);
+        }
 
         exchange.getResponse().beforeCommit(() -> {
             HttpHeaders headers = exchange.getResponse().getHeaders();
 
-            // Avoid caching embedded preview surfaces and API responses.
+            // Avoid caching embedded preview surfaces.
             headers.set(HttpHeaders.CACHE_CONTROL, "no-store");
 
             headers.set("X-Content-Type-Options", "nosniff");
             headers.set("Referrer-Policy", "no-referrer");
-
-            if (!isViewer) {
-                return Mono.empty();
-            }
 
             // If the response is a redirect, do not attach an error-like CSP that could confuse debugging.
             if (exchange.getResponse().getStatusCode() == HttpStatus.FOUND) {
@@ -77,7 +75,7 @@ public class ViewerSecurityHeadersWebFilter implements WebFilter {
         });
 
         // Ensure CSP is also applied to HEAD checks for the viewer surface.
-        if (isViewer && exchange.getRequest().getMethod() == HttpMethod.HEAD) {
+        if (exchange.getRequest().getMethod() == HttpMethod.HEAD) {
             return chain.filter(exchange).then(Mono.empty());
         }
 

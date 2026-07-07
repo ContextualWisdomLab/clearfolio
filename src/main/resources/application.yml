@@ -18,6 +18,7 @@ conversion:
 
 viewer:
   security:
-    # Default is safe and non-breaking for same-origin usage.
-    # Set an explicit allowlist if the viewer must be embedded cross-origin.
-    frame-ancestors: self
+    # Default is safe (same-origin only). Set CLEARFOLIO_FRAME_ANCESTORS to an
+    # explicit allowlist (e.g. "self https://naruon.example") to embed the viewer
+    # cross-origin, such as inside naruon's document surface.
+    frame-ancestors: ${CLEARFOLIO_FRAME_ANCESTORS:self}

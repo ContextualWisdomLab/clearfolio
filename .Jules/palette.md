@@ -1,3 +1,0 @@
-## 2026-06-28 - Enhance Disabled State Accessibility
-**Learning:** Simply disabling a button using the `disabled` property doesn't always provide sufficient visual feedback, especially if existing hover states apply regardless of the disabled attribute, potentially confusing users who expect interactive elements. Adding `aria-busy="true"` or updating ARIA attributes during loading states is also critical for screen readers.
-**Action:** When creating or modifying button states, explicitly add `.btn:disabled` styling (like opacity drops and `cursor: not-allowed`), update hover pseudo-classes to exclude the disabled state (`:not(:disabled)`), and pair visual feedback with relevant ARIA attributes (`aria-busy`) when the button is inactive due to async operations.

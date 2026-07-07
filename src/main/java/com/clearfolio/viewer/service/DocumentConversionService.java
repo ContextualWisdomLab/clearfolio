@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.model.ConversionJob;
 
 /**
@@ -29,18 +28,6 @@ public interface DocumentConversionService {
      */
     default UUID submit(MultipartFile file, PolicyOverrideRequest overrideRequest) {
         return submit(file);
-    }
-
-    /**
-     * Submits an uploaded file for conversion with policy and tenant metadata.
-     *
-     * @param file uploaded file
-     * @param overrideRequest policy-override request headers
-     * @param tenantContext tenant and subject claims for ownership metadata
-     * @return conversion job identifier
-     */
-    default UUID submit(MultipartFile file, PolicyOverrideRequest overrideRequest, TenantContext tenantContext) {
-        return submit(file, overrideRequest);
     }
 
     /**

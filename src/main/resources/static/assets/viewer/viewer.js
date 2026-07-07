@@ -1,9 +1,4 @@
 const POLL_DELAY_MS = 1500;
-const DEMO_AUTH_HEADERS = {
-  "X-Clearfolio-Tenant-Id": "buyer-demo",
-  "X-Clearfolio-Subject-Id": "buyer-demo-operator",
-  "X-Clearfolio-Permissions": "job:read,viewer:read",
-};
 
 const el = {
   docMeta: document.getElementById("doc-meta"),
@@ -63,8 +58,6 @@ function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
-  el.retryBtn.disabled = true;
-  el.retryBtn.textContent = "Refreshing...";
 }
 
 function showError(message) {
@@ -73,8 +66,6 @@ function showError(message) {
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
-  el.retryBtn.disabled = false;
-  el.retryBtn.textContent = "Refresh";
 }
 
 function clearPreview() {
@@ -87,33 +78,18 @@ function clearPreview() {
   if (skeleton) {
     skeleton.remove();
   }
-
-  const help = el.preview.querySelector("#preview-help");
-  if (help) {
-    help.remove();
-  }
 }
 
 function renderPreviewLink(path) {
-  if (!isSafeUrl(path)) {
-    console.error("Blocked unsafe URL in preview link:", path);
-    return;
-  }
   const link = document.createElement("a");
   link.href = path;
   link.textContent = "Open artifact";
   link.className = "btn btn-secondary";
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.setAttribute("aria-label", "Open artifact in a new tab");
+  link.rel = "noopener";
   el.preview.appendChild(link);
 }
 
 function renderPdfInline(path) {
-  if (!isSafeUrl(path)) {
-    console.error("Blocked unsafe URL in PDF inline:", path);
-    return;
-  }
   const viewerPath =
     getMetaContent("clearfolio-pdfjs-viewer-path") ||
     "/webjars/pdfjs-dist/4.10.38/web/viewer.html";
@@ -130,7 +106,6 @@ async function fetchJson(url, signal) {
   const res = await fetch(url, {
     headers: {
       Accept: "application/json",
-      ...DEMO_AUTH_HEADERS,
     },
     credentials: "same-origin",
     signal,
@@ -140,25 +115,6 @@ async function fetchJson(url, signal) {
   const data = contentType.includes("application/json") ? await res.json() : null;
 
   return { res, data };
-}
-
-async function openJsonDocument(url) {
-  const popup = window.open("", "_blank");
-  if (!popup) {
-    showError("Allow popups to inspect JSON evidence in a new tab.");
-    return;
-  }
-
-  popup.opener = null;
-  popup.document.title = "Clearfolio viewer bootstrap JSON";
-  const pre = popup.document.createElement("pre");
-  pre.textContent = "Loading...";
-  popup.document.body.appendChild(pre);
-
-  const { res, data } = await fetchJson(url);
-  pre.textContent = res.ok && data
-    ? JSON.stringify(data, null, 2)
-    : "Unable to load JSON evidence with the current tenant claim.";
 }
 
 async function poll(docId, abortSignal) {
@@ -213,8 +169,6 @@ async function poll(docId, abortSignal) {
 
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
-    el.retryBtn.disabled = false;
-    el.retryBtn.textContent = "Refresh";
 
     clearPreview();
     const path = bootstrap.data.previewResourcePath;
@@ -251,10 +205,6 @@ function init() {
   el.docMeta.textContent = `docId: ${docId}`;
   el.openJsonLink.hidden = false;
   el.openJsonLink.href = `/api/v1/viewer/${encodeURIComponent(docId)}`;
-  el.openJsonLink.addEventListener("click", event => {
-    event.preventDefault();
-    void openJsonDocument(el.openJsonLink.href);
-  });
 
   const initialState = getInitialState();
 

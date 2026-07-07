@@ -142,50 +142,6 @@ a:hover {
   font-weight: 800;
 }
 
-.panel-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.panel-header .panel__title {
-  margin-bottom: 6px;
-}
-
-.panel__caption {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.upload-form {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
-  align-items: end;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.field-label {
-  display: grid;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.file-input {
-  width: 100%;
-  min-height: 42px;
-  padding: 9px 10px;
-  color: var(--ink);
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-
 .status {
   padding: 12px;
   border-radius: 12px;
@@ -239,17 +195,7 @@ a:hover {
   color: #ffffff;
 }
 
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-compact {
-  min-height: 36px;
-  padding: 8px 10px;
-}
-
-.btn-primary:hover:not(:disabled) {
+.btn-primary:hover {
   filter: brightness(0.95);
 }
 
@@ -259,7 +205,7 @@ a:hover {
   color: var(--ink);
 }
 
-.btn-secondary:hover:not(:disabled) {
+.btn-secondary:hover {
   background: #fbfcfe;
 }
 
@@ -288,151 +234,6 @@ a:hover {
 
 .help {
   margin: 12px 0 0;
-  color: var(--muted);
-}
-
-.kpi-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 14px 0;
-}
-
-.kpi {
-  min-height: 76px;
-  padding: 14px;
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-
-.kpi__label {
-  display: block;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.kpi__value {
-  display: block;
-  margin-top: 6px;
-  font-size: 26px;
-  line-height: 1.1;
-  overflow-wrap: anywhere;
-}
-
-.evidence-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0 0 12px;
-}
-
-.evidence-summary__item {
-  min-width: 0;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-}
-
-.evidence-summary dt {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.evidence-summary dd {
-  margin: 6px 0 0;
-  font-size: 18px;
-  font-weight: 800;
-  overflow-wrap: anywhere;
-}
-
-.table-wrap {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.history-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-.history-table th,
-.history-table td {
-  padding: 12px 10px;
-  border-top: 1px solid var(--line);
-  text-align: left;
-  vertical-align: top;
-  overflow-wrap: anywhere;
-}
-
-.history-table th {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.table-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.table-link {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.job-detail {
-  margin-top: 14px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #fbfcfe;
-}
-
-.job-detail__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.job-detail__title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.job-detail__caption {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.job-detail__list {
-  display: grid;
-  grid-template-columns: minmax(120px, 0.35fr) minmax(0, 1fr);
-  gap: 8px 12px;
-  margin: 0;
-}
-
-.job-detail__list dt {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.job-detail__list dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.empty-state {
-  margin: 14px 0 0;
   color: var(--muted);
 }
 
@@ -473,27 +274,6 @@ a:hover {
 
   .page-title {
     font-size: 22px;
-  }
-
-  .upload-form,
-  .kpi-strip,
-  .evidence-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .panel-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .job-detail__header,
-  .job-detail__list {
-    grid-template-columns: 1fr;
-  }
-
-  .job-detail__header {
-    align-items: stretch;
-    flex-direction: column;
   }
 }
 

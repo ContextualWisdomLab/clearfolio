@@ -19,15 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.clearfolio.viewer.auth.TenantAccessService;
-import com.clearfolio.viewer.auth.TenantContext;
-import com.clearfolio.viewer.auth.TenantPermissions;
-import com.clearfolio.viewer.api.ArtifactLinkRequest;
-import com.clearfolio.viewer.api.ArtifactLinkResponse;
 import com.clearfolio.viewer.api.ConversionJobStatusResponse;
 import com.clearfolio.viewer.api.SubmitConversionResponse;
 import com.clearfolio.viewer.api.ViewerBootstrapResponse;
-import com.clearfolio.viewer.artifact.ArtifactLinkService;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.service.DocumentConversionService;
@@ -49,26 +43,18 @@ public class ConversionController {
     public static final String OPERATOR_ID_HEADER = "X-Clearfolio-Operator-Id";
 
     private final DocumentConversionService conversionService;
-    private final TenantAccessService tenantAccessService;
-    private final ArtifactLinkService artifactLinkService;
     private final int maxInMemorySizeBytes;
 
     /**
      * Creates a controller that delegates conversion operations to the service layer.
      *
      * @param conversionService conversion service
-     * @param tenantAccessService tenant and permission guard
-     * @param artifactLinkService signed artifact link service
      * @param maxInMemorySize maximum in-memory multipart size
      */
     public ConversionController(
             DocumentConversionService conversionService,
-            TenantAccessService tenantAccessService,
-            ArtifactLinkService artifactLinkService,
             @Value("${spring.codec.max-in-memory-size:262144B}") DataSize maxInMemorySize) {
         this.conversionService = conversionService;
-        this.tenantAccessService = tenantAccessService;
-        this.artifactLinkService = artifactLinkService;
         long bytes = Math.max(1L, maxInMemorySize.toBytes());
         this.maxInMemorySizeBytes = bytes > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) bytes;
     }
@@ -80,7 +66,6 @@ public class ConversionController {
      * @param policyOverride optional blocked-format override toggle header
      * @param approvalToken optional approval token header used when override is enabled
      * @param approverId optional approver identifier header used when override is enabled
-     * @param headers request headers carrying tenant claims
      * @return accepted response containing the job identifier
      */
     @PostMapping(value = "/api/v1/convert/jobs", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -88,15 +73,13 @@ public class ConversionController {
             @RequestPart("file") FilePart file,
             @RequestHeader(value = PolicyOverrideRequest.POLICY_OVERRIDE_HEADER, required = false) String policyOverride,
             @RequestHeader(value = PolicyOverrideRequest.APPROVAL_TOKEN_HEADER, required = false) String approvalToken,
-            @RequestHeader(value = PolicyOverrideRequest.APPROVER_ID_HEADER, required = false) String approverId,
-            @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_CREATE);
+            @RequestHeader(value = PolicyOverrideRequest.APPROVER_ID_HEADER, required = false) String approverId) {
         PolicyOverrideRequest overrideRequest = PolicyOverrideRequest.of(policyOverride, approvalToken, approverId);
         return DataBufferUtils.join(file.content(), maxInMemorySizeBytes)
                 .doOnDiscard(DataBuffer.class, DataBufferUtils::release)
                 .publishOn(Schedulers.boundedElastic())
                 .map(buffer -> toMultipartFile(file, buffer))
-                .map(uploadedFile -> conversionService.submit(uploadedFile, overrideRequest, tenantContext))
+                .map(uploadedFile -> conversionService.submit(uploadedFile, overrideRequest))
                 .map(jobId -> ResponseEntity.status(HttpStatus.ACCEPTED).body(SubmitConversionResponse.accepted(jobId)));
     }
 
@@ -119,15 +102,12 @@ public class ConversionController {
      * Returns the current status of a conversion job.
      *
      * @param jobId conversion job identifier
-     * @param headers request headers carrying tenant claims
      * @return conversion status payload
      */
     @GetMapping("/api/v1/convert/jobs/{jobId}")
-    public ConversionJobStatusResponse getStatus(@PathVariable UUID jobId, @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_READ);
+    public ConversionJobStatusResponse getStatus(@PathVariable UUID jobId) {
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
-        tenantAccessService.requireSameTenant(tenantContext, job);
         return ConversionJobStatusResponse.from(job);
     }
 
@@ -136,23 +116,20 @@ public class ConversionController {
      *
      * @param jobId conversion job identifier
      * @param operatorId operator identifier header value
-     * @param headers request headers carrying tenant claims
      * @return accepted response containing the retried job identifier
      */
     @PostMapping("/api/v1/convert/jobs/{jobId}/retry")
     public ResponseEntity<SubmitConversionResponse> retryDeadLettered(
             @PathVariable UUID jobId,
-            @RequestHeader(value = OPERATOR_ID_HEADER, required = false) String operatorId,
-            @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_RETRY);
+            @RequestHeader(value = OPERATOR_ID_HEADER, required = false) String operatorId) {
         if (operatorId == null || operatorId.isBlank()) {
             throw new IllegalArgumentException(OPERATOR_ID_HEADER + " header is required.");
         }
 
-        ConversionJob job = conversionService.getJob(jobId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
-        tenantAccessService.requireSameTenant(tenantContext, job);
         RetryDeadLetterResult retryResult = conversionService.retryDeadLettered(jobId, operatorId.strip());
+        if (retryResult == RetryDeadLetterResult.NOT_FOUND) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
         if (retryResult == RetryDeadLetterResult.NOT_ELIGIBLE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "only dead-lettered failed jobs can be retried");
         }
@@ -164,29 +141,19 @@ public class ConversionController {
      * Returns viewer bootstrap data once conversion output is ready.
      *
      * @param docId document identifier
-     * @param headers request headers carrying tenant claims
      * @return viewer bootstrap payload for a converted document
      */
     @GetMapping({"/api/v1/viewer/{docId}", "/api/v1/convert/viewer/{docId}"})
-    public ViewerBootstrapResponse getViewer(
-            @PathVariable("docId") UUID docId,
-            @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.VIEWER_READ);
-        return getViewerBootstrap(docId, tenantContext);
+    public ViewerBootstrapResponse getViewer(@PathVariable("docId") UUID docId) {
+        return getViewerBootstrap(docId);
     }
 
-    private ViewerBootstrapResponse getViewerBootstrap(UUID docId, TenantContext tenantContext) {
+    private ViewerBootstrapResponse getViewerBootstrap(UUID docId) {
         ConversionJob job = conversionService.getJob(docId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
-        tenantAccessService.requireSameTenant(tenantContext, job);
 
         if (job.getStatus() == ConversionJobStatus.SUCCEEDED) {
-            ArtifactLinkResponse artifactLink = artifactLinkService.createLink(
-                    job,
-                    tenantContext,
-                    ArtifactLinkRequest.viewerPreview()
-            );
-            return ViewerBootstrapResponse.from(job, artifactLink);
+            return ViewerBootstrapResponse.from(job);
         }
 
         if (job.getStatus() == ConversionJobStatus.FAILED) {

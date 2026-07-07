@@ -22,7 +22,7 @@ import com.clearfolio.viewer.exception.UnsupportedDocumentFormatException;
 public class DefaultDocumentValidationService implements DocumentValidationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDocumentValidationService.class);
-    private static final int FINGERPRINT_TRUNCATE_BYTES = 8;
+    private static final int FINGERPRINT_TRUNCATE_BYTES = 16;
 
     private final Set<String> blockedExtensions;
     private final long maxUploadSizeBytes;
@@ -95,9 +95,8 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
 
         if (blockedExtension) {
             LOGGER.info(
-                    "Blocked-format override accepted extension={} approverId={} tokenFingerprint={}",
+                    "Blocked-format override accepted extension={} tokenFingerprint={}",
                     sanitizeForLog(extension),
-                    sanitizeForLog(overrideApproverIdForAudit),
                     tokenFingerprint(overrideTokenForAudit)
             );
         }

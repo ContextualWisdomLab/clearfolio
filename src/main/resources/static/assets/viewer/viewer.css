@@ -264,23 +264,6 @@ a:hover {
   }
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
-  margin-right: 8px;
-}
-
 @media (max-width: 768px) {
   :root {
     --header-h: 60px;
@@ -300,8 +283,7 @@ a:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .skeleton,
-  .spinner {
+  .skeleton {
     animation: none;
   }
 }

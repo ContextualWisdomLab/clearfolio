@@ -46,11 +46,7 @@ function setLoading(message) {
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
   el.retryBtn.disabled = true;
-
-  const spinner = document.createElement("span");
-  spinner.className = "spinner";
-  spinner.setAttribute("aria-hidden", "true");
-  el.retryBtn.replaceChildren(spinner, document.createTextNode("Refreshing..."));
+  el.retryBtn.textContent = "Refreshing...";
 }
 
 function showError(message) {
@@ -93,7 +89,9 @@ function renderPreviewLink(path) {
   link.href = path;
   link.textContent = "Open artifact";
   link.className = "btn btn-secondary";
-  link.rel = "noopener";
+  link.rel = "noopener noreferrer";
+  link.target = "_blank";
+  link.setAttribute("aria-label", "Open artifact (opens in a new tab)");
   el.preview.appendChild(link);
 }
 

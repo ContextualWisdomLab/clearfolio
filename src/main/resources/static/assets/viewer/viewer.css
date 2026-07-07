@@ -199,12 +199,6 @@ a:hover {
   filter: brightness(0.95);
 }
 
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
 .btn-secondary {
   background: #ffffff;
   border-color: var(--line);

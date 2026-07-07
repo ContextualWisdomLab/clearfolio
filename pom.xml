@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.0</version>
+    <version>3.5.14</version>
     <relativePath/>
   </parent>
 
@@ -24,6 +24,9 @@
     <argLine></argLine>
     <pdfbox.version>3.0.3</pdfbox.version>
     <pdfjs.dist.version>4.10.38</pdfjs.dist.version>
+    <netty.version>4.1.135.Final</netty.version>
+    <jackson-bom.version>2.21.4</jackson-bom.version>
+    <spring-framework.version>6.2.18</spring-framework.version>
   </properties>
 
   <dependencies>
@@ -35,12 +38,6 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.tika</groupId>
-      <artifactId>tika-parsers-standard-package</artifactId>
-      <version>3.2.2</version>
     </dependency>
 
     <dependency>

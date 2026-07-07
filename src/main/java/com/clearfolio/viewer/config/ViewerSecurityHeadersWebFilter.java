@@ -48,17 +48,12 @@ public class ViewerSecurityHeadersWebFilter implements WebFilter {
             headers.set("X-Content-Type-Options", "nosniff");
             headers.set("Referrer-Policy", "no-referrer");
 
-            headers.set(
-                    "Strict-Transport-Security",
-                    "max-age=31536000; includeSubDomains"
-            );
-
-            // If redirect, avoid error-like CSP that could confuse debugging.
+            // If the response is a redirect, do not attach an error-like CSP that could confuse debugging.
             if (exchange.getResponse().getStatusCode() == HttpStatus.FOUND) {
                 return Mono.empty();
             }
 
-            // CSP goal: strict by default, allow same-origin JS/CSS and workers
+            // CSP goal: strict by default, but allow same-origin JS/CSS and PDF.js workers.
             headers.set(
                     "Content-Security-Policy",
                     String.join("; ",

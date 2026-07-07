@@ -4,12 +4,13 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.stereotype.Component;
-
 /**
  * In-memory implementation of {@link ArtifactStore}.
+ *
+ * <p>Contents do not survive restarts; this implementation backs tests and the
+ * {@code clearfolio.artifact-store.mode=in-memory} configuration, while the
+ * disk-backed {@link FileSystemArtifactStore} is the runtime default.
  */
-@Component
 public class InMemoryArtifactStore implements ArtifactStore {
 
     private final ConcurrentHashMap<UUID, byte[]> pdfByDocId = new ConcurrentHashMap<>();

@@ -6,8 +6,9 @@ import java.util.UUID;
 /**
  * Stores and retrieves preview artifacts produced by conversion jobs.
  *
- * <p>This MVP abstraction intentionally keeps operations in-memory and CPU-only
- * so request paths remain non-blocking (no filesystem/network I/O).
+ * <p>Implementations keep the hot request path CPU-only where possible; the
+ * disk-backed implementation caches bytes in memory after the first access so
+ * filesystem reads are limited to cache misses (for example, after a restart).
  */
 public interface ArtifactStore {
 

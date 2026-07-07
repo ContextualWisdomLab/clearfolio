@@ -16,6 +16,13 @@ conversion:
   retry-backoff-multiplier: 2.0
   max-upload-size-bytes: 5242880
 
+clearfolio:
+  artifact-store:
+    # filesystem (default): persist artifacts under root-dir so they survive
+    # restarts. in-memory: volatile store for tests and ephemeral demos.
+    mode: filesystem
+    root-dir: data/artifacts
+
 viewer:
   security:
     # Default is safe and non-breaking for same-origin usage.

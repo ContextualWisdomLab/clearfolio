@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.service;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -88,6 +89,80 @@ class DefaultConversionWorkerTest {
         byte[] stored = artifactStore.getPdf(jobId).orElseThrow();
         assertTrue(stored.length > 4);
         assertEquals("%PDF", new String(stored, 0, 4));
+        assertEquals("/artifacts/" + jobId + ".pdf", job.getConvertedResourcePath());
+    }
+
+    @Test
+    void autowiredConstructorRunsDefaultConversionTask() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setMaxRetryAttempts(1);
+
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "report.docx",
+                "application/octet-stream",
+                "hash-autowired-ctor",
+                12L,
+                1
+        );
+        repository.save(job);
+
+        InMemoryArtifactStore artifactStore = new InMemoryArtifactStore();
+        DefaultConversionWorker worker = new DefaultConversionWorker(
+                repository,
+                repository,
+                Runnable::run,
+                artifactStore,
+                new PdfBoxArtifactGenerator(),
+                conversionProperties
+        );
+
+        worker.enqueue(jobId);
+
+        assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
+        byte[] stored = artifactStore.getPdf(jobId).orElseThrow();
+        assertEquals("%PDF", new String(stored, 0, 4));
+    }
+
+    @Test
+    void workerServesSeededPdfPassthroughBytesWithoutGeneratingPlaceholder() {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setMaxRetryAttempts(1);
+
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "score.pdf",
+                "application/pdf",
+                "hash-pdf-passthrough",
+                24L,
+                1
+        );
+        repository.save(job);
+
+        InMemoryArtifactStore artifactStore = new InMemoryArtifactStore();
+        byte[] original = "%PDF-1.7\noriginal-upload".getBytes();
+        artifactStore.putPdf(jobId, original);
+
+        DefaultConversionWorker worker = new DefaultConversionWorker(
+                repository,
+                Runnable::run,
+                artifactStore,
+                seedTarget -> {
+                    throw new AssertionError("placeholder generator must not run for PDF passthrough");
+                },
+                conversionProperties
+        );
+
+        worker.enqueue(jobId);
+
+        assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
+        byte[] served = artifactStore.getPdf(jobId).orElseThrow();
+        assertEquals("%PDF-", new String(served, 0, 5));
+        assertArrayEquals(original, served);
         assertEquals("/artifacts/" + jobId + ".pdf", job.getConvertedResourcePath());
     }
 

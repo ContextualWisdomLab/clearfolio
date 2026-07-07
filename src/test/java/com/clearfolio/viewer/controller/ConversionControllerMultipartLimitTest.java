@@ -122,7 +122,7 @@ class ConversionControllerMultipartLimitTest {
 
     @Test
     void submitAcceptsDocumentAtServiceUploadLimitBoundary() {
-        byte[] payload = docxBytes(1024);
+        byte[] payload = new byte[1024];
 
         submit("report.docx", payload)
                 .expectStatus().isAccepted()
@@ -172,14 +172,5 @@ class ConversionControllerMultipartLimitTest {
     private static void assertNonBlankTraceId(Object value) {
         String traceId = (String) value;
         assertFalse(traceId.isBlank());
-    }
-
-    private static byte[] docxBytes(int size) {
-        byte[] bytes = new byte[size];
-        bytes[0] = 0x50;
-        bytes[1] = 0x4B;
-        bytes[2] = 0x03;
-        bytes[3] = 0x04;
-        return bytes;
     }
 }

@@ -20,7 +20,6 @@ public class ConversionProperties {
     private long retryMaxDelayMs = 5_000L;
     private double retryBackoffMultiplier = 2.0;
     private long maxUploadSizeBytes = 5 * 1024 * 1024L;
-    private String policyOverridePublicKey = "";
 
     /**
      * Returns file extensions that are blocked from upload.
@@ -179,24 +178,5 @@ public class ConversionProperties {
      */
     public void setMaxUploadSizeBytes(long maxUploadSizeBytes) {
         this.maxUploadSizeBytes = Math.max(1L, maxUploadSizeBytes);
-    }
-
-
-    /**
-     * Returns the policy override public key.
-     *
-     * @return policy override public key
-     */
-    public String getPolicyOverridePublicKey() {
-        return policyOverridePublicKey;
-    }
-
-    /**
-     * Sets the policy override public key.
-     *
-     * @param policyOverridePublicKey policy override public key
-     */
-    public void setPolicyOverridePublicKey(String policyOverridePublicKey) {
-        this.policyOverridePublicKey = policyOverridePublicKey == null ? "" : policyOverridePublicKey;
     }
 }

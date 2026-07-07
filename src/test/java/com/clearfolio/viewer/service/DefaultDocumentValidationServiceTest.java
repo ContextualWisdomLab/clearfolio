@@ -88,6 +88,28 @@ class DefaultDocumentValidationServiceTest {
     }
 
     @Test
+    void rejectsBlockedExtensionWhenSignatureIsWellFormedButDoesNotMatch() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        conversionProperties.setPolicyOverrideSecret("test-secret");
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        // Valid hex of the correct length, but computed with the wrong secret, so the
+        // constant-time MessageDigest.isEqual comparison must reject it.
+        String wrongSignature = generateSignature("approver-1", "hwp", "attacker-secret");
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        PolicyOverrideRequest.of("true", wrongSignature, "approver-1")
+                )
+        );
+
+        assertEquals("Invalid policy override signature.", ex.getMessage());
+    }
+
+    @Test
     void rejectsBlockedExtensionWhenSecretIsNotConfigured() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));

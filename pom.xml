@@ -24,6 +24,7 @@
     <argLine></argLine>
     <pdfbox.version>3.0.3</pdfbox.version>
     <pdfjs.dist.version>4.10.38</pdfjs.dist.version>
+    <jazzer.version>0.30.0</jazzer.version>
   </properties>
 
   <dependencies>
@@ -63,6 +64,19 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!--
+      Jazzer (Apache-2.0) coverage-guided fuzzing, integrated with JUnit 5.
+      In normal `mvn test` runs the @FuzzTest methods replay their seed corpus
+      as fast regression tests. With JAZZER_FUZZ=1 they run libFuzzer-driven
+      fuzzing for a bounded duration (see .github/workflows/fuzz.yml).
+    -->
+    <dependency>
+      <groupId>com.code-intelligence</groupId>
+      <artifactId>jazzer-junit</artifactId>
+      <version>${jazzer.version}</version>
       <scope>test</scope>
     </dependency>
 

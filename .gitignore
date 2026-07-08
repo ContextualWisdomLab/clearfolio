@@ -30,3 +30,9 @@ certs/
 *.crt
 *.cer
 *.jks
+
+# Jazzer generated corpus
+.cifuzz-corpus/
+
+# CodeGraph local index
+.codegraph/

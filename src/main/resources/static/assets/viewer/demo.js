@@ -271,6 +271,8 @@ async function retryActiveJob() {
   const jobId = activeJobDetail.jobId;
   setStatus("Requesting operator retry...");
   el.retryJobBtn.disabled = true;
+  const originalRetryText = el.retryJobBtn.textContent;
+  el.retryJobBtn.textContent = "Retrying...";
   try {
     const res = await fetch(`/api/v1/convert/jobs/${encodeURIComponent(jobId)}/retry`, {
       method: "POST",
@@ -308,6 +310,7 @@ async function retryActiveJob() {
     setError("Network error while requesting retry. Retry when the service is reachable.");
   } finally {
     el.retryJobBtn.disabled = false;
+    el.retryJobBtn.textContent = originalRetryText;
   }
 }
 
@@ -380,6 +383,9 @@ async function refreshKpis() {
 }
 
 async function refreshKpiEvidence() {
+  el.refreshEvidenceBtn.disabled = true;
+  const originalText = el.refreshEvidenceBtn.textContent;
+  el.refreshEvidenceBtn.textContent = "Refreshing...";
   try {
     const { res, data } = await fetchJson(KPI_EXPORTS_ENDPOINT);
     if (!res.ok) {
@@ -390,6 +396,9 @@ async function refreshKpiEvidence() {
     renderKpiEvidence(data);
   } catch (err) {
     el.kpiExportStatus.textContent = "Snapshot evidence is unavailable while the service is unreachable.";
+  } finally {
+    el.refreshEvidenceBtn.disabled = false;
+    el.refreshEvidenceBtn.textContent = originalText;
   }
 }
 
@@ -436,6 +445,8 @@ async function submitDocument(event) {
   }
 
   el.submitBtn.disabled = true;
+  const originalSubmitText = el.submitBtn.textContent;
+  el.submitBtn.textContent = "Submitting...";
   setStatus("Submitting document...");
 
   try {
@@ -479,6 +490,7 @@ async function submitDocument(event) {
     setError("Network error while submitting. Retry when the service is reachable.");
   } finally {
     el.submitBtn.disabled = false;
+    el.submitBtn.textContent = originalSubmitText;
   }
 }
 

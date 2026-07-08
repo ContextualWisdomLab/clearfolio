@@ -81,4 +81,32 @@ Codex, Cursor, opencode, …) working in this repo.
   index is later added at the repo root, prefer CodeGraph
   (`codegraph explore "<query>"` or the code-review-graph MCP tools) BEFORE
   grep/find — it surfaces callers/callees/impact that text search misses.
+
+### This repo's role in the ecosystem
+
+- **This repo's role: Document viewer.** clearfolio renders uploaded
+  documents/artifacts for the rest of the org.
+- The org is an ecosystem around **naruon** — the hub: an email/PIM that
+  DOM-decomposes emails and files into a persisted knowledge graph. Each
+  component is a standalone program that must ALSO work as a git submodule of
+  the hub, grown separately and together.
+- Sibling components: **waf-ids-ai-soc** (WAF / IDS / AI SOC / LB / APIM),
+  **pg-erd-cloud** (ERD tool), **contextual-orchestrator** (LLM
+  cost/perf/upstream-LB gateway, beyond LiteLLM), **codec-carver** (STT /
+  omni-modal speech-video codec), **fast-mlsirm** (LLM-as-a-Judge calibration +
+  evaluation-item quality, using aFIPC FIPC + kaefa item-fit), **feelanet-adfs**
+  (passwordless SSO — OIDC/SCIM/ADFS/LDAP/FIDO2/OAuth2.1, eliminate passwords),
+  **newsdom-api** (PDF→DOM sidecar), and **semantic-data-portal** (upper
+  ontology / catalog / governance plane with its own graph engine).
+
+### Research grounding (attach paper PDFs)
+
+- Org rule: substantive feature/process PRs should find the relevant academic
+  papers and **commit their PDFs into the PR** (e.g. a `docs/papers/` or
+  `references/` dir) with full citations. Respect copyright — attach the PDF only
+  when redistribution is permissible; otherwise cite + link + a short summary in
+  place of the file.
+- For clearfolio (a document viewer), ground viewer/rendering work in the
+  relevant literature — e.g. document layout analysis, PDF/DOM structure
+  extraction, and accessible/large-document rendering — and cite it in the PR.
 <!-- END cwl-agent-guidance -->

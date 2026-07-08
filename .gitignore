@@ -30,3 +30,5 @@ certs/
 *.crt
 *.cer
 *.jks
+__pycache__/
+*.pyc

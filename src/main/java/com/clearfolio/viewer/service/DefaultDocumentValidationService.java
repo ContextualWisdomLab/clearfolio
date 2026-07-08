@@ -163,7 +163,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            String payload = approverId + ":" + extension;
+            String payload = approverId.length() + ":" + approverId + extension;
             return mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
         } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
             throw new IllegalStateException("HmacSHA256 unavailable or key invalid", ex);

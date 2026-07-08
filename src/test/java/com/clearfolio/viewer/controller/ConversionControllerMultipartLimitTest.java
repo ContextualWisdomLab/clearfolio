@@ -45,7 +45,8 @@ import com.clearfolio.viewer.service.PolicyOverrideRequest;
 @TestPropertySource(
         properties = {
                 "conversion.max-upload-size-bytes=1024",
-                "spring.codec.max-in-memory-size=2048"
+                "spring.codec.max-in-memory-size=2048",
+                "conversion.policy-override-secret=test-secret"
         }
 )
 class ConversionControllerMultipartLimitTest {
@@ -144,7 +145,7 @@ class ConversionControllerMultipartLimitTest {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            String payload = approverId + ":" + extension;
+            String payload = approverId.length() + ":" + approverId + extension;
             byte[] hashed = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hashed);
         } catch (Exception ex) {

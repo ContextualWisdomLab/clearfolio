@@ -47,7 +47,7 @@ class DefaultDocumentValidationServiceTest {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            String payload = approverId + ":" + extension;
+            String payload = approverId.length() + ":" + approverId + extension;
             byte[] hashed = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hashed);
         } catch (Exception ex) {

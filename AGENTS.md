@@ -53,6 +53,27 @@ Codex, Cursor, opencode, …) working in this repo.
   code-scanning tools can't converge on one PR ref). Gating is by the Security
   Scan **job result**, not the code_scanning rule — do not add tools to that rule.
 
+### Config & secrets (KV, not env)
+
+- Org rule: do **not** read runtime config/secrets via `os.getenv()` / raw
+  environment variables (or the Spring `${ENV_VAR:...}` equivalent) as the
+  runtime source. Read them from a KV / credential registry. Org Actions
+  secrets (e.g. `OPENAI_API_KEY`) flow **into** the KV via a bootstrap/CI step;
+  runtime reads from the KV — env is only transport into the KV, never the
+  runtime source.
+- Reference implementation: xtrmLLMBatchPython's pgcrypto-encrypted Postgres
+  credential registry (`get_credential(name)`). Reuse that pattern (a DB-backed
+  KV is fine) unless a dedicated KV is adopted.
+- **This repo applies** — it is a Spring Boot service with real runtime secrets
+  (artifact-token HMAC secret, tenant-claims HMAC secret). **Known deviation to
+  migrate:** those secrets are currently injected straight from env via Spring
+  placeholders in `application-buyer-demo.yml`
+  (`clearfolio.artifact-token.secret: ${CLEARFOLIO_ARTIFACT_TOKEN_SECRET:}`,
+  `clearfolio.tenant-claims.hmac-secret: ${CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET:}`,
+  consumed by `ArtifactLinkService` / `TenantAccessService`). Move these to a
+  KV-backed lookup so env is only the bootstrap transport into the KV. New
+  secrets/credentials must go through the KV from the start, not new env reads.
+
 ### Code exploration
 
 - There is no `.codegraph/` index in this repo, so use normal search (grep /

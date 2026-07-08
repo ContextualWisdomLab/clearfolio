@@ -49,12 +49,18 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
      * {@inheritDoc}
      */
     @Override
-    public void validateOrThrow(MultipartFile file, PolicyOverrideRequest overrideRequest) {
+    public void validateOrThrow(final MultipartFile file, final PolicyOverrideRequest overrideRequest) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is required.");
         }
 
         String fileName = file.getOriginalFilename();
+        if (fileName != null && fileName.indexOf('\u0000') >= 0) {
+            throw new IllegalArgumentException(
+                    "File name contains invalid characters."
+            );
+        }
+
         String extension = extensionOf(fileName);
         if (extension.isEmpty()) {
             throw new IllegalArgumentException("File extension is required.");

@@ -229,4 +229,23 @@ class ViewerSecurityHeadersWebFilterTest {
         org.springframework.http.HttpHeaders headers = exchange.getResponse().getHeaders();
         org.junit.jupiter.api.Assertions.assertEquals("DENY", headers.getFirst("X-Frame-Options"));
     }
+
+
+    @Test
+    void blocksUntrustedDomains() {
+        ViewerSecurityHeadersWebFilter filter = new ViewerSecurityHeadersWebFilter("https://malicious.com");
+        org.springframework.mock.web.server.MockServerWebExchange exchange = org.springframework.mock.web.server.MockServerWebExchange.from(
+                org.springframework.mock.http.server.reactive.MockServerHttpRequest.get("/viewer").build()
+        );
+        org.springframework.web.server.WebFilterChain chain = webExchange -> {
+            webExchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.OK);
+            return webExchange.getResponse().setComplete();
+        };
+
+        filter.filter(exchange, chain).block();
+
+        org.springframework.http.HttpHeaders headers = exchange.getResponse().getHeaders();
+        assertTrue(headers.getFirst("Content-Security-Policy").contains("frame-ancestors 'self'"));
+        assertEquals("SAMEORIGIN", headers.getFirst("X-Frame-Options"));
+    }
 }

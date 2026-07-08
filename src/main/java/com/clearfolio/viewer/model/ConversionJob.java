@@ -9,12 +9,8 @@ import java.util.UUID;
 public class ConversionJob {
 
     private static final int DEFAULT_MAX_ATTEMPTS = 3;
-    private static final String DEFAULT_TENANT_ID = "buyer-demo";
-    private static final String DEFAULT_SUBJECT_ID = "buyer-demo-operator";
 
     private final UUID jobId;
-    private final String tenantId;
-    private final String subjectId;
     private final String originalFileName;
     private final String contentType;
     private final String contentHash;
@@ -69,43 +65,7 @@ public class ConversionJob {
             long fileSize,
             int maxAttempts
     ) {
-        this(
-                jobId,
-                DEFAULT_TENANT_ID,
-                DEFAULT_SUBJECT_ID,
-                originalFileName,
-                contentType,
-                contentHash,
-                fileSize,
-                maxAttempts
-        );
-    }
-
-    /**
-     * Creates a conversion job with tenant and subject ownership metadata.
-     *
-     * @param jobId job identifier
-     * @param tenantId tenant isolation boundary
-     * @param subjectId user or service subject that submitted the job
-     * @param originalFileName original uploaded file name
-     * @param contentType uploaded file content type
-     * @param contentHash uploaded file content hash
-     * @param fileSize uploaded file size in bytes
-     * @param maxAttempts maximum retry attempts
-     */
-    public ConversionJob(
-            UUID jobId,
-            String tenantId,
-            String subjectId,
-            String originalFileName,
-            String contentType,
-            String contentHash,
-            long fileSize,
-            int maxAttempts
-    ) {
         this.jobId = jobId;
-        this.tenantId = normalizeOrDefault(tenantId, DEFAULT_TENANT_ID);
-        this.subjectId = normalizeOrDefault(subjectId, DEFAULT_SUBJECT_ID);
         this.originalFileName = sanitize(originalFileName);
         this.contentType = sanitize(contentType);
         this.contentHash = contentHash;
@@ -125,14 +85,6 @@ public class ConversionJob {
         return value.replace("\u0000", "");
     }
 
-    private String normalizeOrDefault(String value, String fallback) {
-        String sanitized = sanitize(value);
-        if (sanitized == null || sanitized.isBlank()) {
-            return fallback;
-        }
-        return sanitized.strip();
-    }
-
     /**
      * Returns the unique identifier of this conversion job.
      *
@@ -140,35 +92,6 @@ public class ConversionJob {
      */
     public UUID getJobId() {
         return jobId;
-    }
-
-    /**
-     * Returns the tenant that owns this conversion job.
-     *
-     * @return tenant identifier
-     */
-    public String getTenantId() {
-        return tenantId;
-    }
-
-    /**
-     * Returns the subject that submitted this conversion job.
-     *
-     * @return subject identifier
-     */
-    public String getSubjectId() {
-        return subjectId;
-    }
-
-    /**
-     * Returns whether this job belongs to the supplied tenant.
-     *
-     * @param tenantId tenant identifier to compare
-     * @return true when tenant identifiers match
-     */
-    public boolean belongsToTenant(String tenantId) {
-        String normalizedTenantId = normalizeOrDefault(tenantId, "");
-        return this.tenantId.equals(normalizedTenantId);
     }
 
     /**

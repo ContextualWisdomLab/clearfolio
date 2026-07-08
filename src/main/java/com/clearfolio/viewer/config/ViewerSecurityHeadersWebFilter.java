@@ -23,17 +23,26 @@ import reactor.core.publisher.Mono;
  * workers (worker-src blob:).
  */
 @Component
-public class ViewerSecurityHeadersWebFilter implements WebFilter {
+public final class ViewerSecurityHeadersWebFilter implements WebFilter {
 
+    /** Configured frame-ancestors. */
     private final String frameAncestors;
 
+    /**
+     * Creates filter.
+     *
+     * @param frameAncestorsValue The configured frame-ancestors value
+     */
     public ViewerSecurityHeadersWebFilter(
-            @Value("${viewer.security.frame-ancestors:self}") String frameAncestors) {
-        this.frameAncestors = normalizeFrameAncestors(frameAncestors);
+            @Value("${viewer.security.frame-ancestors:self}")
+            final String frameAncestorsValue) {
+        this.frameAncestors = normalizeFrameAncestors(frameAncestorsValue);
     }
 
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    public Mono<Void> filter(
+            final ServerWebExchange exchange,
+            final WebFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
         if (!isViewerSurface(path)) {
             return chain.filter(exchange);
@@ -48,19 +57,22 @@ public class ViewerSecurityHeadersWebFilter implements WebFilter {
             headers.set("X-Content-Type-Options", "nosniff");
             headers.set("Referrer-Policy", "no-referrer");
             headers.set("X-XSS-Protection", "0");
-            headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+            headers.set("Strict-Transport-Security",
+                    "max-age=31536000; includeSubDomains");
             if ("'self'".equals(frameAncestors)) {
                 headers.set("X-Frame-Options", "SAMEORIGIN");
             } else if ("'none'".equals(frameAncestors)) {
                 headers.set("X-Frame-Options", "DENY");
             }
 
-            // If the response is a redirect, do not attach an error-like CSP that could confuse debugging.
+            // If the response is a redirect, do not attach an error-like CSP
+            // that could confuse debugging.
             if (exchange.getResponse().getStatusCode() == HttpStatus.FOUND) {
                 return Mono.empty();
             }
 
-            // CSP goal: strict by default, but allow same-origin JS/CSS and PDF.js workers.
+            // CSP goal: strict by default, but allow same-origin JS/CSS
+            // and PDF.js workers.
             headers.set(
                     "Content-Security-Policy",
                     String.join("; ",
@@ -89,7 +101,7 @@ public class ViewerSecurityHeadersWebFilter implements WebFilter {
         return chain.filter(exchange);
     }
 
-    private boolean isViewerSurface(String path) {
+    private boolean isViewerSurface(final String path) {
         if (path == null || path.isBlank()) {
             return false;
         }
@@ -99,17 +111,26 @@ public class ViewerSecurityHeadersWebFilter implements WebFilter {
         return false;
     }
 
-    private String normalizeFrameAncestors(String configured) {
+    /** List of allowed domains. */
+    private static final java.util.List<String> ALLOWED_DOMAINS =
+            java.util.Arrays.asList("'self'", "'none'", "https://example.test");
+
+    private String normalizeFrameAncestors(final String configured) {
         if (configured == null) {
             return "'self'";
         }
-        String trimmed = configured.trim();
-        if (trimmed.isEmpty()) {
+        final String trimmed = configured.trim();
+        if (trimmed.isEmpty() || Objects.equals(trimmed, "self")) {
             return "'self'";
         }
-        if (Objects.equals(trimmed, "self")) {
-            return "'self'";
+
+        final String[] origins = trimmed.split("\s+");
+        for (final String origin : origins) {
+            if (!ALLOWED_DOMAINS.contains(origin)) {
+                return "'self'";
+            }
         }
+
         return trimmed;
     }
 }

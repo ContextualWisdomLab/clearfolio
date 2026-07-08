@@ -27,11 +27,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.reactive.function.BodyInserters;
 
-import com.clearfolio.viewer.auth.TenantAccessService;
-import com.clearfolio.viewer.auth.TenantContext;
-import com.clearfolio.viewer.auth.TenantPermissions;
-import com.clearfolio.viewer.artifact.ArtifactLinkService;
-import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
 import com.clearfolio.viewer.exception.UnsupportedDocumentFormatException;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
@@ -45,20 +40,12 @@ class ConversionControllerTest {
 
     private DocumentConversionService conversionService;
 
-    private InMemoryArtifactStore artifactStore;
-
     private ConversionController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        artifactStore = new InMemoryArtifactStore();
-        controller = new ConversionController(
-                conversionService,
-                new TenantAccessService(),
-                new ArtifactLinkService(artifactStore, "test-secret"),
-                DataSize.ofBytes(262_144L)
-        );
+        controller = new ConversionController(conversionService, DataSize.ofBytes(262_144L));
         webTestClient = WebTestClient.bindToController(
                 controller
         ).controllerAdvice(new ApiExceptionHandler()).build();
@@ -68,8 +55,6 @@ class ConversionControllerTest {
     void constructorCapsMaxInMemorySizeAtIntegerMaxValue() throws Exception {
         ConversionController controller = new ConversionController(
                 conversionService,
-                new TenantAccessService(),
-                new ArtifactLinkService(new InMemoryArtifactStore(), "test-secret"),
                 DataSize.ofBytes((long) Integer.MAX_VALUE + 1)
         );
         Field field = ConversionController.class.getDeclaredField("maxInMemorySizeBytes");
@@ -147,7 +132,7 @@ class ConversionControllerTest {
     @Test
     void submitReturnsAcceptedWithJobId() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.submit(any(), any(), any())).thenReturn(jobId);
+        when(conversionService.submit(any(), any())).thenReturn(jobId);
 
         submit("report.docx", "hello".getBytes())
                 .expectStatus().isAccepted()
@@ -159,7 +144,7 @@ class ConversionControllerTest {
 
     @Test
     void submitReturnsUnsupportedFormatErrorPayload() {
-        when(conversionService.submit(any(), any(), any())).thenThrow(new UnsupportedDocumentFormatException("hwp"));
+        when(conversionService.submit(any(), any())).thenThrow(new UnsupportedDocumentFormatException("hwp"));
 
         submit("contract.hwp", "hello".getBytes())
                 .expectStatus().isBadRequest()
@@ -173,7 +158,7 @@ class ConversionControllerTest {
     @Test
     void submitForwardsPolicyOverrideHeadersToService() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.submit(any(), any(), any())).thenReturn(jobId);
+        when(conversionService.submit(any(), any())).thenReturn(jobId);
 
         submit("contract.hwp", "hello".getBytes(), "true", "token-123", "approver-1")
                 .expectStatus().isAccepted()
@@ -183,15 +168,11 @@ class ConversionControllerTest {
         @SuppressWarnings("unchecked")
         org.mockito.ArgumentCaptor<PolicyOverrideRequest> overrideCaptor =
                 org.mockito.ArgumentCaptor.forClass(PolicyOverrideRequest.class);
-        @SuppressWarnings("unchecked")
-        org.mockito.ArgumentCaptor<TenantContext> tenantCaptor =
-                org.mockito.ArgumentCaptor.forClass(TenantContext.class);
-        verify(conversionService).submit(any(), overrideCaptor.capture(), tenantCaptor.capture());
+        verify(conversionService).submit(any(), overrideCaptor.capture());
         PolicyOverrideRequest overrideRequest = overrideCaptor.getValue();
         assertEquals("true", overrideRequest.policyOverride());
         assertEquals("token-123", overrideRequest.approvalToken());
         assertEquals("approver-1", overrideRequest.approverId());
-        assertEquals(TenantContext.DEMO_TENANT_ID, tenantCaptor.getValue().tenantId());
     }
 
     @Test
@@ -199,7 +180,6 @@ class ConversionControllerTest {
         webTestClient.post()
                 .uri("/api/v1/convert/jobs")
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .body(BodyInserters.fromMultipartData(new LinkedMultiValueMap<>()))
                 .exchange()
                 .expectStatus().isBadRequest()
@@ -210,22 +190,12 @@ class ConversionControllerTest {
     }
 
     @Test
-    void submitReturnsUnauthorizedWhenTenantClaimsAreMissing() {
-        submitWithoutAuth("report.docx", "hello".getBytes())
-                .expectStatus().isUnauthorized()
-                .expectBody()
-                .jsonPath("$.errorCode").isEqualTo("UNAUTHORIZED")
-                .jsonPath("$.message").isEqualTo("auth token required");
-    }
-
-    @Test
     void statusReturnsNotFoundWhenJobMissing() {
         UUID jobId = UUID.randomUUID();
         when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}", jobId)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isNotFound()
                 .expectBody()
@@ -239,7 +209,6 @@ class ConversionControllerTest {
     void statusReturnsBadRequestForMalformedJobId() {
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}", "not-a-uuid")
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
@@ -262,12 +231,10 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}", jobId)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.jobId").isEqualTo(jobId.toString())
-                .jsonPath("$.tenantId").isEqualTo(TenantContext.DEMO_TENANT_ID)
                 .jsonPath("$.status").isEqualTo(ConversionJobStatus.SUBMITTED.name())
                 .jsonPath("$.fileName").isEqualTo("report.docx")
                 .jsonPath("$.attemptCount").isEqualTo(0)
@@ -291,7 +258,6 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}", jobId)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -300,61 +266,13 @@ class ConversionControllerTest {
     }
 
     @Test
-    void statusReturnsForbiddenWhenPermissionIsMissing() {
-        UUID jobId = UUID.randomUUID();
-
-        webTestClient.get()
-                .uri("/api/v1/convert/jobs/{jobId}", jobId)
-                .headers(headers -> addAuth(headers, TenantPermissions.VIEWER_READ))
-                .exchange()
-                .expectStatus().isForbidden()
-                .expectBody()
-                .jsonPath("$.errorCode").isEqualTo("FORBIDDEN")
-                .jsonPath("$.message").isEqualTo("missing permission: " + TenantPermissions.JOB_READ);
-    }
-
-    @Test
-    void statusHidesCrossTenantJobAsNotFound() {
-        UUID jobId = UUID.randomUUID();
-        ConversionJob job = new ConversionJob(
-                jobId,
-                "tenant-b",
-                "user-b",
-                "report.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "abc",
-                12L,
-                3
-        );
-        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
-
-        webTestClient.get()
-                .uri("/api/v1/convert/jobs/{jobId}", jobId)
-                .headers(ConversionControllerTest::addAllPermissions)
-                .exchange()
-                .expectStatus().isNotFound()
-                .expectBody()
-                .jsonPath("$.message").isEqualTo("job not found");
-    }
-
-    @Test
     void retryReturnsAcceptedWhenDeadLetteredJobIsEligible() {
         UUID jobId = UUID.randomUUID();
-        ConversionJob job = new ConversionJob(
-                jobId,
-                "report.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "abc",
-                12L
-        );
-        job.markDeadLettered("retries exhausted");
-        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
         when(conversionService.retryDeadLettered(jobId, "operator-7")).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
                 .uri("/api/v1/convert/jobs/{jobId}/retry", jobId)
                 .header(ConversionController.OPERATOR_ID_HEADER, "operator-7")
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isAccepted()
                 .expectBody()
@@ -371,7 +289,6 @@ class ConversionControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/convert/jobs/{jobId}/retry", jobId)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
@@ -388,7 +305,6 @@ class ConversionControllerTest {
         webTestClient.post()
                 .uri("/api/v1/convert/jobs/{jobId}/retry", jobId)
                 .header(ConversionController.OPERATOR_ID_HEADER, "   ")
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
@@ -401,12 +317,11 @@ class ConversionControllerTest {
     @Test
     void retryReturnsNotFoundWhenJobMissing() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+        when(conversionService.retryDeadLettered(jobId, "operator-7")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
                 .uri("/api/v1/convert/jobs/{jobId}/retry", jobId)
                 .header(ConversionController.OPERATOR_ID_HEADER, "operator-7")
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isNotFound()
                 .expectBody()
@@ -419,20 +334,11 @@ class ConversionControllerTest {
     @Test
     void retryReturnsConflictWhenJobIsNotEligible() {
         UUID jobId = UUID.randomUUID();
-        ConversionJob job = new ConversionJob(
-                jobId,
-                "report.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "abc",
-                12L
-        );
-        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
         when(conversionService.retryDeadLettered(jobId, "operator-7")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 
         webTestClient.post()
                 .uri("/api/v1/convert/jobs/{jobId}/retry", jobId)
                 .header(ConversionController.OPERATOR_ID_HEADER, "operator-7")
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isEqualTo(409)
                 .expectBody()
@@ -456,7 +362,6 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/viewer/{docId}", docId)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isEqualTo(409)
                 .expectBody()
@@ -481,7 +386,6 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/viewer/{docId}", docId)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isEqualTo(409)
                 .expectBody()
@@ -506,7 +410,6 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/viewer/{docId}", docId)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isEqualTo(409)
                 .expectBody()
@@ -531,7 +434,6 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/viewer/{docId}", docId)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isEqualTo(409)
                 .expectBody()
@@ -552,21 +454,17 @@ class ConversionControllerTest {
                 12L
         );
         job.markSucceeded("/artifacts/report.pdf", "conversion completed");
-        artifactStore.putPdf(docId, new byte[] {1, 2, 3});
         when(conversionService.getJob(docId)).thenReturn(Optional.of(job));
 
         webTestClient.get()
                 .uri("/api/v1/viewer/{docId}", docId)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.docId").isEqualTo(docId.toString())
                 .jsonPath("$.status").isEqualTo(ConversionJobStatus.SUCCEEDED.name())
                 .jsonPath("$.fileName").isEqualTo("report.docx")
-                .jsonPath("$.previewResourcePath").value(value -> assertSignedArtifactUrl((String) value, docId))
-                .jsonPath("$.artifactLinkUrl").value(value -> assertSignedArtifactUrl((String) value, docId))
-                .jsonPath("$.artifactLinkScope").isEqualTo(ArtifactLinkService.ARTIFACT_READ_SCOPE)
+                .jsonPath("$.previewResourcePath").isEqualTo("/artifacts/report.pdf")
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
                 .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
     }
@@ -578,7 +476,6 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/viewer/{docId}", docId)
-                .headers(ConversionControllerTest::addAllPermissions)
                 .exchange()
                 .expectStatus().isNotFound()
                 .expectBody()
@@ -604,7 +501,6 @@ class ConversionControllerTest {
         for (String endpoint : aliasEndpoints) {
             webTestClient.get()
                     .uri(endpoint, docId)
-                    .headers(ConversionControllerTest::addAllPermissions)
                     .exchange()
                     .expectStatus().isEqualTo(409)
                     .expectBody()
@@ -624,21 +520,18 @@ class ConversionControllerTest {
                 12L
         );
         job.markSucceeded("/artifacts/report.pdf", "conversion completed");
-        artifactStore.putPdf(docId, new byte[] {1, 2, 3});
         when(conversionService.getJob(docId)).thenReturn(Optional.of(job));
 
         String[] aliasEndpoints = {"/api/v1/viewer/{docId}", "/api/v1/convert/viewer/{docId}"};
         for (String endpoint : aliasEndpoints) {
             webTestClient.get()
                     .uri(endpoint, docId)
-                    .headers(ConversionControllerTest::addAllPermissions)
                     .exchange()
                     .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.docId").isEqualTo(docId.toString())
                 .jsonPath("$.status").isEqualTo(ConversionJobStatus.SUCCEEDED.name())
-                .jsonPath("$.previewResourcePath").value(value -> assertSignedArtifactUrl((String) value, docId))
-                .jsonPath("$.artifactLinkUrl").value(value -> assertSignedArtifactUrl((String) value, docId))
+                .jsonPath("$.previewResourcePath").isEqualTo("/artifacts/report.pdf")
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
                 .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
         }
@@ -646,19 +539,6 @@ class ConversionControllerTest {
 
     private WebTestClient.ResponseSpec submit(String filename, byte[] content) {
         return submit(filename, content, null, null, null);
-    }
-
-    private WebTestClient.ResponseSpec submitWithoutAuth(String filename, byte[] content) {
-        MultipartBodyBuilder builder = new MultipartBodyBuilder();
-        builder.part("file", content)
-                .filename(filename)
-                .contentType(MediaType.APPLICATION_OCTET_STREAM);
-
-        return webTestClient.post()
-                .uri("/api/v1/convert/jobs")
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .body(BodyInserters.fromMultipartData(builder.build()))
-                .exchange();
     }
 
     private WebTestClient.ResponseSpec submit(
@@ -675,7 +555,6 @@ class ConversionControllerTest {
         WebTestClient.RequestBodySpec request = webTestClient.post()
                 .uri("/api/v1/convert/jobs")
                 .contentType(MediaType.MULTIPART_FORM_DATA);
-        request.headers(ConversionControllerTest::addAllPermissions);
         if (policyOverride != null) {
             request.header(PolicyOverrideRequest.POLICY_OVERRIDE_HEADER, policyOverride);
         }
@@ -691,27 +570,6 @@ class ConversionControllerTest {
                 .exchange();
     }
 
-    private static void addAllPermissions(HttpHeaders headers) {
-        addAuth(
-                headers,
-                String.join(
-                        ",",
-                        TenantPermissions.JOB_CREATE,
-                        TenantPermissions.JOB_READ,
-                        TenantPermissions.JOB_RETRY,
-                        TenantPermissions.VIEWER_READ,
-                        TenantPermissions.ARTIFACT_LINK_CREATE,
-                        TenantPermissions.ANALYTICS_READ
-                )
-        );
-    }
-
-    private static void addAuth(HttpHeaders headers, String permissions) {
-        headers.add(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID);
-        headers.add(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID);
-        headers.add(TenantContext.PERMISSIONS_HEADER, permissions);
-    }
-
     private static void assertContains(String actual, String expected) {
         assertTrue(actual.contains(expected));
     }
@@ -719,9 +577,5 @@ class ConversionControllerTest {
     private static void assertNonBlankTraceId(Object value) {
         String traceId = (String) value;
         assertFalse(traceId.isBlank());
-    }
-
-    private static void assertSignedArtifactUrl(String actual, UUID docId) {
-        assertTrue(actual.startsWith("/artifacts/" + docId + ".pdf?artifactToken="));
     }
 }

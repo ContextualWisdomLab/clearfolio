@@ -2,7 +2,6 @@ package com.clearfolio.viewer.controller;
 
 import java.util.Optional;
 import java.util.UUID;
-import java.util.List;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -10,25 +9,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
-import com.clearfolio.viewer.api.ArtifactLinkRequest;
-import com.clearfolio.viewer.api.ArtifactLinkRevocationRequest;
-import com.clearfolio.viewer.api.ArtifactLinkRevocationResponse;
-import com.clearfolio.viewer.api.ArtifactLinkResponse;
-import com.clearfolio.viewer.api.ArtifactReadEventResponse;
-import com.clearfolio.viewer.artifact.ArtifactLinkService;
 import com.clearfolio.viewer.artifact.ArtifactStore;
-import com.clearfolio.viewer.artifact.ArtifactTokenException;
-import com.clearfolio.viewer.artifact.ArtifactTokenClaims;
-import com.clearfolio.viewer.auth.TenantAccessService;
-import com.clearfolio.viewer.auth.TenantContext;
-import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.service.DocumentConversionService;
@@ -45,78 +29,16 @@ public class ArtifactController {
 
     private final DocumentConversionService conversionService;
     private final ArtifactStore artifactStore;
-    private final ArtifactLinkService artifactLinkService;
-    private final TenantAccessService tenantAccessService;
 
     /**
      * Creates a controller that serves stored conversion artifacts.
      *
      * @param conversionService conversion service for status gating
      * @param artifactStore artifact store for PDF bytes
-     * @param artifactLinkService signed artifact link service
-     * @param tenantAccessService tenant and permission guard
      */
-    public ArtifactController(
-            DocumentConversionService conversionService,
-            ArtifactStore artifactStore,
-            ArtifactLinkService artifactLinkService,
-            TenantAccessService tenantAccessService) {
+    public ArtifactController(DocumentConversionService conversionService, ArtifactStore artifactStore) {
         this.conversionService = conversionService;
         this.artifactStore = artifactStore;
-        this.artifactLinkService = artifactLinkService;
-        this.tenantAccessService = tenantAccessService;
-    }
-
-    /**
-     * Creates a short-lived signed artifact link for a converted document.
-     *
-     * @param docId document identifier
-     * @param request optional link request
-     * @param headers request headers carrying tenant claims
-     * @return signed artifact link payload
-     */
-    @PostMapping("/api/v1/viewer/{docId}/artifact-links")
-    public ArtifactLinkResponse createArtifactLink(
-            @PathVariable UUID docId,
-            @RequestBody(required = false) ArtifactLinkRequest request,
-            @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ARTIFACT_LINK_CREATE);
-        ConversionJob job = conversionService.getJob(docId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "artifact not found"));
-        tenantAccessService.requireSameTenant(tenantContext, job);
-        return artifactLinkService.createLink(job, tenantContext, request);
-    }
-
-    /**
-     * Revokes a previously issued signed artifact link.
-     *
-     * @param tokenId artifact token identifier
-     * @param request optional revocation request
-     * @param headers request headers carrying tenant claims
-     * @return revocation payload
-     */
-    @PostMapping("/api/v1/viewer/artifact-links/{tokenId}/revoke")
-    public ArtifactLinkRevocationResponse revokeArtifactLink(
-            @PathVariable String tokenId,
-            @RequestBody(required = false) ArtifactLinkRevocationRequest request,
-            @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ARTIFACT_LINK_REVOKE);
-        return artifactLinkService.revokeLink(tokenId, tenantContext, request);
-    }
-
-    /**
-     * Returns artifact read audit events for a tenant-owned document.
-     *
-     * @param docId document identifier
-     * @param headers request headers carrying tenant claims
-     * @return current artifact read events
-     */
-    @GetMapping("/api/v1/viewer/{docId}/artifact-read-events")
-    public List<ArtifactReadEventResponse> listArtifactReadEvents(
-            @PathVariable UUID docId,
-            @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.AUDIT_READ);
-        return artifactLinkService.readEvents(docId, tenantContext);
     }
 
     /**
@@ -126,18 +48,12 @@ public class ArtifactController {
      *
      * @param docId document identifier
      * @param rangeHeader optional {@code Range} header
-     * @param queryToken signed artifact token query parameter
-     * @param authorizationHeader optional bearer artifact token
-     * @param traceId optional request trace identifier
      * @return PDF bytes when available
      */
     @GetMapping(value = "/artifacts/{docId}.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public Mono<ResponseEntity<byte[]>> getPdf(
             @PathVariable UUID docId,
-            @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader,
-            @RequestParam(value = ArtifactLinkService.ARTIFACT_TOKEN_PARAM, required = false) String queryToken,
-            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
-            @RequestHeader(value = "X-Request-Id", required = false) String traceId) {
+            @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader) {
         Optional<ConversionJob> job = conversionService.getJob(docId);
         if (job.isEmpty() || job.get().getStatus() != ConversionJobStatus.SUCCEEDED) {
             return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
@@ -149,32 +65,18 @@ public class ArtifactController {
         }
 
         byte[] pdfBytes = stored.get();
-        String token = ArtifactLinkService.resolveToken(queryToken, authorizationHeader);
-        ArtifactTokenClaims claims;
-        try {
-            claims = artifactLinkService.verifyReadToken(docId, job.get(), pdfBytes, token);
-        } catch (ArtifactTokenException ex) {
-            return Mono.just(tokenFailure(ex.getStatus()));
-        }
-
         int totalLength = pdfBytes.length;
 
         Optional<ResolvedRange> range = resolveSingleRange(rangeHeader, totalLength);
         if (range.isPresent() && range.get().unsatisfiable()) {
-            ResponseEntity<byte[]> response = unsatisfiable(totalLength);
-            artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
-            return Mono.just(response);
+            return Mono.just(unsatisfiable(totalLength));
         }
         if (range.isPresent() && range.get().invalid()) {
-            ResponseEntity<byte[]> response = unsatisfiable(totalLength);
-            artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
-            return Mono.just(response);
+            return Mono.just(unsatisfiable(totalLength));
         }
 
         if (range.isEmpty()) {
-            ResponseEntity<byte[]> response = full(pdfBytes);
-            artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
-            return Mono.just(response);
+            return Mono.just(full(pdfBytes));
         }
 
         ResolvedRange resolved = range.get();
@@ -182,9 +84,7 @@ public class ArtifactController {
         int end = resolved.endInclusive();
         int length = end - start + 1;
         byte[] slice = java.util.Arrays.copyOfRange(pdfBytes, start, end + 1);
-        ResponseEntity<byte[]> response = partial(slice, start, end, totalLength, length);
-        artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
-        return Mono.just(response);
+        return Mono.just(partial(slice, start, end, totalLength, length));
     }
 
     private static ResponseEntity<byte[]> full(byte[] pdfBytes) {
@@ -219,13 +119,6 @@ public class ArtifactController {
                 .header("X-Content-Type-Options", "nosniff")
                 .header(HttpHeaders.ACCEPT_RANGES, RANGE_UNIT_BYTES)
                 .header(HttpHeaders.CONTENT_RANGE, RANGE_UNIT_BYTES + " */" + totalLength)
-                .build();
-    }
-
-    private static ResponseEntity<byte[]> tokenFailure(HttpStatus status) {
-        return ResponseEntity.status(status)
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .header("X-Content-Type-Options", "nosniff")
                 .build();
     }
 

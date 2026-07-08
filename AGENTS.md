@@ -13,10 +13,6 @@ including mandatory quality and security merge gates.
 - JavaDoc gate must pass (`mvn -q -DskipTests javadoc:javadoc`) with no warnings/errors.
 - Markdown lint for changed docs must pass.
 - Security evidence must be attached on PR (SAST/code-scanning checks).
-- License policy drift check must pass in engineering-review mode:
-  `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json`.
-  Buyer-release mode adds `--require-no-review` after legal approval or
-  dependency replacement clears all review-required components.
 
 ## Change management rule
 

@@ -1,0 +1,9 @@
+{
+  "name": "clearfolio-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "echo \"No JS tests configured\" && true",
+    "lint": "echo \"No JS linting configured\" && true"
+  }
+}

@@ -1,0 +1,8 @@
+[tool.pytest.ini_options]
+addopts = ""
+testpaths = [
+    "scripts",
+]
+
+[tool.mypy]
+# Placeholder for typing configuration

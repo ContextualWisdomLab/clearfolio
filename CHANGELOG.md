@@ -14,3 +14,8 @@
 
 ### 테스트 커버리지 (Tests)
 - 신규 구현된 Repository, Service, Controller 계층에 대한 유닛 테스트(Unit Tests)를 작성하여 JaCoCo 기준 라인 및 브랜치 커버리지 100%를 달성했습니다.
+
+### 보안 (Security)
+- **의존성 취약점 일괄 정리 (trivy-fs / osv-scan 대응)**: Spring Boot 부모 POM을 `3.5.0`에서 `3.5.16`으로 올려 Spring Framework, Netty, Reactor Netty, logback 관련 다수의 HIGH/MEDIUM 권고를 해소했습니다.
+- Jackson 계열을 `jackson-bom` 오버라이드로 `2.21.5`로 고정하여 jackson-databind RCE/DoS 계열 권고(CVE-2026-54512·54513·54514·54515 등)를 제거했습니다.
+- Apache Tika 표준 파서를 통해 유입되던 전이 의존성을 `dependencyManagement`로 고정했습니다: junrar `7.6.0`(경로 순회 RCE/파일 쓰기), commons-io `2.20.0`(XmlStreamReader DoS), commons-lang3 `3.18.0`, BouncyCastle `bcprov-jdk18on 1.84`(CRITICAL). 전체 347개 테스트 통과를 확인했습니다.

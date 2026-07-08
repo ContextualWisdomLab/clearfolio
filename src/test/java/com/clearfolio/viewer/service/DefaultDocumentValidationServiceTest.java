@@ -192,6 +192,30 @@ class DefaultDocumentValidationServiceTest {
     }
 
     @Test
+    void sanitizesDirectoryTraversalInFilename() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        // Sanity check: valid payload should extract the base extension and pass through
+        assertDoesNotThrow(
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "../../../etc/passwd.docx", "application/octet-stream", new byte[] {1})
+                )
+        );
+
+        // A blocked payload containing path traversal should extract the base extension correctly and block
+        UnsupportedDocumentFormatException ex = assertThrows(
+                UnsupportedDocumentFormatException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "../../../etc/passwd.hwp", "application/octet-stream", new byte[] {1})
+                )
+        );
+
+        assertEquals("hwp", ex.getExtension());
+    }
+
+    @Test
     void rejectsBlankFilenameOrMissingName() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));

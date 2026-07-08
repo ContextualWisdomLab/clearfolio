@@ -3,6 +3,7 @@ package com.clearfolio.viewer.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -120,6 +121,31 @@ class DefaultDocumentConversionServiceTest {
         assertNotEquals(new UUID(0L, 0L), jobId);
         assertSame(PolicyOverrideRequest.none(), capturedOverride.get());
         assertEquals(1, worker.enqueuedCount());
+    }
+
+    @Test
+    void submitSanitizesFilenameAndStripsPathTraversal() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DefaultDocumentValidationService(new ConversionProperties()),
+                worker,
+                new ConversionProperties()
+        );
+
+        byte[] payload = "hello".getBytes(StandardCharsets.UTF_8);
+        MultipartFile file = new MockMultipartFile(
+                "file",
+                "../../../etc/contract.docx",
+                "application/octet-stream",
+                payload
+        );
+
+        UUID jobId = service.submit(file);
+
+        ConversionJob saved = repository.findById(jobId).orElseThrow();
+        assertEquals("contract.docx", saved.getOriginalFileName());
     }
 
     @Test
@@ -620,6 +646,22 @@ class DefaultDocumentConversionServiceTest {
         }
 
         assertEquals(0, worker.enqueuedCount());
+    }
+
+    @Test
+    void sanitizeFileNameReturnsNullWhenInputIsNull() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DefaultDocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DefaultDocumentValidationService(new ConversionProperties()),
+                worker,
+                new ConversionProperties()
+        );
+        java.lang.reflect.Method method = DefaultDocumentConversionService.class.getDeclaredMethod("sanitizeFileName", String.class);
+        method.setAccessible(true);
+        String result = (String) method.invoke(service, new Object[]{null});
+        assertNull(result);
     }
 
     private static class RecordingConversionWorker implements ConversionWorker {

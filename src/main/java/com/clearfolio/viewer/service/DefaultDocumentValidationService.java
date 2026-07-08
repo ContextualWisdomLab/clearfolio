@@ -54,7 +54,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             throw new IllegalArgumentException("File is required.");
         }
 
-        String fileName = file.getOriginalFilename();
+        String fileName = sanitizeFileName(file.getOriginalFilename());
         String extension = extensionOf(fileName);
         if (extension.isEmpty()) {
             throw new IllegalArgumentException("File extension is required.");
@@ -95,6 +95,15 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
                     tokenFingerprint(overrideTokenForAudit)
             );
         }
+    }
+
+    private String sanitizeFileName(String originalFilename) {
+        if (originalFilename == null) {
+            return null;
+        }
+        String cleanPath = org.springframework.util.StringUtils.cleanPath(originalFilename);
+        int lastSlashIndex = cleanPath.lastIndexOf('/');
+        return lastSlashIndex != -1 ? cleanPath.substring(lastSlashIndex + 1) : cleanPath;
     }
 
     private String extensionOf(String fileName) {

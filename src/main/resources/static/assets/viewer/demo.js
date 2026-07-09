@@ -271,6 +271,8 @@ async function retryActiveJob() {
   const jobId = activeJobDetail.jobId;
   setStatus("Requesting operator retry...");
   el.retryJobBtn.disabled = true;
+  const originalRetryHtml = el.retryJobBtn.innerHTML;
+  el.retryJobBtn.innerHTML = "Requesting retry...";
   try {
     const res = await fetch(`/api/v1/convert/jobs/${encodeURIComponent(jobId)}/retry`, {
       method: "POST",
@@ -308,6 +310,7 @@ async function retryActiveJob() {
     setError("Network error while requesting retry. Retry when the service is reachable.");
   } finally {
     el.retryJobBtn.disabled = false;
+    el.retryJobBtn.innerHTML = originalRetryHtml;
   }
 }
 
@@ -437,6 +440,8 @@ async function submitDocument(event) {
 
   el.submitBtn.disabled = true;
   setStatus("Submitting document...");
+  const originalBtnHtml = el.submitBtn.innerHTML;
+  el.submitBtn.innerHTML = "Submitting...";
 
   try {
     const body = new FormData();
@@ -479,6 +484,7 @@ async function submitDocument(event) {
     setError("Network error while submitting. Retry when the service is reachable.");
   } finally {
     el.submitBtn.disabled = false;
+    el.submitBtn.innerHTML = originalBtnHtml;
   }
 }
 

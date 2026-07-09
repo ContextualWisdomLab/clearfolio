@@ -13,7 +13,10 @@ including mandatory quality and security merge gates.
 - JavaDoc gate must pass (`mvn -q -DskipTests javadoc:javadoc`) with no warnings/errors.
 - Markdown lint for changed docs must pass.
 - Security evidence must be attached on PR (SAST/code-scanning checks).
-- CodeQL Java/Kotlin analysis must run for pull requests and `main`.
+- CodeQL Java/Kotlin analysis must remain enabled through repository default
+  setup or an org-central workflow; do not add a repo-local advanced CodeQL
+  workflow while default setup is enabled because GitHub rejects duplicate
+  advanced/default SARIF processing.
 - Dependabot must remain enabled for Maven and GitHub Actions manifests.
 - Fuzzing coverage for security-sensitive parsing/header paths must remain
   discoverable through Jazzer or ClusterFuzzLite-compatible targets.

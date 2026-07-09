@@ -20,4 +20,4 @@
 - Jackson 계열을 `jackson-bom` 오버라이드로 `2.21.5`로 고정하여 jackson-databind RCE/DoS 계열 권고(CVE-2026-54512·54513·54514·54515 등)를 제거했습니다.
 - Apache Tika 표준 파서를 통해 유입되던 전이 의존성을 `dependencyManagement`로 고정했습니다: junrar `7.6.0`(경로 순회 RCE/파일 쓰기), commons-io `2.20.0`(XmlStreamReader DoS), commons-lang3 `3.18.0`, BouncyCastle `bcprov-jdk18on 1.84`(CRITICAL). 전체 347개 테스트 통과를 확인했습니다.
 - logback-core 신규 권고(GHSA-jhq6-gfmj-v8fx) 대응을 위해 Logback 관리 버전을 `1.5.35`로 고정했습니다.
-- 저장소 보안 정책, Maven/GitHub Actions Dependabot 설정, CodeQL Java/Kotlin SAST 워크플로, 다운로드 파일명 정규화 Jazzer fuzz target을 추가해 Scorecard 보안 거버넌스 신호를 보강했습니다.
+- 저장소 보안 정책, Maven/GitHub Actions Dependabot 설정, 기본 CodeQL/중앙 SAST 운영 지침, 다운로드 파일명 정규화 Jazzer fuzz target을 추가해 Scorecard 보안 거버넌스 신호를 보강했습니다.

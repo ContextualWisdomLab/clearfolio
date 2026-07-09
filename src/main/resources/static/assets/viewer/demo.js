@@ -270,8 +270,8 @@ async function retryActiveJob() {
 
   const jobId = activeJobDetail.jobId;
   setStatus("Requesting operator retry...");
-  const originalRetryText = el.retryJobBtn.textContent;
-  el.retryJobBtn.textContent = "Retrying...";
+  const originalRetryHtml = el.retryJobBtn.innerHTML;
+  el.retryJobBtn.innerHTML = "Retrying...";
   el.retryJobBtn.disabled = true;
   try {
     const res = await fetch(`/api/v1/convert/jobs/${encodeURIComponent(jobId)}/retry`, {
@@ -309,7 +309,7 @@ async function retryActiveJob() {
   } catch (err) {
     setError("Network error while requesting retry. Retry when the service is reachable.");
   } finally {
-    el.retryJobBtn.textContent = originalRetryText;
+    el.retryJobBtn.innerHTML = originalRetryHtml;
     el.retryJobBtn.disabled = false;
   }
 }
@@ -438,8 +438,8 @@ async function submitDocument(event) {
     return;
   }
 
-  const originalSubmitText = el.submitBtn.textContent;
-  el.submitBtn.textContent = "Submitting...";
+  const originalSubmitHtml = el.submitBtn.innerHTML;
+  el.submitBtn.innerHTML = "Submitting...";
   el.submitBtn.disabled = true;
   setStatus("Submitting document...");
 
@@ -483,7 +483,7 @@ async function submitDocument(event) {
     addFailedHistory(file.name, "FAILED");
     setError("Network error while submitting. Retry when the service is reachable.");
   } finally {
-    el.submitBtn.textContent = originalSubmitText;
+    el.submitBtn.innerHTML = originalSubmitHtml;
     el.submitBtn.disabled = false;
   }
 }

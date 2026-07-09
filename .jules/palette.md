@@ -1,6 +1,6 @@
-## 2024-05-18 - Disabled and Loading States for Async Actions
-**Learning:** Adding explicit loading and disabled states to asynchronous action buttons (like "Refresh") provides immediate feedback, reducing user confusion and preventing double-submissions.
-**Action:** Always ensure that buttons triggering network requests visually indicate the loading state and are disabled until the request completes.
-## 2026-07-08 - Dynamic Button Text Restoration
-**Learning:** Hardcoding assumed original text when modifying button states can lead to mismatches if the text was changed elsewhere or localized.
-**Action:** Dynamically store the element's initial `textContent` in a local variable before modification and restore from that variable in a `finally` block.
+## 2024-05-18 - 비동기 작업에 대한 비활성화 및 로딩 상태
+**Learning:** "새로고침"과 같은 비동기 작업 버튼에 명시적인 로딩 및 비활성화 상태를 추가하면 즉각적인 피드백을 제공하여 사용자 혼란을 줄이고 중복 제출을 방지할 수 있습니다.
+**Action:** 네트워크 요청을 트리거하는 버튼은 로딩 상태를 시각적으로 나타내고 요청이 완료될 때까지 비활성화되도록 항상 보장해야 합니다.
+## 2026-07-09 - 동적 버튼 텍스트/HTML 복원
+**Learning:** 버튼 텍스트를 하드코딩하여 변경하면 기존 텍스트나 아이콘이 삭제될 수 있으며 다국어 지원 시 불일치가 발생할 수 있습니다.
+**Action:** 상태를 변경하기 전에 버튼의 `innerHTML`을 로컬 변수에 동적으로 저장하고, `finally` 블록에서 해당 변수를 통해 원래대로 복원해야 합니다.

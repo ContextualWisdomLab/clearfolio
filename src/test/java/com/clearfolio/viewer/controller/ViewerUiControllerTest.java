@@ -121,9 +121,9 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("X-Clearfolio-Tenant-Id"));
             assertTrue(script.contains("X-Clearfolio-Permissions"));
             assertTrue(script.contains("deadLettered"));
-            assertTrue(script.contains("originalSubmitText"));
+            assertTrue(script.contains("originalSubmitHtml"));
             assertTrue(script.contains("Submitting..."));
-            assertTrue(script.contains("originalRetryText"));
+            assertTrue(script.contains("originalRetryHtml"));
             assertTrue(script.contains("Retrying..."));
         }
     }

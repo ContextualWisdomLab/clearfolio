@@ -1132,11 +1132,11 @@
     },
     {
       "type" : "library",
-      "bom-ref" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jdk8@2.19.0?type=jar",
+      "bom-ref" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jdk8@2.21.5?type=jar",
       "publisher" : "FasterXML",
       "group" : "com.fasterxml.jackson.datatype",
       "name" : "jackson-datatype-jdk8",
-      "version" : "2.19.0",
+      "version" : "2.21.5",
       "description" : "Add-on module for Jackson (https://github.com/FasterXML/jackson) to support JDK 8 data types.",
       "scope" : "required",
       "hashes" : [
@@ -1180,7 +1180,7 @@
           }
         }
       ],
-      "purl" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jdk8@2.19.0?type=jar",
+      "purl" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jdk8@2.21.5?type=jar",
       "externalReferences" : [
         {
           "type" : "website",
@@ -1202,11 +1202,11 @@
     },
     {
       "type" : "library",
-      "bom-ref" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.19.0?type=jar",
+      "bom-ref" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.21.5?type=jar",
       "publisher" : "FasterXML",
       "group" : "com.fasterxml.jackson.datatype",
       "name" : "jackson-datatype-jsr310",
-      "version" : "2.19.0",
+      "version" : "2.21.5",
       "description" : "Add-on module to support JSR-310 (Java 8 Date & Time API) data types.",
       "scope" : "required",
       "hashes" : [
@@ -1250,7 +1250,7 @@
           }
         }
       ],
-      "purl" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.19.0?type=jar",
+      "purl" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.21.5?type=jar",
       "externalReferences" : [
         {
           "type" : "website",
@@ -1272,11 +1272,11 @@
     },
     {
       "type" : "library",
-      "bom-ref" : "pkg:maven/com.fasterxml.jackson.module/jackson-module-parameter-names@2.19.0?type=jar",
+      "bom-ref" : "pkg:maven/com.fasterxml.jackson.module/jackson-module-parameter-names@2.21.5?type=jar",
       "publisher" : "FasterXML",
       "group" : "com.fasterxml.jackson.module",
       "name" : "jackson-module-parameter-names",
-      "version" : "2.19.0",
+      "version" : "2.21.5",
       "description" : "Add-on module for Jackson (https://github.com/FasterXML/jackson) to support introspection of method/constructor parameter names, without having to add explicit property name annotation.",
       "scope" : "required",
       "hashes" : [
@@ -1320,7 +1320,7 @@
           }
         }
       ],
-      "purl" : "pkg:maven/com.fasterxml.jackson.module/jackson-module-parameter-names@2.19.0?type=jar",
+      "purl" : "pkg:maven/com.fasterxml.jackson.module/jackson-module-parameter-names@2.21.5?type=jar",
       "externalReferences" : [
         {
           "type" : "website",
@@ -9593,11 +9593,11 @@
     },
     {
       "type" : "library",
-      "bom-ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.19.0?type=jar",
+      "bom-ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5?type=jar",
       "publisher" : "FasterXML",
       "group" : "com.fasterxml.jackson.core",
       "name" : "jackson-databind",
-      "version" : "2.19.0",
+      "version" : "2.21.5",
       "description" : "General data-binding functionality for Jackson: works on core streaming API",
       "scope" : "required",
       "hashes" : [
@@ -9641,7 +9641,7 @@
           }
         }
       ],
-      "purl" : "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.19.0?type=jar",
+      "purl" : "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5?type=jar",
       "externalReferences" : [
         {
           "type" : "website",
@@ -9663,11 +9663,11 @@
     },
     {
       "type" : "library",
-      "bom-ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.19.0?type=jar",
+      "bom-ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.21.5?type=jar",
       "publisher" : "FasterXML",
       "group" : "com.fasterxml.jackson.core",
       "name" : "jackson-annotations",
-      "version" : "2.19.0",
+      "version" : "2.21.5",
       "description" : "Core annotations used for value types, used by Jackson data binding package.",
       "scope" : "required",
       "hashes" : [
@@ -9711,7 +9711,7 @@
           }
         }
       ],
-      "purl" : "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.19.0?type=jar",
+      "purl" : "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.21.5?type=jar",
       "externalReferences" : [
         {
           "type" : "website",
@@ -9733,11 +9733,11 @@
     },
     {
       "type" : "library",
-      "bom-ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.19.0?type=jar",
+      "bom-ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.21.5?type=jar",
       "publisher" : "FasterXML",
       "group" : "com.fasterxml.jackson.core",
       "name" : "jackson-core",
-      "version" : "2.19.0",
+      "version" : "2.21.5",
       "description" : "Core Jackson processing abstractions (aka Streaming API), implementation for JSON",
       "scope" : "required",
       "hashes" : [
@@ -9781,7 +9781,7 @@
           }
         }
       ],
-      "purl" : "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.19.0?type=jar",
+      "purl" : "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.21.5?type=jar",
       "externalReferences" : [
         {
           "type" : "website",
@@ -10091,7 +10091,7 @@
         "pkg:maven/org.apache.tika/tika-parsers-standard-package@3.2.2?type=jar",
         "pkg:maven/org.apache.pdfbox/pdfbox@3.0.3?type=jar",
         "pkg:maven/org.webjars.npm/pdfjs-dist@4.10.38?type=jar",
-        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.19.0?type=jar"
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5?type=jar"
       ]
     },
     {
@@ -10230,10 +10230,10 @@
       "dependsOn" : [
         "pkg:maven/org.springframework.boot/spring-boot-starter@3.5.0?type=jar",
         "pkg:maven/org.springframework/spring-web@6.2.7?type=jar",
-        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.19.0?type=jar",
-        "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jdk8@2.19.0?type=jar",
-        "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.19.0?type=jar",
-        "pkg:maven/com.fasterxml.jackson.module/jackson-module-parameter-names@2.19.0?type=jar"
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5?type=jar",
+        "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jdk8@2.21.5?type=jar",
+        "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.21.5?type=jar",
+        "pkg:maven/com.fasterxml.jackson.module/jackson-module-parameter-names@2.21.5?type=jar"
       ]
     },
     {
@@ -10245,40 +10245,40 @@
       ]
     },
     {
-      "ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.19.0?type=jar",
+      "ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5?type=jar",
       "dependsOn" : [
-        "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.19.0?type=jar",
-        "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.19.0?type=jar"
+        "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.21.5?type=jar",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.21.5?type=jar"
       ]
     },
     {
-      "ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.19.0?type=jar",
+      "ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.21.5?type=jar",
       "dependsOn" : [ ]
     },
     {
-      "ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.19.0?type=jar",
+      "ref" : "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.21.5?type=jar",
       "dependsOn" : [ ]
     },
     {
-      "ref" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jdk8@2.19.0?type=jar",
+      "ref" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jdk8@2.21.5?type=jar",
       "dependsOn" : [
-        "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.19.0?type=jar",
-        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.19.0?type=jar"
+        "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.21.5?type=jar",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5?type=jar"
       ]
     },
     {
-      "ref" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.19.0?type=jar",
+      "ref" : "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.21.5?type=jar",
       "dependsOn" : [
-        "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.19.0?type=jar",
-        "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.19.0?type=jar",
-        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.19.0?type=jar"
+        "pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.21.5?type=jar",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.21.5?type=jar",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5?type=jar"
       ]
     },
     {
-      "ref" : "pkg:maven/com.fasterxml.jackson.module/jackson-module-parameter-names@2.19.0?type=jar",
+      "ref" : "pkg:maven/com.fasterxml.jackson.module/jackson-module-parameter-names@2.21.5?type=jar",
       "dependsOn" : [
-        "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.19.0?type=jar",
-        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.19.0?type=jar"
+        "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.21.5?type=jar",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5?type=jar"
       ]
     },
     {
@@ -10592,8 +10592,8 @@
       "ref" : "pkg:maven/org.apache.tika/tika-parser-cad-module@3.2.2?type=jar",
       "dependsOn" : [
         "pkg:maven/org.apache.tika/tika-parser-microsoft-module@3.2.2?type=jar",
-        "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.19.0?type=jar",
-        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.19.0?type=jar"
+        "pkg:maven/com.fasterxml.jackson.core/jackson-core@2.21.5?type=jar",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.21.5?type=jar"
       ]
     },
     {

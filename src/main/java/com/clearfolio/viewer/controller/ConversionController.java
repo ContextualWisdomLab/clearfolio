@@ -29,6 +29,7 @@ import com.clearfolio.viewer.api.ConversionJobStatusResponse;
 import com.clearfolio.viewer.api.SubmitConversionResponse;
 import com.clearfolio.viewer.api.ViewerBootstrapResponse;
 import com.clearfolio.viewer.artifact.ArtifactLinkService;
+import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.service.DocumentConversionService;
@@ -52,7 +53,7 @@ public class ConversionController {
     private final DocumentConversionService conversionService;
     private final TenantAccessService tenantAccessService;
     private final ArtifactLinkService artifactLinkService;
-    private final com.clearfolio.viewer.artifact.ArtifactStore artifactStore;
+    private final ArtifactStore artifactStore;
     private final int maxInMemorySizeBytes;
 
     /**
@@ -68,7 +69,7 @@ public class ConversionController {
             DocumentConversionService conversionService,
             TenantAccessService tenantAccessService,
             ArtifactLinkService artifactLinkService,
-            com.clearfolio.viewer.artifact.ArtifactStore artifactStore,
+            ArtifactStore artifactStore,
             @Value("${spring.codec.max-in-memory-size:262144B}") DataSize maxInMemorySize) {
         this.conversionService = conversionService;
         this.tenantAccessService = tenantAccessService;

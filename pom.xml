@@ -16,6 +16,13 @@
   <version>0.1.0</version>
   <name>Clearfolio Viewer</name>
   <description>사내 통합 문서 뷰어 MVP</description>
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
 
   <properties>
     <java.version>21</java.version>
@@ -114,6 +121,7 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
+      <version>${jackson-bom.version}</version>
     </dependency>
 
     <dependency>

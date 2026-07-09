@@ -2,5 +2,9 @@
   "name": "clearfolio-viewer-assets",
   "version": "1.0.0",
   "description": "Frontend assets for Clearfolio Viewer",
-  "private": true
+  "private": true,
+  "scripts": {
+    "test": "echo \"No test specified\"",
+    "lint": "echo \"No linting specified\""
+  }
 }

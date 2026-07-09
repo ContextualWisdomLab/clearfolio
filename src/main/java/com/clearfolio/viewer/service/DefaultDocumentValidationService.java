@@ -23,7 +23,6 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDocumentValidationService.class);
     private static final int FINGERPRINT_TRUNCATE_BYTES = 8;
-    private static final HexFormat HEX_FORMAT = HexFormat.of();
 
     private final Set<String> blockedExtensions;
     private final long maxUploadSizeBytes;
@@ -141,7 +140,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashed = digest.digest(approvalToken.getBytes(StandardCharsets.UTF_8));
-            return HEX_FORMAT.formatHex(hashed);
+            return HexFormat.of().formatHex(hashed);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

@@ -23,6 +23,14 @@
       "reason": "Dual EPL/LGPL metadata; legal must confirm selected license route."
     },
     {
+      "purl": "pkg:maven/ch.qos.logback/logback-classic@1.5.32?type=jar",
+      "reason": "Dual EPL/LGPL metadata; legal must confirm selected license route."
+    },
+    {
+      "purl": "pkg:maven/ch.qos.logback/logback-core@1.5.32?type=jar",
+      "reason": "Dual EPL/LGPL metadata; legal must confirm selected license route."
+    },
+    {
       "purl": "pkg:maven/jakarta.annotation/jakarta.annotation-api@2.1.1?type=jar",
       "reason": "GPL classpath-exception metadata; legal must confirm exception scope."
     },

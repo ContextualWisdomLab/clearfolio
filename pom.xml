@@ -25,6 +25,7 @@
     <pdfbox.version>3.0.3</pdfbox.version>
     <pdfjs.dist.version>4.10.38</pdfjs.dist.version>
     <jazzer.version>0.30.0</jazzer.version>
+    <jackson-bom.version>2.21.5</jackson-bom.version>
   </properties>
 
   <dependencies>

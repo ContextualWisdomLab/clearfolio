@@ -57,7 +57,6 @@ class ConversionControllerTest {
                 conversionService,
                 new TenantAccessService(),
                 new ArtifactLinkService(artifactStore, "test-secret"),
-                artifactStore,
                 DataSize.ofBytes(262_144L)
         );
         webTestClient = WebTestClient.bindToController(
@@ -71,7 +70,6 @@ class ConversionControllerTest {
                 conversionService,
                 new TenantAccessService(),
                 new ArtifactLinkService(new InMemoryArtifactStore(), "test-secret"),
-                new InMemoryArtifactStore(),
                 DataSize.ofBytes((long) Integer.MAX_VALUE + 1)
         );
         Field field = ConversionController.class.getDeclaredField("maxInMemorySizeBytes");
@@ -691,7 +689,7 @@ class ConversionControllerTest {
                 3
         );
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
-        artifactStore.putPdf(jobId, new byte[] {1, 2, 3});
+        // artifactStore is handled by conversionService
 
         webTestClient.delete()
                 .uri("/api/v1/convert/jobs/{jobId}", jobId)
@@ -701,7 +699,33 @@ class ConversionControllerTest {
                 .expectBody().isEmpty();
 
         verify(conversionService).deleteJob(jobId);
-        assertFalse(artifactStore.getPdf(jobId).isPresent());
+        // artifactStore deletion is verified in service tests
+    }
+
+
+    @Test
+    void deleteJobReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "other-tenant",
+                "other-subject",
+                "report.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "abc",
+                12L,
+                3
+        );
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webTestClient.delete()
+                .uri("/api/v1/convert/jobs/{jobId}", jobId)
+                .headers(headers -> addAuth(headers, TenantPermissions.JOB_DELETE))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND")
+                .jsonPath("$.message").isEqualTo("job not found");
     }
 
     private WebTestClient.ResponseSpec submit(String filename, byte[] content) {

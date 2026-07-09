@@ -66,6 +66,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 validationService,
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -105,6 +106,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 validationService,
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -130,6 +132,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
         MockMultipartFile file = new MockMultipartFile(
@@ -159,6 +162,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
         MockMultipartFile file = new MockMultipartFile(
@@ -183,6 +187,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -208,6 +213,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -239,6 +245,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -291,6 +298,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -319,6 +327,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -343,6 +352,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -368,6 +378,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -403,6 +414,7 @@ class DefaultDocumentConversionServiceTest {
                 stateStore,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -433,6 +445,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -450,6 +463,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -478,6 +492,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -507,6 +522,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -574,6 +590,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -595,6 +612,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -620,6 +638,30 @@ class DefaultDocumentConversionServiceTest {
         }
 
         assertEquals(0, worker.enqueuedCount());
+    }
+
+
+    @Test
+    void deleteJobSucceedsWhenArtifactDeletionFails() {
+        ConversionJobRepository repository = mock(ConversionJobRepository.class);
+        ConversionWorker worker = mock(ConversionWorker.class);
+        DocumentValidationService validationService = mock(DocumentValidationService.class);
+        com.clearfolio.viewer.artifact.ArtifactStore artifactStore = mock(com.clearfolio.viewer.artifact.ArtifactStore.class);
+
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                validationService,
+                worker,
+                artifactStore,
+                new ConversionProperties()
+        );
+
+        UUID jobId = UUID.randomUUID();
+        org.mockito.Mockito.doThrow(new RuntimeException("S3 is down")).when(artifactStore).deletePdf(jobId);
+
+        service.deleteJob(jobId);
+
+        org.mockito.Mockito.verify(repository).deleteById(jobId);
     }
 
     private static class RecordingConversionWorker implements ConversionWorker {

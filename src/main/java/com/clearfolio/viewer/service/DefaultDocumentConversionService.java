@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
@@ -26,10 +27,13 @@ import com.clearfolio.viewer.config.ConversionProperties;
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DefaultDocumentConversionService.class);
+
     private final ConversionJobRepository repository;
     private final ConversionJobStateStore stateStore;
     private final DocumentValidationService validationService;
     private final ConversionWorker conversionWorker;
+    private final ArtifactStore artifactStore;
     private final int maxRetryAttempts;
 
     /**
@@ -47,11 +51,13 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             ConversionJobStateStore stateStore,
             DocumentValidationService validationService,
             ConversionWorker conversionWorker,
+            ArtifactStore artifactStore,
             ConversionProperties conversionProperties) {
         this.repository = repository;
         this.stateStore = stateStore;
         this.validationService = validationService;
         this.conversionWorker = conversionWorker;
+        this.artifactStore = artifactStore;
         this.maxRetryAttempts = conversionProperties.getMaxRetryAttempts();
     }
 
@@ -59,12 +65,14 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             ConversionJobRepository repository,
             DocumentValidationService validationService,
             ConversionWorker conversionWorker,
+            ArtifactStore artifactStore,
             ConversionProperties conversionProperties) {
         this(
                 repository,
                 stateStoreFrom(repository),
                 validationService,
                 conversionWorker,
+                artifactStore,
                 conversionProperties
         );
     }
@@ -135,6 +143,11 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      */
     @Override
     public void deleteJob(UUID jobId) {
+        try {
+            artifactStore.deletePdf(jobId);
+        } catch (Exception ex) {
+            log.warn("Failed to delete artifact for job {}", jobId, ex);
+        }
         repository.deleteById(jobId);
     }
 

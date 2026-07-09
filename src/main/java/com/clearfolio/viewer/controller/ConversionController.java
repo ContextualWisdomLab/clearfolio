@@ -29,7 +29,6 @@ import com.clearfolio.viewer.api.ConversionJobStatusResponse;
 import com.clearfolio.viewer.api.SubmitConversionResponse;
 import com.clearfolio.viewer.api.ViewerBootstrapResponse;
 import com.clearfolio.viewer.artifact.ArtifactLinkService;
-import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.service.DocumentConversionService;
@@ -53,7 +52,6 @@ public class ConversionController {
     private final DocumentConversionService conversionService;
     private final TenantAccessService tenantAccessService;
     private final ArtifactLinkService artifactLinkService;
-    private final ArtifactStore artifactStore;
     private final int maxInMemorySizeBytes;
 
     /**
@@ -62,19 +60,16 @@ public class ConversionController {
      * @param conversionService conversion service
      * @param tenantAccessService tenant and permission guard
      * @param artifactLinkService signed artifact link service
-     * @param artifactStore artifact store
      * @param maxInMemorySize maximum in-memory multipart size
      */
     public ConversionController(
             DocumentConversionService conversionService,
             TenantAccessService tenantAccessService,
             ArtifactLinkService artifactLinkService,
-            ArtifactStore artifactStore,
             @Value("${spring.codec.max-in-memory-size:262144B}") DataSize maxInMemorySize) {
         this.conversionService = conversionService;
         this.tenantAccessService = tenantAccessService;
         this.artifactLinkService = artifactLinkService;
-        this.artifactStore = artifactStore;
         long bytes = Math.max(1L, maxInMemorySize.toBytes());
         this.maxInMemorySizeBytes = bytes > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) bytes;
     }
@@ -181,7 +176,6 @@ public class ConversionController {
         tenantAccessService.requireSameTenant(tenantContext, job);
 
         conversionService.deleteJob(jobId);
-        artifactStore.deletePdf(jobId);
 
         return ResponseEntity.noContent().build();
     }

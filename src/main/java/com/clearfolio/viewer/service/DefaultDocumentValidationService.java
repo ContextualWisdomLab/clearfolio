@@ -125,13 +125,17 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             return "";
         }
 
-        String normalized = fileName.strip();
+        String normalized = java.nio.file.Path.of(fileName.strip()).getFileName().toString();
         int lastDot = normalized.lastIndexOf('.');
         if (lastDot <= 0 || lastDot == normalized.length() - 1) {
             return "";
         }
 
-        return normalized.substring(lastDot + 1).toLowerCase(Locale.ROOT);
+        String extension = normalized.substring(lastDot + 1).toLowerCase(Locale.ROOT);
+        if (extension.contains(":")) {
+            throw new IllegalArgumentException("File extension is invalid.");
+        }
+        return extension;
     }
 
     private boolean isPolicyOverrideEnabled(String headerValue) {

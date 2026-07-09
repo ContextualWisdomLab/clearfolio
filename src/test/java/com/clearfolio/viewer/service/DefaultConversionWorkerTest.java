@@ -590,7 +590,7 @@ class DefaultConversionWorkerTest {
     }
 
     @Test
-    void recoverPendingJobsOnStartupUsesConfiguredLeaseWithoutRecoverableJobs() {
+    void recoverPendingJobsOnStartupReturnsZeroWhenNoRecoverableJobs() {
         DefaultConversionWorker worker = new DefaultConversionWorker(
                 new InMemoryConversionJobRepository(),
                 Runnable::run,

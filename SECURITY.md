@@ -9,8 +9,10 @@ requests.
 ## Reporting a Vulnerability
 
 Please report suspected vulnerabilities privately through GitHub Security
-Advisories for this repository. Include the affected endpoint, dependency,
-input, observed impact, and a minimal reproduction when possible.
+Advisories for this repository:
+https://github.com/ContextualWisdomLab/clearfolio/security/advisories/new.
+Include the affected endpoint, dependency, input, observed impact, and a
+minimal reproduction when possible.
 
 For automation failures, include the failing check name, run URL, and the
 package/CVE or SARIF rule that triggered the alert. Reports that involve

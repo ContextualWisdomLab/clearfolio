@@ -41,6 +41,14 @@
   -->
   <dependencyManagement>
     <dependencies>
+      <!-- GHSA-5jmj-h7xm-6q6v / CVE-2026-54515: jackson-databind RCE/DoS line -->
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson-bom.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <!-- CVE-2026-28208, CVE-2026-41245: RAR path traversal RCE / file write -->
       <dependency>
         <groupId>com.github.junrar</groupId>
@@ -63,6 +71,12 @@
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcprov-jdk18on</artifactId>
+        <version>1.84</version>
+      </dependency>
+      <!-- GHSA-wg6q-6289-32hp / CVE-2026-5588: BouncyCastle certificate parsing -->
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcpkix-jdk18on</artifactId>
         <version>1.84</version>
       </dependency>
     </dependencies>

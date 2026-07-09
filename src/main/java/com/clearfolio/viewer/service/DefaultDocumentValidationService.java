@@ -146,6 +146,9 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
     }
 
     private String tokenFingerprint(String approvalToken) {
+        if (approvalToken == null) {
+            return "";
+        }
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashed = digest.digest(approvalToken.getBytes(StandardCharsets.UTF_8));

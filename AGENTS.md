@@ -13,6 +13,10 @@ including mandatory quality and security merge gates.
 - JavaDoc gate must pass (`mvn -q -DskipTests javadoc:javadoc`) with no warnings/errors.
 - Markdown lint for changed docs must pass.
 - Security evidence must be attached on PR (SAST/code-scanning checks).
+- CodeQL Java/Kotlin analysis must run for pull requests and `main`.
+- Dependabot must remain enabled for Maven and GitHub Actions manifests.
+- Fuzzing coverage for security-sensitive parsing/header paths must remain
+  discoverable through Jazzer or ClusterFuzzLite-compatible targets.
 - License policy drift check must pass in engineering-review mode:
   `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json`.
   Buyer-release mode adds `--require-no-review` after legal approval or

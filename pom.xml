@@ -27,6 +27,8 @@
     <!-- Security override: pull a Jackson line that is not affected by the
          2026 jackson-databind RCE/DoS advisories (managed via jackson-bom). -->
     <jackson-bom.version>2.21.5</jackson-bom.version>
+    <!-- Security override: GHSA-jhq6-gfmj-v8fx fixes logback-core in 1.5.35. -->
+    <logback.version>1.5.35</logback.version>
   </properties>
 
   <!--
@@ -103,6 +105,13 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.code-intelligence</groupId>
+      <artifactId>jazzer-api</artifactId>
+      <version>0.24.0</version>
       <scope>test</scope>
     </dependency>
 

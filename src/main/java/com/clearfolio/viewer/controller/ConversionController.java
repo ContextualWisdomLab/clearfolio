@@ -222,7 +222,7 @@ public class ConversionController {
                 .body(pdfBytes));
     }
 
-    private static String pdfDownloadFilename(String originalFileName) {
+    static String pdfDownloadFilename(String originalFileName) {
         String baseName = "document";
         if (originalFileName != null && !originalFileName.isBlank()) {
             baseName = originalFileName.strip();

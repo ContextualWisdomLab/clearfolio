@@ -18,7 +18,8 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
 ## Scope
 
 - `GET /`: buyer-demo upload, status, KPI, KPI snapshot evidence,
-  operator recovery evidence, and session-history shell.
+  operator recovery evidence, session-history shell, and a static
+  `Load demo story` seed for buyer screenshots and Figma review.
 - `POST /api/v1/convert/jobs`: upload document and receive async job id.
 - `GET /api/v1/convert/jobs/{jobId}`: poll conversion status and lifecycle fields.
 - `POST /api/v1/convert/jobs` response includes `jobId`, `status`, and `statusUrl`.
@@ -59,6 +60,11 @@ profile and follow
   needs-action documents, retry-ready dead-lettered jobs, last accepted retry,
   and latest inspected job detail. This is demo evidence, not a production admin
   console.
+- The `Load demo story` control loads
+  `src/main/resources/static/assets/viewer/demo-fixtures.json` into the current
+  browser session. The fixture covers succeeded, processing, unsupported-format,
+  and dead-lettered states plus KPI snapshot/export evidence for screenshot and
+  FigJam handoff work. It is static local demo data, not production seed data.
 - Status, viewer bootstrap, retry, and KPI JSON APIs enforce tenant permission
   headers and hide cross-tenant jobs as `404`.
 - Tenant headers can be HMAC-signed by a trusted gateway when
@@ -130,6 +136,7 @@ Current release claim boundary:
 - `docs/security/2026-07-02-license-allowlist-review.md`
 - `docs/security/2026-07-02-license-policy.json`
 - `docs/analytics/2026-07-02-durable-metrics-event-model.md`
+- `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/seeded-demo-story-verification.md`
 
 ## Transfer metadata
 

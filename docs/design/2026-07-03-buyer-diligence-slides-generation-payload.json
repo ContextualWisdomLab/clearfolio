@@ -1,0 +1,201 @@
+{
+  "description": "Generate an editable Figma Slides deck for Clearfolio KRW 2B sale-readiness buyer diligence. The deck must be sober, enterprise, evidence-led, and explicit about claim boundaries. It should use existing repo evidence rather than marketing promises: buyer-demo upload/viewer flow, seeded demo screenshots, KPI evidence, data-room manifest, readiness scorecard, license/SBOM clearance, security and durability gaps, and no library/submodule split decision. Figma Code Connect must not be used.",
+  "objectives": [
+    "Give enterprise buyers a concise diligence walkthrough of what Clearfolio can inspect today.",
+    "Show Product Design, Data Analytics, Figma, Ponytail, and engineering evidence in one buyer-readable story.",
+    "Keep partial gates visible as discount risks instead of styling them as complete.",
+    "State that KRW 2B is a sale-readiness target, not a valuation opinion."
+  ],
+  "outline": [
+    {
+      "content": [
+        "Clearfolio Buyer Demo Diligence Pack",
+        "KRW 2B sale-readiness evidence package",
+        "Not a valuation opinion; repository and design evidence as of 2026-07-03"
+      ],
+      "purpose": "Set the buyer-review context and claim boundary.",
+      "role": "cover_slide",
+      "subject": "Clearfolio Buyer Demo Diligence Pack",
+      "visuals": [
+        "Product name as main title",
+        "Small status strip: buyer-demo evidence, diligence package, claim boundary"
+      ]
+    },
+    {
+      "content": [
+        "1. What can be inspected today",
+        "2. Buyer demo journey",
+        "3. KPI and readiness evidence",
+        "4. Security, license, and integration posture",
+        "5. Remaining discount risks and next closure order"
+      ],
+      "purpose": "Preview the evidence sequence a buyer can inspect.",
+      "role": "agenda",
+      "subject": "Buyer Review Path",
+      "visuals": [
+        "Numbered agenda list with ready/partial markers"
+      ]
+    },
+    {
+      "content": [
+        "Buyer-demo shell: upload, KPI strip, history, viewer handoff",
+        "Seeded local story: success, processing, unsupported format, dead-letter",
+        "Evidence panels: KPI snapshot exports and operator recovery posture"
+      ],
+      "purpose": "Show the product surface that exists now.",
+      "role": "text_three_items",
+      "subject": "Inspectable Product Evidence",
+      "visuals": [
+        "Three evidence blocks with ready labels"
+      ]
+    },
+    {
+      "content": [
+        "Open root shell",
+        "Load demo story or upload document",
+        "Inspect status/history and job details",
+        "Open viewer and artifact path",
+        "Review KPI and recovery evidence"
+      ],
+      "purpose": "Explain the end-to-end flow without raw implementation detail.",
+      "role": "diagram_timeline",
+      "subject": "Buyer Demo Journey",
+      "visuals": [
+        "Left-to-right flow from upload to governed preview"
+      ]
+    },
+    {
+      "content": [
+        "Runtime jobs: seeded demo shows 4 jobs; pilot target 50K monthly documents",
+        "Ready previews: seeded demo shows 1 ready preview",
+        "Successful preview rate: seeded demo mixed-state 50 percent; supported pilot target 99.5 percent",
+        "P95 preview latency: seeded demo 4200 ms; small pilot target under 10 seconds",
+        "KPI export: 1 tenant-scoped local evidence export"
+      ],
+      "purpose": "Tie buyer KPIs to current proof and target thresholds.",
+      "role": "metrics",
+      "subject": "Data Analytics Evidence",
+      "visuals": [
+        "Metric table with current proof and threshold columns"
+      ]
+    },
+    {
+      "content": [
+        "23 data-room artifacts: 15 ready, 8 partial, 0 external",
+        "8 readiness gates: 3 ready, 5 partial, 0 external",
+        "Conservative gate readiness: 38 percent",
+        "Partial gates: design handoff, data analytics KPI, security compliance, buyer integration, production durability"
+      ],
+      "purpose": "Quantify current data-room readiness while keeping gaps visible.",
+      "role": "metrics",
+      "subject": "Buyer Readiness Scorecard",
+      "visuals": [
+        "Ready/partial rollup with amber discount-risk list"
+      ]
+    },
+    {
+      "content": [
+        "Product demo: seeded story, FigJam board, QA evidence",
+        "License attribution: SBOM, license review, third-party attribution",
+        "Readiness scorecard: manifest, generated scorecard, diligence index",
+        "Mandatory local gates: compile, test, JaCoCo, JavaDoc, Markdown lint, Semgrep"
+      ],
+      "purpose": "Summarize the strongest current diligence claims.",
+      "role": "text_four_items",
+      "subject": "Ready Evidence Gates",
+      "visuals": [
+        "Four proof cards with green ready styling"
+      ]
+    },
+    {
+      "content": [
+        "Design handoff: high-fidelity frames still incomplete",
+        "Data analytics KPI: durable projections and pilot volume data pending",
+        "Security compliance: production OIDC/JWT, role mapping, durable audit pending",
+        "Production durability: SQL jobs, artifact metadata, revocation, read audit, metrics store pending"
+      ],
+      "purpose": "Prevent overclaiming and focus the closure roadmap.",
+      "role": "text_four_items",
+      "subject": "Remaining Discount Risks",
+      "visuals": [
+        "Amber risk cards with next closure cues"
+      ]
+    },
+    {
+      "content": [
+        "Keep boundaries in-repo now: one real runtime and no second production consumer",
+        "No submodule or SDK package yet: it adds diligence friction without current buyer value",
+        "Split later only when converter adapters, analytics contracts, or client SDKs need independent versioning"
+      ],
+      "purpose": "Document the Ponytail no-split decision for buyer diligence.",
+      "role": "text_three_items",
+      "subject": "Architecture Packaging Decision",
+      "visuals": [
+        "Decision rationale with keep/split conditions"
+      ]
+    },
+    {
+      "content": [
+        "Keep license, attribution, manifest, and scorecard gates green",
+        "Generate and attach buyer diligence Slides deck and high-fidelity frames",
+        "Import-test connector seed in buyer-like tenant",
+        "Replace gateway HMAC scaffold with validated OIDC/JWT and role mapping",
+        "Promote ledgers and lifecycle evidence into durable stores"
+      ],
+      "purpose": "Show the shortest path from current evidence to stronger buyer-release readiness.",
+      "role": "diagram_timeline",
+      "subject": "Next Closure Order",
+      "visuals": [
+        "Sequential roadmap with 5 closure steps"
+      ]
+    },
+    {
+      "content": [
+        "KRW 2B is a sale-readiness target, not a valuation opinion",
+        "Seeded demo proof is local evidence, not production data",
+        "Queued GitHub checks and review process are not implementation blockers",
+        "Primary artifacts: PR #82, FigJam board, data-room manifest, readiness scorecard"
+      ],
+      "purpose": "End with a precise buyer-facing boundary.",
+      "role": "closing",
+      "subject": "Claim Boundary",
+      "visuals": [
+        "Boundary statement and link placeholders for repo, PR, FigJam"
+      ]
+    }
+  ],
+  "rules": "Do not use Figma Code Connect. Do not imply a completed acquisition valuation. Use ready/partial language consistently. Keep slides dense but readable. Avoid decorative marketing hero visuals; use proof tables, diagrams, and concise captions. Mark seeded demo evidence as local demo proof, not production data.",
+  "templateQuery": {
+    "palette": [
+      "white",
+      "charcoal",
+      "blue",
+      "green",
+      "amber"
+    ],
+    "style": [
+      "enterprise SaaS",
+      "due diligence",
+      "clean professional",
+      "evidence-led"
+    ],
+    "useCase": [
+      "investor update",
+      "buyer diligence",
+      "product review"
+    ]
+  },
+  "theme": {
+    "palette": [
+      "#FFFFFF",
+      "#1F2937",
+      "#2563EB",
+      "#16A34A",
+      "#F59E0B",
+      "#DC2626"
+    ],
+    "paletteDescription": "Quiet enterprise palette: white background, charcoal text, blue primary, green ready evidence, amber partial risk, red blocked or claim-boundary warnings."
+  },
+  "title": "Clearfolio Buyer Demo Diligence Pack",
+  "userIntent": "Create a buyer diligence Slides deck for the Clearfolio KRW 2B sale-readiness program and make it editable in Figma Slides."
+}

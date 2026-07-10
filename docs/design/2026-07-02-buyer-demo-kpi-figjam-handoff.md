@@ -40,6 +40,22 @@ Date: 2026-07-02
 - Added FigJam diagram on the same board:
   `Clearfolio Conversion Lifecycle Event Trail Flow`.
 - Added FigJam diagram on the same board:
+  `Clearfolio Seeded Buyer Demo Story Flow`.
+- Added seeded buyer-demo screenshots on the same board:
+  desktop node `25:1423`, mobile node `25:1422`.
+- Added FigJam diagram on the same board:
+  `Clearfolio KRW 2B Buyer Diligence Closure Map`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Buyer Readiness Scorecard Gate Map`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Buyer Diligence Slides Storyboard`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Ready Gate Evidence Integrity Check`.
+- Buyer diligence Slides handoff:
+  `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md`.
+- Buyer diligence Slides generation payload:
+  `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json`.
+- Added FigJam diagram on the same board:
   `Clearfolio Conversion Recovery Sweep Flow`.
 - Figma Code Connect: not used.
 
@@ -67,6 +83,13 @@ Date: 2026-07-02
 - The operator recovery evidence panel must stay scoped to the current browser
   session and should summarize retry posture without claiming production admin
   coverage.
+- The seeded buyer-demo story must be labeled as local browser-session demo
+  evidence, not production data or a durable analytics source.
+- Desktop and mobile screenshot evidence must come from the running local
+  product surface after clicking `Load demo story`, not from static mockups.
+- Buyer diligence presentation artifacts must keep `Ready`, `Partial`, and gap
+  states visually distinct; local seeded proof must not be styled as production
+  data.
 
 ## Data Analytics Mapping
 
@@ -81,6 +104,11 @@ Date: 2026-07-02
 | KPI evidence panel | `/api/v1/analytics/kpi-snapshot-exports` | Turns export evidence into a buyer-readable UI panel while omitting tenant ids. |
 | Recovery evidence panel | Browser session history plus job status payloads | Shows needs-action jobs, retry-ready dead letters, last accepted retry, and latest inspected detail without a new admin system. |
 | Lifecycle event trail | `ConversionJobLifecycleEvent` | Proves ordered transition evidence in the current runtime without storing filenames, content hashes, artifact paths, signed tokens, or raw converter errors. |
+| Seeded demo story | `demo-fixtures.json` | Gives screenshots, FigJam, and buyer-deck review one deterministic local story covering success, processing, unsupported-format, dead-letter, KPI snapshot, and KPI export evidence. |
+| Buyer diligence closure map | FigJam diagram plus `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md` | Aligns Product Design, Data Analytics, Figma, Superpowers, and Ponytail workstreams around current proof, open gaps, and next closure order. |
+| Buyer readiness scorecard | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md` plus FigJam scorecard gate map | Quantifies 23 data-room artifacts, 8 readiness gates, 38 percent conservative gate readiness, and ready-gate evidence integrity without hiding partial discount risks. |
+| Buyer diligence Slides storyboard | `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json` plus FigJam storyboard | Makes the 11-slide buyer deck reproducible once Figma team or organization plan selection is available. |
+| Ready gate evidence integrity | `scripts/check_buyer_dataroom_manifest.py` plus FigJam integrity check | Prevents a buyer-ready gate from citing partial or external artifacts as complete evidence. |
 | Recovery sweep | `findRecoverableJobs` and `DefaultConversionWorker` | Proves due submitted and stale processing jobs can be re-enqueued from available repository state while SQL restart durability remains a separate gap. |
 
 ## Mermaid Source
@@ -185,6 +213,60 @@ flowchart LR
     style evidenceStore fill:#FFECBD,stroke:#FFC943
     style buyerProof fill:#DCCCFF,stroke:#874FFF
     style noTenant fill:#FFCDC2,stroke:#FF7556
+```
+
+### Seeded Buyer Demo Story Flow
+
+```mermaid
+flowchart LR
+    fixture["demo-fixtures.json"]
+    button["Load demo story"]
+    storage[("Session history")]
+
+    subgraph demoSurface ["Viewer demo surface"]
+        history["History table"]
+        kpiStrip["KPI strip"]
+        evidencePanel["Evidence panel"]
+        recoveryPanel["Recovery panel"]
+        detailDrawer["Job detail"]
+    end
+
+    subgraph proofStates ["Buyer proof states"]
+        successState["Succeeded job"]
+        processingState["Processing job"]
+        unsupportedState["Unsupported format"]
+        deadLetterState["Dead letter"]
+    end
+
+    subgraph salesProof ["Sale proof outputs"]
+        screenshots["Screenshots"]
+        figjam["FigJam handoff"]
+        buyerDeck["Buyer deck"]
+    end
+
+    fixture -->|"Loaded by"| button
+    button -->|"Seeds"| storage
+    storage -->|"Renders"| history
+    fixture -->|"Feeds"| kpiStrip
+    fixture -->|"Feeds"| evidencePanel
+    history -->|"Summarizes"| recoveryPanel
+    history -->|"Opens"| detailDrawer
+    history -->|"Shows"| successState
+    history -->|"Shows"| processingState
+    history -->|"Shows"| unsupportedState
+    history -->|"Shows"| deadLetterState
+    kpiStrip -->|"Supports"| screenshots
+    recoveryPanel -->|"Supports"| screenshots
+    detailDrawer -->|"Supports"| screenshots
+    screenshots -->|"Feeds"| figjam
+    figjam -->|"Feeds"| buyerDeck
+
+    style demoSurface fill:#C2E5FF,stroke:#3DADFF
+    style proofStates fill:#FFECBD,stroke:#FFC943
+    style salesProof fill:#CDF4D3,stroke:#66D575
+    style unsupportedState fill:#FFE0C2,stroke:#FF9E42
+    style deadLetterState fill:#FFCDC2,stroke:#FF7556
+    style successState fill:#CDF4D3,stroke:#66D575
 ```
 
 ### Operator Recovery Evidence Flow
@@ -556,19 +638,21 @@ flowchart LR
     review["Engineering review"]
     legal{"Legal decision"}
     approve["Approve route"]
+    attribution["Third-party attribution"]
     replace["Replace dependency"]
     remove["Remove dependency"]
     gate["CI allowlist gate"]
     buyer["Buyer data-room package"]
 
-    sbom -->|"Shows 142 components"| metadata
+    sbom -->|"Shows 61 components"| metadata
     metadata -->|"0 unknown"| flagged
-    flagged -->|"6 flagged"| review
+    flagged -->|"0 flagged"| review
     review -->|"Classifies risk"| legal
     legal -->|"Allowed"| approve
     legal -->|"Not allowed"| replace
     legal -->|"Not needed"| remove
-    approve -->|"Locks policy"| gate
+    approve -->|"Renders notices"| attribution
+    attribution -->|"Locks package"| gate
     replace -->|"Rerun SBOM"| sbom
     remove -->|"Rerun SBOM"| sbom
     gate -->|"Prevents drift"| buyer
@@ -578,6 +662,7 @@ flowchart LR
     style legal fill:#FFECBD,stroke:#FFC943
     style replace fill:#FFCDC2,stroke:#FF7556
     style remove fill:#FFCDC2,stroke:#FF7556
+    style attribution fill:#C2E5FF,stroke:#3DADFF
     style gate fill:#C2E5FF,stroke:#3DADFF
     style buyer fill:#DCCCFF,stroke:#874FFF
 ```

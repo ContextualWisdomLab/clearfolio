@@ -40,15 +40,16 @@
     <jackson-bom.version>2.22.1</jackson-bom.version>
     <!-- Security override: GHSA-jhq6-gfmj-v8fx fixes logback-core in 1.5.35. -->
     <logback.version>1.5.35</logback.version>
+    <!-- Security override: CVE-2025-68161 / CVE-2026-34477 / CVE-2026-34478 / CVE-2026-34480. -->
+    <log4j2.version>2.25.4</log4j2.version>
   </properties>
 
   <!--
-    Security-driven version pins for transitive dependencies that the
-    Spring Boot parent does not manage. These come in via Apache Tika's
-    standard parser package and were flagged by the trivy-fs / osv scans.
-    Bumping the top-level parent to 3.5.16 already remediates the Spring,
-    Netty, Reactor, logback and Jackson advisories; the pins below close
-    the remaining Tika-side findings without changing runtime behaviour.
+    Security-driven version pins for parser-side transitives that the
+    Spring Boot parent does not manage. The broad Apache Tika standard parser
+    package is intentionally not declared for buyer-release mode because
+    production code does not use Tika APIs and its transitive graph expands
+    license review. Keep these pins if a narrower parser adapter is introduced.
   -->
   <dependencyManagement>
     <dependencies>
@@ -97,17 +98,36 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webflux</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-logging</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>jakarta.annotation</groupId>
+          <artifactId>jakarta.annotation-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-logging</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>jakarta.annotation</groupId>
+          <artifactId>jakarta.annotation-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
-      <groupId>org.apache.tika</groupId>
-      <artifactId>tika-parsers-standard-package</artifactId>
-      <version>3.3.1</version>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-log4j2</artifactId>
     </dependency>
 
     <dependency>

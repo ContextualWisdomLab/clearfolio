@@ -78,7 +78,7 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 | --- | --- | --- | --- |
 | `spring-projects/spring-framework` | Apache-2.0 | Implemented (WebFlux runtime) | Strong reactive stack, but requires careful blocking-code isolation. |
 | `reactor/reactor-core` | Apache-2.0 | Implemented (reactive primitives) | Good async composition, but debugging stack traces can be harder than imperative flow. |
-| `apache/tika` | Apache-2.0 | Implemented (document metadata/parsing support) | Broad format support, but parser footprint can increase dependency surface. |
+| `apache/tika` | Apache-2.0 | Removed from current runtime | Broad parser package was unused in production code and increased license-review surface; reconsider only with a narrow parser adapter and refreshed SBOM policy. |
 | `jodconverter/jodconverter` | Apache-2.0 | Concept-only, not integrated | Useful LibreOffice bridge candidate for production conversion runtime. |
 | `mozilla/pdf.js` | Apache-2.0 | Concept-only frontend reference | Stable PDF rendering baseline for unified viewer shell integration. |
 | `ONLYOFFICE/DocumentServer` | AGPL-3.0 | Concept-only (import disallowed) | Architecture reference only; copyleft policy prevents direct dependency adoption. |

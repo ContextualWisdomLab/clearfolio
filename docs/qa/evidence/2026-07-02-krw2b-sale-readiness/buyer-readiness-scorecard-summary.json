@@ -1,0 +1,125 @@
+{
+  "artifactCount": 23,
+  "artifactStatusCounts": {
+    "external": 0,
+    "partial": 8,
+    "ready": 15
+  },
+  "conservativeGateReadinessPercent": 38,
+  "discountRiskGates": [
+    {
+      "id": "design-handoff",
+      "status": "partial"
+    },
+    {
+      "id": "data-analytics-kpi",
+      "status": "partial"
+    },
+    {
+      "id": "security-compliance",
+      "status": "partial"
+    },
+    {
+      "id": "buyer-integration",
+      "status": "partial"
+    },
+    {
+      "id": "production-durability",
+      "status": "partial"
+    }
+  ],
+  "gateCount": 8,
+  "gateStatusCounts": {
+    "external": 0,
+    "partial": 5,
+    "ready": 3
+  },
+  "gateSummaries": [
+    {
+      "buyerInterpretation": "Ready for buyer walkthrough.",
+      "evidenceStatuses": [
+        "seeded-demo-evidence=ready",
+        "figjam-board=ready",
+        "qa-evidence=ready"
+      ],
+      "id": "product-demo",
+      "status": "ready"
+    },
+    {
+      "buyerInterpretation": "Discount risk until closed.",
+      "evidenceStatuses": [
+        "design-handoff=partial",
+        "figma-slides-payload=ready",
+        "figma-slides-payload-check=ready",
+        "figjam-handoff=ready",
+        "figjam-board=ready"
+      ],
+      "id": "design-handoff",
+      "status": "partial"
+    },
+    {
+      "buyerInterpretation": "Discount risk until closed.",
+      "evidenceStatuses": [
+        "valuation-kpi-model=ready",
+        "durable-metrics-model=partial",
+        "qa-evidence=ready"
+      ],
+      "id": "data-analytics-kpi",
+      "status": "partial"
+    },
+    {
+      "buyerInterpretation": "Discount risk until closed.",
+      "evidenceStatuses": [
+        "auth-tenant-model=partial",
+        "threat-model=partial",
+        "signed-artifact-design=partial"
+      ],
+      "id": "security-compliance",
+      "status": "partial"
+    },
+    {
+      "buyerInterpretation": "Ready for buyer walkthrough.",
+      "evidenceStatuses": [
+        "sbom=ready",
+        "license-review=ready",
+        "third-party-attribution=ready"
+      ],
+      "id": "license-attribution",
+      "status": "ready"
+    },
+    {
+      "buyerInterpretation": "Ready for buyer walkthrough.",
+      "evidenceStatuses": [
+        "buyer-data-room-manifest=ready",
+        "buyer-readiness-scorecard=ready",
+        "diligence-index=ready"
+      ],
+      "id": "readiness-scorecard",
+      "status": "ready"
+    },
+    {
+      "buyerInterpretation": "Discount risk until closed.",
+      "evidenceStatuses": [
+        "deployment-playbook=partial",
+        "connector-openapi=partial",
+        "active-pr=ready"
+      ],
+      "id": "buyer-integration",
+      "status": "partial"
+    },
+    {
+      "buyerInterpretation": "Discount risk until closed.",
+      "evidenceStatuses": [
+        "durable-repository-plan=partial",
+        "durable-metrics-model=partial",
+        "qa-evidence=ready"
+      ],
+      "id": "production-durability",
+      "status": "partial"
+    }
+  ],
+  "packageName": "Clearfolio KRW 2B Buyer Data Room",
+  "readyGateEvidenceIntegrity": true,
+  "readyGateEvidenceViolations": [],
+  "updatedAt": "2026-07-03"
+}

@@ -235,7 +235,8 @@ then use the normal max-attempt/dead-letter policy.
 
 ## Open Risks
 
-- Legal approval for review-required dependencies remains external.
+- Final attribution/legal release review remains external to this persistence
+  plan.
 - Production OIDC/JWT validation remains external to this persistence plan.
 - Durable artifact store selection must be finalized before SQL job persistence
   can claim full production recovery.

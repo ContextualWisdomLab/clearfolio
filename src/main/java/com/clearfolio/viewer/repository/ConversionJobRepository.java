@@ -59,6 +59,17 @@ public interface ConversionJobRepository {
     }
 
     /**
+     * Finds a conversion job by tenant and identifier.
+     *
+     * @param tenantId tenant identifier
+     * @param jobId conversion job identifier
+     * @return matching conversion job when found and owned by the tenant
+     */
+    default Optional<ConversionJob> findByTenantAndId(String tenantId, UUID jobId) {
+        return findById(jobId).filter(job -> job.belongsToTenant(tenantId));
+    }
+
+    /**
      * Returns a snapshot of all known conversion jobs.
      *
      * @return current conversion jobs
@@ -89,6 +100,13 @@ public interface ConversionJobRepository {
      * @return canonical stored conversion job and whether the candidate was created
      */
     FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate);
+
+    /**
+     * Deletes a conversion job by identifier.
+     *
+     * @param jobId conversion job identifier
+     */
+    void deleteById(UUID jobId);
 
     private static boolean isStaleProcessing(ConversionJob job, Instant staleProcessingBefore) {
         Instant startedAt = job.getStartedAt();

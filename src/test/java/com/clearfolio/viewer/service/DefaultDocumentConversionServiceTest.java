@@ -1,6 +1,7 @@
 package com.clearfolio.viewer.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -105,6 +106,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 validationService,
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -144,6 +146,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 validationService,
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -169,6 +172,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
         MockMultipartFile file = new MockMultipartFile(
@@ -198,6 +202,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
         MockMultipartFile file = new MockMultipartFile(
@@ -222,6 +227,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -247,6 +253,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -278,6 +285,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -330,6 +338,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -358,6 +367,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -382,6 +392,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -407,6 +418,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -442,6 +454,7 @@ class DefaultDocumentConversionServiceTest {
                 stateStore,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -472,6 +485,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -489,6 +503,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -517,6 +532,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -546,6 +562,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -613,6 +630,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -634,6 +652,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -659,6 +678,101 @@ class DefaultDocumentConversionServiceTest {
         }
 
         assertEquals(0, worker.enqueuedCount());
+    }
+
+
+    @Test
+    void deleteJobWithTenantContextDeletesOwnedJobAndArtifact() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        com.clearfolio.viewer.artifact.InMemoryArtifactStore artifactStore =
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                mock(DocumentValidationService.class),
+                mock(ConversionWorker.class),
+                artifactStore,
+                new ConversionProperties()
+        );
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "tenant-a",
+                "subject-a",
+                "report.docx",
+                "application/octet-stream",
+                "hash-delete-owned",
+                10L,
+                3
+        );
+        repository.save(job);
+        artifactStore.putPdf(jobId, new byte[] {1, 2, 3});
+
+        boolean deleted = service.deleteJob(
+                jobId,
+                new TenantContext("tenant-a", "subject-a", Set.of(TenantPermissions.JOB_DELETE))
+        );
+
+        assertTrue(deleted);
+        assertTrue(repository.findById(jobId).isEmpty());
+        assertTrue(artifactStore.getPdf(jobId).isEmpty());
+    }
+
+    @Test
+    void deleteJobWithTenantContextLeavesOtherTenantJobUntouched() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        com.clearfolio.viewer.artifact.ArtifactStore artifactStore =
+                mock(com.clearfolio.viewer.artifact.ArtifactStore.class);
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                mock(DocumentValidationService.class),
+                mock(ConversionWorker.class),
+                artifactStore,
+                new ConversionProperties()
+        );
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "tenant-a",
+                "subject-a",
+                "report.docx",
+                "application/octet-stream",
+                "hash-delete-cross-tenant",
+                10L,
+                3
+        );
+        repository.save(job);
+
+        boolean deleted = service.deleteJob(
+                jobId,
+                new TenantContext("tenant-b", "subject-b", Set.of(TenantPermissions.JOB_DELETE))
+        );
+
+        assertFalse(deleted);
+        assertSame(job, repository.findById(jobId).orElseThrow());
+        org.mockito.Mockito.verifyNoInteractions(artifactStore);
+    }
+
+    @Test
+    void deleteJobSucceedsWhenArtifactDeletionFails() {
+        ConversionJobRepository repository = mock(ConversionJobRepository.class);
+        ConversionWorker worker = mock(ConversionWorker.class);
+        DocumentValidationService validationService = mock(DocumentValidationService.class);
+        com.clearfolio.viewer.artifact.ArtifactStore artifactStore = mock(com.clearfolio.viewer.artifact.ArtifactStore.class);
+
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                validationService,
+                worker,
+                artifactStore,
+                new ConversionProperties()
+        );
+
+        UUID jobId = UUID.randomUUID();
+        org.mockito.Mockito.doThrow(new RuntimeException("S3 is down")).when(artifactStore).deletePdf(jobId);
+
+        service.deleteJob(jobId);
+
+        org.mockito.Mockito.verify(repository).deleteById(jobId);
     }
 
     private static class RecordingConversionWorker implements ConversionWorker {
@@ -710,6 +824,11 @@ class DefaultDocumentConversionServiceTest {
         @Override
         public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
             return finder.apply(candidate);
+        }
+
+        @Override
+        public void deleteById(UUID jobId) {
+            throw new UnsupportedOperationException("not used");
         }
     }
 

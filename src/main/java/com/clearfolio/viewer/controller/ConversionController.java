@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
@@ -168,6 +169,23 @@ public class ConversionController {
         }
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(SubmitConversionResponse.accepted(jobId));
+    }
+
+    /**
+     * Deletes a conversion job and its associated generated artifacts.
+     *
+     * @param jobId conversion job identifier
+     * @param headers request headers carrying tenant claims
+     * @return no content on success
+     */
+    @DeleteMapping("/api/v1/convert/jobs/{jobId}")
+    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId, @RequestHeader HttpHeaders headers) {
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_DELETE);
+        if (!conversionService.deleteJob(jobId, tenantContext)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
+
+        return ResponseEntity.noContent().build();
     }
 
     /**

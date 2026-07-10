@@ -1037,5 +1037,10 @@ class DefaultConversionWorkerTest {
         public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
             return delegate.findOrStoreByContentHash(candidate);
         }
+
+        @Override
+        public void deleteById(UUID jobId) {
+            delegate.deleteById(jobId);
+        }
     }
 }

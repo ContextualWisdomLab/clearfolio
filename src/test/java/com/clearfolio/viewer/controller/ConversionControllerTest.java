@@ -624,7 +624,7 @@ class ConversionControllerTest {
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_PDF)
                 .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"my-report.pdf\"")
-                .expectHeader().exists("X-Checksum-Sha256")
+                .expectHeader().valueEquals("X-Checksum-Sha256", "7ead0b44cc1a9959917fe0b59d7ecdec3afa4b30b94e77b76f2107c7508afe8b")
                 .expectBody(byte[].class).isEqualTo(pdfBytes);
     }
 

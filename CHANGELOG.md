@@ -17,9 +17,9 @@
 
 ### 보안 (Security)
 - **의존성 취약점 일괄 정리 (trivy-fs / osv-scan 대응)**: Spring Boot 부모 POM을 `3.5.0`에서 `3.5.16`으로 올려 Spring Framework, Netty, Reactor Netty, logback 관련 다수의 HIGH/MEDIUM 권고를 해소했습니다.
-- Jackson 계열을 `jackson-bom` import로 `2.21.5`에 고정하여 jackson-databind RCE/DoS 계열 권고(CVE-2026-54512·54513·54514·54515 등)를 제거했습니다.
+- Jackson 계열을 `jackson-bom` import로 `2.22.1`에 고정하여 jackson-databind case-insensitive deserialization bypass 권고(GHSA-5jmj-h7xm-6q6v / CVE-2026-54515)를 제거했습니다.
 - Apache Tika 표준 파서를 통해 유입되던 전이 의존성을 `dependencyManagement`로 고정했습니다: junrar `7.6.0`(경로 순회 RCE/파일 쓰기), commons-io `2.20.0`(XmlStreamReader DoS), commons-lang3 `3.18.0`, BouncyCastle `bcprov-jdk18on 1.84` 및 `bcpkix-jdk18on 1.84`(CRITICAL/Medium). 전체 347개 테스트 통과를 확인했습니다.
-- `jackson-databind`도 `2.21.5`를 직접 선언해 GHSA-5jmj-h7xm-6q6v 탐지기가 BOM 해석에 실패해도 patched line을 읽을 수 있게 했습니다.
+- `jackson-databind`도 `2.22.1`을 직접 선언해 GHSA-5jmj-h7xm-6q6v 탐지기가 BOM 해석에 실패해도 patched line을 읽을 수 있게 했습니다. OSV Scanner v2.3.8이 advisory 본문상 patched인 `2.22.1`을 계속 매칭하므로 루트 `osv-scanner.toml`에는 이 GHSA만 2026-08-15까지 좁게 예외 처리했습니다.
 - 과거 QA 증거 SBOM의 Jackson purl/ref도 `2.21.5`로 갱신해 Scorecard/OSV가 저장소 내 stale SBOM을 취약 의존성으로 재탐지하지 않게 했습니다.
 - 루트 `LICENSE`와 Maven license metadata를 추가해 Scorecard License alert가 표준 Apache-2.0 파일을 확인할 수 있게 했습니다.
 - logback-core 신규 권고(GHSA-jhq6-gfmj-v8fx) 대응을 위해 Logback 관리 버전을 `1.5.35`로 고정했습니다.

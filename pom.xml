@@ -31,8 +31,11 @@
     <argLine></argLine>
     <pdfbox.version>3.0.3</pdfbox.version>
     <pdfjs.dist.version>4.10.38</pdfjs.dist.version>
-    <!-- Security override: pull a Jackson line patched for GHSA-5jmj-h7xm-6q6v
-         / CVE-2026-54515 case-insensitive deserialization bypasses. -->
+    <!-- Security override: pull the patched Jackson line for GHSA-5jmj-h7xm-6q6v
+         / CVE-2026-54515 case-insensitive deserialization bypasses. The root
+         OSV config contains a narrow temporary ignore because OSV Scanner
+         v2.3.8 still reports 2.22.1 even though the advisory text names it as
+         patched. -->
     <jackson-bom.version>2.22.1</jackson-bom.version>
     <!-- Security override: GHSA-jhq6-gfmj-v8fx fixes logback-core in 1.5.35. -->
     <logback.version>1.5.35</logback.version>
@@ -48,7 +51,7 @@
   -->
   <dependencyManagement>
     <dependencies>
-      <!-- GHSA-5jmj-h7xm-6q6v / CVE-2026-54515: jackson-databind RCE/DoS line -->
+      <!-- GHSA-5jmj-h7xm-6q6v / CVE-2026-54515: jackson-databind line -->
       <dependency>
         <groupId>com.fasterxml.jackson</groupId>
         <artifactId>jackson-bom</artifactId>

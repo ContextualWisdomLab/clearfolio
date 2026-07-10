@@ -72,7 +72,9 @@ public final class InMemoryMultipartFile implements MultipartFile {
 
     @Override
     public InputStream getInputStream() {
-        return new ByteArrayInputStream(Arrays.copyOf(content, content.length));
+        // Optimization: `ByteArrayInputStream` does not modify the array.
+        // Avoiding `Arrays.copyOf` prevents unnecessary memory allocation for large uploads.
+        return new ByteArrayInputStream(content);
     }
 
     @Override

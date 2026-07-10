@@ -14,6 +14,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.MultipartBodyBuilder;
+import java.nio.charset.StandardCharsets;
+import java.util.HexFormat;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -40,7 +45,8 @@ import com.clearfolio.viewer.service.PolicyOverrideRequest;
 @TestPropertySource(
         properties = {
                 "conversion.max-upload-size-bytes=1024",
-                "spring.codec.max-in-memory-size=2048"
+                "spring.codec.max-in-memory-size=2048",
+                "conversion.policy-override-secret=test-secret"
         }
 )
 class ConversionControllerMultipartLimitTest {
@@ -137,9 +143,22 @@ class ConversionControllerMultipartLimitTest {
                 .jsonPath("$.traceId").value(ConversionControllerMultipartLimitTest::assertNonBlankTraceId);
     }
 
+    private String generateSignature(String approverId, String extension, String secret) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            String payload = approverId.length() + ":" + approverId + extension;
+            byte[] hashed = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hashed);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
     @Test
     void submitAcceptsBlockedExtensionWhenPolicyOverrideHeadersAreValid() {
-        submit("contract.hwp", "hello".getBytes(), "true", "token-xyz", "approver-99")
+        String validSignature = generateSignature("approver-99", "hwp", "test-secret");
+        submit("contract.hwp", "hello".getBytes(), "true", validSignature, "approver-99")
                 .expectStatus().isAccepted()
                 .expectBody()
                 .jsonPath("$.status").isEqualTo("ACCEPTED")

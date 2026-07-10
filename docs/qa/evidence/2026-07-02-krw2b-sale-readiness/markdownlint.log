@@ -1,4 +1,4 @@
-markdownlint-cli2 v0.11.0 (markdownlint v0.32.1)
-Finding: README.md docs/plans/2026-07-02-krw2b-sale-readiness-execution-plan.md docs/diligence/2026-07-02-buyer-diligence-index.md docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md docs/qa/evidence/LATEST.md
-Linting: 6 file(s)
+markdownlint-cli2 v0.18.1 (markdownlint v0.38.0)
+Finding: README.md docs/architecture.md docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md docs/plans/2026-07-02-krw2b-sale-readiness-execution-plan.md docs/diligence/2026-07-02-buyer-diligence-index.md docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md docs/qa/evidence/LATEST.md docs/superpowers/plans/2026-07-03-conversion-recovery-sweep.md
+Linting: 9 file(s)
 Summary: 0 error(s)

@@ -15,6 +15,7 @@ conversion:
   retry-max-delay-ms: ${CLEARFOLIO_RETRY_MAX_DELAY_MS:5000}
   retry-backoff-multiplier: ${CLEARFOLIO_RETRY_BACKOFF_MULTIPLIER:2.0}
   max-upload-size-bytes: ${CLEARFOLIO_MAX_UPLOAD_SIZE_BYTES:5242880}
+  processing-lease-timeout-ms: ${CLEARFOLIO_PROCESSING_LEASE_TIMEOUT_MS:60000}
 
 viewer:
   security:

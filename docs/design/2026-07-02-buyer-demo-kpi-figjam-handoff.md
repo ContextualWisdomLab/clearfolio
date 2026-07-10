@@ -39,6 +39,8 @@ Date: 2026-07-02
   `Clearfolio Conversion State Store Implementation Flow`.
 - Added FigJam diagram on the same board:
   `Clearfolio Conversion Lifecycle Event Trail Flow`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Conversion Recovery Sweep Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -79,6 +81,7 @@ Date: 2026-07-02
 | KPI evidence panel | `/api/v1/analytics/kpi-snapshot-exports` | Turns export evidence into a buyer-readable UI panel while omitting tenant ids. |
 | Recovery evidence panel | Browser session history plus job status payloads | Shows needs-action jobs, retry-ready dead letters, last accepted retry, and latest inspected detail without a new admin system. |
 | Lifecycle event trail | `ConversionJobLifecycleEvent` | Proves ordered transition evidence in the current runtime without storing filenames, content hashes, artifact paths, signed tokens, or raw converter errors. |
+| Recovery sweep | `findRecoverableJobs` and `DefaultConversionWorker` | Proves due submitted and stale processing jobs can be re-enqueued from available repository state while SQL restart durability remains a separate gap. |
 
 ## Mermaid Source
 
@@ -436,6 +439,48 @@ flowchart LR
     style privacy fill:#DCCCFF,stroke:#874FFF
     style omitted fill:#FFCDC2,stroke:#FF7556
     style buyerProof fill:#D9D9D9,stroke:#B3B3B3
+```
+
+### Conversion Recovery Sweep Flow
+
+```mermaid
+flowchart LR
+    appReady(["Application ready"])
+    sweep[["Worker recovery sweep"]]
+    repo[["findRecoverableJobs"]]
+    dueSubmitted{"Due SUBMITTED?"}
+    staleProcessing{"Stale PROCESSING?"}
+    scheduleRetry[["Schedule lease retry"]]
+    enqueue[["Enqueue job"]]
+    worker[["Claim and convert"]]
+    outcome{"Conversion result?"}
+    success["SUCCEEDED"]
+    retryPolicy["Normal retry policy"]
+    futureRetry["SUBMITTED with retry time"]
+    deadLetter["FAILED dead-letter"]
+    skip["Skip job"]
+    sqlStore[("SQL repository follow-up")]
+
+    appReady --> sweep
+    sweep --> repo
+    repo --> dueSubmitted
+    dueSubmitted -->|"Yes"| enqueue
+    dueSubmitted -->|"No"| staleProcessing
+    staleProcessing -->|"Yes"| scheduleRetry
+    scheduleRetry --> enqueue
+    staleProcessing -->|"No"| skip
+    enqueue --> worker
+    worker --> outcome
+    outcome -->|"Success"| success
+    outcome -->|"Failure"| retryPolicy
+    retryPolicy --> futureRetry
+    retryPolicy --> deadLetter
+    sqlStore -.->|"Future durability"| repo
+
+    style success fill:#CDF4D3,stroke:#66D575
+    style deadLetter fill:#FFCDC2,stroke:#FF7556
+    style futureRetry fill:#FFECBD,stroke:#FFC943
+    style sqlStore fill:#C2E5FF,stroke:#3DADFF
 ```
 
 ### Threat Boundaries and Data Handling

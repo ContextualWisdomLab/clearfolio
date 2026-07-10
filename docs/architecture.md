@@ -15,6 +15,10 @@ This repository currently ships an MVP backend for integrated document conversio
 - Submit flow (`POST /api/v1/convert/jobs`): validation -> blocked-format policy evaluation (default block, optional auditable override headers) -> content hash dedupe -> enqueue async conversion -> return `202`.
 - Status flow (`GET /api/v1/convert/jobs/{jobId}`): return lifecycle snapshot (`SUBMITTED`, `PROCESSING`, `SUCCEEDED`, `FAILED`) with retry metadata.
 - Operator recovery flow (`POST /api/v1/convert/jobs/{jobId}/retry`): validate `X-Clearfolio-Operator-Id` -> allow only dead-lettered jobs -> reset state -> enqueue async conversion -> return `202`.
+- Worker startup recovery flow: on application readiness, select due
+  `SUBMITTED` jobs and stale retryable `PROCESSING` jobs older than
+  `conversion.processing-lease-timeout-ms`; re-enqueue due jobs directly and
+  route stale processing jobs through retry scheduling before re-enqueue.
 - Viewer UI flow (`GET /viewer/{docId}`): return HTML shell with mobile-safe loading/failed/ready states; when ready, embed PDF.js.
 - Bootstrap flow (`GET /api/v1/viewer/{docId}` and `GET /api/v1/convert/viewer/{docId}`): return bootstrap JSON on `SUCCEEDED` with deterministic `sourceExtension`/`rendererAdapter`; return `409` for not-ready/failed states; return `404` when missing.
 - Artifact flow (`GET /artifacts/{docId}.pdf`): serve converted PDF bytes for `SUCCEEDED` jobs only (single-range support).
@@ -59,7 +63,10 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 - Durable job repository target: keep `ConversionJobRepository` as the read and
   dedupe boundary. `ConversionJobStateStore` is now the explicit lifecycle
   transition boundary for worker claims, success, retry, dead-lettering, and
-  operator retry acceptance before adding a SQL implementation. See
+  operator retry acceptance before adding a SQL implementation.
+  `ConversionJobRepository.findRecoverableJobs` and `DefaultConversionWorker`
+  now define the process-local startup recovery contract for due submitted jobs
+  and stale processing leases. See
   `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`.
 - Read-only routing policy (future DB phase): use provided read-only endpoint/DSN for read-biased traffic; strong consistency/DDL/lock-sensitive paths stay on primary.
 - Pooler detection policy (best effort, future DB phase): in management DB `pgbouncer`/`pgcat`, try `SHOW VERSION;`; if detection fails, treat as `unknown` and keep safe fallback.

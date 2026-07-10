@@ -2,15 +2,15 @@
 
 Date: 2026-07-02
 Verification source head SHA before this evidence refresh:
-`0e629ee49b3796e49045bce58106cfd9af9be918`
+`7df3ac8b8253cd1a445ba7faddbf99bc9a5c5fcd`
 
 ## Gate Summary
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Java runtime | Pass, OpenJDK 21.0.11 | `java-version.txt` |
+| Java runtime | Pass, Java 26.0.1 runtime with Java 21 release-target compile | `java-version.txt`, `compile.log` |
 | Compile warnings/deprecations | Pass | `compile.log` |
-| Tests + JaCoCo | Pass, 335 tests, `classes=49`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
+| Tests + JaCoCo | Pass, 340 tests, `classes=49`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
 | JavaDoc | Pass, `javadoc_warnings_or_errors=none` | `javadoc.log`, `javadoc-status.txt` |
 | Markdown lint | Pass, 0 errors across changed docs | `markdownlint.log` |
 | JS syntax | Pass | `node-check.log` |
@@ -19,9 +19,9 @@ Verification source head SHA before this evidence refresh:
 | License review | Partial, policy checker reports 136 allowed components, 6 review-required components, 0 unlisted violations; legal decisions still needed | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
 | Auth/tenant, signed artifacts, and KPI snapshots | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, signed artifact tokens, token revocation, artifact read audit API, optional file-backed artifact-link ledger replay, optional file-backed KPI snapshot ledger replay, and tenant-scoped KPI snapshot export API implemented; OIDC/JWT and centralized durable revocation/audit/analytics persistence pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact/analytics tests |
 | Buyer deployment integration | Pass for buyer sandbox scope; `buyer-demo` Spring profile, gateway-signed header contract, connector API table, OpenAPI connector seed, smoke path, and cutover gates are documented; buyer tenant import and production OIDC/JWT profile remain follow-up | `src/main/resources/application-buyer-demo.yml`, `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`, `docs/deployment/clearfolio-buyer-connector.openapi.yaml` |
-| Durable job repository design, state-store, and lifecycle event slice | Partial, code boundary implemented; `ConversionJobStateStore` routes worker success/failure and operator retry transitions, and `ConversionJobLifecycleEvent` now records process-local append-only transition evidence, while SQL persistence and restart recovery remain pending | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`, state-store and lifecycle event tests |
+| Durable job repository design, state-store, lifecycle event, and recovery sweep slice | Partial, code boundary implemented; `ConversionJobStateStore` routes worker success/failure and operator retry transitions, `ConversionJobLifecycleEvent` records process-local append-only transition evidence, and `DefaultConversionWorker` now re-enqueues due submitted jobs plus stale processing leases from available repository state, while SQL persistence remains pending for true process-restart durability | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`, state-store, lifecycle event, and recovery sweep tests |
 | Local smoke | Pass, signed tenant claims plus file-backed artifact/KPI ledgers, KPI snapshot export API, buyer-demo KPI evidence panel, and operator recovery evidence panel | `smoke-local.txt`, `smoke-app.log`, `smoke-ui-root.txt` |
-| GitHub PR state | Queued checks; review required | `gh-pr-state.json`, `gh-pr-checks.txt` |
+| GitHub PR state | New recovery-sweep branch is published after this local gate refresh; review and queued checks are not treated as blockers | PR body and GitHub UI |
 
 ## SAST
 
@@ -82,9 +82,11 @@ Evidence:
 - `src/main/resources/application-buyer-demo.yml`
 - `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`
 - `src/main/java/com/clearfolio/viewer/repository/ConversionJobStateStore.java`
+- `src/main/java/com/clearfolio/viewer/repository/ConversionJobRepository.java`
 - `src/main/java/com/clearfolio/viewer/repository/ConversionJobLifecycleEvent.java`
 - `src/main/java/com/clearfolio/viewer/repository/RepositoryBackedConversionJobStateStore.java`
 - `docs/superpowers/plans/2026-07-02-conversion-job-lifecycle-events.md`
+- `docs/superpowers/plans/2026-07-03-conversion-recovery-sweep.md`
 - `buyer-deployment-slice-verification.md`
 - FigJam diagrams:
   [Clearfolio Gateway Signed Tenant Claims Flow](https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM)
@@ -93,7 +95,8 @@ Evidence:
   `Clearfolio Buyer Demo KPI Evidence Panel Flow` plus
   `Clearfolio Operator Recovery Evidence Flow` and
   `Clearfolio Conversion State Store Implementation Flow` plus
-  `Clearfolio Conversion Lifecycle Event Trail Flow`.
+  `Clearfolio Conversion Lifecycle Event Trail Flow` plus
+  `Clearfolio Conversion Recovery Sweep Flow`.
 
 ## Local Smoke
 
@@ -153,11 +156,7 @@ Evidence:
 
 ## GitHub Checks
 
-PR checks visible to this run:
-
-- `coverage-evidence`: queued.
-- `scan-pr-queue`: queued.
-- `strix`: queued.
-
-Review and queued checks are not treated as a blocker for continuing the
+This evidence refresh was produced locally before publishing the recovery-sweep
+branch. The PR body should carry the local gate results from this file. Review
+and queued GitHub checks are not treated as blockers for continuing the
 sale-readiness work.

@@ -28,7 +28,7 @@ The deployment cannot yet prove:
 
 - production OIDC/JWT issuer, audience, expiry, `kid`, and role validation;
 - centralized durable job, artifact, revocation, audit, or analytics storage;
-- legal approval for the six review-required SBOM components;
+- final legal review of the attribution and redistribution package;
 - a packaged Power Platform connector.
 
 ## Runtime Profile
@@ -88,6 +88,11 @@ job:create,job:read,job:retry,viewer:read,artifact-link:create,analytics:read
 
 Production role mapping should later replace this scaffold with validated
 gateway or OIDC claims. Do not hand-roll JWT parsing in this service.
+
+For any environment that sets `SPRING_PROFILES_ACTIVE=production`, the service
+fails startup unless `CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET` is present. The
+buyer-demo profile can still run unsigned for local screenshots, but production
+cannot accidentally inherit that unsigned mode.
 
 ## Integration Flow
 
@@ -149,11 +154,19 @@ mvn test
 mvn -q -DskipTests javadoc:javadoc
 python3 scripts/check_sbom_license_policy.py \
   --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json \
-  --policy docs/security/2026-07-02-license-policy.json
+  --policy docs/security/2026-07-02-license-policy.json \
+  --require-no-review
+python3 scripts/render_third_party_attribution.py \
+  --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json \
+  --output docs/legal/2026-07-03-third-party-attribution.md \
+  --check
+python3 scripts/check_buyer_dataroom_manifest.py \
+  --manifest docs/diligence/2026-07-03-buyer-data-room-manifest.json
 ```
 
-Buyer-release mode must add `--require-no-review` only after legal approval or
-dependency replacement clears all review-required components.
+Buyer-release mode must keep `--require-no-review` enabled so any future
+review-required component fails before buyer handoff. The attribution `--check`
+must also pass so the buyer data-room notice matches the current SBOM.
 
 ## Diligence Handoff Checklist
 
@@ -161,11 +174,13 @@ Before a buyer sandbox is shown, attach:
 
 - PR #74 URL and latest head SHA;
 - `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md`;
+- `docs/diligence/2026-07-03-buyer-data-room-manifest.json`;
 - this playbook;
 - `docs/deployment/clearfolio-buyer-connector.openapi.yaml`;
 - `src/main/resources/application-buyer-demo.yml`;
 - `docs/security/2026-07-02-auth-tenant-model.md`;
 - `docs/security/2026-07-02-signed-artifact-link-design.md`;
+- `docs/legal/2026-07-03-third-party-attribution.md`;
 - `docs/analytics/2026-07-02-durable-metrics-event-model.md`;
 - FigJam board:
   <https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM>.
@@ -206,8 +221,11 @@ contracts independently.
 
 The buyer sandbox should not be promoted to production until these gates close:
 
-- legal approve, replace, or remove decisions for the six review-required SBOM
-  components;
+- buyer-release license-policy evidence remains green with
+  `--require-no-review`, attribution drift check remains green, and final legal
+  release review is obtained;
+- `SPRING_PROFILES_ACTIVE=production` starts only with configured signed tenant
+  claims and later replaces the scaffold with validated OIDC/JWT claims;
 - validated gateway or OIDC JWT issuer, audience, expiry, key rotation, and role
   mapping;
 - durable conversion job repository with persisted state transitions;

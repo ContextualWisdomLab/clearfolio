@@ -61,9 +61,38 @@ public interface DocumentConversionService {
     RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId);
 
     /**
+     * Deletes a conversion job owned by the supplied tenant context.
+     *
+     * @param jobId conversion job identifier
+     * @param tenantContext tenant and subject claims for the delete request
+     * @return true when an owned job was deleted; false when it was missing or
+     *         belonged to another tenant
+     */
+    default boolean deleteJob(UUID jobId, TenantContext tenantContext) {
+        if (tenantContext == null) {
+            return false;
+        }
+
+        Optional<ConversionJob> job = getJob(jobId);
+        if (job.isEmpty() || !job.get().belongsToTenant(tenantContext.tenantId())) {
+            return false;
+        }
+
+        deleteJob(jobId);
+        return true;
+    }
+
+    /**
      * Deletes a conversion job.
      *
      * @param jobId conversion job identifier
      */
     void deleteJob(UUID jobId);
+
+    /**
+     * Returns all registered conversion jobs.
+     *
+     * @return an iterable of all conversion jobs
+     */
+    Iterable<ConversionJob> getAllJobs();
 }

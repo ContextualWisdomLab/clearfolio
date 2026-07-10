@@ -43,6 +43,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * @param stateStore conversion job lifecycle state store
      * @param validationService document validation service
      * @param conversionWorker conversion worker
+     * @param artifactStore generated artifact store
      * @param conversionProperties conversion configuration values
      */
     @Autowired
@@ -59,6 +60,20 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         this.conversionWorker = conversionWorker;
         this.artifactStore = artifactStore;
         this.maxRetryAttempts = conversionProperties.getMaxRetryAttempts();
+    }
+
+    public DefaultDocumentConversionService(
+            ConversionJobRepository repository,
+            DocumentValidationService validationService,
+            ConversionWorker conversionWorker,
+            ConversionProperties conversionProperties) {
+        this(
+                repository,
+                validationService,
+                conversionWorker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
+                conversionProperties
+        );
     }
 
     public DefaultDocumentConversionService(
@@ -142,6 +157,24 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * {@inheritDoc}
      */
     @Override
+    public boolean deleteJob(UUID jobId, TenantContext tenantContext) {
+        if (tenantContext == null) {
+            return false;
+        }
+
+        Optional<ConversionJob> job = repository.findByTenantAndId(tenantContext.tenantId(), jobId);
+        if (job.isEmpty()) {
+            return false;
+        }
+
+        deleteJob(job.get().getJobId());
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void deleteJob(UUID jobId) {
         try {
             artifactStore.deletePdf(jobId);
@@ -170,6 +203,14 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         return RetryDeadLetterResult.ACCEPTED;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Iterable<ConversionJob> getAllJobs() {
+        return repository.findAll();
+    }
+
     private String contentHash(MultipartFile file) {
         try (InputStream stream = file.getInputStream()) {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -181,12 +222,9 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString();
+            // Optimization: java.util.HexFormat.of().formatHex() is faster
+            // and allocates less memory than String.format.
+            return java.util.HexFormat.of().formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

@@ -1,6 +1,7 @@
 package com.clearfolio.viewer.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -44,6 +45,45 @@ import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
 
 class DefaultDocumentConversionServiceTest {
+
+    @Test
+    void getAllJobsReturnsAllJobsFromRepository() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionProperties props = new ConversionProperties();
+        DefaultDocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DocumentValidationService() {
+                    @Override
+                    public void validateOrThrow(org.springframework.web.multipart.MultipartFile file) {
+                    }
+                },
+                id -> {},
+                props
+        );
+
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        repository.save(job1);
+        repository.save(job2);
+
+        Iterable<ConversionJob> allJobs = service.getAllJobs();
+        int count = 0;
+        boolean found1 = false;
+        boolean found2 = false;
+        for (ConversionJob job : allJobs) {
+            count++;
+            if (job.getJobId().equals(job1.getJobId())) {
+                found1 = true;
+            }
+            if (job.getJobId().equals(job2.getJobId())) {
+                found2 = true;
+            }
+        }
+
+        assertEquals(2, count);
+        assertTrue(found1);
+        assertTrue(found2);
+    }
 
     @Test
     void submitWithOverrideDelegatesPolicyHeadersToValidationService() {
@@ -640,6 +680,77 @@ class DefaultDocumentConversionServiceTest {
         assertEquals(0, worker.enqueuedCount());
     }
 
+
+    @Test
+    void deleteJobWithTenantContextDeletesOwnedJobAndArtifact() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        com.clearfolio.viewer.artifact.InMemoryArtifactStore artifactStore =
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                mock(DocumentValidationService.class),
+                mock(ConversionWorker.class),
+                artifactStore,
+                new ConversionProperties()
+        );
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "tenant-a",
+                "subject-a",
+                "report.docx",
+                "application/octet-stream",
+                "hash-delete-owned",
+                10L,
+                3
+        );
+        repository.save(job);
+        artifactStore.putPdf(jobId, new byte[] {1, 2, 3});
+
+        boolean deleted = service.deleteJob(
+                jobId,
+                new TenantContext("tenant-a", "subject-a", Set.of(TenantPermissions.JOB_DELETE))
+        );
+
+        assertTrue(deleted);
+        assertTrue(repository.findById(jobId).isEmpty());
+        assertTrue(artifactStore.getPdf(jobId).isEmpty());
+    }
+
+    @Test
+    void deleteJobWithTenantContextLeavesOtherTenantJobUntouched() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        com.clearfolio.viewer.artifact.ArtifactStore artifactStore =
+                mock(com.clearfolio.viewer.artifact.ArtifactStore.class);
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                mock(DocumentValidationService.class),
+                mock(ConversionWorker.class),
+                artifactStore,
+                new ConversionProperties()
+        );
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "tenant-a",
+                "subject-a",
+                "report.docx",
+                "application/octet-stream",
+                "hash-delete-cross-tenant",
+                10L,
+                3
+        );
+        repository.save(job);
+
+        boolean deleted = service.deleteJob(
+                jobId,
+                new TenantContext("tenant-b", "subject-b", Set.of(TenantPermissions.JOB_DELETE))
+        );
+
+        assertFalse(deleted);
+        assertSame(job, repository.findById(jobId).orElseThrow());
+        org.mockito.Mockito.verifyNoInteractions(artifactStore);
+    }
 
     @Test
     void deleteJobSucceedsWhenArtifactDeletionFails() {

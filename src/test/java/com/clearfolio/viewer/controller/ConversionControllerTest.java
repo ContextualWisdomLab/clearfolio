@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -44,7 +45,6 @@ class ConversionControllerTest {
     private WebTestClient webTestClient;
 
     private DocumentConversionService conversionService;
-
     private InMemoryArtifactStore artifactStore;
 
     private ConversionController controller;
@@ -57,6 +57,7 @@ class ConversionControllerTest {
                 conversionService,
                 new TenantAccessService(),
                 new ArtifactLinkService(artifactStore, "test-secret"),
+                artifactStore,
                 DataSize.ofBytes(262_144L)
         );
         webTestClient = WebTestClient.bindToController(
@@ -70,6 +71,7 @@ class ConversionControllerTest {
                 conversionService,
                 new TenantAccessService(),
                 new ArtifactLinkService(new InMemoryArtifactStore(), "test-secret"),
+                artifactStore,
                 DataSize.ofBytes((long) Integer.MAX_VALUE + 1)
         );
         Field field = ConversionController.class.getDeclaredField("maxInMemorySizeBytes");
@@ -572,6 +574,106 @@ class ConversionControllerTest {
     }
 
     @Test
+    void downloadArtifactReturnsNotFoundWhenJobNotFound() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void downloadArtifactReturnsConflictWhenJobNotSucceeded() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "doc.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "hash", 10L);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundWhenArtifactMissing() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "doc.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "hash", 10L);
+        job.markSucceeded("/path", "done");
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void downloadArtifactReturnsPdfWithAttachmentDispositionAndChecksum() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "my-report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "hash", 10L);
+        job.markSucceeded("/path", "done");
+        byte[] pdfBytes = "fake pdf".getBytes();
+
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        artifactStore.putPdf(jobId, pdfBytes);
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_PDF)
+                .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"my-report.pdf\"")
+                .expectHeader().exists("X-Checksum-Sha256")
+                .expectBody(byte[].class).isEqualTo(pdfBytes);
+    }
+
+    @Test
+    void downloadArtifactNormalizesUnsafeFilenameForContentDisposition() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "report\"\r\nX-Injected: yes.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "hash",
+                10L
+        );
+        job.markSucceeded("/path", "done");
+        byte[] pdfBytes = "fake pdf".getBytes();
+
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        artifactStore.putPdf(jobId, pdfBytes);
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"report___X-Injected__yes.pdf\""
+                )
+                .expectHeader().doesNotExist("X-Injected");
+    }
+
+    @Test
+    void downloadArtifactHandlesNullFilename() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, null, "application/pdf", "hash", 10L);
+        job.markSucceeded("/path", "done");
+        byte[] pdfBytes = "fake pdf".getBytes();
+
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        artifactStore.putPdf(jobId, pdfBytes);
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"document.pdf\"");
+    }
+
+    @Test
     void viewerReturnsNotFoundWhenJobMissing() {
         UUID docId = UUID.randomUUID();
         when(conversionService.getJob(docId)).thenReturn(Optional.empty());
@@ -663,7 +765,7 @@ class ConversionControllerTest {
     @Test
     void deleteJobReturnsNotFoundWhenJobMissing() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+        when(conversionService.deleteJob(eq(jobId), any(TenantContext.class))).thenReturn(false);
 
         webTestClient.delete()
                 .uri("/api/v1/convert/jobs/{jobId}", jobId)
@@ -678,18 +780,7 @@ class ConversionControllerTest {
     @Test
     void deleteJobDeletesJobAndArtifact() {
         UUID jobId = UUID.randomUUID();
-        ConversionJob job = new ConversionJob(
-                jobId,
-                TenantContext.DEMO_TENANT_ID,
-                TenantContext.DEMO_SUBJECT_ID,
-                "report.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "abc",
-                12L,
-                3
-        );
-        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
-        // artifactStore is handled by conversionService
+        when(conversionService.deleteJob(eq(jobId), any(TenantContext.class))).thenReturn(true);
 
         webTestClient.delete()
                 .uri("/api/v1/convert/jobs/{jobId}", jobId)
@@ -698,7 +789,7 @@ class ConversionControllerTest {
                 .expectStatus().isNoContent()
                 .expectBody().isEmpty();
 
-        verify(conversionService).deleteJob(jobId);
+        verify(conversionService).deleteJob(eq(jobId), any(TenantContext.class));
         // artifactStore deletion is verified in service tests
     }
 
@@ -706,17 +797,7 @@ class ConversionControllerTest {
     @Test
     void deleteJobReturnsNotFoundForCrossTenantAccess() {
         UUID jobId = UUID.randomUUID();
-        ConversionJob job = new ConversionJob(
-                jobId,
-                "other-tenant",
-                "other-subject",
-                "report.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "abc",
-                12L,
-                3
-        );
-        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        when(conversionService.deleteJob(eq(jobId), any(TenantContext.class))).thenReturn(false);
 
         webTestClient.delete()
                 .uri("/api/v1/convert/jobs/{jobId}", jobId)

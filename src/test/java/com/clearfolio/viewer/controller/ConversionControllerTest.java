@@ -44,7 +44,6 @@ class ConversionControllerTest {
     private WebTestClient webTestClient;
 
     private DocumentConversionService conversionService;
-
     private InMemoryArtifactStore artifactStore;
 
     private ConversionController controller;
@@ -57,6 +56,7 @@ class ConversionControllerTest {
                 conversionService,
                 new TenantAccessService(),
                 new ArtifactLinkService(artifactStore, "test-secret"),
+                artifactStore,
                 DataSize.ofBytes(262_144L)
         );
         webTestClient = WebTestClient.bindToController(
@@ -70,6 +70,7 @@ class ConversionControllerTest {
                 conversionService,
                 new TenantAccessService(),
                 new ArtifactLinkService(new InMemoryArtifactStore(), "test-secret"),
+                artifactStore,
                 DataSize.ofBytes((long) Integer.MAX_VALUE + 1)
         );
         Field field = ConversionController.class.getDeclaredField("maxInMemorySizeBytes");
@@ -569,6 +570,106 @@ class ConversionControllerTest {
                 .jsonPath("$.artifactLinkScope").isEqualTo(ArtifactLinkService.ARTIFACT_READ_SCOPE)
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
                 .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundWhenJobNotFound() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void downloadArtifactReturnsConflictWhenJobNotSucceeded() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "doc.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "hash", 10L);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundWhenArtifactMissing() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "doc.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "hash", 10L);
+        job.markSucceeded("/path", "done");
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void downloadArtifactReturnsPdfWithAttachmentDispositionAndChecksum() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "my-report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "hash", 10L);
+        job.markSucceeded("/path", "done");
+        byte[] pdfBytes = "fake pdf".getBytes();
+
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        artifactStore.putPdf(jobId, pdfBytes);
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentType(MediaType.APPLICATION_PDF)
+                .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"my-report.pdf\"")
+                .expectHeader().exists("X-Checksum-Sha256")
+                .expectBody(byte[].class).isEqualTo(pdfBytes);
+    }
+
+    @Test
+    void downloadArtifactNormalizesUnsafeFilenameForContentDisposition() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "report\"\r\nX-Injected: yes.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "hash",
+                10L
+        );
+        job.markSucceeded("/path", "done");
+        byte[] pdfBytes = "fake pdf".getBytes();
+
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        artifactStore.putPdf(jobId, pdfBytes);
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"report___X-Injected__yes.pdf\""
+                )
+                .expectHeader().doesNotExist("X-Injected");
+    }
+
+    @Test
+    void downloadArtifactHandlesNullFilename() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, null, "application/pdf", "hash", 10L);
+        job.markSucceeded("/path", "done");
+        byte[] pdfBytes = "fake pdf".getBytes();
+
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        artifactStore.putPdf(jobId, pdfBytes);
+
+        webTestClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"document.pdf\"");
     }
 
     @Test

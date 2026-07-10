@@ -43,8 +43,9 @@ responses, signed artifact tokens, runtime artifact-token revocation, artifact
 read audit events, optional file-backed artifact-link ledger replay,
 optional file-backed KPI snapshot ledger replay,
 tenant-scoped JSON APIs, optional HMAC validation for gateway-signed tenant
-headers, and viewer CSP headers. The largest production gaps are no validated
-OIDC/JWT, no durable encrypted store, no centralized multi-replica
+headers, production-profile fail-closed startup when the tenant-claim signing
+secret is missing, and viewer CSP headers. The largest production gaps are no
+validated OIDC/JWT, no durable encrypted store, no centralized multi-replica
 revocation/audit persistence for artifact tokens, no AV or file-type deep
 inspection, and no isolated real converter runtime.
 
@@ -87,7 +88,8 @@ inspection, and no isolated real converter runtime.
 - Tenant headers are unsigned in the default local buyer-demo profile. If
   `clearfolio.tenant-claims.hmac-secret` is configured, the service requires
   gateway HMAC signatures and rejects missing, stale, future, or invalid
-  signed claims.
+  signed claims. The `production` Spring profile also fails startup unless that
+  secret is configured.
 - `docId` is no longer sufficient to read artifacts; artifact reads require a
   signed token bound to document, tenant, expiry, scope, and checksum. Issued
   tokens are recorded in a runtime ledger and can be revoked by `tokenId`. The
@@ -166,7 +168,8 @@ inspection, and no isolated real converter runtime.
 - A public client forges `X-Clearfolio-*` tenant headers to impersonate another
   tenant. Tenant ownership checks limit cross-tenant object access, and the
   optional HMAC mode rejects forged headers when enabled; unsigned local demo
-  mode must not be exposed as a production internet boundary.
+  mode must not be exposed as a production internet boundary. The `production`
+  profile now fails closed if the HMAC secret is absent.
 - A caller abuses policy override headers to push blocked HWP/HWPX files through
   the system. Current code requires header presence and creates audit evidence,
   but token validation and policy-owner approval live outside the repository.

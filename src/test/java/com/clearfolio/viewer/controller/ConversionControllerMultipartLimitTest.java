@@ -62,6 +62,7 @@ class ConversionControllerMultipartLimitTest {
                     conversionService,
                     new TenantAccessService(),
                     new ArtifactLinkService(new InMemoryArtifactStore(), "test-secret"),
+                    new InMemoryArtifactStore(),
                     org.springframework.util.unit.DataSize.ofBytes(2048L)
             );
         }

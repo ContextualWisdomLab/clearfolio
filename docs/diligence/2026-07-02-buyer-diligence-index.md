@@ -31,7 +31,7 @@ strict: partial evidence is marked partial, not complete.
 | Is code coverage at the required threshold? | Ready | PR #74 local JaCoCo: `classes=48`, `line_missed=0`, `branch_missed=0`. | CI checks are queued at latest head. | Attach CI pass or queued-check explanation when available. |
 | Is buyer-readiness status summarized without hiding gaps? | Ready | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md` reports 23 artifacts, 8 readiness gates, 38 percent conservative gate readiness, and ready-gate evidence integrity pass from the current data-room manifest; `scripts/check_buyer_dataroom_manifest.py` prevents ready gates from citing partial or external artifacts as complete evidence. | Scorecard is evidence readiness only, not valuation or production-readiness proof. | Keep manifest and scorecard drift checks green as manifest contents change. |
 | Is request handling non-blocking? | Ready | WebFlux controller path and `DefaultDocumentConversionService` enqueue behavior. | Real converter runtime is not integrated. | Converter adapter contract and load-test plan. |
-| Is persistence production-grade? | Partial | `ConversionJobRepository` read/dedupe abstraction, `ConversionJobStateStore` lifecycle transition boundary, and process-local `ConversionJobLifecycleEvent` trail exist in code; `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md` defines target tables, transition events, worker recovery, and migration sequence. | Durable SQL implementation is not built, lifecycle events are still process-local, and restart recovery is not implemented. | SQL repository profile, restart recovery tests, and durable event projections. |
+| Is persistence production-grade? | Partial | `ConversionJobRepository` read/dedupe/recovery abstraction, `ConversionJobStateStore` lifecycle transition boundary, worker startup recovery sweep for due `SUBMITTED` and stale retryable `PROCESSING` jobs, and process-local `ConversionJobLifecycleEvent` trail exist in code; `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md` defines target tables, transition events, worker recovery, and migration sequence. | Durable SQL implementation is not built, lifecycle events are still process-local, and process restart still loses in-memory repository state. | SQL repository profile, durable restart recovery contract tests, and durable event projections. |
 | Are artifacts production-grade? | Partial | In-memory PDF artifact store, signed artifact-token runtime, optional file-backed artifact link ledger replay, tenant-scoped token revocation, artifact read audit API, range-serving controller, and `docs/security/2026-07-02-signed-artifact-link-design.md`. | No durable object store, centralized revocation table, centralized read audit, or retention policy. | Durable artifact metadata and centralized revocation/audit implementation. |
 
 ## Security and Compliance Diligence
@@ -58,8 +58,9 @@ strict: partial evidence is marked partial, not complete.
 
 | Evidence item | Location |
 | --- | --- |
-| Active PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/82> |
-| Baseline sale-readiness PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/74> |
+| Merged baseline PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/74> |
+| Active seeded buyer demo story PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/82> |
+| Merged recovery-sweep PR | <https://github.com/ContextualWisdomLab/clearfolio/pull/78> |
 | Sale-readiness plan | `docs/plans/2026-07-02-krw2b-sale-readiness-execution-plan.md` |
 | Buyer data-room manifest | `docs/diligence/2026-07-03-buyer-data-room-manifest.json`, `scripts/check_buyer_dataroom_manifest.py` |
 | Buyer readiness scorecard | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, `scripts/summarize_buyer_readiness.py`, `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/buyer-readiness-scorecard-summary.json` |
@@ -83,7 +84,7 @@ strict: partial evidence is marked partial, not complete.
 | Auth/tenant runtime slice | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`, `src/main/java/com/clearfolio/viewer/auth/TenantContext.java`, `src/main/java/com/clearfolio/viewer/model/ConversionJob.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java`; includes optional gateway HMAC validation when `clearfolio.tenant-claims.hmac-secret` is set. |
 | Signed artifact runtime slice | `src/main/java/com/clearfolio/viewer/artifact/ArtifactLinkService.java`, `src/main/java/com/clearfolio/viewer/artifact/ArtifactLinkLedger.java`, `src/main/java/com/clearfolio/viewer/controller/ArtifactController.java`, `src/main/java/com/clearfolio/viewer/api/ArtifactLinkResponse.java`; includes optional `clearfolio.artifact-link-ledger.path` file-backed replay for issued/revoked/read metadata. |
 | Buyer deployment integration pack | `src/main/resources/application-buyer-demo.yml`, `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`, `docs/deployment/clearfolio-buyer-connector.openapi.yaml`; includes buyer sandbox profile, gateway-signed header contract, connector API table, OpenAPI connector seed, smoke path, and cutover gates. |
-| Durable job repository design, state-store, and lifecycle event slice | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`, `src/main/java/com/clearfolio/viewer/repository/ConversionJobStateStore.java`, `src/main/java/com/clearfolio/viewer/repository/ConversionJobLifecycleEvent.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java`, `src/main/java/com/clearfolio/viewer/service/DefaultConversionWorker.java`; includes SQL target tables, lifecycle transition contract, process-local append-only event trail, worker recovery model, repository API change sequence, buyer acceptance criteria, and the first in-repo transition boundary implementation. |
+| Durable job repository design, state-store, lifecycle event, and recovery sweep slice | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`, `src/main/java/com/clearfolio/viewer/repository/ConversionJobRepository.java`, `src/main/java/com/clearfolio/viewer/repository/ConversionJobStateStore.java`, `src/main/java/com/clearfolio/viewer/repository/ConversionJobLifecycleEvent.java`, `src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java`, `src/main/java/com/clearfolio/viewer/service/DefaultConversionWorker.java`; includes SQL target tables, lifecycle transition contract, process-local append-only event trail, worker startup recovery sweep, repository API change sequence, buyer acceptance criteria, and the first in-repo transition boundary implementation. |
 
 ## Next Closure Order
 
@@ -97,8 +98,9 @@ strict: partial evidence is marked partial, not complete.
 4. Promote optional file-backed artifact-link ledger evidence into durable
    artifact metadata and centralized token revocation plus artifact read audit
    persistence.
-5. Promote process-local conversion lifecycle events and optional KPI snapshot
-   ledger evidence into durable metrics events and daily projections.
+5. Promote process-local conversion recovery sweep, lifecycle events, and
+   optional KPI snapshot ledger evidence into durable metrics events and daily
+   projections.
 6. Produce high-fidelity Figma frames from the seeded desktop/mobile screenshot
    states, then generate the buyer diligence Slides deck after Figma plan
    selection is available.

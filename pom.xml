@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.0</version>
+    <version>3.5.16</version>
     <relativePath/>
   </parent>
 
@@ -16,15 +16,83 @@
   <version>0.1.0</version>
   <name>Clearfolio Viewer</name>
   <description>사내 통합 문서 뷰어 MVP</description>
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
 
   <properties>
     <java.version>21</java.version>
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <argLine></argLine>
+    <jackson-bom.version>2.21.5</jackson-bom.version>
     <pdfbox.version>3.0.3</pdfbox.version>
-    <pdfjs.dist.version>4.10.38</pdfjs.dist.version>
+    <pdfjs.dist.version>6.0.227</pdfjs.dist.version>
+    <!-- Security override: pull the patched Jackson line for GHSA-5jmj-h7xm-6q6v
+         / CVE-2026-54515 case-insensitive deserialization bypasses. The root
+         OSV config contains a narrow temporary ignore because OSV Scanner
+         v2.3.8 still reports 2.22.1 even though the advisory text names it as
+         patched. -->
+    <jackson-bom.version>2.22.1</jackson-bom.version>
+    <!-- Security override: GHSA-jhq6-gfmj-v8fx fixes logback-core in 1.5.35. -->
+    <logback.version>1.5.35</logback.version>
+    <!-- Security override: CVE-2025-68161 / CVE-2026-34477 / CVE-2026-34478 / CVE-2026-34480. -->
+    <log4j2.version>2.25.4</log4j2.version>
   </properties>
+
+  <!--
+    Security-driven version pins for parser-side transitives that the
+    Spring Boot parent does not manage. The broad Apache Tika standard parser
+    package is intentionally not declared for buyer-release mode because
+    production code does not use Tika APIs and its transitive graph expands
+    license review. Keep these pins if a narrower parser adapter is introduced.
+  -->
+  <dependencyManagement>
+    <dependencies>
+      <!-- GHSA-5jmj-h7xm-6q6v / CVE-2026-54515: jackson-databind line -->
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson-bom.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- CVE-2026-28208, CVE-2026-41245: RAR path traversal RCE / file write -->
+      <dependency>
+        <groupId>com.github.junrar</groupId>
+        <artifactId>junrar</artifactId>
+        <version>7.6.0</version>
+      </dependency>
+      <!-- CVE-2024-47554: XmlStreamReader DoS on untrusted input -->
+      <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>2.22.0</version>
+      </dependency>
+      <!-- CVE-2025-48924: uncontrolled recursion in ClassUtils -->
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.18.0</version>
+      </dependency>
+      <!-- CVE-2025-8916 (CRITICAL) + advisories: BouncyCastle provider -->
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk18on</artifactId>
+        <version>1.84</version>
+      </dependency>
+      <!-- GHSA-wg6q-6289-32hp / CVE-2026-5588: BouncyCastle certificate parsing -->
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcpkix-jdk18on</artifactId>
+        <version>1.84</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
     <dependency>
@@ -77,11 +145,19 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
+      <version>${jackson-bom.version}</version>
     </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.code-intelligence</groupId>
+      <artifactId>jazzer-api</artifactId>
+      <version>0.30.0</version>
       <scope>test</scope>
     </dependency>
 

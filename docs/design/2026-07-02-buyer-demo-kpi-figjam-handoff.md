@@ -55,6 +55,8 @@ Date: 2026-07-02
   `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md`.
 - Buyer diligence Slides generation payload:
   `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json`.
+- Added FigJam diagram on the same board:
+  `Clearfolio Conversion Recovery Sweep Flow`.
 - Figma Code Connect: not used.
 
 ## Product Design Acceptance
@@ -107,6 +109,7 @@ Date: 2026-07-02
 | Buyer readiness scorecard | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md` plus FigJam scorecard gate map | Quantifies 23 data-room artifacts, 8 readiness gates, 38 percent conservative gate readiness, and ready-gate evidence integrity without hiding partial discount risks. |
 | Buyer diligence Slides storyboard | `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json` plus FigJam storyboard | Makes the 11-slide buyer deck reproducible once Figma team or organization plan selection is available. |
 | Ready gate evidence integrity | `scripts/check_buyer_dataroom_manifest.py` plus FigJam integrity check | Prevents a buyer-ready gate from citing partial or external artifacts as complete evidence. |
+| Recovery sweep | `findRecoverableJobs` and `DefaultConversionWorker` | Proves due submitted and stale processing jobs can be re-enqueued from available repository state while SQL restart durability remains a separate gap. |
 
 ## Mermaid Source
 
@@ -518,6 +521,48 @@ flowchart LR
     style privacy fill:#DCCCFF,stroke:#874FFF
     style omitted fill:#FFCDC2,stroke:#FF7556
     style buyerProof fill:#D9D9D9,stroke:#B3B3B3
+```
+
+### Conversion Recovery Sweep Flow
+
+```mermaid
+flowchart LR
+    appReady(["Application ready"])
+    sweep[["Worker recovery sweep"]]
+    repo[["findRecoverableJobs"]]
+    dueSubmitted{"Due SUBMITTED?"}
+    staleProcessing{"Stale PROCESSING?"}
+    scheduleRetry[["Schedule lease retry"]]
+    enqueue[["Enqueue job"]]
+    worker[["Claim and convert"]]
+    outcome{"Conversion result?"}
+    success["SUCCEEDED"]
+    retryPolicy["Normal retry policy"]
+    futureRetry["SUBMITTED with retry time"]
+    deadLetter["FAILED dead-letter"]
+    skip["Skip job"]
+    sqlStore[("SQL repository follow-up")]
+
+    appReady --> sweep
+    sweep --> repo
+    repo --> dueSubmitted
+    dueSubmitted -->|"Yes"| enqueue
+    dueSubmitted -->|"No"| staleProcessing
+    staleProcessing -->|"Yes"| scheduleRetry
+    scheduleRetry --> enqueue
+    staleProcessing -->|"No"| skip
+    enqueue --> worker
+    worker --> outcome
+    outcome -->|"Success"| success
+    outcome -->|"Failure"| retryPolicy
+    retryPolicy --> futureRetry
+    retryPolicy --> deadLetter
+    sqlStore -.->|"Future durability"| repo
+
+    style success fill:#CDF4D3,stroke:#66D575
+    style deadLetter fill:#FFCDC2,stroke:#FF7556
+    style futureRetry fill:#FFECBD,stroke:#FFC943
+    style sqlStore fill:#C2E5FF,stroke:#3DADFF
 ```
 
 ### Threat Boundaries and Data Handling

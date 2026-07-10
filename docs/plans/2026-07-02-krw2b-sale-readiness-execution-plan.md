@@ -299,6 +299,13 @@ Progress as of 2026-07-02:
   `docs/deployment/clearfolio-buyer-connector.openapi.yaml`. It is an import
   candidate for a buyer-owned gateway or Power Platform custom connector, not a
   buyer-tenant-tested production connector.
+- Conversion worker startup recovery now has an in-repo implementation contract:
+  `ConversionJobRepository.findRecoverableJobs` selects due `SUBMITTED` jobs
+  and stale retryable `PROCESSING` jobs, while `DefaultConversionWorker`
+  re-enqueues them on application readiness using
+  `conversion.processing-lease-timeout-ms`. This closes the current worker
+  recovery behavior gap for repository state that remains available, while SQL
+  persistence remains the next step for process-restart durability.
 - Durable conversion job repository design is now captured in
   `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`.
   The plan keeps persistence in-repo, avoids a premature library split, and

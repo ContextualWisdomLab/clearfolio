@@ -22,6 +22,7 @@
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <argLine></argLine>
+    <jackson-bom.version>2.22.1</jackson-bom.version>
     <pdfbox.version>3.0.3</pdfbox.version>
     <pdfjs.dist.version>4.10.38</pdfjs.dist.version>
   </properties>

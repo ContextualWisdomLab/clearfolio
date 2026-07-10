@@ -168,7 +168,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            // Optimization: HexFormat.of().formatHex() is faster
+            // Optimization: java.util.HexFormat.of().formatHex() is faster
             // and allocates less memory than String.format.
             return java.util.HexFormat.of().formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {

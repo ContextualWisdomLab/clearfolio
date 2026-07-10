@@ -30,7 +30,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <argLine></argLine>
     <pdfbox.version>3.0.3</pdfbox.version>
-    <pdfjs.dist.version>4.10.38</pdfjs.dist.version>
+    <pdfjs.dist.version>6.0.227</pdfjs.dist.version>
     <!-- Security override: pull the patched Jackson line for GHSA-5jmj-h7xm-6q6v
          / CVE-2026-54515 case-insensitive deserialization bypasses. The root
          OSV config contains a narrow temporary ignore because OSV Scanner

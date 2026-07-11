@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### 추가된 기능 (Added)
+- **비동기 버튼 로딩 피드백 및 상태 복원 개선**
+  - KPI 스냅샷 증거를 다시 불러오는 `refreshKpiEvidence` 동작 중에 "Refresh evidence" 버튼을 비활성화하고 "Refreshing..." 이라는 피드백을 제공하여 사용자의 중복 클릭을 방지했습니다.
+  - 버튼 상태 변경 시 내부 DOM 구조를 보존하기 위해 `innerHTML`을 사용하고, 성공 및 실패 후 `finally` 블록에서 안전하게 원래 상태로 복원하도록 구현했습니다.
+
+
 ## [0.1.0] - 2026-06-25
 
 ### 추가된 기능 (Added)

@@ -405,6 +405,10 @@ async function refreshKpis() {
 }
 
 async function refreshKpiEvidence() {
+  const initialInnerHtml = el.refreshEvidenceBtn.innerHTML;
+  el.refreshEvidenceBtn.disabled = true;
+  el.refreshEvidenceBtn.textContent = "Refreshing...";
+
   try {
     const { res, data } = await fetchJson(KPI_EXPORTS_ENDPOINT);
     if (!res.ok) {
@@ -415,6 +419,9 @@ async function refreshKpiEvidence() {
     renderKpiEvidence(data);
   } catch (err) {
     el.kpiExportStatus.textContent = "Snapshot evidence is unavailable while the service is unreachable.";
+  } finally {
+    el.refreshEvidenceBtn.innerHTML = initialInnerHtml;
+    el.refreshEvidenceBtn.disabled = false;
   }
 }
 

@@ -201,6 +201,26 @@ Progress as of 2026-07-02:
 - The buyer-demo root shell now also renders a KPI snapshot evidence panel from
   `GET /api/v1/analytics/kpi-snapshot-exports`, showing export count, latest
   export time, export subject, and runtime job count without exposing tenant ids.
+- The buyer-demo root shell now has a static `Load demo story` control backed by
+  `src/main/resources/static/assets/viewer/demo-fixtures.json`. The fixture
+  seeds succeeded, processing, unsupported-format, dead-lettered, KPI snapshot,
+  and KPI export evidence into the browser session so local screenshots, FigJam,
+  and buyer-deck material use the same Product Design and Data Analytics story.
+- The Figma buyer diligence closure map is now captured on the FigJam evidence
+  board as `Clearfolio KRW 2B Buyer Diligence Closure Map`. The companion
+  handoff in
+  `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md` defines the
+  Slides deck plan, Product Design acceptance, KPI frame, claim boundaries, and
+  Ponytail no-split decision. Figma Slides generation is prepared but waiting
+  for team or organization plan selection in the Figma widget.
+- The Figma buyer diligence Slides payload is now captured in
+  `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json`, with
+  a standard-library checker in `scripts/check_figma_deck_payload.py`. The
+  payload check reports 11 slides, 4 objectives, and 0 errors; actual editable
+  Slides generation still requires Figma team or organization plan selection.
+- The FigJam evidence board now also includes
+  `Clearfolio Buyer Diligence Slides Storyboard`, mirroring the checked deck
+  payload without using Figma Code Connect.
 - Figma evidence flow is now captured as a FigJam artifact and mirrored in
   `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`.
 - Market, valuation, pricing, and KPI thresholds are now captured in
@@ -213,14 +233,31 @@ Progress as of 2026-07-02:
 - CycloneDX SBOM evidence is now generated under
   `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/`.
 - Engineering license allowlist review is now captured in
-  `docs/security/2026-07-02-license-allowlist-review.md`; legal clearance
-  remains open for 6 flagged components.
+  `docs/security/2026-07-02-license-allowlist-review.md`; buyer-release license
+  policy now passes with zero review-required components after removing the
+  unused broad Tika parser package, replacing the default Logback starter with
+  Log4j2, and excluding the unused Jakarta annotation API path.
 - A standard-library license policy checker is now captured in
   `scripts/check_sbom_license_policy.py` and
   `docs/security/2026-07-02-license-policy.json`; current evidence reports
-  136 allowed components, 6 review-required components, and 0 unlisted
-  violations. Buyer-release mode still requires legal approval or replacement
-  for the 6 review-required components.
+  61 allowed components, 0 review-required components, and 0 unlisted
+  violations with `--require-no-review`.
+- A standard-library third-party attribution renderer is now captured in
+  `scripts/render_third_party_attribution.py`; it generates
+  `docs/legal/2026-07-03-third-party-attribution.md` from the current SBOM and
+  provides a `--check` mode so the buyer data-room attribution file cannot
+  drift silently.
+- A buyer data-room manifest is now captured in
+  `docs/diligence/2026-07-03-buyer-data-room-manifest.json` with a
+  standard-library checker in `scripts/check_buyer_dataroom_manifest.py`, so
+  sale-readiness evidence cannot silently omit required local artifacts or mark
+  a gate ready while citing partial or external evidence.
+- A buyer readiness scorecard is now generated from the same manifest in
+  `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, with a
+  standard-library drift check in `scripts/summarize_buyer_readiness.py`.
+  Current evidence reports 23 artifacts, 8 readiness gates, and 38 percent
+  conservative gate readiness, plus ready-gate evidence integrity pass, while
+  preserving partial gates as discount risks.
 - Signed artifact link runtime is now implemented for current in-memory PDF
   artifacts and captured in
   `docs/security/2026-07-02-signed-artifact-link-design.md`.
@@ -236,6 +273,10 @@ Progress as of 2026-07-02:
   issued-at skew checks, and tests for signed, unsigned, expired, malformed, and
   invalid-signature paths. This is still a gateway scaffold, not production
   OIDC/JWT.
+- The `production` Spring profile now fails startup unless
+  `clearfolio.tenant-claims.hmac-secret` is configured. This prevents unsigned
+  local demo tenant headers from being promoted as a production auth boundary,
+  while validated OIDC/JWT remains the next implementation gap.
 - Optional file-backed artifact link ledger replay is now implemented when
   `clearfolio.artifact-link-ledger.path` is configured. Issued-link,
   revocation, and artifact-read metadata can survive a single-process restart,
@@ -258,6 +299,13 @@ Progress as of 2026-07-02:
   `docs/deployment/clearfolio-buyer-connector.openapi.yaml`. It is an import
   candidate for a buyer-owned gateway or Power Platform custom connector, not a
   buyer-tenant-tested production connector.
+- Conversion worker startup recovery now has an in-repo implementation contract:
+  `ConversionJobRepository.findRecoverableJobs` selects due `SUBMITTED` jobs
+  and stale retryable `PROCESSING` jobs, while `DefaultConversionWorker`
+  re-enqueues them on application readiness using
+  `conversion.processing-lease-timeout-ms`. This closes the current worker
+  recovery behavior gap for repository state that remains available, while SQL
+  persistence remains the next step for process-restart durability.
 - Durable conversion job repository design is now captured in
   `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`.
   The plan keeps persistence in-repo, avoids a premature library split, and
@@ -330,6 +378,11 @@ Progress as of 2026-07-02:
 - The artifact link ledger can now append and replay issued, revoked, and read
   records from a configured local file, improving buyer-demo continuity without
   claiming production-grade durable storage.
+- A static seeded buyer-demo story is now available from the root shell via
+  `Load demo story`. It keeps seeded evidence in browser session state, avoids a
+  backend DB seed path, and gives desktop/mobile screenshot work a deterministic
+  source for successful, processing, unsupported-format, and dead-lettered
+  document states.
 
 ### Phase 2: Due-diligence pack
 

@@ -208,7 +208,7 @@ Customer release sign-off requires both passing technical checks and a cleared P
 | --- | --- | --- | --- |
 | `spring-projects/spring-framework` | Apache-2.0 | Implemented (WebFlux) | Reactive model improves concurrency but needs strict blocking isolation. |
 | `reactor/reactor-core` | Apache-2.0 | Implemented | Strong async composition; operator misuse can reduce readability. |
-| `apache/tika` | Apache-2.0 | Implemented | Broad parsing support, with larger dependency surface. |
+| `apache/tika` | Apache-2.0 | Removed from current runtime | Reconsider only when metadata extraction is explicitly in scope and license/SBOM evidence is refreshed. |
 | `jodconverter/jodconverter` | Apache-2.0 | Concept-only | Conversion path candidate for production hardening; not required for current in-memory MVP runtime. |
 | `mozilla/pdf.js` | Apache-2.0 | Concept-only (frontend viewer shell) | Stable PDF viewer baseline for unified shell integration. |
 | `ONLYOFFICE/DocumentServer` | AGPL-3.0 | Concept-only (disallowed for import) | Used as architecture reference only due to copyleft license policy. |

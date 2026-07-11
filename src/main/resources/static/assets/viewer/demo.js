@@ -1,6 +1,7 @@
 const STORAGE_KEY = "clearfolio-demo-history-v1";
 const KPI_ENDPOINT = "/api/v1/analytics/kpi-snapshot";
 const KPI_EXPORTS_ENDPOINT = "/api/v1/analytics/kpi-snapshot-exports";
+const DEMO_FIXTURE_URL = "/assets/viewer/demo-fixtures.json";
 const POLL_DELAY_MS = 1500;
 const ACTIVE_STATUSES = new Set(["ACCEPTED", "SUBMITTED", "PROCESSING"]);
 const DEMO_AUTH_HEADERS = {
@@ -17,6 +18,7 @@ const el = {
   error: document.getElementById("demo-error"),
   errorMessage: document.getElementById("demo-error-message"),
   errorTitle: document.getElementById("demo-error-title"),
+  loadDemoDataBtn: document.getElementById("load-demo-data-btn"),
   historyBody: document.getElementById("history-body"),
   emptyHistory: document.getElementById("empty-history"),
   clearHistoryBtn: document.getElementById("clear-history-btn"),
@@ -69,12 +71,14 @@ function setError(message) {
   el.errorTitle.focus();
 }
 
-function updateJob(jobId, patch) {
+function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
   const history = loadHistory();
   const next = history.map(job => (job.jobId === jobId ? { ...job, ...patch } : job));
   saveHistory(next);
   renderHistory(next);
-  void refreshKpis();
+  if (refreshKpisAfterUpdate) {
+    void refreshKpis();
+  }
 }
 
 function createLink(href, label) {
@@ -237,6 +241,23 @@ function latestByTimestamp(history, fieldName) {
 }
 
 async function openJobDetail(job) {
+  if (job.seededDetail) {
+    renderJobDetail(job.seededDetail);
+    updateJob(job.jobId, {
+      status: job.seededDetail.status,
+      attemptCount: job.seededDetail.attemptCount,
+      maxAttempts: job.seededDetail.maxAttempts,
+      retryAt: job.seededDetail.retryAt,
+      deadLettered: Boolean(job.seededDetail.deadLettered),
+      message: job.seededDetail.message,
+      lastInspectedAt: new Date().toISOString(),
+    }, {
+      refreshKpisAfterUpdate: false,
+    });
+    setStatus("Seeded job detail loaded.");
+    return;
+  }
+
   if (!job.statusUrl) {
     return;
   }
@@ -393,6 +414,33 @@ async function refreshKpiEvidence() {
   }
 }
 
+async function loadDemoData() {
+  setStatus("Loading seeded buyer-demo story...");
+  el.loadDemoDataBtn.disabled = true;
+  try {
+    const { res, data } = await fetchJson(DEMO_FIXTURE_URL);
+    if (!res.ok || !data || !Array.isArray(data.history)) {
+      setError("Seeded demo story is unavailable.");
+      return;
+    }
+
+    const demoHistory = data.history.slice(0, 12);
+    saveHistory(demoHistory);
+    renderHistory(demoHistory);
+    if (data.kpiSnapshot) {
+      renderKpiSnapshot(data.kpiSnapshot);
+    }
+    if (Array.isArray(data.kpiExports)) {
+      renderKpiEvidence(data.kpiExports);
+    }
+    setStatus("Seeded buyer-demo story loaded for screenshot and Figma review.");
+  } catch (err) {
+    setError("Unable to load seeded demo story.");
+  } finally {
+    el.loadDemoDataBtn.disabled = false;
+  }
+}
+
 async function fetchJson(url) {
   const res = await fetch(url, {
     headers: jsonHeaders(),
@@ -465,7 +513,7 @@ async function submitDocument(event) {
       fileName: file.name,
       status: data.status || "ACCEPTED",
       statusUrl: data.statusUrl,
-      submittedAt: new Date().toLocaleString(),
+      submittedAt: new Date().toISOString(),
     };
     const history = [job, ...loadHistory()];
     saveHistory(history);
@@ -486,7 +534,7 @@ function addFailedHistory(fileName, status) {
   const history = [{
     fileName,
     status,
-    submittedAt: new Date().toLocaleString(),
+    submittedAt: new Date().toISOString(),
   }, ...loadHistory()];
   saveHistory(history);
   renderHistory(history);
@@ -503,6 +551,9 @@ function init() {
   }
 
   el.form.addEventListener("submit", submitDocument);
+  el.loadDemoDataBtn.addEventListener("click", () => {
+    void loadDemoData();
+  });
   el.clearHistoryBtn.addEventListener("click", () => {
     saveHistory([]);
     renderHistory([]);

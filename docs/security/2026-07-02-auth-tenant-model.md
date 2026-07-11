@@ -8,7 +8,9 @@ first runtime enforcement slice: protected JSON APIs parse tenant headers,
 check endpoint permissions, store job tenant metadata, filter tenant KPIs, and
 hide cross-tenant jobs. It also includes optional gateway-signed tenant header
 validation with HMAC and timestamp skew controls when
-`clearfolio.tenant-claims.hmac-secret` is configured. It is not yet a
+`clearfolio.tenant-claims.hmac-secret` is configured. The `production` Spring
+profile now fails closed when that secret is missing, so unsigned tenant headers
+cannot be accidentally promoted as a production boundary. It is not yet a
 production OIDC/JWT implementation.
 
 ## Goal
@@ -64,6 +66,16 @@ The default clock-skew window is 300 seconds and can be set with
 `clearfolio.tenant-claims.max-skew-seconds`. This closes the immediate
 gateway-to-service spoofing gap for tenant headers, but production should still
 replace the scaffold with validated gateway/OIDC claims.
+
+Production profile boundary:
+
+- `SPRING_PROFILES_ACTIVE=production` requires
+  `clearfolio.tenant-claims.hmac-secret`.
+- Missing or blank secret fails application startup through
+  `ProductionAuthReadinessConfig`.
+- This prevents unsigned local demo headers from being used as a production
+  claim boundary; it does not replace OIDC/JWT issuer, audience, expiry, and
+  role validation.
 
 ## Required Token Claims
 
@@ -136,6 +148,8 @@ Current implementation status:
 - Implemented: KPI snapshots filter to the request tenant.
 - Implemented: optional HMAC validation for gateway-signed tenant headers when
   `clearfolio.tenant-claims.hmac-secret` is configured.
+- Implemented: `production` Spring profile startup fails when signed tenant
+  claim secret is missing.
 - Not implemented: OIDC/JWT signature, issuer, audience, expiry, revocation, and
   role mapping.
 - Implemented: signed artifact link creation and artifact token verification
@@ -203,9 +217,11 @@ Store token fingerprints, not raw tokens.
 4. Done: add tenant-scoped KPI projection from current in-memory jobs.
 5. Done: add optional gateway-signed tenant headers with HMAC and timestamp
    skew controls.
-6. Next: replace demo headers with validated gateway/OIDC JWT claims.
-7. Done: add signed artifact link creation and token verification.
-8. Next: add durable revocation, persisted audit events, and CI/contract tests
+6. Done: fail closed for `production` profile when the tenant-claim signing
+   secret is absent.
+7. Next: replace demo headers with validated gateway/OIDC JWT claims.
+8. Done: add signed artifact link creation and token verification.
+9. Next: add durable revocation, persisted audit events, and CI/contract tests
    for production token rejection paths.
 
 No library split is justified until a second Clearfolio service or external SDK

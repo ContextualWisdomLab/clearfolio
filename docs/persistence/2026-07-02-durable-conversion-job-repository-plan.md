@@ -14,7 +14,7 @@ satisfy.
 Current implementation:
 
 - `ConversionJobRepository` exposes `save`, `findById`,
-  `findByTenantAndContentHash`, `findAll`, and atomic
+  `findByTenantAndContentHash`, `findAll`, `findRecoverableJobs`, and atomic
   `findOrStoreByContentHash`.
 - `InMemoryConversionJobRepository` stores jobs in process memory and dedupes
   by `tenantId + contentHash`.
@@ -30,16 +30,22 @@ Current implementation:
   enqueues work only when the repository reports a new canonical job.
 - `DefaultConversionWorker` routes lifecycle changes through
   `ConversionJobStateStore` instead of directly mutating job lifecycle state.
+- `DefaultConversionWorker` now performs an application-start recovery sweep
+  using a configurable processing lease timeout. The sweep re-enqueues due
+  `SUBMITTED` jobs and converts stale retryable `PROCESSING` jobs back through
+  the normal retry path before re-enqueueing them.
 - `retryDeadLettered` routes operator retry acceptance through
   `ConversionJobStateStore` and re-enqueues only after the transition succeeds.
 
 Buyer risk:
 
 - process restart loses conversion jobs;
-- conversion status is not recoverable after worker crash;
 - retry schedule is not durable;
 - lifecycle status changes now have an explicit code boundary, but the current
   implementation is still process-local until a SQL implementation is added;
+- stale worker-owned `PROCESSING` jobs can now be selected and requeued while
+  repository state remains available, but a process restart still loses the
+  in-memory repository state until SQL storage exists;
 - analytics and audit evidence can only be partial until lifecycle events move
   from the process-local in-memory trail into durable storage and projections.
 
@@ -143,6 +149,7 @@ Keep current API for compatibility:
 - `findById`
 - `findByTenantAndContentHash`
 - `findAll`
+- `findRecoverableJobs`
 - `findOrStoreByContentHash`
 
 The code now includes this transition service before any SQL implementation:
@@ -164,7 +171,19 @@ implementations that have not yet implemented transition methods directly.
 
 ## Worker Recovery Model
 
-Target worker behavior:
+Current implemented recovery behavior:
+
+1. `ConversionJobRepository.findRecoverableJobs` returns due `SUBMITTED` jobs
+   and retryable `PROCESSING` jobs whose `startedAt` is older than the supplied
+   stale-processing cutoff.
+2. `DefaultConversionWorker` runs an `ApplicationReadyEvent` recovery sweep
+   using `conversion.processing-lease-timeout-ms`.
+3. Due `SUBMITTED` jobs are re-enqueued directly.
+4. Stale `PROCESSING` jobs are first routed through
+   `ConversionJobStateStore.scheduleRetry` with a lease-expired message, then
+   re-enqueued so normal claim, retry, and dead-letter policy still applies.
+
+Target durable worker behavior:
 
 1. API inserts a durable `SUBMITTED` job and emits `conversion.job.submitted`.
 2. Worker claims a due job with optimistic version check or `FOR UPDATE SKIP
@@ -189,12 +208,13 @@ then use the normal max-attempt/dead-letter policy.
 3. Done: add process-local append-only lifecycle events to
    `InMemoryConversionJobRepository` for every current transition, with tests
    proving event order and source-metadata omission.
-4. Keep `ConversionJobRepository` read methods stable for controllers and KPI
+4. Done: add a repository-level recoverable job query and a worker startup
+   recovery sweep for due submitted jobs and stale processing leases.
+5. Keep `ConversionJobRepository` read methods stable for controllers and KPI
    snapshots.
-5. Add SQL schema migration scripts and a disabled SQL repository profile.
-6. Add repository contract tests that run against in-memory and SQL
+6. Add SQL schema migration scripts and a disabled SQL repository profile.
+7. Add repository contract tests that run against in-memory and SQL
    implementations.
-7. Add restart recovery tests for due retries and stale `PROCESSING` jobs.
 8. Map process-local lifecycle events to durable metrics events and daily
    projections.
 9. Turn on SQL profile only in a buyer sandbox after artifact store persistence
@@ -215,7 +235,8 @@ then use the normal max-attempt/dead-letter policy.
 
 ## Open Risks
 
-- Legal approval for review-required dependencies remains external.
+- Final attribution/legal release review remains external to this persistence
+  plan.
 - Production OIDC/JWT validation remains external to this persistence plan.
 - Durable artifact store selection must be finalized before SQL job persistence
   can claim full production recovery.

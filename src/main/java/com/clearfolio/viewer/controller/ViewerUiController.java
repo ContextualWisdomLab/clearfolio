@@ -155,6 +155,7 @@ public class ViewerUiController {
                             <h2 id="upload-title" class="panel__title">Upload document</h2>
                             <p class="panel__caption">Uses the existing async conversion API. History is stored only in this browser session.</p>
                           </div>
+                          <button type="button" class="btn btn-secondary btn-compact" id="load-demo-data-btn">Load demo story</button>
                         </div>
 
                         <form id="upload-form" class="upload-form" enctype="multipart/form-data">

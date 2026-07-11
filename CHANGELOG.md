@@ -3,6 +3,11 @@
 ## [0.1.0] - 2026-06-25
 
 ### 추가된 기능 (Added)
+- **비동기 버튼 로딩 상태 UX 개선 (Async Button Loading States)**
+  - 문서 제출(`submitDocument`), 데모 데이터 로드(`loadDemoData`), 실패 작업 재시도(`retryActiveJob`) 등 비동기 요청을 수행하는 버튼들에 대해 처리 중 명시적인 로딩 상태(Loading, Submitting, Retrying 등)를 추가했습니다.
+  - 사용자의 중복 클릭을 방지하기 위해 작업 중에는 버튼이 비활성화되도록 수정했습니다.
+  - 임시 로딩 상태 적용 후, 원래 버튼 내부에 존재할 수 있는 중첩 DOM 노드(아이콘 등)가 보존될 수 있도록 `innerHTML`을 임시 저장 및 복원하는 방식으로 구현했습니다.
+
 - **PDF 다운로드 API 추가 (`GET /api/v1/convert/jobs/{jobId}/download`)**
   - 변환 성공한 작업에 대한 PDF 바이너리 다운로드 엔드포인트를 구현했습니다.
   - 파일 다운로드 시 원본 파일명 기반의 `.pdf` 확장자 처리와 파일 무결성을 위한 체크섬(`X-Checksum-Sha256`) 헤더를 응답에 포함하도록 지원합니다.

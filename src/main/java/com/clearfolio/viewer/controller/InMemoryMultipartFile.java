@@ -72,7 +72,8 @@ public final class InMemoryMultipartFile implements MultipartFile {
 
     @Override
     public InputStream getInputStream() {
-        return new ByteArrayInputStream(Arrays.copyOf(content, content.length));
+        // PERF: ByteArrayInputStream only reads the array, so defensive copy is unnecessary
+        return new ByteArrayInputStream(content);
     }
 
     @Override

@@ -258,8 +258,25 @@ public class ConversionController {
     }
 
     private static String sanitizeFilenameBase(String baseName) {
-        StringBuilder sanitized = new StringBuilder(baseName.length());
+        int firstBad = -1;
         for (int index = 0; index < baseName.length(); index++) {
+            char character = baseName.charAt(index);
+            if (!(Character.isLetterOrDigit(character)
+                    || character == '.'
+                    || character == '-'
+                    || character == '_')) {
+                firstBad = index;
+                break;
+            }
+        }
+
+        if (firstBad == -1) {
+            return baseName;
+        }
+
+        StringBuilder sanitized = new StringBuilder(baseName.length());
+        sanitized.append(baseName, 0, firstBad);
+        for (int index = firstBad; index < baseName.length(); index++) {
             char character = baseName.charAt(index);
             if (Character.isLetterOrDigit(character)
                     || character == '.'

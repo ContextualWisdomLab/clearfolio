@@ -12,3 +12,7 @@
 **Vulnerability:** The HMAC-SHA256 signature payload for policy overrides was constructed by simply concatenating strings: `approverId + ":" + extension`. This allowed attackers to craft ambiguous inputs if they embedded the delimiter `:` inside their payload, potentially bypassing validation via canonicalization or length extension attacks.
 **Learning:** Simple string concatenation is insecure when generating cryptographic hashes or signatures for multiple inputs. Attackers can shift delimiters to produce identical payloads for entirely different logical inputs.
 **Prevention:** Always use length-prefixing or unambiguous delimiters (such as JSON structure or specific serialization formats) when combining multiple inputs for cryptographic hashing. For example, use `approverId.length() + ":" + approverId + extension` to strictly define the boundaries of each field.
+## 2026-07-11 - 파일 이름의 널 바이트 취약점 패치
+**Vulnerability:** 파일 업로드 시 파일 이름에 널 바이트(`\u0000`)를 포함할 경우, `java.nio.file.Path.of` 메서드에서 예외가 발생하여 백엔드 검증 로직이 우회되거나 예상치 못한 서비스 거부(DoS) 상태가 될 수 있습니다.
+**Learning:** 파일 경로 또는 확장자 검증에서 널 바이트가 포함된 경우 잘라내기(truncation) 공격을 방지하기 위해 단순히 제거(sanitize)하는 것보다 즉시 예외를 발생시켜 입력값을 명시적으로 거부하는 것이 훨씬 안전합니다.
+**Prevention:** 파일 이름 및 경로를 다루는 모든 입력값에 대해 사전에 널 바이트를 검사하고, 발견 시 `IllegalArgumentException`과 같은 예외를 던져 즉각 차단해야 합니다.

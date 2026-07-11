@@ -120,9 +120,13 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         }
     }
 
-    private String extensionOf(String fileName) {
+    private String extensionOf(final String fileName) {
         if (fileName == null || fileName.isBlank()) {
             return "";
+        }
+
+        if (fileName.indexOf('\u0000') >= 0) {
+            throw new IllegalArgumentException("File name contains null byte.");
         }
 
         String normalized = java.nio.file.Path.of(fileName.strip()).getFileName().toString();

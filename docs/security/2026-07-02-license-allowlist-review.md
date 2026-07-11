@@ -16,6 +16,8 @@ sale, enterprise license, or buyer data-room handoff.
 | Engineering policy | `docs/security/2026-07-02-license-policy.json` |
 | Policy checker | `scripts/check_sbom_license_policy.py` |
 | Policy check evidence | `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/license-policy-summary.json` |
+| Third-party attribution package | `docs/legal/2026-07-03-third-party-attribution.md` |
+| Attribution drift checker | `scripts/render_third_party_attribution.py` |
 
 ## Engineering Policy
 
@@ -27,40 +29,55 @@ sale, enterprise license, or buyer data-room handoff.
 | Format-specific restrictive licenses | Review | Confirm whether current dependency usage triggers redistribution or feature restrictions. |
 | Components without license metadata | Block until identified | No unknown-license component should enter a buyer release. |
 
-Current SBOM status has 142 components, 20 unique license metadata entries, and
-0 components without license metadata. The remaining buyer risk is not missing
-metadata; it is whether the flagged transitive dependencies are acceptable under
-Clearfolio's distribution and sale model.
+Current SBOM status has 61 components, 3 unique license metadata entries, and
+0 components without license metadata. The current buyer-release policy has no
+known review-required components; remaining license work is ordinary attribution
+and final legal review of the release package, not an unresolved dependency
+exception.
 
 ## Flagged Components
 
-| Component | Version | License metadata | Current route |
-| --- | --- | --- | --- |
-| `logback-classic` | `1.5.18` | `EPL-1.0`, `GNU Lesser General Public License` | Review as standard logging dependency. |
-| `logback-core` | `1.5.18` | `EPL-1.0`, `GNU Lesser General Public License` | Review as standard logging dependency. |
-| `jakarta.annotation-api` | `2.1.1` | `EPL-2.0`, `GPL-2.0-with-classpath-exception` | Review classpath-exception scope. |
-| `jhighlight` | `1.1.0` | `CDDL, v1.0`, `LGPL-2.1-or-later` | Review or remove if not needed for supported preview paths. |
-| `junrar` | `7.5.5` | `UnRar License` | Review archive-format need; remove if unsupported formats do not require it. |
-| `juniversalchardet` | `2.5.0` | `MPL-1.1`, `GPL-3.0`, `LGPL-3.0` | Review dual-license selection or replace before buyer release. |
+No current SBOM component is classified as review-required by
+`docs/security/2026-07-02-license-policy.json`.
+
+Removed before buyer-release mode:
+
+- `tika-parsers-standard-package` was removed because current production code
+  does not use Tika APIs.
+- This removes Tika transitive review-required components `jhighlight`,
+  `junrar`, and `juniversalchardet` from the current SBOM.
+- Spring Boot's default Logback logging starter was replaced with
+  `spring-boot-starter-log4j2`, removing `logback-classic` and `logback-core`
+  from the current SBOM.
+- Spring Boot starter declarations now exclude `jakarta.annotation-api`, which
+  removes the remaining GPL classpath-exception metadata item from the current
+  SBOM.
+- `DependencyPolicyTest` prevents reintroducing the broad Tika parser package
+  and the default Logback/Jakarta annotation paths without an explicit policy
+  and diligence update.
 
 ## Buyer Diligence Position
 
-The repository is now SBOM-visible but not license-cleared. A buyer can inspect
-the generated SBOM and the flagged-component list, but the product should still
-be described as `license review pending` until the following decisions are made:
+The repository is now SBOM-visible and passes the engineering buyer-release
+license policy with `--require-no-review`. A buyer can inspect the generated
+SBOM, the generated third-party attribution package, the policy file, and the
+policy-check evidence without seeing a known review-required dependency
+exception.
 
-1. Legal confirms the allowed license basis for each flagged component.
-2. Engineering removes any component whose license route is not approved.
-3. CI enforces the final allowlist for future dependency changes.
+Before a signed sale or enterprise redistribution, legal should still review the
+generated attribution package and distribution model. That is a normal release
+approval step, not a missing engineering artifact or known dependency
+replacement blocker in the current SBOM.
 
 ## KRW 2B Sale-Readiness KPI
 
 | KPI | Target | Current value | Status |
 | --- | --- | --- | --- |
 | Components with license metadata | 100 percent | 100 percent | Ready |
-| Flagged components with legal decision | 100 percent | 0 of 6 | Open |
-| Disallowed copyleft runtime dependencies | 0 | Pending legal classification | Open |
-| Automated allowlist enforcement | Required | Implemented for engineering review mode; buyer-release mode still waits on legal decisions | Partial |
+| Flagged components with legal decision | 100 percent | 0 open flagged components | Ready |
+| Disallowed copyleft runtime dependencies | 0 | 0 known policy violations | Ready |
+| Automated allowlist enforcement | Required | Buyer-release mode passes with `--require-no-review` | Ready |
+| Attribution package freshness | Required | `docs/legal/2026-07-03-third-party-attribution.md` matches the current SBOM | Ready |
 
 This KPI belongs in the buyer diligence pack because unresolved license
 questions can directly reduce acquisition value, slow legal review, or force a
@@ -78,18 +95,20 @@ allowlist decision path plus a small standard-library policy checker.
 3. Run `scripts/check_sbom_license_policy.py` against each generated SBOM. It
    passes only when every component is either explicitly allowed or listed as a
    known review-required component.
-4. If a component is rejected, remove or replace it before building a buyer
+4. Run `scripts/render_third_party_attribution.py --check` so the buyer
+   attribution package cannot drift from the current SBOM.
+5. If a component is rejected, remove or replace it before building a buyer
    data-room package.
-5. For buyer-release mode, run the checker with `--require-no-review` so the
-   six known review-required components fail until legal has approved or
-   engineering has replaced them.
+6. For buyer-release mode, run the checker with `--require-no-review`; any
+   future review-required component will fail until legal approves it or
+   engineering replaces it.
 
 ## Current Classification
 
 | Diligence question | Status after this review |
 | --- | --- |
 | Can a buyer see all dependency license metadata? | Yes. |
-| Can Clearfolio claim license clearance? | No. Legal decisions are still open. |
-| Is there automated drift detection? | Yes. The policy checker reports 136 allowed components, 6 review-required components, and 0 unlisted violations for the current SBOM. |
-| Is there an actionable next step? | Yes. Six flagged components need approve, replace, or remove decisions, then buyer-release mode can require zero review-required components. |
+| Can Clearfolio claim engineering buyer-release license-policy clearance? | Yes. The current SBOM passes with zero review-required components and zero violations. |
+| Is there automated drift detection? | Yes. The policy checker reports 61 allowed components, 0 review-required components, and 0 unlisted violations for the current SBOM. |
+| Is there an actionable next step? | Yes. Keep the buyer-release policy gate and attribution drift check in CI evidence, then obtain final legal review for the buyer data room. |
 | Is a repository split or submodule needed for license closure? | No. The risk is dependency policy, not code ownership. |

@@ -9,12 +9,14 @@ conversion:
     - hwp
     - hwpx
   worker-threads: 4
+  policy-override-secret: "${CONVERSION_POLICY_OVERRIDE_SECRET:}"
   queue-capacity: 200
   max-retry-attempts: 3
   retry-initial-delay-ms: 500
   retry-max-delay-ms: 5000
   retry-backoff-multiplier: 2.0
   max-upload-size-bytes: 5242880
+  processing-lease-timeout-ms: 60000
 
 viewer:
   security:

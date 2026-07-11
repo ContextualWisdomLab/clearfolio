@@ -273,19 +273,13 @@ public class ConversionController {
         return sanitized.toString();
     }
 
-    private String calculateSha256(byte[] data) {
+    private String calculateSha256(final byte[] data) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(data);
-            StringBuilder hexString = new StringBuilder(2 * hash.length);
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
+            // Optimization: java.util.HexFormat.of().formatHex() is faster
+            // and allocates less memory than String.format.
+            return java.util.HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 algorithm not available", e);
         }

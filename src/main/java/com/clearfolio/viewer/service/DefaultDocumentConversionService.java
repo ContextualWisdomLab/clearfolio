@@ -45,6 +45,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
     private final ConversionWorker conversionWorker;
     private final ArtifactStore artifactStore;
     private final int maxRetryAttempts;
+    private final long maxUploadSizeBytes;
 
     /**
      * Creates the conversion service with repository, validation, worker, and
@@ -71,6 +72,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         this.conversionWorker = conversionWorker;
         this.artifactStore = artifactStore;
         this.maxRetryAttempts = conversionProperties.getMaxRetryAttempts();
+        this.maxUploadSizeBytes = conversionProperties.getMaxUploadSizeBytes();
     }
 
     /**
@@ -303,8 +305,13 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] buffer = new byte[8192];
             int read;
+            long totalRead = 0;
 
             while ((read = stream.read(buffer)) != -1) {
+                totalRead += read;
+                if (totalRead > maxUploadSizeBytes) {
+                    throw new IllegalArgumentException("File size exceeds maximum allowed upload size.");
+                }
                 digest.update(buffer, 0, read);
             }
 

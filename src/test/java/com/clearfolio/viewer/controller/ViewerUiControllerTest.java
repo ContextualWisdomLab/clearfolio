@@ -1,12 +1,17 @@
 package com.clearfolio.viewer.controller;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.regex.Pattern;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +58,8 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("id=\"recovery-retry-ready\""));
                     assertTrue(body.contains("id=\"recovery-last-action\""));
                     assertTrue(body.contains("id=\"recovery-latest-inspected\""));
+                    assertTrue(body.contains("id=\"load-demo-data-btn\""));
+                    assertTrue(body.contains("Load demo story"));
                     assertTrue(body.contains("/assets/viewer/demo.js"));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                 });
@@ -100,6 +107,7 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("/api/v1/convert/jobs"));
             assertTrue(script.contains("/api/v1/analytics/kpi-snapshot"));
             assertTrue(script.contains("/api/v1/analytics/kpi-snapshot-exports"));
+            assertTrue(script.contains("/assets/viewer/demo-fixtures.json"));
             assertTrue(script.contains("/viewer/"));
             assertTrue(script.contains("FormData"));
             assertTrue(script.contains("localStorage"));
@@ -114,13 +122,41 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("latestByTimestamp"));
             assertTrue(script.contains("lastRecoveryAction"));
             assertTrue(script.contains("lastInspectedAt"));
+            assertTrue(script.contains("loadDemoData"));
+            assertTrue(script.contains("load-demo-data-btn"));
             assertTrue(script.contains("openJobDetail"));
             assertTrue(script.contains("retryActiveJob"));
+            assertTrue(script.contains("refreshKpisAfterUpdate"));
+            assertTrue(script.contains("refreshKpisAfterUpdate: false"));
+            assertTrue(script.contains("const demoHistory = data.history.slice(0, 12)"));
+            assertTrue(script.contains("submittedAt: new Date().toISOString()"));
             assertTrue(script.contains("/retry"));
             assertTrue(script.contains("X-Clearfolio-Operator-Id"));
             assertTrue(script.contains("X-Clearfolio-Tenant-Id"));
             assertTrue(script.contains("X-Clearfolio-Permissions"));
             assertTrue(script.contains("deadLettered"));
+        }
+    }
+
+    @Test
+    void demoFixtureProvidesBuyerDemoStoryStates() throws Exception {
+        try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/demo-fixtures.json")) {
+            assertNotNull(input);
+            JsonNode root = new ObjectMapper().readTree(input);
+            JsonNode jobs = root.path("history");
+
+            assertTrue(jobs.isArray());
+            assertTrue(jobs.size() >= 4);
+            assertTrue(root.path("kpiSnapshot").path("totalJobs").asInt() >= jobs.size());
+            assertTrue(root.path("kpiSnapshot").path("conversionSuccessRate").asDouble() > 0.0);
+            assertTrue(root.path("kpiExports").isArray());
+            assertTrue(root.path("kpiExports").size() >= 1);
+            assertTrue(root.toString().contains("SUCCEEDED"));
+            assertTrue(root.toString().contains("UNSUPPORTED_FORMAT"));
+            assertTrue(root.toString().contains("deadLettered"));
+            for (JsonNode job : jobs) {
+                assertDoesNotThrow(() -> Instant.parse(job.path("submittedAt").asText()));
+            }
         }
     }
 
@@ -148,5 +184,48 @@ class ViewerUiControllerTest {
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
                 .expectBody(String.class)
                 .value(body -> assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId)));
+    }
+
+    @Test
+    void viewerRejectsNonUuidDocIdWithFriendlyShell() {
+        webTestClient.get()
+                .uri("/viewer/not-a-uuid")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
+                .expectBody(String.class)
+                .value(body -> {
+                    assertTrue(body.contains("clearfolio-doc-id"));
+                    assertTrue(body.contains("clearfolio-doc-id\" content=\"invalid\""));
+                    assertTrue(!body.contains("not-a-uuid"));
+                    assertTrue(body.contains("clearfolio-initial-state\" content=\"NOT_FOUND"));
+                    assertTrue(body.contains("/assets/viewer/viewer.js"));
+                });
+    }
+
+    @Test
+    void viewerEscapesHtmlInInvalidDocId() {
+        webTestClient.get()
+                .uri("/viewer/{docId}", "\"><script>alert(1)</script>")
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody(String.class)
+                .value(body -> {
+                    assertTrue(!body.contains("<script>alert(1)</script>"));
+                    assertTrue(!body.contains("&lt;script&gt;"));
+                    assertTrue(body.contains("clearfolio-doc-id\" content=\"invalid\""));
+                });
+    }
+
+    @Test
+    void viewerStillServesUuidDocId() {
+        UUID docId = UUID.randomUUID();
+        webTestClient.get()
+                .uri("/viewer/" + docId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
+                .expectBody(String.class)
+                .value(body -> assertTrue(body.contains(docId.toString())));
     }
 }

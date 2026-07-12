@@ -1,6 +1,8 @@
 package com.clearfolio.viewer.service;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -34,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.config.ConversionProperties;
@@ -44,6 +47,45 @@ import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
 
 class DefaultDocumentConversionServiceTest {
+
+    @Test
+    void getAllJobsReturnsAllJobsFromRepository() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionProperties props = new ConversionProperties();
+        DefaultDocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new DocumentValidationService() {
+                    @Override
+                    public void validateOrThrow(org.springframework.web.multipart.MultipartFile file) {
+                    }
+                },
+                id -> {},
+                props
+        );
+
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        repository.save(job1);
+        repository.save(job2);
+
+        Iterable<ConversionJob> allJobs = service.getAllJobs();
+        int count = 0;
+        boolean found1 = false;
+        boolean found2 = false;
+        for (ConversionJob job : allJobs) {
+            count++;
+            if (job.getJobId().equals(job1.getJobId())) {
+                found1 = true;
+            }
+            if (job.getJobId().equals(job2.getJobId())) {
+                found2 = true;
+            }
+        }
+
+        assertEquals(2, count);
+        assertTrue(found1);
+        assertTrue(found2);
+    }
 
     @Test
     void submitWithOverrideDelegatesPolicyHeadersToValidationService() {
@@ -66,6 +108,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 validationService,
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -105,6 +148,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 validationService,
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -130,6 +174,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
         MockMultipartFile file = new MockMultipartFile(
@@ -159,6 +204,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
         MockMultipartFile file = new MockMultipartFile(
@@ -183,6 +229,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -208,6 +255,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -239,6 +287,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -291,6 +340,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -319,6 +369,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -343,6 +394,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -368,6 +420,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -403,6 +456,7 @@ class DefaultDocumentConversionServiceTest {
                 stateStore,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -433,6 +487,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -450,6 +505,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -478,6 +534,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -507,6 +564,7 @@ class DefaultDocumentConversionServiceTest {
                 repository,
                 new DefaultDocumentValidationService(new ConversionProperties()),
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -566,6 +624,185 @@ class DefaultDocumentConversionServiceTest {
     }
 
     @Test
+    void submitSeedsArtifactStoreWithOriginalBytesForPdfUpload() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        InMemoryArtifactStore artifactStore = new InMemoryArtifactStore();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                repository,
+                file -> {
+                },
+                worker,
+                artifactStore,
+                new ConversionProperties()
+        );
+
+        byte[] original = "%PDF-1.7\noriginal-sheet-music".getBytes(StandardCharsets.UTF_8);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "score.pdf",
+                "application/pdf",
+                original
+        );
+
+        UUID jobId = service.submit(file);
+
+        byte[] seeded = artifactStore.getPdf(jobId).orElseThrow();
+        assertArrayEquals(original, seeded);
+        assertEquals("%PDF-", new String(seeded, 0, 5, StandardCharsets.UTF_8));
+        assertEquals(1, worker.enqueuedCount());
+    }
+
+    @Test
+    void submitSeedsArtifactStoreWhenOnlyExtensionDeclaresPdf() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        InMemoryArtifactStore artifactStore = new InMemoryArtifactStore();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                repository,
+                file -> {
+                },
+                worker,
+                artifactStore,
+                new ConversionProperties()
+        );
+
+        byte[] original = "%PDF-1.4\nextension-only".getBytes(StandardCharsets.UTF_8);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "Score.PDF",
+                "application/octet-stream",
+                original
+        );
+
+        UUID jobId = service.submit(file);
+
+        assertArrayEquals(original, artifactStore.getPdf(jobId).orElseThrow());
+        assertEquals(1, worker.enqueuedCount());
+    }
+
+    @Test
+    void submitSkipsPassthroughWhenPdfDeclarationLacksMagicHeader() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        InMemoryArtifactStore artifactStore = new InMemoryArtifactStore();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                repository,
+                file -> {
+                },
+                worker,
+                artifactStore,
+                new ConversionProperties()
+        );
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "fake.pdf",
+                "application/pdf",
+                "MZ-not-actually-a-pdf".getBytes(StandardCharsets.UTF_8)
+        );
+
+        UUID jobId = service.submit(file);
+
+        assertTrue(artifactStore.getPdf(jobId).isEmpty());
+        assertEquals(1, worker.enqueuedCount());
+    }
+
+    @Test
+    void submitSkipsPassthroughForNonPdfUpload() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        InMemoryArtifactStore artifactStore = new InMemoryArtifactStore();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                repository,
+                file -> {
+                },
+                worker,
+                artifactStore,
+                new ConversionProperties()
+        );
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "report.docx",
+                "application/octet-stream",
+                "hello-viewer".getBytes(StandardCharsets.UTF_8)
+        );
+
+        UUID jobId = service.submit(file);
+
+        assertTrue(artifactStore.getPdf(jobId).isEmpty());
+        assertEquals(1, worker.enqueuedCount());
+    }
+
+    @Test
+    void submitSkipsPassthroughWhenSourceBytesCannotBeRead() throws Exception {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        InMemoryArtifactStore artifactStore = new InMemoryArtifactStore();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                repository,
+                file -> {
+                },
+                worker,
+                artifactStore,
+                new ConversionProperties()
+        );
+
+        MultipartFile file = mock(MultipartFile.class);
+        when(file.getOriginalFilename()).thenReturn("broken.pdf");
+        when(file.getContentType()).thenReturn("application/pdf");
+        when(file.getSize()).thenReturn(5L);
+        when(file.getInputStream())
+                .thenReturn(new ByteArrayInputStream("%PDF-".getBytes(StandardCharsets.UTF_8)));
+        when(file.getBytes()).thenThrow(new IOException("bytes unavailable"));
+
+        UUID jobId = service.submit(file);
+
+        assertTrue(artifactStore.getPdf(jobId).isEmpty());
+        assertEquals(1, worker.enqueuedCount());
+    }
+
+    @Test
+    void declaresPdfSourceMatchesContentTypeAndExtensionVariants() {
+        assertTrue(DefaultDocumentConversionService.declaresPdfSource(null, "application/pdf"));
+        assertTrue(DefaultDocumentConversionService.declaresPdfSource(
+                null,
+                "  APPLICATION/PDF; charset=UTF-8  "
+        ));
+        assertTrue(DefaultDocumentConversionService.declaresPdfSource("Score.PDF", null));
+        assertTrue(DefaultDocumentConversionService.declaresPdfSource("score.pdf", "text/plain"));
+        assertFalse(DefaultDocumentConversionService.declaresPdfSource(null, null));
+        assertFalse(DefaultDocumentConversionService.declaresPdfSource(null, "application/pdfx"));
+        assertFalse(DefaultDocumentConversionService.declaresPdfSource(
+                "report.docx",
+                "application/octet-stream"
+        ));
+    }
+
+    @Test
+    void hasPdfMagicHeaderChecksLeadingBytes() {
+        assertTrue(DefaultDocumentConversionService.hasPdfMagicHeader(
+                "%PDF-1.7".getBytes(StandardCharsets.UTF_8)
+        ));
+        assertFalse(DefaultDocumentConversionService.hasPdfMagicHeader(null));
+        assertFalse(DefaultDocumentConversionService.hasPdfMagicHeader(
+                "%PDF".getBytes(StandardCharsets.UTF_8)
+        ));
+        assertFalse(DefaultDocumentConversionService.hasPdfMagicHeader(
+                "XPDF-1.7".getBytes(StandardCharsets.UTF_8)
+        ));
+        assertFalse(DefaultDocumentConversionService.hasPdfMagicHeader(
+                "%PDX-1.7".getBytes(StandardCharsets.UTF_8)
+        ));
+    }
+
+    @Test
     void submitThrowsWhenUploadCannotBeReadForHashing() throws Exception {
         ConversionJobRepository repository = new InMemoryConversionJobRepository();
         RecordingConversionWorker worker = new RecordingConversionWorker();
@@ -574,6 +811,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -595,6 +833,7 @@ class DefaultDocumentConversionServiceTest {
                 file -> {
                 },
                 worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 new ConversionProperties()
         );
 
@@ -620,6 +859,101 @@ class DefaultDocumentConversionServiceTest {
         }
 
         assertEquals(0, worker.enqueuedCount());
+    }
+
+
+    @Test
+    void deleteJobWithTenantContextDeletesOwnedJobAndArtifact() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        com.clearfolio.viewer.artifact.InMemoryArtifactStore artifactStore =
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                mock(DocumentValidationService.class),
+                mock(ConversionWorker.class),
+                artifactStore,
+                new ConversionProperties()
+        );
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "tenant-a",
+                "subject-a",
+                "report.docx",
+                "application/octet-stream",
+                "hash-delete-owned",
+                10L,
+                3
+        );
+        repository.save(job);
+        artifactStore.putPdf(jobId, new byte[] {1, 2, 3});
+
+        boolean deleted = service.deleteJob(
+                jobId,
+                new TenantContext("tenant-a", "subject-a", Set.of(TenantPermissions.JOB_DELETE))
+        );
+
+        assertTrue(deleted);
+        assertTrue(repository.findById(jobId).isEmpty());
+        assertTrue(artifactStore.getPdf(jobId).isEmpty());
+    }
+
+    @Test
+    void deleteJobWithTenantContextLeavesOtherTenantJobUntouched() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        com.clearfolio.viewer.artifact.ArtifactStore artifactStore =
+                mock(com.clearfolio.viewer.artifact.ArtifactStore.class);
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                mock(DocumentValidationService.class),
+                mock(ConversionWorker.class),
+                artifactStore,
+                new ConversionProperties()
+        );
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "tenant-a",
+                "subject-a",
+                "report.docx",
+                "application/octet-stream",
+                "hash-delete-cross-tenant",
+                10L,
+                3
+        );
+        repository.save(job);
+
+        boolean deleted = service.deleteJob(
+                jobId,
+                new TenantContext("tenant-b", "subject-b", Set.of(TenantPermissions.JOB_DELETE))
+        );
+
+        assertFalse(deleted);
+        assertSame(job, repository.findById(jobId).orElseThrow());
+        org.mockito.Mockito.verifyNoInteractions(artifactStore);
+    }
+
+    @Test
+    void deleteJobSucceedsWhenArtifactDeletionFails() {
+        ConversionJobRepository repository = mock(ConversionJobRepository.class);
+        ConversionWorker worker = mock(ConversionWorker.class);
+        DocumentValidationService validationService = mock(DocumentValidationService.class);
+        com.clearfolio.viewer.artifact.ArtifactStore artifactStore = mock(com.clearfolio.viewer.artifact.ArtifactStore.class);
+
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                validationService,
+                worker,
+                artifactStore,
+                new ConversionProperties()
+        );
+
+        UUID jobId = UUID.randomUUID();
+        org.mockito.Mockito.doThrow(new RuntimeException("S3 is down")).when(artifactStore).deletePdf(jobId);
+
+        service.deleteJob(jobId);
+
+        org.mockito.Mockito.verify(repository).deleteById(jobId);
     }
 
     private static class RecordingConversionWorker implements ConversionWorker {
@@ -671,6 +1005,11 @@ class DefaultDocumentConversionServiceTest {
         @Override
         public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
             return finder.apply(candidate);
+        }
+
+        @Override
+        public void deleteById(UUID jobId) {
+            throw new UnsupportedOperationException("not used");
         }
     }
 

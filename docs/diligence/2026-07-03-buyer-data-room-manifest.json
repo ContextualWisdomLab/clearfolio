@@ -1,0 +1,221 @@
+{
+  "manifestVersion": 1,
+  "packageName": "Clearfolio KRW 2B Buyer Data Room",
+  "updatedAt": "2026-07-03",
+  "artifacts": [
+    {
+      "id": "active-pr",
+      "status": "ready",
+      "title": "Active sale-readiness PR",
+      "url": "https://github.com/ContextualWisdomLab/clearfolio/pull/82"
+    },
+    {
+      "id": "figjam-board",
+      "status": "ready",
+      "title": "Figma FigJam buyer diligence board",
+      "url": "https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM"
+    },
+    {
+      "id": "sale-readiness-plan",
+      "path": "docs/plans/2026-07-02-krw2b-sale-readiness-execution-plan.md",
+      "status": "ready",
+      "title": "KRW 2B sale-readiness execution plan"
+    },
+    {
+      "id": "diligence-index",
+      "path": "docs/diligence/2026-07-02-buyer-diligence-index.md",
+      "status": "ready",
+      "title": "Buyer diligence index"
+    },
+    {
+      "id": "buyer-data-room-manifest",
+      "path": "docs/diligence/2026-07-03-buyer-data-room-manifest.json",
+      "status": "ready",
+      "title": "Buyer data-room manifest"
+    },
+    {
+      "id": "buyer-readiness-scorecard",
+      "path": "docs/diligence/2026-07-03-buyer-readiness-scorecard.md",
+      "status": "ready",
+      "title": "Buyer readiness scorecard"
+    },
+    {
+      "id": "valuation-kpi-model",
+      "path": "docs/business/2026-07-02-krw2b-valuation-kpi-model.md",
+      "status": "ready",
+      "title": "Valuation and KPI model"
+    },
+    {
+      "id": "design-handoff",
+      "path": "docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md",
+      "status": "partial",
+      "title": "Product Design and Slides handoff"
+    },
+    {
+      "id": "figma-slides-payload",
+      "path": "docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json",
+      "status": "ready",
+      "title": "Figma Slides generation payload"
+    },
+    {
+      "id": "figma-slides-payload-check",
+      "path": "docs/qa/evidence/2026-07-02-krw2b-sale-readiness/figma-deck-payload-check.json",
+      "status": "ready",
+      "title": "Figma Slides generation payload check"
+    },
+    {
+      "id": "figjam-handoff",
+      "path": "docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md",
+      "status": "ready",
+      "title": "FigJam evidence handoff"
+    },
+    {
+      "id": "qa-evidence",
+      "path": "docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md",
+      "status": "ready",
+      "title": "QA evidence index"
+    },
+    {
+      "id": "sbom",
+      "path": "docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json",
+      "status": "ready",
+      "title": "CycloneDX SBOM"
+    },
+    {
+      "id": "license-review",
+      "path": "docs/security/2026-07-02-license-allowlist-review.md",
+      "status": "ready",
+      "title": "License allowlist review"
+    },
+    {
+      "id": "third-party-attribution",
+      "path": "docs/legal/2026-07-03-third-party-attribution.md",
+      "status": "ready",
+      "title": "Third-party attribution package"
+    },
+    {
+      "id": "auth-tenant-model",
+      "path": "docs/security/2026-07-02-auth-tenant-model.md",
+      "status": "partial",
+      "title": "Auth, RBAC, and tenant model"
+    },
+    {
+      "id": "threat-model",
+      "path": "docs/security/2026-07-02-threat-model-data-handling.md",
+      "status": "partial",
+      "title": "Threat model and data handling map"
+    },
+    {
+      "id": "signed-artifact-design",
+      "path": "docs/security/2026-07-02-signed-artifact-link-design.md",
+      "status": "partial",
+      "title": "Signed artifact link design"
+    },
+    {
+      "id": "deployment-playbook",
+      "path": "docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md",
+      "status": "partial",
+      "title": "Buyer deployment and integration playbook"
+    },
+    {
+      "id": "connector-openapi",
+      "path": "docs/deployment/clearfolio-buyer-connector.openapi.yaml",
+      "status": "partial",
+      "title": "Buyer connector OpenAPI seed"
+    },
+    {
+      "id": "durable-metrics-model",
+      "path": "docs/analytics/2026-07-02-durable-metrics-event-model.md",
+      "status": "partial",
+      "title": "Durable metrics event model"
+    },
+    {
+      "id": "durable-repository-plan",
+      "path": "docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md",
+      "status": "partial",
+      "title": "Durable conversion job repository plan"
+    },
+    {
+      "id": "seeded-demo-evidence",
+      "path": "docs/qa/evidence/2026-07-02-krw2b-sale-readiness/seeded-demo-story-verification.md",
+      "status": "ready",
+      "title": "Seeded buyer-demo story evidence"
+    }
+  ],
+  "readinessGates": [
+    {
+      "id": "product-demo",
+      "status": "ready",
+      "evidence": [
+        "seeded-demo-evidence",
+        "figjam-board",
+        "qa-evidence"
+      ]
+    },
+    {
+      "id": "design-handoff",
+      "status": "partial",
+      "evidence": [
+        "design-handoff",
+        "figma-slides-payload",
+        "figma-slides-payload-check",
+        "figjam-handoff",
+        "figjam-board"
+      ]
+    },
+    {
+      "id": "data-analytics-kpi",
+      "status": "partial",
+      "evidence": [
+        "valuation-kpi-model",
+        "durable-metrics-model",
+        "qa-evidence"
+      ]
+    },
+    {
+      "id": "security-compliance",
+      "status": "partial",
+      "evidence": [
+        "auth-tenant-model",
+        "threat-model",
+        "signed-artifact-design"
+      ]
+    },
+    {
+      "id": "license-attribution",
+      "status": "ready",
+      "evidence": [
+        "sbom",
+        "license-review",
+        "third-party-attribution"
+      ]
+    },
+    {
+      "id": "readiness-scorecard",
+      "status": "ready",
+      "evidence": [
+        "buyer-data-room-manifest",
+        "buyer-readiness-scorecard",
+        "diligence-index"
+      ]
+    },
+    {
+      "id": "buyer-integration",
+      "status": "partial",
+      "evidence": [
+        "deployment-playbook",
+        "connector-openapi",
+        "active-pr"
+      ]
+    },
+    {
+      "id": "production-durability",
+      "status": "partial",
+      "evidence": [
+        "durable-repository-plan",
+        "durable-metrics-model",
+        "qa-evidence"
+      ]
+    }
+  ]
+}

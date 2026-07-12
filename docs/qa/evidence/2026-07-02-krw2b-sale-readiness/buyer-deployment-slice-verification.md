@@ -34,7 +34,7 @@ Java HotSpot(TM) 64-Bit Server VM (build 26.0.1+8-34, mixed mode, sharing)
 | Coverage | `awk -F, ... target/site/jacoco/jacoco.csv` | Pass, `missed_instr=0 missed_branch=0 missed_line=0`. |
 | JavaDoc | `mvn -q -DskipTests javadoc:javadoc` | Pass, no output. |
 | SAST | `uvx semgrep --config p/java --metrics=off --error --json --output /tmp/clearfolio-buyer-deployment-semgrep.json src/main/java src/test/java` | Pass, 60 Java rules, 50 tracked files, 0 findings, 0 errors. |
-| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json` | Pass in engineering-review mode: 136 allowed, 6 review-required, 0 violations. |
+| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json --require-no-review` | Pass in buyer-release mode: 61 allowed, 0 review-required, 0 violations. |
 | Buyer-demo profile smoke | `SPRING_PROFILES_ACTIVE=buyer-demo ... mvn -q spring-boot:run -Dspring-boot.run.arguments="--server.port=18084"` with `/healthz` and `/` curl checks | Pass: `health={"status":"ok"}`, root contains Clearfolio copy and recovery panel markup. |
 
 ## FigJam Evidence
@@ -93,6 +93,89 @@ Claim boundary:
 - It is not a buyer-tenant-imported connector package yet.
 - It is not a production OIDC/JWT deployment profile.
 
+## Third-Party Attribution Verification
+
+Date: 2026-07-03T08:12:32+0900
+
+Source head before this attribution slice:
+`6cfdcc0e3cf8b9076b5cea2f01277c56772c3671`
+
+This slice adds a buyer data-room attribution package generated from the current
+CycloneDX SBOM, plus a drift check that fails when the generated file no longer
+matches the SBOM.
+
+Validation:
+
+| Gate | Result |
+| --- | --- |
+| TDD red check | `python3 scripts/test_render_third_party_attribution.py` first failed because `render_third_party_attribution` did not exist. |
+| Targeted renderer tests | `python3 scripts/test_render_third_party_attribution.py` passed, 2 tests. |
+| Attribution render | `python3 scripts/render_third_party_attribution.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --output docs/legal/2026-07-03-third-party-attribution.md` generated the current data-room notice. |
+| Attribution drift check | `python3 scripts/render_third_party_attribution.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --output docs/legal/2026-07-03-third-party-attribution.md --check` passed and is recorded in `third-party-attribution-check.log`. |
+
+Claim boundary:
+
+- The attribution package is engineering-generated evidence, not legal advice.
+- Final legal release review is still required before signed sale or enterprise
+  redistribution.
+- No separate library, submodule, or new dependency was added; the renderer uses
+  only the Python standard library.
+
+## Production Auth Readiness Verification
+
+Date: 2026-07-03T08:20:12+0900
+
+Source head before this production-auth slice:
+`947f26b68c60e4b233b3728ff61a46ab1639388a`
+
+This slice prevents the current gateway-signed tenant-header scaffold from being
+misrepresented as production auth when the signing secret is absent. It does not
+implement OIDC/JWT; it makes the production profile fail closed until signed
+tenant claims are configured.
+
+Validation:
+
+| Gate | Result |
+| --- | --- |
+| TDD red check | `mvn -Dtest=ProductionAuthReadinessConfigTest test` first failed because `ProductionAuthReadinessConfig` did not exist. |
+| Targeted production-auth tests | `mvn -Dtest=ProductionAuthReadinessConfigTest test` passed, 2 tests, 0 failures, 0 errors. |
+
+Claim boundary:
+
+- `SPRING_PROFILES_ACTIVE=production` now requires
+  `clearfolio.tenant-claims.hmac-secret`.
+- The local buyer-demo profile can still run unsigned for screenshots and
+  design evidence.
+- Validated OIDC/JWT issuer, audience, expiry, key rotation, and role mapping
+  remain the next production-auth implementation gap.
+
+## Buyer Data-Room Manifest Verification
+
+Date: 2026-07-03T08:27:38+0900
+
+Source head before this manifest slice:
+`69b1dfc6b60aeb0df805ae45e15392647f1cbec5`
+
+This slice adds a buyer data-room manifest so Product Design, Figma, Data
+Analytics, security, deployment, and QA evidence can be inspected as one
+package instead of a loose list of links. It is intentionally in-repo and uses a
+standard-library checker; no library split, submodule, or new dependency was
+added.
+
+Validation:
+
+| Gate | Result |
+| --- | --- |
+| TDD red check | `python3 scripts/test_check_buyer_dataroom_manifest.py` first failed because `check_buyer_dataroom_manifest` did not exist. |
+| Targeted manifest tests | `python3 scripts/test_check_buyer_dataroom_manifest.py` passed, 4 tests. |
+| Manifest check | `python3 scripts/check_buyer_dataroom_manifest.py --manifest docs/diligence/2026-07-03-buyer-data-room-manifest.json` passed with 19 artifacts, 7 gates, and 0 errors. |
+
+Claim boundary:
+
+- The manifest proves evidence package completeness, not buyer legal approval.
+- External URLs such as GitHub PR #82 and the Figma FigJam board are checked for
+  URL shape, while live availability remains an external service concern.
+
 ## Durable Job Repository Design Verification
 
 Date: 2026-07-02T21:39:41+0900
@@ -114,7 +197,7 @@ Validation:
 | Tests and coverage | `mvn test` passed, 312 tests, 0 failures, 0 errors; JaCoCo remained `missed_instr=0 missed_branch=0 missed_line=0`. |
 | JavaDoc | `mvn -q -DskipTests javadoc:javadoc` passed, no output. |
 | SAST | `uvx semgrep --config p/java --metrics=off --error --json --output /tmp/clearfolio-durable-repository-semgrep.json src/main/java src/test/java` passed, 60 Java rules, 50 tracked files, 0 findings. |
-| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json` passed in engineering-review mode: 136 allowed, 6 review-required, 0 violations. |
+| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json --require-no-review` passed in buyer-release mode: 61 allowed, 0 review-required, 0 violations. |
 
 FigJam evidence:
 
@@ -156,7 +239,7 @@ Validation:
 | Tests and coverage | `mvn test` passed, 327 tests, 0 failures, 0 errors; JaCoCo remained `missed_instr=0 missed_branch=0 missed_line=0`. |
 | JavaDoc | `mvn -q -DskipTests javadoc:javadoc` passed, no output. |
 | SAST | `uvx semgrep --config p/java --metrics=off --error --json --output /tmp/clearfolio-state-store-semgrep.json src/main/java src/test/java` passed, 60 Java rules, 52 tracked files, 0 findings. |
-| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json` passed in engineering-review mode: 136 allowed, 6 review-required, 0 violations. |
+| License policy | `python3 scripts/check_sbom_license_policy.py --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json --policy docs/security/2026-07-02-license-policy.json --require-no-review` passed in buyer-release mode: 61 allowed, 0 review-required, 0 violations. |
 
 FigJam evidence:
 

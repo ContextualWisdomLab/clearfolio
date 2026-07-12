@@ -20,6 +20,8 @@ public class ConversionProperties {
     private long retryMaxDelayMs = 5_000L;
     private double retryBackoffMultiplier = 2.0;
     private long maxUploadSizeBytes = 5 * 1024 * 1024L;
+    private String policyOverrideSecret = "";
+    private long processingLeaseTimeoutMs = 60_000L;
 
     /**
      * Returns file extensions that are blocked from upload.
@@ -178,5 +180,41 @@ public class ConversionProperties {
      */
     public void setMaxUploadSizeBytes(long maxUploadSizeBytes) {
         this.maxUploadSizeBytes = Math.max(1L, maxUploadSizeBytes);
+    }
+
+    /**
+     * Returns the policy override secret used to verify blocked extension uploads.
+     *
+     * @return policy override secret
+     */
+    public String getPolicyOverrideSecret() {
+        return policyOverrideSecret;
+    }
+
+    /**
+     * Sets the policy override secret used to verify blocked extension uploads.
+     *
+     * @param policyOverrideSecret policy override secret
+     */
+    public void setPolicyOverrideSecret(String policyOverrideSecret) {
+        this.policyOverrideSecret = policyOverrideSecret == null ? "" : policyOverrideSecret;
+    }
+
+    /**
+     * Returns the processing lease timeout used by restart recovery.
+     *
+     * @return processing lease timeout in milliseconds
+     */
+    public long getProcessingLeaseTimeoutMs() {
+        return processingLeaseTimeoutMs;
+    }
+
+    /**
+     * Sets the processing lease timeout used by restart recovery.
+     *
+     * @param processingLeaseTimeoutMs processing lease timeout in milliseconds
+     */
+    public void setProcessingLeaseTimeoutMs(long processingLeaseTimeoutMs) {
+        this.processingLeaseTimeoutMs = Math.max(1L, processingLeaseTimeoutMs);
     }
 }

@@ -99,6 +99,21 @@ public final class FileSystemArtifactStore implements ArtifactStore {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deletePdf(UUID docId) {
+        try {
+            Files.deleteIfExists(pdfPath(docId));
+            Files.deleteIfExists(metadataPath(docId));
+        } catch (IOException ex) {
+            throw new IllegalStateException("failed to delete artifact for docId " + docId, ex);
+        } finally {
+            cache.remove(docId);
+        }
+    }
+
     private Path pdfPath(UUID docId) {
         return rootDir.resolve(docId + PDF_SUFFIX);
     }

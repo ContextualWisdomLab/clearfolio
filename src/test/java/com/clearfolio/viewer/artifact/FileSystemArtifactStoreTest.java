@@ -70,6 +70,23 @@ class FileSystemArtifactStoreTest {
     }
 
     @Test
+    void deletePdfRemovesCachedBytesAndStoredFiles() throws Exception {
+        Path root = tempDir.resolve("artifacts");
+        FileSystemArtifactStore store = new FileSystemArtifactStore(root);
+        UUID docId = UUID.randomUUID();
+        byte[] original = "%PDF-1.7\ndelete-me".getBytes(StandardCharsets.UTF_8);
+
+        store.putPdf(docId, original);
+        assertArrayEquals(original, store.getPdf(docId).orElseThrow());
+
+        store.deletePdf(docId);
+
+        assertEquals(Optional.empty(), store.getPdf(docId));
+        assertTrue(Files.notExists(root.resolve(docId + ".pdf")));
+        assertTrue(Files.notExists(root.resolve(docId + ".meta.properties")));
+    }
+
+    @Test
     void getPdfReturnsEmptyWhenArtifactIsMissing() {
         FileSystemArtifactStore store = new FileSystemArtifactStore(tempDir.resolve("artifacts"));
 

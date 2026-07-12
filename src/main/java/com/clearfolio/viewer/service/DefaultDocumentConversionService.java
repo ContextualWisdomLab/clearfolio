@@ -1,13 +1,12 @@
 package com.clearfolio.viewer.service;
 
-import java.util.Locale;
-import java.util.Optional;
-import java.util.UUID;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -16,11 +15,11 @@ import org.springframework.web.multipart.MultipartFile;
 import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
 import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
 import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
-import com.clearfolio.viewer.config.ConversionProperties;
 
 /**
  * Default implementation that validates uploads, deduplicates by content hash,
@@ -34,6 +33,8 @@ import com.clearfolio.viewer.config.ConversionProperties;
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(
+            DefaultDocumentConversionService.class);
     private static final String PDF_CONTENT_TYPE = "application/pdf";
     private static final String PDF_EXTENSION_SUFFIX = ".pdf";
     private static final byte[] PDF_MAGIC_HEADER = {'%', 'P', 'D', 'F', '-'};
@@ -53,7 +54,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * @param stateStore conversion job lifecycle state store
      * @param validationService document validation service
      * @param conversionWorker conversion worker
-     * @param artifactStore artifact store used for PDF passthrough seeding
+     * @param artifactStore generated artifact store used for PDF passthrough seeding
      * @param conversionProperties conversion configuration values
      */
     @Autowired
@@ -105,9 +106,25 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             ConversionProperties conversionProperties) {
         this(
                 repository,
+                validationService,
+                conversionWorker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
+                conversionProperties
+        );
+    }
+
+    public DefaultDocumentConversionService(
+            ConversionJobRepository repository,
+            DocumentValidationService validationService,
+            ConversionWorker conversionWorker,
+            ArtifactStore artifactStore,
+            ConversionProperties conversionProperties) {
+        this(
+                repository,
                 stateStoreFrom(repository),
                 validationService,
                 conversionWorker,
+                artifactStore,
                 conversionProperties
         );
     }
@@ -178,6 +195,37 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * {@inheritDoc}
      */
     @Override
+    public boolean deleteJob(UUID jobId, TenantContext tenantContext) {
+        if (tenantContext == null) {
+            return false;
+        }
+
+        Optional<ConversionJob> job = repository.findByTenantAndId(tenantContext.tenantId(), jobId);
+        if (job.isEmpty()) {
+            return false;
+        }
+
+        deleteJob(job.get().getJobId());
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteJob(UUID jobId) {
+        try {
+            artifactStore.deletePdf(jobId);
+        } catch (Exception ex) {
+            log.warn("Failed to delete artifact for job {}", jobId, ex);
+        }
+        repository.deleteById(jobId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId) {
         Optional<ConversionJob> existing = repository.findById(jobId);
         if (existing.isEmpty()) {
@@ -191,6 +239,14 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
 
         conversionWorker.enqueue(job.getJobId());
         return RetryDeadLetterResult.ACCEPTED;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Iterable<ConversionJob> getAllJobs() {
+        return repository.findAll();
     }
 
     private void seedPdfPassthroughArtifact(ConversionJob job, MultipartFile file) {
@@ -253,12 +309,9 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString();
+            // Optimization: java.util.HexFormat.of().formatHex() is faster
+            // and allocates less memory than String.format.
+            return java.util.HexFormat.of().formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

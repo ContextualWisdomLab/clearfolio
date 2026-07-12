@@ -34,4 +34,12 @@ public class InMemoryArtifactStore implements ArtifactStore {
         }
         return Optional.of(bytes.clone());
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deletePdf(UUID docId) {
+        pdfByDocId.remove(docId);
+    }
 }

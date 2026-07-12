@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -358,6 +360,65 @@ class InMemoryConversionJobRepositoryTest {
         assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
         assertFalse(job.isDeadLettered());
         assertEquals("done", job.getStatusMessage());
+    }
+
+    @Test
+    void findAllReturnsAllStoredJobs() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+
+        Iterable<ConversionJob> initial = repository.findAll();
+        assertFalse(initial.iterator().hasNext(), "findAll should be empty initially");
+
+        ConversionJob job1 = newJob("hash-1");
+        ConversionJob job2 = newJob("hash-2");
+
+        repository.save(job1);
+        repository.save(job2);
+
+        Iterable<ConversionJob> all = repository.findAll();
+        int count = 0;
+        boolean found1 = false;
+        boolean found2 = false;
+
+        for (ConversionJob job : all) {
+            count++;
+            if (job.getJobId().equals(job1.getJobId())) {
+                found1 = true;
+            }
+            if (job.getJobId().equals(job2.getJobId())) {
+                found2 = true;
+            }
+        }
+
+        assertEquals(2, count);
+        assertTrue(found1);
+        assertTrue(found2);
+    }
+
+    @Test
+    void findAllReturnsImmutableSnapshot() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob job = newJob("hash-snapshot");
+        ConversionJob laterJob = newJob("hash-later");
+        repository.save(job);
+
+        Iterable<ConversionJob> snapshot = repository.findAll();
+        repository.save(laterJob);
+
+        int count = 0;
+        boolean foundOriginal = false;
+        boolean foundLater = false;
+        for (ConversionJob current : snapshot) {
+            count++;
+            foundOriginal = foundOriginal || current.getJobId().equals(job.getJobId());
+            foundLater = foundLater || current.getJobId().equals(laterJob.getJobId());
+        }
+
+        assertEquals(1, count);
+        assertTrue(foundOriginal);
+        assertFalse(foundLater);
+        assertThrows(UnsupportedOperationException.class, () -> ((Collection<?>) snapshot).clear());
+        assertTrue(repository.findById(job.getJobId()).isPresent());
     }
 
     private ConversionJob newJob(String contentHash) {

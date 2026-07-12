@@ -7,7 +7,7 @@
 [INFO]
 [INFO] --- cyclonedx:2.9.1:makeAggregateBom (default-cli) @ clearfolio-viewer ---
 [INFO] CycloneDX: Resolving Dependencies
-[INFO] CycloneDX: Creating BOM version 1.6 with 142 component(s)
+[INFO] CycloneDX: Creating BOM version 1.6 with 61 component(s)
 [INFO] CycloneDX: Writing and validating BOM (XML): /Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2/target/bom.xml
 [INFO] CycloneDX: Writing and validating BOM (JSON): /Users/seonghobae/Documents/Codex/2026-07-02/https-github-com-contextualwisdomlab-clearfolio-figma-2/target/bom.json
 [WARNING] Unknown keyword meta:enum - you should define your own Meta Schema. If the keyword is irrelevant for validation, just use a NonValidationKeyword or if it should generate annotations AnnotationKeyword
@@ -15,6 +15,6 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  2.897 s
-[INFO] Finished at: 2026-07-02T21:04:43+09:00
+[INFO] Total time:  10.469 s
+[INFO] Finished at: 2026-07-03T07:54:22+09:00
 [INFO] ------------------------------------------------------------------------

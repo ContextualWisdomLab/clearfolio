@@ -29,6 +29,15 @@ class ConversionPropertiesTest {
     }
 
     @Test
+    void processingLeaseTimeoutClampsToAtLeastOneMillisecond() {
+        ConversionProperties properties = new ConversionProperties();
+
+        properties.setProcessingLeaseTimeoutMs(0L);
+
+        assertEquals(1L, properties.getProcessingLeaseTimeoutMs());
+    }
+
+    @Test
     void blockedExtensionsAreNormalizedAndSanitized() {
         ConversionProperties properties = new ConversionProperties();
 

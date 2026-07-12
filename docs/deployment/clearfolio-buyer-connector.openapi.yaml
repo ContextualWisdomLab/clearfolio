@@ -333,6 +333,11 @@ components:
       name: X-Clearfolio-Permissions
       in: header
       required: true
+      description: >
+        Comma-separated permissions. The signature is verified against the
+        canonical form (split on comma, each entry NUL-stripped and trimmed,
+        empties dropped, de-duplicated preserving first-seen order, re-joined).
+        The gateway must sign this canonical form, not the raw string.
       schema:
         type: string
       example: job:create,job:read,viewer:read,artifact-link:create,analytics:read

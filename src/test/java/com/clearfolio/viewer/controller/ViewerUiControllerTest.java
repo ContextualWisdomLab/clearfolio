@@ -196,7 +196,8 @@ class ViewerUiControllerTest {
                 .expectBody(String.class)
                 .value(body -> {
                     assertTrue(body.contains("clearfolio-doc-id"));
-                    assertTrue(body.contains("not-a-uuid"));
+                    assertTrue(body.contains("clearfolio-doc-id\" content=\"invalid\""));
+                    assertTrue(!body.contains("not-a-uuid"));
                     assertTrue(body.contains("clearfolio-initial-state\" content=\"NOT_FOUND"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
                 });
@@ -211,7 +212,8 @@ class ViewerUiControllerTest {
                 .expectBody(String.class)
                 .value(body -> {
                     assertTrue(!body.contains("<script>alert(1)</script>"));
-                    assertTrue(body.contains("&lt;script&gt;"));
+                    assertTrue(!body.contains("&lt;script&gt;"));
+                    assertTrue(body.contains("clearfolio-doc-id\" content=\"invalid\""));
                 });
     }
 

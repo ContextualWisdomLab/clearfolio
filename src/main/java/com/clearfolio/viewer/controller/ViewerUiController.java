@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.HtmlUtils;
 
 /**
  * HTML viewer UI entrypoint.
@@ -17,6 +18,7 @@ public class ViewerUiController {
 
     // Keep this in sync with `pom.xml` pdfjs-dist version.
     static final String PDF_JS_VIEWER_PATH = "/webjars/pdfjs-dist/4.10.38/web/viewer.html";
+    private static final String INVALID_DOC_ID_SENTINEL = "invalid";
 
     /**
      * Returns the buyer-demo document intake shell.
@@ -49,17 +51,12 @@ public class ViewerUiController {
             // /viewer/{docId}, land on a readable page.
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .contentType(MediaType.TEXT_HTML)
-                    .body(viewerShellHtml(docId, "NOT_FOUND"));
+                    .body(viewerShellHtml(INVALID_DOC_ID_SENTINEL, "NOT_FOUND"));
         }
     }
 
     private static String escapeHtmlAttribute(String value) {
-        return value
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
+        return HtmlUtils.htmlEscape(value);
     }
 
     private static String viewerShellHtml(String docId, String initialState) {

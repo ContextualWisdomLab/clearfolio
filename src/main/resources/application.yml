@@ -18,6 +18,13 @@ conversion:
   max-upload-size-bytes: 5242880
   processing-lease-timeout-ms: 60000
 
+clearfolio:
+  artifact-store:
+    # filesystem (default): persist artifacts under root-dir so they survive
+    # restarts. in-memory: volatile store for tests and ephemeral demos.
+    mode: filesystem
+    root-dir: data/artifacts
+
 viewer:
   security:
     # Default is safe (same-origin only). Set CLEARFOLIO_FRAME_ANCESTORS to an

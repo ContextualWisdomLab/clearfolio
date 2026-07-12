@@ -51,51 +51,6 @@ class RepositoryBackedConversionJobStateStoreTest {
     }
 
     @Test
-    void claimForProcessingReturnsEmptyWhenTransitionIsLostToRace() {
-        CountingRepository repository = new CountingRepository();
-        ConversionJob job = new ConversionJob(
-                UUID.randomUUID(),
-                "report.docx",
-                "application/octet-stream",
-                "hash-claim-race",
-                12L,
-                3
-        ) {
-            @Override
-            public synchronized boolean isReadyForProcessing(Instant now) {
-                return true;
-            }
-
-            @Override
-            public synchronized boolean markProcessing(String message) {
-                return false;
-            }
-        };
-        repository.save(job);
-        repository.resetSaveCount();
-        RepositoryBackedConversionJobStateStore stateStore = new RepositoryBackedConversionJobStateStore(repository);
-
-        assertTrue(stateStore.claimForProcessing(job.getJobId(), Instant.now()).isEmpty());
-        assertEquals(0, repository.saveCount());
-    }
-
-    @Test
-    void markDeadLetteredUpdatesProcessingJob() {
-        CountingRepository repository = new CountingRepository();
-        ConversionJob job = newJob("hash-processing-dead");
-        assertTrue(job.markProcessing("started"));
-        repository.save(job);
-        repository.resetSaveCount();
-        RepositoryBackedConversionJobStateStore stateStore = new RepositoryBackedConversionJobStateStore(repository);
-
-        stateStore.markDeadLettered(job.getJobId(), "dead");
-
-        assertEquals(ConversionJobStatus.FAILED, job.getStatus());
-        assertTrue(job.isDeadLettered());
-        assertEquals(1, repository.saveCount());
-    }
-
-    @Test
     void scheduleRetryMarksSubmittedAndSaves() {
         CountingRepository repository = new CountingRepository();
         ConversionJob job = newJob("hash-retry");

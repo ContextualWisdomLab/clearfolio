@@ -24,21 +24,16 @@ Current state: viewer/state API is implemented in this repository; downstream S2
   - `GET /artifacts/{docId}.pdf`: serves PDF bytes for SUCCEEDED jobs with basic HTTP Range support.
 - `DefaultDocumentConversionService` (`src/main/java/com/clearfolio/viewer/service/DefaultDocumentConversionService.java`)
   - Validation, content hash generation, dedupe lookup, repository persistence, worker enqueue.
-  - PDF passthrough: uploads that declare PDF (extension/content type) and carry the `%PDF-` magic header are seeded into the artifact store as-is, so the original bytes are served instead of a generated placeholder.
 - `DefaultDocumentValidationService` (`src/main/java/com/clearfolio/viewer/service/DefaultDocumentValidationService.java`)
   - Enforces extension blocklist and size limits, including auditable policy-override exception lane.
 - `DefaultConversionWorker` (`src/main/java/com/clearfolio/viewer/service/DefaultConversionWorker.java`)
   - Runs conversion on a bounded executor with retry scheduling and dead-letter fallback.
 - `ArtifactStore` (`src/main/java/com/clearfolio/viewer/artifact/ArtifactStore.java`)
   - Stores converted PDF bytes by docId.
-- `FileSystemArtifactStore` (`src/main/java/com/clearfolio/viewer/artifact/FileSystemArtifactStore.java`)
-  - Default disk-backed artifact store; persists bytes plus minimal metadata under `clearfolio.artifact-store.root-dir` (default `data/artifacts`) so artifacts survive restarts, with an in-memory cache on the read path.
 - `InMemoryArtifactStore` (`src/main/java/com/clearfolio/viewer/artifact/InMemoryArtifactStore.java`)
-  - In-memory artifact store implementation used by tests and `clearfolio.artifact-store.mode=in-memory`.
-- `ArtifactStoreConfig` (`src/main/java/com/clearfolio/viewer/config/ArtifactStoreConfig.java`)
-  - Selects the artifact store implementation from `ArtifactStoreProperties`.
+  - In-memory artifact store implementation.
 - `PdfBoxArtifactGenerator` (`src/main/java/com/clearfolio/viewer/artifact/PdfBoxArtifactGenerator.java`)
-  - Generates a placeholder one-page PDF via PDFBox for non-PDF sources; real docx/hwp conversion remains future work.
+  - Generates a simple one-page PDF via PDFBox for the default conversion path.
 - `InMemoryConversionJobRepository` (`src/main/java/com/clearfolio/viewer/repository/InMemoryConversionJobRepository.java`)
   - In-memory job store and content-hash dedupe index.
 - `ConversionJob` (`src/main/java/com/clearfolio/viewer/model/ConversionJob.java`)

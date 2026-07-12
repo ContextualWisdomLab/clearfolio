@@ -15,11 +15,11 @@
   ],
   "reviewRequiredComponents": [
     {
-      "purl": "pkg:maven/ch.qos.logback/logback-classic@1.5.32?type=jar",
+      "purl": "pkg:maven/ch.qos.logback/logback-classic@1.5.18?type=jar",
       "reason": "Dual EPL/LGPL metadata; legal must confirm selected license route."
     },
     {
-      "purl": "pkg:maven/ch.qos.logback/logback-core@1.5.32?type=jar",
+      "purl": "pkg:maven/ch.qos.logback/logback-core@1.5.18?type=jar",
       "reason": "Dual EPL/LGPL metadata; legal must confirm selected license route."
     },
     {

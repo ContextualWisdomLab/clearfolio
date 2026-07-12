@@ -130,15 +130,11 @@ public final class FileSystemArtifactStore implements ArtifactStore {
         return metadata.getBytes(StandardCharsets.UTF_8);
     }
 
-    private static String sha256Hex(byte[] bytes) {
+    private static String sha256Hex(final byte[] bytes) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] raw = digest.digest(bytes);
-            StringBuilder hex = new StringBuilder(raw.length * 2);
-            for (byte b : raw) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
+            return java.util.HexFormat.of().formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

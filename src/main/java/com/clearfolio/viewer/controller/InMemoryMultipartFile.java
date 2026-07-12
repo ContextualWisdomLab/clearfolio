@@ -72,7 +72,7 @@ public final class InMemoryMultipartFile implements MultipartFile {
 
     @Override
     public InputStream getInputStream() {
-        return new ByteArrayInputStream(Arrays.copyOf(content, content.length));
+        return new ByteArrayInputStream(content);
     }
 
     @Override

@@ -573,6 +573,9 @@ function init() {
     void loadDemoData();
   });
   el.clearHistoryBtn.addEventListener("click", () => {
+    if (!window.confirm("Are you sure you want to clear all session history?")) {
+      return;
+    }
     saveHistory([]);
     renderHistory([]);
     activeJobDetail = null;

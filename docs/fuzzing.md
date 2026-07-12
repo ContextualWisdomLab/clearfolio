@@ -4,6 +4,19 @@ Coverage-guided fuzzing of the viewer's untrusted-input parsers, using
 [Jazzer](https://github.com/CodeIntelligenceTesting/jazzer) (Apache-2.0)
 integrated with JUnit 5 (`jazzer-junit`).
 
+## Research basis
+
+The seed-corpus and bounded coverage-guided strategy is grounded in Marcel
+Böhme, Van-Thuan Pham, and Abhik Roychoudhury, “Coverage-based Greybox
+Fuzzing as Markov Chain,” *Proceedings of the 2016 ACM SIGSAC Conference on
+Computer and Communications Security (CCS '16)*, pp. 1032–1043,
+doi:10.1145/2976749.2978428. The preserved source PDF is
+`docs/papers/boehme-2016-coverage-based-greybox-fuzzing-as-markov-chain.pdf`
+(SHA-256 `fb3a7a74280659f86f83a934cae7bd35660e4c699dbd1dbd6825834bfe132151`).
+Its core result motivates retaining low-frequency-path crash seeds as durable
+regressions while giving scheduled fuzzing a longer exploration budget than
+per-PR fuzzing.
+
 ## Targets
 
 The surfaces were selected with CodeGraph as the highest-value untrusted-input

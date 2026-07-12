@@ -98,6 +98,7 @@ class ConversionControllerMultipartLimitTest {
                     repository,
                     validationService,
                     conversionWorker,
+                    new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                     conversionProperties
             );
         }

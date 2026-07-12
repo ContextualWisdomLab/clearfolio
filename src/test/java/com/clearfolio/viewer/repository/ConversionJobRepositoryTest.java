@@ -37,7 +37,7 @@ class ConversionJobRepositoryTest {
 
             @Override
             public Optional<ConversionJob> findById(UUID jobId) {
-                return Optional.empty();
+                return job.getJobId().equals(jobId) ? Optional.of(job) : Optional.empty();
             }
 
             @Override
@@ -54,10 +54,16 @@ class ConversionJobRepositoryTest {
             public List<ConversionJob> findAll() {
                 return List.of(job);
             }
+
+            @Override
+            public void deleteById(UUID jobId) {
+            }
         };
 
         assertSame(job, repository.findByTenantAndContentHash("tenant-a", "hash").orElseThrow());
         assertTrue(repository.findByTenantAndContentHash("tenant-b", "hash").isEmpty());
+        assertSame(job, repository.findByTenantAndId("tenant-a", job.getJobId()).orElseThrow());
+        assertTrue(repository.findByTenantAndId("tenant-b", job.getJobId()).isEmpty());
     }
 
     @Test
@@ -128,6 +134,10 @@ class ConversionJobRepositoryTest {
             @Override
             public List<ConversionJob> findAll() {
                 return List.of(jobs);
+            }
+
+            @Override
+            public void deleteById(UUID jobId) {
             }
         };
     }

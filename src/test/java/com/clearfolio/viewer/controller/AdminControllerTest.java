@@ -12,6 +12,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
+import com.clearfolio.viewer.service.RetryDeadLetterResult;
 
 class AdminControllerTest {
 
@@ -76,5 +77,48 @@ class AdminControllerTest {
                 .expectBody()
                 .jsonPath("$.jobs.length()").isEqualTo(1)
                 .jsonPath("$.jobs[0].fileName").isEqualTo("b.pdf");
+    }
+
+    @Test
+    void deleteJobReturnsNoContent() {
+        UUID jobId = UUID.randomUUID();
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNoContent();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsAcceptedWhenAccepted() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isAccepted();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenNotFound() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsConflictWhenNotEligible() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
     }
 }

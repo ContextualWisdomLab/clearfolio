@@ -1,15 +1,23 @@
 package com.clearfolio.viewer.controller;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.api.AdminJobListResponse;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
-
-import java.util.ArrayList;
-import java.util.List;
+import com.clearfolio.viewer.service.RetryDeadLetterResult;
 
 /**
  * Controller for admin-specific endpoints.
@@ -49,5 +57,35 @@ public class AdminController {
             }
         }
         return AdminJobListResponse.from(filtered);
+    }
+
+    /**
+     * Deletes a conversion job.
+     *
+     * @param jobId conversion job identifier
+     * @return no content on success
+     */
+    @DeleteMapping("/api/v1/admin/convert/jobs/{jobId}")
+    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId) {
+        conversionService.deleteJob(jobId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Retries a dead-lettered conversion job.
+     *
+     * @param jobId conversion job identifier
+     * @return accepted response on success
+     */
+    @PostMapping("/api/v1/admin/convert/jobs/{jobId}/retry")
+    public ResponseEntity<Void> retryDeadLettered(@PathVariable UUID jobId) {
+        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
+        if (result == RetryDeadLetterResult.NOT_FOUND) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
+        if (result == RetryDeadLetterResult.NOT_ELIGIBLE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "job is not eligible for retry");
+        }
+        return ResponseEntity.accepted().build();
     }
 }

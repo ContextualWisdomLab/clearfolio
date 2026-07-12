@@ -6,9 +6,8 @@ import java.util.UUID;
 /**
  * Stores and retrieves preview artifacts produced by conversion jobs.
  *
- * <p>Implementations keep the hot request path CPU-only where possible; the
- * disk-backed implementation caches bytes in memory after the first access so
- * filesystem reads are limited to cache misses (for example, after a restart).
+ * <p>This MVP abstraction intentionally keeps operations in-memory and CPU-only
+ * so request paths remain non-blocking (no filesystem/network I/O).
  */
 public interface ArtifactStore {
 
@@ -27,11 +26,4 @@ public interface ArtifactStore {
      * @return PDF bytes when present
      */
     Optional<byte[]> getPdf(UUID docId);
-
-    /**
-     * Deletes stored PDF bytes for a document.
-     *
-     * @param docId document identifier
-     */
-    void deletePdf(UUID docId);
 }

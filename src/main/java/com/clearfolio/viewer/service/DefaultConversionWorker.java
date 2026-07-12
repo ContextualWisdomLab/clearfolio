@@ -26,11 +26,6 @@ import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
 
 /**
  * Default background worker that executes conversion jobs with retry backoff.
- *
- * <p>PDF uploads are served passthrough: the original bytes seeded into the
- * artifact store at submit time become the artifact unchanged. Non-PDF sources
- * still produce a placeholder preview PDF because real document conversion
- * (docx, hwp, and similar formats) remains future work.
  */
 @Component
 public class DefaultConversionWorker implements ConversionWorker {
@@ -277,9 +272,8 @@ public class DefaultConversionWorker implements ConversionWorker {
         ConversionJob job = repository.findById(jobId)
                 .orElseThrow(() -> new IllegalStateException("job not found"));
 
-        if (artifactStore.getPdf(jobId).isEmpty()) {
-            artifactStore.putPdf(jobId, pdfArtifactGenerator.generatePdf(job));
-        }
+        byte[] pdfBytes = pdfArtifactGenerator.generatePdf(job);
+        artifactStore.putPdf(jobId, pdfBytes);
         return "/artifacts/" + jobId + ".pdf";
     }
 

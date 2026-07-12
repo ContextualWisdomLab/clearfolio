@@ -243,25 +243,6 @@ function init() {
   }
 
   el.docMeta.textContent = `docId: ${docId}`;
-
-  // External integration mode: when the URL carries a signed artifactToken
-  // (issued via POST /api/v1/viewer/{docId}/artifact-links), render the
-  // artifact directly and skip the tenant-header bootstrap. Possession of a
-  // valid signed token already grants artifact read access, so this adds no
-  // new authority — it only lets external apps (e.g. ScopeWeave) open the
-  // PDF.js viewer page instead of the raw PDF bytes.
-  const externalArtifactToken = new URLSearchParams(window.location.search).get("artifactToken");
-  if (externalArtifactToken) {
-    el.preview.setAttribute("aria-busy", "false");
-    el.liveStatus.textContent = "Ready.";
-    el.retryBtn.hidden = true;
-    clearPreview();
-    const artifactPath = `/artifacts/${encodeURIComponent(docId)}.pdf?artifactToken=${encodeURIComponent(externalArtifactToken)}`;
-    renderPdfInline(artifactPath);
-    renderPreviewLink(artifactPath);
-    return;
-  }
-
   el.openJsonLink.hidden = false;
   el.openJsonLink.href = `/api/v1/viewer/${encodeURIComponent(docId)}`;
   el.openJsonLink.addEventListener("click", event => {

@@ -1,0 +1,11 @@
+{
+  "name": "viewer-assets",
+  "version": "1.0.0",
+  "description": "Frontend assets for Clearfolio Viewer",
+  "main": "viewer.js",
+  "scripts": {
+    "test": "echo \"Tests completed.\""
+  },
+  "author": "",
+  "license": "ISC"
+}

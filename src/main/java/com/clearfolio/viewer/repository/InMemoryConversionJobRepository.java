@@ -124,17 +124,6 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void deleteById(UUID jobId) {
-        ConversionJob removed = jobs.remove(jobId);
-        if (removed != null && removed.getContentHash() != null && !removed.getContentHash().isBlank()) {
-            jobsByTenantAndContentHash.remove(contentKey(removed.getTenantId(), removed.getContentHash()), jobId);
-        }
-    }
-
-    /**
      * Returns lifecycle events for a conversion job.
      *
      * @param jobId conversion job identifier

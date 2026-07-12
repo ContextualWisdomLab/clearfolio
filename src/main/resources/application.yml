@@ -9,7 +9,6 @@ conversion:
     - hwp
     - hwpx
   worker-threads: 4
-  policy-override-secret: "${CONVERSION_POLICY_OVERRIDE_SECRET:}"
   queue-capacity: 200
   max-retry-attempts: 3
   retry-initial-delay-ms: 500
@@ -18,16 +17,8 @@ conversion:
   max-upload-size-bytes: 5242880
   processing-lease-timeout-ms: 60000
 
-clearfolio:
-  artifact-store:
-    # filesystem (default): persist artifacts under root-dir so they survive
-    # restarts. in-memory: volatile store for tests and ephemeral demos.
-    mode: filesystem
-    root-dir: data/artifacts
-
 viewer:
   security:
-    # Default is safe (same-origin only). Set CLEARFOLIO_FRAME_ANCESTORS to an
-    # explicit allowlist (e.g. "self https://naruon.example") to embed the viewer
-    # cross-origin, such as inside naruon's document surface.
-    frame-ancestors: ${CLEARFOLIO_FRAME_ANCESTORS:self}
+    # Default is safe and non-breaking for same-origin usage.
+    # Set an explicit allowlist if the viewer must be embedded cross-origin.
+    frame-ancestors: self

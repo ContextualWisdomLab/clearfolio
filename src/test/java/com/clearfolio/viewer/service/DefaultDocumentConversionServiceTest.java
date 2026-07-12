@@ -3,6 +3,7 @@ package com.clearfolio.viewer.service;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -800,6 +801,65 @@ class DefaultDocumentConversionServiceTest {
         assertFalse(DefaultDocumentConversionService.hasPdfMagicHeader(
                 "%PDX-1.7".getBytes(StandardCharsets.UTF_8)
         ));
+    }
+
+    @Test
+    void deleteJobWithNullTenantContextReturnsFalse() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                mock(DocumentValidationService.class),
+                mock(ConversionWorker.class),
+                new ConversionProperties()
+        );
+
+        boolean deleted = service.deleteJob(UUID.randomUUID(), null);
+
+        assertFalse(deleted);
+    }
+
+    @Test
+    void testLegacyConstructor() {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore(repository),
+                mock(DocumentValidationService.class),
+                worker,
+                new ConversionProperties()
+        );
+        assertNotNull(service);
+    }
+
+    @Test
+    void submitThrowsWhenUploadSizeExceedsMaximum() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        ConversionProperties props = new ConversionProperties();
+        props.setMaxUploadSizeBytes(10L); // Set a small max size for testing
+
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                file -> {
+                },
+                worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
+                props
+        );
+
+        byte[] largeContent = new byte[15]; // Content larger than max size
+        MultipartFile file = new MockMultipartFile(
+                "file",
+                "large.txt",
+                "text/plain",
+                largeContent
+        );
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> service.submit(file));
+
+        assertEquals("File size exceeds maximum allowed upload size.", error.getMessage());
+        assertEquals(0, worker.enqueuedCount());
     }
 
     @Test

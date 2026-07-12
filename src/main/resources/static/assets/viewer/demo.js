@@ -290,7 +290,7 @@ async function retryActiveJob() {
   }
 
   const jobId = activeJobDetail.jobId;
-  const initialInnerHtml = el.retryJobBtn.innerHTML;
+  const initialChildren = Array.from(el.retryJobBtn.childNodes);
   el.retryJobBtn.disabled = true;
   el.retryJobBtn.textContent = "Retrying...";
   setStatus("Requesting operator retry...");
@@ -331,7 +331,7 @@ async function retryActiveJob() {
   } catch (err) {
     setError("Network error while requesting retry. Retry when the service is reachable.");
   } finally {
-    el.retryJobBtn.innerHTML = initialInnerHtml;
+    el.retryJobBtn.replaceChildren(...initialChildren);
     el.retryJobBtn.disabled = false;
   }
 }
@@ -405,7 +405,7 @@ async function refreshKpis() {
 }
 
 async function refreshKpiEvidence() {
-  const initialInnerHtml = el.refreshEvidenceBtn.innerHTML;
+  const initialChildren = Array.from(el.refreshEvidenceBtn.childNodes);
   el.refreshEvidenceBtn.disabled = true;
   el.refreshEvidenceBtn.textContent = "Refreshing...";
 
@@ -420,13 +420,13 @@ async function refreshKpiEvidence() {
   } catch (err) {
     el.kpiExportStatus.textContent = "Snapshot evidence is unavailable while the service is unreachable.";
   } finally {
-    el.refreshEvidenceBtn.innerHTML = initialInnerHtml;
+    el.refreshEvidenceBtn.replaceChildren(...initialChildren);
     el.refreshEvidenceBtn.disabled = false;
   }
 }
 
 async function loadDemoData() {
-  const initialInnerHtml = el.loadDemoDataBtn.innerHTML;
+  const initialChildren = Array.from(el.loadDemoDataBtn.childNodes);
   el.loadDemoDataBtn.disabled = true;
   el.loadDemoDataBtn.textContent = "Loading...";
   setStatus("Loading seeded buyer-demo story...");
@@ -451,7 +451,7 @@ async function loadDemoData() {
   } catch (err) {
     setError("Unable to load seeded demo story.");
   } finally {
-    el.loadDemoDataBtn.innerHTML = initialInnerHtml;
+    el.loadDemoDataBtn.replaceChildren(...initialChildren);
     el.loadDemoDataBtn.disabled = false;
   }
 }
@@ -498,7 +498,7 @@ async function submitDocument(event) {
     return;
   }
 
-  const initialInnerHtml = el.submitBtn.innerHTML;
+  const initialChildren = Array.from(el.submitBtn.childNodes);
   el.submitBtn.disabled = true;
   el.submitBtn.textContent = "Submitting...";
   setStatus("Submitting document...");
@@ -543,7 +543,7 @@ async function submitDocument(event) {
     addFailedHistory(file.name, "FAILED");
     setError("Network error while submitting. Retry when the service is reachable.");
   } finally {
-    el.submitBtn.innerHTML = initialInnerHtml;
+    el.submitBtn.replaceChildren(...initialChildren);
     el.submitBtn.disabled = false;
   }
 }

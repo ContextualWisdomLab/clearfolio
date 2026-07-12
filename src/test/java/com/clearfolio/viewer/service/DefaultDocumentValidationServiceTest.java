@@ -269,6 +269,27 @@ class DefaultDocumentValidationServiceTest {
     }
 
     @Test
+    void rejectsFilesystemRootFilenameWithDocumentedValidationError() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService =
+                new DefaultDocumentValidationService(conversionProperties);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile(
+                                "file",
+                                "/",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        )
+                )
+        );
+
+        assertEquals("File extension is required.", ex.getMessage());
+    }
+
+    @Test
     void rejectsBlankFilenameOrMissingName() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));

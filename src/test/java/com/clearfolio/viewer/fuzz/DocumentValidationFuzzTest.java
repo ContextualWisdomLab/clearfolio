@@ -21,8 +21,13 @@ import com.clearfolio.viewer.service.PolicyOverrideRequest;
  */
 final class DocumentValidationFuzzTest {
 
-    private final DefaultDocumentValidationService validator =
-            new DefaultDocumentValidationService(new ConversionProperties());
+    private final DefaultDocumentValidationService validator = createValidator();
+
+    private static DefaultDocumentValidationService createValidator() {
+        ConversionProperties properties = new ConversionProperties();
+        properties.setPolicyOverrideSecret("fuzz-test-secret");
+        return new DefaultDocumentValidationService(properties);
+    }
 
     @FuzzTest(maxDuration = "60s")
     void validateOrThrowOnlyRejectsWithIllegalArgument(FuzzedDataProvider data) {

@@ -80,22 +80,6 @@ The signature is Base64URL HMAC-SHA256 without padding. The default timestamp
 skew window is 300 seconds and can be set with
 `CLEARFOLIO_TENANT_CLAIMS_MAX_SKEW_SECONDS`.
 
-`canonicalPermissions` is **not** the raw `X-Clearfolio-Permissions` header
-value — the verifier re-derives it before checking the signature, so a buyer
-gateway must sign the same derived form or every request returns `401`. The
-derivation (see `TenantContext.permissionsOf` / `canonicalPermissions`) is:
-
-1. split the header on `,`;
-2. sanitize each entry — remove NUL, `strip()` surrounding whitespace, drop empties;
-3. de-duplicate **preserving first-seen order** (backed by a `LinkedHashSet`);
-4. re-join with `,`.
-
-`tenantId` and `subjectId` are sanitized the same way before signing. So a
-gateway must send **and sign** already-canonical values: e.g.
-`" viewer:read , job:read,viewer:read "` must be signed as
-`viewer:read,job:read`. Sign what the verifier will re-derive, not the raw
-string.
-
 Buyer-demo permission set:
 
 ```text

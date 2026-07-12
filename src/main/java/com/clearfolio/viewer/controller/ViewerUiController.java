@@ -2,13 +2,11 @@ package com.clearfolio.viewer.controller;
 
 import java.util.UUID;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.util.HtmlUtils;
 
 /**
  * HTML viewer UI entrypoint.
@@ -18,7 +16,6 @@ public class ViewerUiController {
 
     // Keep this in sync with `pom.xml` pdfjs-dist version.
     static final String PDF_JS_VIEWER_PATH = "/webjars/pdfjs-dist/4.10.38/web/viewer.html";
-    private static final String INVALID_DOC_ID_SENTINEL = "invalid";
 
     /**
      * Returns the buyer-demo document intake shell.
@@ -38,29 +35,15 @@ public class ViewerUiController {
      * @param docId document identifier
      * @return HTML payload or redirect
      */
-    @GetMapping(value = "/viewer/{docId}", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> viewer(@PathVariable String docId) {
-        try {
-            UUID parsed = UUID.fromString(docId);
-            return ResponseEntity.ok()
-                    .contentType(MediaType.TEXT_HTML)
-                    .body(viewerShellHtml(parsed.toString(), "LOADING"));
-        } catch (IllegalArgumentException ex) {
-            // Friendly invalid-document shell (instead of a raw framework 404)
-            // so integrator deep links, e.g. an admin console linking
-            // /viewer/{docId}, land on a readable page.
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .contentType(MediaType.TEXT_HTML)
-                    .body(viewerShellHtml(INVALID_DOC_ID_SENTINEL, "NOT_FOUND"));
-        }
+    @GetMapping(value = "/viewer/{docId:[0-9a-fA-F\u002d]{36}}", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> viewer(@PathVariable UUID docId) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .body(viewerShellHtml(docId, "LOADING"));
     }
 
-    private static String escapeHtmlAttribute(String value) {
-        return HtmlUtils.htmlEscape(value);
-    }
-
-    private static String viewerShellHtml(String docId, String initialState) {
-        String docIdString = escapeHtmlAttribute(docId);
+    private static String viewerShellHtml(UUID docId, String initialState) {
+        String docIdString = docId.toString();
         String template = """
                 <!doctype html>
                 <html lang="en">

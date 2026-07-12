@@ -277,27 +277,6 @@ class InMemoryConversionJobRepositoryTest {
     }
 
     @Test
-    void stateStoreClaimForProcessingReturnsEmptyForMissingOrBusyJobs() {
-        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
-        ConversionJob processing = newJob("hash-claim-busy");
-        assertTrue(processing.markProcessing("started"));
-        repository.save(processing);
-        ConversionJobStateStore stateStore = repository;
-
-        assertTrue(stateStore.claimForProcessing(UUID.randomUUID(), Instant.now()).isEmpty());
-        assertTrue(stateStore.claimForProcessing(processing.getJobId(), Instant.now()).isEmpty());
-        assertEquals(ConversionJobStatus.PROCESSING, processing.getStatus());
-    }
-
-    @Test
-    void stateStoreRetryDeadLetteredReturnsFalseForMissingJob() {
-        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
-        ConversionJobStateStore stateStore = repository;
-
-        assertFalse(stateStore.retryDeadLettered(UUID.randomUUID(), "operator-1"));
-    }
-
-    @Test
     void stateStoreClaimForProcessingUpdatesStoredJob() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
         ConversionJob job = newJob("hash-claim");

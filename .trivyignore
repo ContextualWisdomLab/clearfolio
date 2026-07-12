@@ -1,6 +1,0 @@
-src/test/resources/application.yml
-src/test/java/com/clearfolio/viewer/service/DefaultDocumentValidationServiceTest.java
-src/test/java/com/clearfolio/viewer/controller/ConversionControllerMultipartLimitTest.java
-src/test/java/com/clearfolio/viewer/controller/ConversionControllerTest.java
-src/test/java/com/clearfolio/viewer/artifact/ArtifactLinkServiceTest.java
-src/test/java/com/clearfolio/viewer/controller/ArtifactControllerTest.java

@@ -10,9 +10,6 @@ __pycache__/
 *.log
 /evidence/
 
-# Local artifact store data (clearfolio.artifact-store.root-dir default)
-/data/
-
 # Local agent/tool artifacts
 tmp/
 registered_agents.json

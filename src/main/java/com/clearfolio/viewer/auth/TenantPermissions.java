@@ -16,11 +16,6 @@ public final class TenantPermissions {
     public static final String JOB_READ = "job:read";
 
     /**
-     * Permission required to delete a conversion job.
-     */
-    public static final String JOB_DELETE = "job:delete";
-
-    /**
      * Permission required to retry a dead-lettered conversion job.
      */
     public static final String JOB_RETRY = "job:retry";

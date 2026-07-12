@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
@@ -171,6 +172,23 @@ public class ConversionController {
     }
 
     /**
+     * Deletes a conversion job and its associated generated artifacts.
+     *
+     * @param jobId conversion job identifier
+     * @param headers request headers carrying tenant claims
+     * @return no content on success
+     */
+    @DeleteMapping("/api/v1/convert/jobs/{jobId}")
+    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId, @RequestHeader HttpHeaders headers) {
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_DELETE);
+        if (!conversionService.deleteJob(jobId, tenantContext)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * Returns viewer bootstrap data once conversion output is ready.
      *
      * @param docId document identifier
@@ -240,8 +258,25 @@ public class ConversionController {
     }
 
     private static String sanitizeFilenameBase(String baseName) {
-        StringBuilder sanitized = new StringBuilder(baseName.length());
+        int firstBad = -1;
         for (int index = 0; index < baseName.length(); index++) {
+            char character = baseName.charAt(index);
+            if (!(Character.isLetterOrDigit(character)
+                    || character == '.'
+                    || character == '-'
+                    || character == '_')) {
+                firstBad = index;
+                break;
+            }
+        }
+
+        if (firstBad == -1) {
+            return baseName;
+        }
+
+        StringBuilder sanitized = new StringBuilder(baseName.length());
+        sanitized.append(baseName, 0, firstBad);
+        for (int index = firstBad; index < baseName.length(); index++) {
             char character = baseName.charAt(index);
             if (Character.isLetterOrDigit(character)
                     || character == '.'
@@ -255,19 +290,13 @@ public class ConversionController {
         return sanitized.toString();
     }
 
-    private String calculateSha256(byte[] data) {
+    private String calculateSha256(final byte[] data) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(data);
-            StringBuilder hexString = new StringBuilder(2 * hash.length);
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
+            // Optimization: java.util.HexFormat.of().formatHex() is faster
+            // and allocates less memory than String.format.
+            return java.util.HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 algorithm not available", e);
         }

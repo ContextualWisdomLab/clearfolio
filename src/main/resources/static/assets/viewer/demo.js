@@ -290,8 +290,11 @@ async function retryActiveJob() {
   }
 
   const jobId = activeJobDetail.jobId;
-  setStatus("Requesting operator retry...");
+  const initialChildren = Array.from(el.retryJobBtn.childNodes);
   el.retryJobBtn.disabled = true;
+  el.retryJobBtn.textContent = "Retrying...";
+  setStatus("Requesting operator retry...");
+
   try {
     const res = await fetch(`/api/v1/convert/jobs/${encodeURIComponent(jobId)}/retry`, {
       method: "POST",
@@ -328,6 +331,7 @@ async function retryActiveJob() {
   } catch (err) {
     setError("Network error while requesting retry. Retry when the service is reachable.");
   } finally {
+    el.retryJobBtn.replaceChildren(...initialChildren);
     el.retryJobBtn.disabled = false;
   }
 }
@@ -401,6 +405,10 @@ async function refreshKpis() {
 }
 
 async function refreshKpiEvidence() {
+  const initialChildren = Array.from(el.refreshEvidenceBtn.childNodes);
+  el.refreshEvidenceBtn.disabled = true;
+  el.refreshEvidenceBtn.textContent = "Refreshing...";
+
   try {
     const { res, data } = await fetchJson(KPI_EXPORTS_ENDPOINT);
     if (!res.ok) {
@@ -411,12 +419,18 @@ async function refreshKpiEvidence() {
     renderKpiEvidence(data);
   } catch (err) {
     el.kpiExportStatus.textContent = "Snapshot evidence is unavailable while the service is unreachable.";
+  } finally {
+    el.refreshEvidenceBtn.replaceChildren(...initialChildren);
+    el.refreshEvidenceBtn.disabled = false;
   }
 }
 
 async function loadDemoData() {
-  setStatus("Loading seeded buyer-demo story...");
+  const initialChildren = Array.from(el.loadDemoDataBtn.childNodes);
   el.loadDemoDataBtn.disabled = true;
+  el.loadDemoDataBtn.textContent = "Loading...";
+  setStatus("Loading seeded buyer-demo story...");
+
   try {
     const { res, data } = await fetchJson(DEMO_FIXTURE_URL);
     if (!res.ok || !data || !Array.isArray(data.history)) {
@@ -437,6 +451,7 @@ async function loadDemoData() {
   } catch (err) {
     setError("Unable to load seeded demo story.");
   } finally {
+    el.loadDemoDataBtn.replaceChildren(...initialChildren);
     el.loadDemoDataBtn.disabled = false;
   }
 }
@@ -483,7 +498,9 @@ async function submitDocument(event) {
     return;
   }
 
+  const initialChildren = Array.from(el.submitBtn.childNodes);
   el.submitBtn.disabled = true;
+  el.submitBtn.textContent = "Submitting...";
   setStatus("Submitting document...");
 
   try {
@@ -526,6 +543,7 @@ async function submitDocument(event) {
     addFailedHistory(file.name, "FAILED");
     setError("Network error while submitting. Retry when the service is reachable.");
   } finally {
+    el.submitBtn.replaceChildren(...initialChildren);
     el.submitBtn.disabled = false;
   }
 }

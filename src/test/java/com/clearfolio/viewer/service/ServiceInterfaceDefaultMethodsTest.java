@@ -1,6 +1,8 @@
 package com.clearfolio.viewer.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -31,6 +33,10 @@ class ServiceInterfaceDefaultMethodsTest {
             @Override
             public RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId) {
                 return RetryDeadLetterResult.NOT_FOUND;
+            }
+
+            @Override
+            public void deleteJob(UUID jobId) {
             }
 
             @Override
@@ -74,6 +80,10 @@ class ServiceInterfaceDefaultMethodsTest {
             }
 
             @Override
+            public void deleteJob(UUID jobId) {
+            }
+
+            @Override
             public Iterable<ConversionJob> getAllJobs() {
                 return java.util.Collections.emptyList();
             }
@@ -92,6 +102,60 @@ class ServiceInterfaceDefaultMethodsTest {
 
         assertEquals(expected, actual);
         assertEquals(overrideRequest, capturedOverride.get());
+    }
+
+    @Test
+    void documentConversionServiceTenantDeleteDefaultFiltersByTenantBeforeDeleting() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "tenant-a",
+                "user-1",
+                "report.docx",
+                "application/octet-stream",
+                "hash-default-delete",
+                1L,
+                3
+        );
+        AtomicReference<UUID> deletedJobId = new AtomicReference<>();
+        DocumentConversionService service = new DocumentConversionService() {
+            @Override
+            public UUID submit(MultipartFile file) {
+                return UUID.randomUUID();
+            }
+
+            @Override
+            public Optional<ConversionJob> getJob(UUID requestedJobId) {
+                return jobId.equals(requestedJobId) ? Optional.of(job) : Optional.empty();
+            }
+
+            @Override
+            public RetryDeadLetterResult retryDeadLettered(UUID requestedJobId, String operatorId) {
+                return RetryDeadLetterResult.NOT_FOUND;
+            }
+
+            @Override
+            public void deleteJob(UUID requestedJobId) {
+                deletedJobId.set(requestedJobId);
+            }
+
+            @Override
+            public Iterable<ConversionJob> getAllJobs() {
+                return java.util.Collections.emptyList();
+            }
+        };
+
+        assertFalse(service.deleteJob(
+                jobId,
+                new com.clearfolio.viewer.auth.TenantContext("tenant-b", "user-2", java.util.Set.of())
+        ));
+        assertEquals(null, deletedJobId.get());
+
+        assertTrue(service.deleteJob(
+                jobId,
+                new com.clearfolio.viewer.auth.TenantContext("tenant-a", "user-1", java.util.Set.of())
+        ));
+        assertEquals(jobId, deletedJobId.get());
     }
 
     @Test

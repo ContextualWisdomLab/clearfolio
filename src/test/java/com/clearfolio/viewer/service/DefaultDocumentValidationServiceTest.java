@@ -3,6 +3,7 @@ package com.clearfolio.viewer.service;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -24,6 +25,45 @@ import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.exception.UnsupportedDocumentFormatException;
 
 class DefaultDocumentValidationServiceTest {
+
+    @Test
+    void sanitizeFilenameReturnsNullWhenFilenameIsNull() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        java.lang.reflect.Method method = DefaultDocumentValidationService.class.getDeclaredMethod("sanitizeFilename", String.class);
+        method.setAccessible(true);
+        String sanitized = (String) method.invoke(validationService, new Object[] {null});
+        assertNull(sanitized);
+    }
+
+
+    @Test
+    void sanitizeFilenameReturnsCleanPathWhenNoSlashIsPresent() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        java.lang.reflect.Method method = DefaultDocumentValidationService.class.getDeclaredMethod("sanitizeFilename", String.class);
+        method.setAccessible(true);
+        String sanitized = (String) method.invoke(validationService, "simple-file.txt");
+        assertEquals("simple-file.txt", sanitized);
+    }
+
+
+    @Test
+    void stripsDirectoryTraversalFromFilename() {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+
+        UnsupportedDocumentFormatException ex = assertThrows(
+                UnsupportedDocumentFormatException.class,
+                () -> validationService.validateOrThrow(
+                        new MockMultipartFile("file", "../../../etc/passwd.hwp", "application/octet-stream", new byte[] {1})
+                )
+        );
+
+        assertEquals("hwp", ex.getExtension());
+    }
+
 
     private static final Object SECURITY_PROVIDERS_LOCK = new Object();
 

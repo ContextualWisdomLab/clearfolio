@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -48,6 +49,67 @@ import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
 
 class DefaultDocumentConversionServiceTest {
+
+    @Test
+    void sanitizeFilenameReturnsNullWhenFilenameIsNull() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                file -> {},
+                worker,
+                new ConversionProperties()
+        );
+
+        java.lang.reflect.Method method = DefaultDocumentConversionService.class.getDeclaredMethod("sanitizeFilename", String.class);
+        method.setAccessible(true);
+        String sanitized = (String) method.invoke(service, new Object[] {null});
+        assertNull(sanitized);
+    }
+
+
+    @Test
+    void sanitizeFilenameReturnsCleanPathWhenNoSlashIsPresent() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                file -> {},
+                worker,
+                new ConversionProperties()
+        );
+
+        java.lang.reflect.Method method = DefaultDocumentConversionService.class.getDeclaredMethod("sanitizeFilename", String.class);
+        method.setAccessible(true);
+        String sanitized = (String) method.invoke(service, "simple-file.txt");
+        assertEquals("simple-file.txt", sanitized);
+    }
+
+
+    @Test
+    void submitStripsDirectoryTraversalFromOriginalFilename() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                file -> {},
+                worker,
+                new ConversionProperties()
+        );
+
+        MultipartFile file = new MockMultipartFile(
+                "file",
+                "../../../etc/passwd.docx",
+                "application/octet-stream",
+                new ByteArrayInputStream("hello".getBytes(StandardCharsets.UTF_8))
+        );
+
+        UUID jobId = service.submit(file);
+
+        ConversionJob job = repository.findById(jobId).orElseThrow();
+        assertEquals("passwd.docx", job.getOriginalFileName());
+    }
+
 
     @Test
     void getAllJobsReturnsAllJobsFromRepository() {

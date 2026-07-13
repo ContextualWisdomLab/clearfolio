@@ -146,21 +146,31 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         }
     }
 
-    private String sanitizeForLog(String value) {
+    private String sanitizeForLog(final String value) {
         if (value == null) {
             return "";
         }
-        return value
-                .replace('\u0000', '_')
-                .replace('\t', '_')
-                .replace('\r', '_')
-                .replace('\n', '_')
-                .replace('\u2028', '_')
-                .replace('\u2029', '_')
-                .replace('\u202A', '_')
-                .replace('\u202B', '_')
-                .replace('\u202C', '_')
-                .replace('\u202D', '_')
-                .replace('\u202E', '_');
+        boolean needsSanitization = false;
+        final int length = value.length();
+        for (int i = 0; i < length; i++) {
+            final char c = value.charAt(i);
+            if (c == '\u0000' || c == '\t' || c == '\r' || c == '\n' || (c >= '\u2028' && c <= '\u202E')) {
+                needsSanitization = true;
+                break;
+            }
+        }
+        if (!needsSanitization) {
+            return value;
+        }
+        final StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            final char c = value.charAt(i);
+            if (c == '\u0000' || c == '\t' || c == '\r' || c == '\n' || (c >= '\u2028' && c <= '\u202E')) {
+                sb.append('_');
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 }

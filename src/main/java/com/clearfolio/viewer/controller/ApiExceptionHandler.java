@@ -237,21 +237,28 @@ public class ApiExceptionHandler {
         return resolved.name();
     }
 
-    private String sanitizeForLog(String value) {
+    private String sanitizeForLog(final String value) {
         if (value == null) {
             return "";
         }
-        return value
-                .replace('\u0000', '_')
-                .replace('\r', '_')
-                .replace('\n', '_')
-                .replace('\u2028', '_')
-                .replace('\u2029', '_')
-                .replace('\u202A', '_')
-                .replace('\u202B', '_')
-                .replace('\u202C', '_')
-                .replace('\u202D', '_')
-                .replace('\u202E', '_');
+        // ⚡ Bolt: Single-pass string sanitization
+        // Avoids multiple allocations from chained replace() calls.
+        StringBuilder sb = null;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            boolean needsReplace = c == '\u0000' || c == '\r' || c == '\n'
+                    || (c >= '\u2028' && c <= '\u202E');
+            if (needsReplace) {
+                if (sb == null) {
+                    sb = new StringBuilder(value.length());
+                    sb.append(value, 0, i);
+                }
+                sb.append('_');
+            } else if (sb != null) {
+                sb.append(c);
+            }
+        }
+        return sb == null ? value : sb.toString();
     }
 
     private Map<String, Object> extensionDetails(String extension) {

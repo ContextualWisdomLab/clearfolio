@@ -77,15 +77,28 @@ public final class PolicyOverrideRequest {
         return approverId;
     }
 
-    private static String normalizeHeader(String value) {
+    private static String normalizeHeader(final String value) {
         if (value == null) {
             return null;
         }
 
-        return value
-                .replace('\r', '_')
-                .replace('\n', '_')
-                .replace('\t', '_');
+        // ⚡ Bolt: Single-pass string sanitization
+        // Avoids multiple allocations from chained replace() calls.
+        StringBuilder sb = null;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            boolean needsReplace = c == '\r' || c == '\n' || c == '\t';
+            if (needsReplace) {
+                if (sb == null) {
+                    sb = new StringBuilder(value.length());
+                    sb.append(value, 0, i);
+                }
+                sb.append('_');
+            } else if (sb != null) {
+                sb.append(c);
+            }
+        }
+        return sb == null ? value : sb.toString();
     }
 
     @Override

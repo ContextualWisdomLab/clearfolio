@@ -213,23 +213,17 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         if (value == null) {
             return "";
         }
-        // ⚡ Bolt: Single-pass string sanitization
-        // Avoids multiple allocations from chained replace() calls.
-        StringBuilder sb = null;
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            boolean needsReplace = c == '\u0000' || c == '\t' || c == '\r'
-                    || c == '\n' || (c >= '\u2028' && c <= '\u202E');
-            if (needsReplace) {
-                if (sb == null) {
-                    sb = new StringBuilder(value.length());
-                    sb.append(value, 0, i);
-                }
-                sb.append('_');
-            } else if (sb != null) {
-                sb.append(c);
-            }
-        }
-        return sb == null ? value : sb.toString();
+        return value
+                .replace('\u0000', '_')
+                .replace('\t', '_')
+                .replace('\r', '_')
+                .replace('\n', '_')
+                .replace('\u2028', '_')
+                .replace('\u2029', '_')
+                .replace('\u202A', '_')
+                .replace('\u202B', '_')
+                .replace('\u202C', '_')
+                .replace('\u202D', '_')
+                .replace('\u202E', '_');
     }
 }

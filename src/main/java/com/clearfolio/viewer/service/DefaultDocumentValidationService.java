@@ -130,7 +130,11 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             throw new IllegalArgumentException("File name contains null byte.");
         }
 
-        String normalized = java.nio.file.Path.of(fileName.strip()).getFileName().toString();
+        java.nio.file.Path leafName = java.nio.file.Path.of(fileName.strip()).getFileName();
+        if (leafName == null) {
+            return "";
+        }
+        String normalized = leafName.toString();
         int lastDot = normalized.lastIndexOf('.');
         if (lastDot <= 0 || lastDot == normalized.length() - 1) {
             return "";

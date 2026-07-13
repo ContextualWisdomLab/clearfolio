@@ -160,6 +160,14 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- JUnit 5 engine for @FuzzTest regression replay and active fuzzing. -->
+    <dependency>
+      <groupId>com.code-intelligence</groupId>
+      <artifactId>jazzer-junit</artifactId>
+      <version>0.30.0</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>

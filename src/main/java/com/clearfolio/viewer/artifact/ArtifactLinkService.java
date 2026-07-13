@@ -6,6 +6,7 @@ import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
@@ -360,7 +361,9 @@ public class ArtifactLinkService {
                     Instant.ofEpochSecond(Long.parseLong(decode(parts[8]))),
                     Instant.ofEpochSecond(Long.parseLong(decode(parts[9])))
             );
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException | DateTimeException ex) {
+            // IllegalArgumentException: malformed Base64URL, UUID, or numeric fields.
+            // DateTimeException: epoch-second value outside the supported Instant range.
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
     }

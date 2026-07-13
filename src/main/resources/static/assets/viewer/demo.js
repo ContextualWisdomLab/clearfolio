@@ -144,8 +144,15 @@ function renderHistory(history = loadHistory()) {
     actionsCell.className = "table-actions";
 
     if (job.statusUrl) {
-      actionsCell.appendChild(createActionButton("Details", () => {
-        void openJobDetail(job);
+      actionsCell.appendChild(createActionButton("Details", (e) => {
+        const btn = e.currentTarget;
+        const initialChildren = Array.from(btn.childNodes);
+        btn.disabled = true;
+        btn.textContent = "Loading...";
+        openJobDetail(job).finally(() => {
+          btn.replaceChildren(...initialChildren);
+          btn.disabled = false;
+        });
       }));
       actionsCell.appendChild(createActionButton("Status JSON", () => {
         void openJsonDocument(job.statusUrl, "Clearfolio status JSON");

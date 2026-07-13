@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.service;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,6 +90,80 @@ class DefaultConversionWorkerTest {
         byte[] stored = artifactStore.getPdf(jobId).orElseThrow();
         assertTrue(stored.length > 4);
         assertEquals("%PDF", new String(stored, 0, 4));
+        assertEquals("/artifacts/" + jobId + ".pdf", job.getConvertedResourcePath());
+    }
+
+    @Test
+    void autowiredConstructorRunsDefaultConversionTask() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setMaxRetryAttempts(1);
+
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "report.docx",
+                "application/octet-stream",
+                "hash-autowired-ctor",
+                12L,
+                1
+        );
+        repository.save(job);
+
+        InMemoryArtifactStore artifactStore = new InMemoryArtifactStore();
+        DefaultConversionWorker worker = new DefaultConversionWorker(
+                repository,
+                repository,
+                Runnable::run,
+                artifactStore,
+                new PdfBoxArtifactGenerator(),
+                conversionProperties
+        );
+
+        worker.enqueue(jobId);
+
+        assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
+        byte[] stored = artifactStore.getPdf(jobId).orElseThrow();
+        assertEquals("%PDF", new String(stored, 0, 4));
+    }
+
+    @Test
+    void workerServesSeededPdfPassthroughBytesWithoutGeneratingPlaceholder() {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionProperties conversionProperties = new ConversionProperties();
+        conversionProperties.setMaxRetryAttempts(1);
+
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(
+                jobId,
+                "score.pdf",
+                "application/pdf",
+                "hash-pdf-passthrough",
+                24L,
+                1
+        );
+        repository.save(job);
+
+        InMemoryArtifactStore artifactStore = new InMemoryArtifactStore();
+        byte[] original = "%PDF-1.7\noriginal-upload".getBytes();
+        artifactStore.putPdf(jobId, original);
+
+        DefaultConversionWorker worker = new DefaultConversionWorker(
+                repository,
+                Runnable::run,
+                artifactStore,
+                seedTarget -> {
+                    throw new AssertionError("placeholder generator must not run for PDF passthrough");
+                },
+                conversionProperties
+        );
+
+        worker.enqueue(jobId);
+
+        assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
+        byte[] served = artifactStore.getPdf(jobId).orElseThrow();
+        assertEquals("%PDF-", new String(served, 0, 5));
+        assertArrayEquals(original, served);
         assertEquals("/artifacts/" + jobId + ".pdf", job.getConvertedResourcePath());
     }
 
@@ -528,6 +604,82 @@ class DefaultConversionWorkerTest {
     }
 
     @Test
+    void recoverPendingJobsRequeuesDueSubmittedAndStaleProcessingJobs() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionProperties conversionProperties = new ConversionProperties();
+        Instant recoveryNow = Instant.now().plusSeconds(120);
+
+        ConversionJob dueSubmitted = new ConversionJob(
+                UUID.randomUUID(),
+                "due.docx",
+                "application/octet-stream",
+                "hash-due-recovery",
+                10L,
+                3
+        );
+        ConversionJob futureRetry = new ConversionJob(
+                UUID.randomUUID(),
+                "future.docx",
+                "application/octet-stream",
+                "hash-future-recovery",
+                10L,
+                3
+        );
+        futureRetry.markRetryScheduled("retry later", recoveryNow.plusSeconds(30));
+        ConversionJob staleProcessing = new ConversionJob(
+                UUID.randomUUID(),
+                "stale.docx",
+                "application/octet-stream",
+                "hash-stale-recovery",
+                10L,
+                3
+        );
+        assertTrue(staleProcessing.markProcessing("worker exited"));
+        repository.save(dueSubmitted);
+        repository.save(futureRetry);
+        repository.save(staleProcessing);
+
+        AtomicInteger attempts = new AtomicInteger();
+        DefaultConversionWorker worker = new DefaultConversionWorker(
+                repository,
+                Runnable::run,
+                new InMemoryArtifactStore(),
+                new PdfBoxArtifactGenerator(),
+                conversionProperties,
+                id -> {
+                    attempts.incrementAndGet();
+                    return "/artifacts/" + id + ".pdf";
+                }
+        );
+
+        int recovered = worker.recoverPendingJobs(recoveryNow, Duration.ofSeconds(60));
+
+        assertEquals(2, recovered);
+        assertEquals(2, attempts.get());
+        assertEquals(ConversionJobStatus.SUCCEEDED, dueSubmitted.getStatus());
+        assertEquals(1, dueSubmitted.getAttemptCount());
+        assertEquals(ConversionJobStatus.SUCCEEDED, staleProcessing.getStatus());
+        assertEquals(2, staleProcessing.getAttemptCount());
+        assertEquals(ConversionJobStatus.SUBMITTED, futureRetry.getStatus());
+        assertEquals(recoveryNow.plusSeconds(30), futureRetry.getRetryAt());
+    }
+
+    @Test
+    void recoverPendingJobsOnStartupReturnsZeroWhenNoRecoverableJobs() {
+        DefaultConversionWorker worker = new DefaultConversionWorker(
+                new InMemoryConversionJobRepository(),
+                Runnable::run,
+                new InMemoryArtifactStore(),
+                new PdfBoxArtifactGenerator(),
+                new ConversionProperties(),
+                id -> "/artifacts/" + id + ".pdf"
+        );
+
+        worker.recoverPendingJobsAfterStartup();
+        assertEquals(0, worker.recoverPendingJobsOnStartup());
+    }
+
+    @Test
     void workerSkipsWhenJobIsAlreadyProcessingWithoutRetrySchedule() {
         ConversionJobRepository repository = new InMemoryConversionJobRepository();
         ConversionProperties conversionProperties = new ConversionProperties();
@@ -959,6 +1111,11 @@ class DefaultConversionWorkerTest {
         @Override
         public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
             return delegate.findOrStoreByContentHash(candidate);
+        }
+
+        @Override
+        public void deleteById(UUID jobId) {
+            delegate.deleteById(jobId);
         }
     }
 }

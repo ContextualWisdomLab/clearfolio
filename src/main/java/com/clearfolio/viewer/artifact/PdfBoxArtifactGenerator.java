@@ -87,8 +87,22 @@ public class PdfBoxArtifactGenerator implements PdfArtifactGenerator {
             return "";
         }
 
-        StringBuilder normalized = new StringBuilder(stripped.length());
+        int firstBad = -1;
         for (int i = 0; i < stripped.length(); i++) {
+            char ch = stripped.charAt(i);
+            if (ch < 0x20 || ch > 0x7E) {
+                firstBad = i;
+                break;
+            }
+        }
+
+        if (firstBad == -1) {
+            return stripped;
+        }
+
+        StringBuilder normalized = new StringBuilder(stripped.length());
+        normalized.append(stripped, 0, firstBad);
+        for (int i = firstBad; i < stripped.length(); i++) {
             char ch = stripped.charAt(i);
             if (ch >= 0x20 && ch <= 0x7E) {
                 normalized.append(ch);

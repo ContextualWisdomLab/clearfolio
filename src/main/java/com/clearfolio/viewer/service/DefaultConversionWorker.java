@@ -2,6 +2,8 @@ package com.clearfolio.viewer.service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -10,17 +12,25 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.artifact.PdfArtifactGenerator;
 import com.clearfolio.viewer.model.ConversionJob;
+import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
 import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
 
 /**
  * Default background worker that executes conversion jobs with retry backoff.
+ *
+ * <p>PDF uploads are served passthrough: the original bytes seeded into the
+ * artifact store at submit time become the artifact unchanged. Non-PDF sources
+ * still produce a placeholder preview PDF because real document conversion
+ * (docx, hwp, and similar formats) remains future work.
  */
 @Component
 public class DefaultConversionWorker implements ConversionWorker {
@@ -35,6 +45,7 @@ public class DefaultConversionWorker implements ConversionWorker {
     private final long retryInitialDelayMs;
     private final long retryMaxDelayMs;
     private final double retryBackoffMultiplier;
+    private final long processingLeaseTimeoutMs;
     private final Function<UUID, String> conversionTask;
 
     /**
@@ -103,6 +114,7 @@ public class DefaultConversionWorker implements ConversionWorker {
                 conversionProperties.getRetryMaxDelayMs()
         );
         this.retryBackoffMultiplier = conversionProperties.getRetryBackoffMultiplier();
+        this.processingLeaseTimeoutMs = conversionProperties.getProcessingLeaseTimeoutMs();
         this.conversionTask = conversionTask == null ? this::performDefaultConversion : conversionTask;
     }
 
@@ -134,6 +146,47 @@ public class DefaultConversionWorker implements ConversionWorker {
         } catch (RejectedExecutionException ex) {
             markDeadLetteredForQueueSaturation(jobId);
         }
+    }
+
+    /**
+     * Re-enqueues recoverable jobs after the application starts.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void recoverPendingJobsAfterStartup() {
+        recoverPendingJobsOnStartup();
+    }
+
+    /**
+     * Recovers jobs using the configured processing lease timeout.
+     *
+     * @return number of jobs selected for recovery
+     */
+    public int recoverPendingJobsOnStartup() {
+        return recoverPendingJobs(
+                Instant.now(),
+                Duration.ofMillis(processingLeaseTimeoutMs)
+        );
+    }
+
+    /**
+     * Re-enqueues due submitted jobs and stale processing jobs.
+     *
+     * @param now timestamp used to evaluate recovery eligibility
+     * @param processingLeaseTimeout processing lease timeout
+     * @return number of jobs selected for recovery
+     */
+    public int recoverPendingJobs(Instant now, Duration processingLeaseTimeout) {
+        Objects.requireNonNull(now, "now");
+        Objects.requireNonNull(processingLeaseTimeout, "processingLeaseTimeout");
+        Instant staleProcessingBefore = now.minus(processingLeaseTimeout);
+        List<ConversionJob> recoverableJobs = repository.findRecoverableJobs(now, staleProcessingBefore);
+        recoverableJobs.forEach(job -> {
+            if (job.getStatus() == ConversionJobStatus.PROCESSING) {
+                stateStore.scheduleRetry(job.getJobId(), "worker lease expired; retry queued", Instant.now());
+            }
+            enqueue(job.getJobId());
+        });
+        return recoverableJobs.size();
     }
 
     private void process(UUID jobId) {
@@ -224,8 +277,9 @@ public class DefaultConversionWorker implements ConversionWorker {
         ConversionJob job = repository.findById(jobId)
                 .orElseThrow(() -> new IllegalStateException("job not found"));
 
-        byte[] pdfBytes = pdfArtifactGenerator.generatePdf(job);
-        artifactStore.putPdf(jobId, pdfBytes);
+        if (artifactStore.getPdf(jobId).isEmpty()) {
+            artifactStore.putPdf(jobId, pdfArtifactGenerator.generatePdf(job));
+        }
         return "/artifacts/" + jobId + ".pdf";
     }
 

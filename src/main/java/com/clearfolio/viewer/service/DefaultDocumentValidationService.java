@@ -2,10 +2,14 @@ package com.clearfolio.viewer.service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Set;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +30,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
 
     private final Set<String> blockedExtensions;
     private final long maxUploadSizeBytes;
+    private final String policyOverrideSecret;
 
     /**
      * Creates the validation service from conversion configuration values.
@@ -35,6 +40,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
     public DefaultDocumentValidationService(ConversionProperties conversionProperties) {
         this.blockedExtensions = conversionProperties.getBlockedExtensions();
         this.maxUploadSizeBytes = conversionProperties.getMaxUploadSizeBytes();
+        this.policyOverrideSecret = conversionProperties.getPolicyOverrideSecret();
     }
 
     /**
@@ -79,6 +85,23 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
                     effectiveOverride.approverId(),
                     PolicyOverrideRequest.APPROVER_ID_HEADER + " is required when policy override is true."
             );
+
+            if (policyOverrideSecret == null || policyOverrideSecret.isBlank()) {
+                throw new IllegalStateException("Policy override secret is not configured.");
+            }
+
+            byte[] providedBytes;
+            try {
+                providedBytes = HexFormat.of().parseHex(approvalToken);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid policy override signature.", e);
+            }
+
+            byte[] expectedBytes = computeSignature(approverId, extension, policyOverrideSecret);
+            if (!MessageDigest.isEqual(providedBytes, expectedBytes)) {
+                throw new IllegalArgumentException("Invalid policy override signature.");
+            }
+
             overrideApproverIdForAudit = approverId;
             overrideTokenForAudit = approvalToken;
         }
@@ -97,10 +120,12 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         }
     }
 
-
     private String sanitizeFilename(String filename) {
         if (filename == null) {
             return null;
+        }
+        if (filename.indexOf('\u0000') >= 0) {
+            throw new IllegalArgumentException("File name contains null byte.");
         }
         String cleanPath = org.springframework.util.StringUtils.cleanPath(filename);
         int lastSlash = cleanPath.lastIndexOf('/');
@@ -110,18 +135,26 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         return cleanPath;
     }
 
-    private String extensionOf(String fileName) {
+    private String extensionOf(final String fileName) {
         if (fileName == null || fileName.isBlank()) {
             return "";
         }
 
-        String normalized = fileName.strip();
+        if (fileName.indexOf('\u0000') >= 0) {
+            throw new IllegalArgumentException("File name contains null byte.");
+        }
+
+        String normalized = java.nio.file.Path.of(fileName.strip()).getFileName().toString();
         int lastDot = normalized.lastIndexOf('.');
         if (lastDot <= 0 || lastDot == normalized.length() - 1) {
             return "";
         }
 
-        return normalized.substring(lastDot + 1).toLowerCase(Locale.ROOT);
+        String extension = normalized.substring(lastDot + 1).toLowerCase(Locale.ROOT);
+        if (extension.contains(":")) {
+            throw new IllegalArgumentException("File extension is invalid.");
+        }
+        return extension;
     }
 
     private boolean isPolicyOverrideEnabled(String headerValue) {
@@ -147,6 +180,17 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             throw new IllegalArgumentException(message);
         }
         return value.trim();
+    }
+
+    private byte[] computeSignature(String approverId, String extension, String secret) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            String payload = approverId.length() + ":" + approverId + extension;
+            return mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException | InvalidKeyException ex) {
+            throw new IllegalStateException("HmacSHA256 unavailable or key invalid", ex);
+        }
     }
 
     private String tokenFingerprint(String approvalToken) {

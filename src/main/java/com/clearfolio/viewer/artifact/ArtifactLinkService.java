@@ -10,6 +10,7 @@ import java.time.DateTimeException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +39,8 @@ import com.clearfolio.viewer.model.ConversionJobStatus;
  */
 @Service
 public class ArtifactLinkService {
+
+    private static final HexFormat HEX_FORMAT = HexFormat.of();
 
     /**
      * Query parameter used by PDF.js-compatible artifact URLs.
@@ -426,9 +429,8 @@ public class ArtifactLinkService {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] raw = digest.digest(bytes);
-            // Optimization: java.util.HexFormat.of().formatHex() is faster
-            // and allocates less memory than String.format.
-            return java.util.HexFormat.of().formatHex(raw);
+            // Reused HexFormat for performance
+            return HEX_FORMAT.formatHex(raw);
         } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

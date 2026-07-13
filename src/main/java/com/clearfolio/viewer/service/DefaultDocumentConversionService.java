@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,12 +34,12 @@ import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
 
+    private static final HexFormat HEX_FORMAT = HexFormat.of();
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(
             DefaultDocumentConversionService.class);
     private static final String PDF_CONTENT_TYPE = "application/pdf";
     private static final String PDF_EXTENSION_SUFFIX = ".pdf";
     private static final byte[] PDF_MAGIC_HEADER = {'%', 'P', 'D', 'F', '-'};
-
     private final ConversionJobRepository repository;
     private final ConversionJobStateStore stateStore;
     private final DocumentValidationService validationService;
@@ -331,9 +332,8 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            // Optimization: java.util.HexFormat.of().formatHex() is faster
-            // and allocates less memory than String.format.
-            return java.util.HexFormat.of().formatHex(raw);
+            // Reused HexFormat for performance
+            return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         } catch (IOException ex) {

@@ -526,6 +526,21 @@ class DefaultDocumentValidationServiceTest {
     }
 
     @Test
+    void sanitizeForLogReplacesLineBreaksAndUnicodeControlCharacters() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        Method method = DefaultDocumentValidationService.class.getDeclaredMethod("sanitizeForLog", String.class);
+        method.setAccessible(true);
+
+        String sanitized = (String) method.invoke(
+                validationService,
+                "approver\r\n\u2028\u2029\u202A\u202B\u202C\u202D\u202E\u0000id"
+        );
+
+        assertEquals("approver" + "_".repeat(10) + "id", sanitized);
+    }
+
+    @Test
     void throwsWhenSha256DigestIsUnavailableForOverrideAuditFingerprint() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));

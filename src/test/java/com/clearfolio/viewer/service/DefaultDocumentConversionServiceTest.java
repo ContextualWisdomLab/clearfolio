@@ -3,9 +3,11 @@ package com.clearfolio.viewer.service;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -47,6 +49,67 @@ import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
 
 class DefaultDocumentConversionServiceTest {
+
+    @Test
+    void sanitizeFilenameReturnsNullWhenFilenameIsNull() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                file -> {},
+                worker,
+                new ConversionProperties()
+        );
+
+        java.lang.reflect.Method method = DefaultDocumentConversionService.class.getDeclaredMethod("sanitizeFilename", String.class);
+        method.setAccessible(true);
+        String sanitized = (String) method.invoke(service, new Object[] {null});
+        assertNull(sanitized);
+    }
+
+
+    @Test
+    void sanitizeFilenameReturnsCleanPathWhenNoSlashIsPresent() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                file -> {},
+                worker,
+                new ConversionProperties()
+        );
+
+        java.lang.reflect.Method method = DefaultDocumentConversionService.class.getDeclaredMethod("sanitizeFilename", String.class);
+        method.setAccessible(true);
+        String sanitized = (String) method.invoke(service, "simple-file.txt");
+        assertEquals("simple-file.txt", sanitized);
+    }
+
+
+    @Test
+    void submitStripsDirectoryTraversalFromOriginalFilename() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                file -> {},
+                worker,
+                new ConversionProperties()
+        );
+
+        MultipartFile file = new MockMultipartFile(
+                "file",
+                "../../../etc/passwd.docx",
+                "application/octet-stream",
+                new ByteArrayInputStream("hello".getBytes(StandardCharsets.UTF_8))
+        );
+
+        UUID jobId = service.submit(file);
+
+        ConversionJob job = repository.findById(jobId).orElseThrow();
+        assertEquals("passwd.docx", job.getOriginalFileName());
+    }
+
 
     @Test
     void getAllJobsReturnsAllJobsFromRepository() {
@@ -800,6 +863,65 @@ class DefaultDocumentConversionServiceTest {
         assertFalse(DefaultDocumentConversionService.hasPdfMagicHeader(
                 "%PDX-1.7".getBytes(StandardCharsets.UTF_8)
         ));
+    }
+
+    @Test
+    void deleteJobWithNullTenantContextReturnsFalse() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                mock(DocumentValidationService.class),
+                mock(ConversionWorker.class),
+                new ConversionProperties()
+        );
+
+        boolean deleted = service.deleteJob(UUID.randomUUID(), null);
+
+        assertFalse(deleted);
+    }
+
+    @Test
+    void testLegacyConstructor() {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                new com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore(repository),
+                mock(DocumentValidationService.class),
+                worker,
+                new ConversionProperties()
+        );
+        assertNotNull(service);
+    }
+
+    @Test
+    void submitThrowsWhenUploadSizeExceedsMaximum() throws Exception {
+        ConversionJobRepository repository = new InMemoryConversionJobRepository();
+        RecordingConversionWorker worker = new RecordingConversionWorker();
+        ConversionProperties props = new ConversionProperties();
+        props.setMaxUploadSizeBytes(10L); // Set a small max size for testing
+
+        DocumentConversionService service = new DefaultDocumentConversionService(
+                repository,
+                file -> {
+                },
+                worker,
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
+                props
+        );
+
+        byte[] largeContent = new byte[15]; // Content larger than max size
+        MultipartFile file = new MockMultipartFile(
+                "file",
+                "large.txt",
+                "text/plain",
+                largeContent
+        );
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class, () -> service.submit(file));
+
+        assertEquals("File size exceeds maximum allowed upload size.", error.getMessage());
+        assertEquals(0, worker.enqueuedCount());
     }
 
     @Test

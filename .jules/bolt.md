@@ -10,3 +10,6 @@
 ## 2026-07-12 - 16진수 문자열 변환 성능 최적화 (3)
 **Learning:** 루프 내에서 `String.format(\"%02x\", b)`를 사용하는 것은 성능에 매우 큰 악영향을 미칩니다. 이전에 발견되었으나 아직 수정되지 않은 `FileSystemArtifactStore.java` 내의 변환 로직이 남아 있었습니다.
 **Action:** 앞으로도 코드베이스 내에 남아 있는 `String.format` 기반의 비효율적 16진수 변환을 모두 찾아 `java.util.HexFormat.of().formatHex(bytes)`로 교체해야 합니다.
+## 2026-07-12 - ByteArrayInputStream 생성 시 방어적 복사 제거
+**Learning:** ByteArrayInputStream은 전달받은 바이트 배열을 내부적으로 읽기 전용으로만 사용하며 변경하지 않으므로, 불변이거나 읽기 전용으로 사용될 배열을 전달할 때 불필요하게 Arrays.copyOf()로 방어적 복사를 할 필요가 없습니다.
+**Action:** ByteArrayInputStream 생성자에 불변/읽기 전용 배열을 전달할 때 방어적 복사 없이 원본 바이트 배열을 직접 전달하여 메모리 할당 및 가비지 컬렉션 오버헤드를 줄입니다.

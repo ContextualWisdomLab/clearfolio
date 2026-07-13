@@ -45,6 +45,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
     private final ConversionWorker conversionWorker;
     private final ArtifactStore artifactStore;
     private final int maxRetryAttempts;
+    private final long maxUploadSizeBytes;
 
     /**
      * Creates the conversion service with repository, validation, worker, and
@@ -71,6 +72,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         this.conversionWorker = conversionWorker;
         this.artifactStore = artifactStore;
         this.maxRetryAttempts = conversionProperties.getMaxRetryAttempts();
+        this.maxUploadSizeBytes = conversionProperties.getMaxUploadSizeBytes();
     }
 
     /**
@@ -167,7 +169,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
                 UUID.randomUUID(),
                 effectiveTenant.tenantId(),
                 effectiveTenant.subjectId(),
-                file.getOriginalFilename(),
+                sanitizeFilename(file.getOriginalFilename()),
                 file.getContentType(),
                 contentHash,
                 file.getSize(),
@@ -298,13 +300,33 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         return true;
     }
 
+    private String sanitizeFilename(String filename) {
+        if (filename == null) {
+            return null;
+        }
+        if (filename.indexOf('\u0000') >= 0) {
+            throw new IllegalArgumentException("File name contains null byte.");
+        }
+        String cleanPath = org.springframework.util.StringUtils.cleanPath(filename);
+        int lastSlash = cleanPath.lastIndexOf('/');
+        if (lastSlash != -1) {
+            return cleanPath.substring(lastSlash + 1);
+        }
+        return cleanPath;
+    }
+
     private String contentHash(MultipartFile file) {
         try (InputStream stream = file.getInputStream()) {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] buffer = new byte[8192];
             int read;
+            long totalRead = 0;
 
             while ((read = stream.read(buffer)) != -1) {
+                totalRead += read;
+                if (totalRead > maxUploadSizeBytes) {
+                    throw new IllegalArgumentException("File size exceeds maximum allowed upload size.");
+                }
                 digest.update(buffer, 0, read);
             }
 

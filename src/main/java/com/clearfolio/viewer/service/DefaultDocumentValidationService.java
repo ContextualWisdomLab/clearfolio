@@ -60,7 +60,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             throw new IllegalArgumentException("File is required.");
         }
 
-        String fileName = file.getOriginalFilename();
+        String fileName = sanitizeFilename(file.getOriginalFilename());
         String extension = extensionOf(fileName);
         if (extension.isEmpty()) {
             throw new IllegalArgumentException("File extension is required.");
@@ -120,6 +120,21 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         }
     }
 
+    private String sanitizeFilename(String filename) {
+        if (filename == null) {
+            return null;
+        }
+        if (filename.indexOf('\u0000') >= 0) {
+            throw new IllegalArgumentException("File name contains null byte.");
+        }
+        String cleanPath = org.springframework.util.StringUtils.cleanPath(filename);
+        int lastSlash = cleanPath.lastIndexOf('/');
+        if (lastSlash != -1) {
+            return cleanPath.substring(lastSlash + 1);
+        }
+        return cleanPath;
+    }
+
     private String extensionOf(final String fileName) {
         if (fileName == null || fileName.isBlank()) {
             return "";
@@ -129,7 +144,11 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             throw new IllegalArgumentException("File name contains null byte.");
         }
 
-        String normalized = java.nio.file.Path.of(fileName.strip()).getFileName().toString();
+        java.nio.file.Path leafName = java.nio.file.Path.of(fileName.strip()).getFileName();
+        if (leafName == null) {
+            return "";
+        }
+        String normalized = leafName.toString();
         int lastDot = normalized.lastIndexOf('.');
         if (lastDot <= 0 || lastDot == normalized.length() - 1) {
             return "";

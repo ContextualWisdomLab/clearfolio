@@ -1,8 +1,5 @@
-🚨 Severity: CRITICAL/HIGH
-💡 Vulnerability: 정책 재정의 시 승인자 식별자(`approverId`)가 평문으로 `LOGGER.info`를 통해 기록되어 PII 유출 취약점 발생
-🎯 Impact: 민감한 PII(개인 식별 정보)가 감사 로그에 노출될 수 있음
-🔧 Fix:
-- 기존의 `tokenFingerprint`를 `fingerprint`로 일반화하여 승인자 식별자와 토큰 모두에 SHA-256 해싱 적용
-- 로그에 기록하기 전 `approverId`가 널일 때 NPE가 발생하지 않도록 널 체킹 도입
-- `DefaultDocumentValidationServiceTest`에 100% 분기 검증을 위한 테스트 추가
-✅ Verification: `mvn clean test`를 통해 전체 테스트가 통과하는지 확인. `jacoco.csv` 결과 100% 커버리지 확인 완료.
+🚨 Severity: CRITICAL
+💡 Vulnerability: 파일 업로드 시 `MultipartFile.getOriginalFilename()` 값을 검증 없이 사용하여 발생할 수 있는 경로 조작(Path Traversal) 취약점 발견.
+🎯 Impact: 공격자가 디렉토리 탐색 문자열(`../`)을 포함한 파일명을 전송하여 의도하지 않은 경로에 파일을 저장하거나 시스템 파일(예: `/etc/passwd`)에 접근/조작할 위험이 있음.
+🔧 Fix: `DefaultDocumentConversionService` 및 `DefaultDocumentValidationService`에서 파일명을 사용하기 전 `StringUtils.cleanPath()`를 통해 경로를 정규화하고, 마지막 `/` 이후의 순수한 파일명만 추출하도록 `sanitizeFilename` 메소드를 추가하여 안전하게 처리함.
+✅ Verification: 단위 테스트(`submitStripsDirectoryTraversalFromOriginalFilename` 및 `stripsDirectoryTraversalFromFilename` 등)를 추가하여 취약점 문자열이 정상적으로 제거되며 100% 테스트 커버리지를 보장함.

@@ -558,4 +558,14 @@ class DefaultDocumentValidationServiceTest {
             }
         }
     }
+
+    @Test
+    void fingerprintReturnsNullWhenDataIsNull() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        Method method = DefaultDocumentValidationService.class.getDeclaredMethod("fingerprint", String.class);
+        method.setAccessible(true);
+        String fingerprinted = (String) method.invoke(validationService, (String) null);
+        assertNull(fingerprinted);
+    }
 }

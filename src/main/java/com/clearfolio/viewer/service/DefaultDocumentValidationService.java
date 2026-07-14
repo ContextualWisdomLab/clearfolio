@@ -115,8 +115,8 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             LOGGER.info(
                     "Blocked-format override accepted extension={} approverId={} tokenFingerprint={}",
                     sanitizeForLog(extension),
-                    sanitizeForLog(overrideApproverIdForAudit),
-                    tokenFingerprint(overrideTokenForAudit)
+                    fingerprint(overrideApproverIdForAudit),
+                    fingerprint(overrideTokenForAudit)
             );
         }
     }
@@ -198,10 +198,13 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         }
     }
 
-    private String tokenFingerprint(String approvalToken) {
+    private String fingerprint(String data) {
+        if (data == null) {
+            return null;
+        }
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashed = digest.digest(approvalToken.getBytes(StandardCharsets.UTF_8));
+            byte[] hashed = digest.digest(data.getBytes(StandardCharsets.UTF_8));
             // Reused HexFormat for performance
             return HEX_FORMAT.formatHex(hashed, 0, FINGERPRINT_TRUNCATE_BYTES);
         } catch (NoSuchAlgorithmException ex) {

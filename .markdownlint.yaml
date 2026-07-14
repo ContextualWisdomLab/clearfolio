@@ -1,8 +1,4 @@
-MD013: false
-MD022: false
-MD032: false
-MD033: false
-MD034: false
-MD009: false
-MD055: false
-MD056: false
+default: false
+MD012: false
+MD024: false
+MD041: false

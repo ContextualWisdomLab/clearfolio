@@ -1,5 +1,8 @@
 {
   "name": "viewer-assets",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "scripts": {
+    "test": "node -e \"console.log('No tests for vanilla JS'); process.exit(0);\""
+  }
 }

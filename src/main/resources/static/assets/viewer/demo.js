@@ -154,8 +154,15 @@ function renderHistory(history = loadHistory()) {
           btn.disabled = false;
         });
       }));
-      actionsCell.appendChild(createActionButton("Status JSON", () => {
-        void openJsonDocument(job.statusUrl, "Clearfolio status JSON");
+      actionsCell.appendChild(createActionButton("Status JSON", (e) => {
+        const btn = e.currentTarget;
+        const initialChildren = Array.from(btn.childNodes);
+        btn.disabled = true;
+        btn.textContent = "Loading...";
+        openJsonDocument(job.statusUrl, "Clearfolio status JSON").finally(() => {
+          btn.replaceChildren(...initialChildren);
+          btn.disabled = false;
+        });
       }));
     }
     if (job.jobId) {

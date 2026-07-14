@@ -59,81 +59,95 @@ public class ViewerUiController {
         return HtmlUtils.htmlEscape(value);
     }
 
-    private static String viewerShellHtml(String docId, String initialState) {
+    // ⚡ Bolt: Use static template parts to avoid chained replace()
+    // allocations on every request.
+
+    /** Part 1 of the viewer shell template. */
+    private static final String VIEWER_SHELL_PART_1 = """
+            <!doctype html>
+            <html lang="en">
+              <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+                <meta name="referrer" content="no-referrer" />
+                <meta name="clearfolio-doc-id" content=\"""";
+
+    /** Part 2 of the viewer shell template. */
+    private static final String VIEWER_SHELL_PART_2 = """
+            " />
+                <meta name="clearfolio-initial-state" content=\"""";
+
+    /** Part 3 of the viewer shell template. */
+    private static final String VIEWER_SHELL_PART_3 = """
+            " />
+                <meta name="clearfolio-pdfjs-viewer-path" content=\"""";
+
+    /** Part 4 of the viewer shell template. */
+    private static final String VIEWER_SHELL_PART_4 = """
+            " />
+                <title>Clearfolio Viewer</title>
+                <link rel="stylesheet" href="/assets/viewer/viewer.css" />
+              </head>
+              <body>
+                <a class="skip-link" href="#main">Skip to content</a>
+
+                <header class="app-header" role="banner">
+                  <div class="app-header__inner">
+                    <div class="brand" aria-label="Clearfolio Viewer">
+                      <span class="brand__name">Clearfolio Viewer</span>
+                    </div>
+
+                    <nav class="header-nav" aria-label="Viewer utilities">
+                      <a class="header-nav__link" href="/healthz">Service status</a>
+                    </nav>
+                  </div>
+                </header>
+
+                <main id="main" class="app-main" tabindex="-1">
+                  <h1 class="page-title">Document preview</h1>
+                  <p class="page-subtitle" id="doc-meta">Preparing preview shell...</p>
+
+                  <section class="panel" aria-labelledby="state-title">
+                    <h2 id="state-title" class="panel__title">Preview status</h2>
+
+                    <div id="live-status" class="status" role="status" aria-live="polite" aria-atomic="true">Loading...</div>
+
+                    <div id="error" class="error" role="alert" hidden>
+                      <h3 class="error__title" id="error-title" tabindex="-1">Unable to load preview</h3>
+                      <p class="error__message" id="error-message"></p>
+                    </div>
+
+                    <div class="actions" aria-label="Actions">
+                      <button type="button" class="btn btn-primary" id="retry-btn">Refresh</button>
+                      <a class="btn btn-secondary" id="open-json-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Open JSON bootstrap in a new tab" hidden>Open JSON bootstrap</a>
+                    </div>
+                  </section>
+
+                  <section class="panel" aria-labelledby="preview-title">
+                    <h2 id="preview-title" class="panel__title">Preview</h2>
+
+                    <div id="preview" class="preview" aria-busy="true">
+                      <div class="skeleton" aria-hidden="true"></div>
+                      <p class="help" id="preview-help">When ready, the converted artifact will appear here.</p>
+                    </div>
+                  </section>
+                </main>
+
+                <footer class="app-footer" role="contentinfo">
+                  <div class="app-footer__inner">
+                    <small>Copyright (c) 2026 by HYOSUNG. All rights reserved.</small>
+                  </div>
+                </footer>
+
+                <script type="module" src="/assets/viewer/viewer.js"></script>
+              </body>
+            </html>
+            """;
+
+    private static String viewerShellHtml(final String docId, final String initialState) {
         String docIdString = escapeHtmlAttribute(docId);
-        String template = """
-                <!doctype html>
-                <html lang="en">
-                  <head>
-                    <meta charset="utf-8" />
-                    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-                    <meta name="referrer" content="no-referrer" />
-                    <meta name="clearfolio-doc-id" content="{{DOC_ID}}" />
-                    <meta name="clearfolio-initial-state" content="{{INITIAL_STATE}}" />
-                    <meta name="clearfolio-pdfjs-viewer-path" content="{{PDFJS_VIEWER_PATH}}" />
-                    <title>Clearfolio Viewer</title>
-                    <link rel="stylesheet" href="/assets/viewer/viewer.css" />
-                  </head>
-                  <body>
-                    <a class="skip-link" href="#main">Skip to content</a>
-
-                    <header class="app-header" role="banner">
-                      <div class="app-header__inner">
-                        <div class="brand" aria-label="Clearfolio Viewer">
-                          <span class="brand__name">Clearfolio Viewer</span>
-                        </div>
-
-                        <nav class="header-nav" aria-label="Viewer utilities">
-                          <a class="header-nav__link" href="/healthz">Service status</a>
-                        </nav>
-                      </div>
-                    </header>
-
-                    <main id="main" class="app-main" tabindex="-1">
-                      <h1 class="page-title">Document preview</h1>
-                      <p class="page-subtitle" id="doc-meta">Preparing preview shell...</p>
-
-                      <section class="panel" aria-labelledby="state-title">
-                        <h2 id="state-title" class="panel__title">Preview status</h2>
-
-                        <div id="live-status" class="status" role="status" aria-live="polite" aria-atomic="true">Loading...</div>
-
-                        <div id="error" class="error" role="alert" hidden>
-                          <h3 class="error__title" id="error-title" tabindex="-1">Unable to load preview</h3>
-                          <p class="error__message" id="error-message"></p>
-                        </div>
-
-                        <div class="actions" aria-label="Actions">
-                          <button type="button" class="btn btn-primary" id="retry-btn">Refresh</button>
-                          <a class="btn btn-secondary" id="open-json-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Open JSON bootstrap in a new tab" hidden>Open JSON bootstrap</a>
-                        </div>
-                      </section>
-
-                      <section class="panel" aria-labelledby="preview-title">
-                        <h2 id="preview-title" class="panel__title">Preview</h2>
-
-                        <div id="preview" class="preview" aria-busy="true">
-                          <div class="skeleton" aria-hidden="true"></div>
-                          <p class="help" id="preview-help">When ready, the converted artifact will appear here.</p>
-                        </div>
-                      </section>
-                    </main>
-
-                    <footer class="app-footer" role="contentinfo">
-                      <div class="app-footer__inner">
-                        <small>Copyright (c) 2026 by HYOSUNG. All rights reserved.</small>
-                      </div>
-                    </footer>
-
-                    <script type="module" src="/assets/viewer/viewer.js"></script>
-                  </body>
-                </html>
-                """;
-
-        return template
-                .replace("{{DOC_ID}}", docIdString)
-                .replace("{{INITIAL_STATE}}", initialState)
-                .replace("{{PDFJS_VIEWER_PATH}}", PDF_JS_VIEWER_PATH);
+        return VIEWER_SHELL_PART_1 + docIdString + VIEWER_SHELL_PART_2 + initialState
+                + VIEWER_SHELL_PART_3 + PDF_JS_VIEWER_PATH + VIEWER_SHELL_PART_4;
     }
 
     private static String demoShellHtml() {

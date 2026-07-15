@@ -1,1 +1,4 @@
-🛡️ Sentinel: [CRITICAL] PII 로그 유출 취약점 수정 (approverId 해싱)
+🛡️ Sentinel: [CRITICAL] 파일 업로드 경로 조작(Path Traversal) 취약점 수정
+
+MultipartFile.getOriginalFilename()을 신뢰하여 발생할 수 있는 경로 조작 취약점을 수정했습니다.
+StringUtils.cleanPath()를 사용하여 경로를 정규화하고 순수한 파일명만 추출하여 악의적인 페이로드(예: ../../../etc/passwd.hwp)로부터 시스템을 보호합니다.

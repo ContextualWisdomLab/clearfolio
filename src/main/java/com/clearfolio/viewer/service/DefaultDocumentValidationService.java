@@ -25,7 +25,6 @@ import com.clearfolio.viewer.exception.UnsupportedDocumentFormatException;
 @Service
 public class DefaultDocumentValidationService implements DocumentValidationService {
 
-    private static final HexFormat HEX_FORMAT = HexFormat.of();
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDocumentValidationService.class);
     private static final int FINGERPRINT_TRUNCATE_BYTES = 8;
 
@@ -115,7 +114,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             LOGGER.info(
                     "Blocked-format override accepted extension={} approverId={} tokenFingerprint={}",
                     sanitizeForLog(extension),
-                    sanitizeForLog(overrideApproverIdForAudit),
+                    fingerprintApproverId(overrideApproverIdForAudit),
                     tokenFingerprint(overrideTokenForAudit)
             );
         }
@@ -202,8 +201,20 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashed = digest.digest(approvalToken.getBytes(StandardCharsets.UTF_8));
-            // Reused HexFormat for performance
-            return HEX_FORMAT.formatHex(hashed, 0, FINGERPRINT_TRUNCATE_BYTES);
+            return HexFormat.of().formatHex(hashed, 0, FINGERPRINT_TRUNCATE_BYTES);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 digest unavailable", ex);
+        }
+    }
+
+    private String fingerprintApproverId(String approverId) {
+        if (approverId == null || approverId.isBlank()) {
+            return "";
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(approverId.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hashed);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

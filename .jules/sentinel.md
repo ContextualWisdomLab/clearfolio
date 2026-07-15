@@ -4,7 +4,7 @@
 **Prevention:** Implement an `isSafeUrl` verification function to ensure the protocol is strictly `http:` or `https:` (using `new URL()`) before assigning untrusted inputs to DOM attributes like `href` or `src`.
 
 ## 2026-07-08 - 파일 업로드 시 경로 조작(Path Traversal) 취약점 방지
-**Vulnerability:** 클라이언트에서 전송된 `MultipartFile.getOriginalFilename()`을 검증 없이 사용하고 있어 공격자가 `../../../etc/passwd.hwp` 같은 파일명으로 경로를 조작할 수 있었습니다.
+**Vulnerability:** 클라이언트에서 전송된 `MultipartFile.getOriginalFilename()`을 검증 없이 사용하고 있어 공격자가 `../../../etc/passwd.hwp` 같은 파일명으로 경로 조작할 수 있었습니다.
 **Learning:** 클라이언트가 전송한 파일명은 신뢰할 수 없는 입력값입니다. 경로 탐색 문자열이 포함될 수 있으며, 이를 그대로 사용할 경우 의도치 않은 디렉토리에 파일이 저장되거나 시스템 파일이 조작되는 등의 심각한 문제가 발생할 수 있습니다.
 **Prevention:** 사용자로부터 입력받은 파일명은 항상 명시적으로 살균(sanitize)해야 합니다. `org.springframework.util.StringUtils.cleanPath()`를 사용하여 경로를 정규화하고, 마지막 `/` 이후의 순수한 파일명만 추출하여 사용하는 방식을 적용해야 합니다.
 
@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-07-15 - 정책 오버라이드 승인자 ID PII 로깅 취약점
+**Vulnerability:** 차단된 형식의 정책 오버라이드가 수락되었을 때, 문서 검증 서비스가 평문 형태의 `approverId`를 로깅하고 있었습니다. 이 값은 민감한 식별 정보(PII)를 포함할 수 있으므로 이를 평문으로 기록하는 것은 PII 로깅 정책 위반입니다.
+**Learning:** 로그 삽입 등을 방지하기 위해 보안 토큰이나 식별자를 정리(sanitize)하더라도, 해당 값이 PII로 간주되는 경우 민감한 데이터가 중앙 로깅 시스템에 유출되는 것을 막기 위해 반드시 해시 처리 또는 지문화(fingerprinting)를 적용해야 합니다.
+**Prevention:** PII 로깅 정책을 준수하려면 정책 오버라이드의 `approverId`와 같은 민감한 식별자를 평문으로 로깅해서는 안 됩니다. 감사 로그를 기록하기 전에 반드시 널(null) 안정성을 포함한 해싱 또는 지문화(예: SHA-256 해시 및 16진수 인코딩)를 적용해야 합니다.

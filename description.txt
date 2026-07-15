@@ -1,5 +1,5 @@
 🚨 Severity: CRITICAL
-💡 Vulnerability: 파일 업로드 시 `MultipartFile.getOriginalFilename()` 값을 검증 없이 사용하여 발생할 수 있는 경로 조작(Path Traversal) 취약점 발견.
-🎯 Impact: 공격자가 디렉토리 탐색 문자열(`../`)을 포함한 파일명을 전송하여 의도하지 않은 경로에 파일을 저장하거나 시스템 파일(예: `/etc/passwd`)에 접근/조작할 위험이 있음.
-🔧 Fix: `DefaultDocumentConversionService` 및 `DefaultDocumentValidationService`에서 파일명을 사용하기 전 `StringUtils.cleanPath()`를 통해 경로를 정규화하고, 마지막 `/` 이후의 순수한 파일명만 추출하도록 `sanitizeFilename` 메소드를 추가하여 안전하게 처리함.
-✅ Verification: 단위 테스트(`submitStripsDirectoryTraversalFromOriginalFilename` 및 `stripsDirectoryTraversalFromFilename` 등)를 추가하여 취약점 문자열이 정상적으로 제거되며 100% 테스트 커버리지를 보장함.
+💡 Vulnerability: 문서 검증 서비스에서 정책 오버라이드 수락 시 `approverId`가 평문으로 로그에 기록되어 PII(개인식별정보)가 유출될 위험이 있었습니다.
+🎯 Impact: 공격자나 내부 직원이 로그 시스템을 통해 민감한 식별 정보를 열람하여 개인정보 침해나 권한 도용으로 이어질 수 있습니다.
+🔧 Fix: `approverId`를 기록하기 전에 널(null) 안정성이 확보된 SHA-256 해싱 및 16진수 인코딩을 수행하는 `fingerprintApproverId` 메서드를 추가하여 안전하게 지문화(fingerprinting)하도록 수정했습니다. 성능 최적화를 위해 캐싱하지 않고 직접 `HexFormat.of()`를 사용했습니다. 테스트 코드도 100% 커버리지를 만족하도록 추가하였습니다.
+✅ Verification: `mvn test`를 실행하여 새로 추가된 `fingerprintApproverIdReturnsEmptyWhenInputIsNull` 및 `throwsWhenSha256DigestIsUnavailableForApproverIdFingerprint` 테스트를 통과하는지 확인했습니다.

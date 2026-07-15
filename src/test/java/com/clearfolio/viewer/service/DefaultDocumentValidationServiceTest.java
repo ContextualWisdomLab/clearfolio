@@ -526,6 +526,46 @@ class DefaultDocumentValidationServiceTest {
     }
 
     @Test
+    void fingerprintApproverIdReturnsEmptyWhenInputIsNull() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        Method method = DefaultDocumentValidationService.class.getDeclaredMethod("fingerprintApproverId", String.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(validationService, new Object[] {null});
+
+        assertEquals("", result);
+    }
+
+    @Test
+    void throwsWhenSha256DigestIsUnavailableForApproverIdFingerprint() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        Method method = DefaultDocumentValidationService.class.getDeclaredMethod("fingerprintApproverId", String.class);
+        method.setAccessible(true);
+
+        synchronized (SECURITY_PROVIDERS_LOCK) {
+            Provider[] providers = Security.getProviders();
+            for (Provider provider : providers) {
+                Security.removeProvider(provider.getName());
+            }
+
+            try {
+                java.lang.reflect.InvocationTargetException ex = assertThrows(
+                        java.lang.reflect.InvocationTargetException.class,
+                        () -> method.invoke(validationService, "approver-1")
+                );
+
+                assertEquals("SHA-256 digest unavailable", ex.getCause().getMessage());
+            } finally {
+                for (int index = 0; index < providers.length; index++) {
+                    Security.insertProviderAt(providers[index], index + 1);
+                }
+            }
+        }
+    }
+
+    @Test
     void throwsWhenSha256DigestIsUnavailableForOverrideAuditFingerprint() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));

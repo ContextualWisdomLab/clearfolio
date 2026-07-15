@@ -1,3 +1,5 @@
+# Sentinel Journal
+
 ## 2026-06-30 - Prevent DOM-based XSS in Viewer JS
 **Vulnerability:** Untrusted paths from API responses were directly assigned to `a.href` and used in `iframe` generation, which allows execution of malicious URIs like `javascript:` or `data:`.
 **Learning:** Even when avoiding `innerHTML`, directly setting URL-like strings to DOM attributes without protocol validation introduces XSS vectors. The payload can be executed when the link is clicked or the iframe is loaded.
@@ -32,3 +34,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-07-14 - 정책 재정의 로그에 존재하는 PII 취약점 패치
+**Vulnerability:** 정책 재정의 시 승인자 식별자(`approverId`)가 `DefaultDocumentValidationService`의 `LOGGER.info` 구문을 통해 평문으로 로그에 기록되어 PII(개인 식별 정보) 로깅 정책을 위반했습니다.
+**Learning:** 제어 문자에 대한 무해화(`sanitizeForLog` 등) 작업만 수행하는 것만으로는 충분하지 않으며, 평문 식별자가 감사 로그로 노출될 경우 치명적인 PII 유출 취약점을 만들 수 있습니다.
+**Prevention:** 민감한 식별자는 로그에 남기기 전 항상 SHA-256과 같은 암호화 해시 함수로 변환(fingerprint)해야 합니다. 또한 로깅 과정 중 식별자가 `null`인 경우 `NullPointerException`이 발생하지 않도록 안전하게 처리해야 합니다.

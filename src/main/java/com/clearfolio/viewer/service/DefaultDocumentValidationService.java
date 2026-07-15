@@ -216,6 +216,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashed = digest.digest(approverId.getBytes(StandardCharsets.UTF_8));
+            // Reused HexFormat for performance
             return HEX_FORMAT.formatHex(hashed);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);

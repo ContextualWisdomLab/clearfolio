@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-07-15 - 정책 오버라이드 승인자 ID PII 로깅 취약점
+**Vulnerability:** 차단된 형식의 정책 오버라이드가 수락되었을 때, 문서 검증 서비스가 평문 형태의 `approverId`를 로깅하고 있었습니다. 이 값은 민감한 식별 정보(PII)를 포함할 수 있으므로 이를 평문으로 기록하는 것은 PII 로깅 정책 위반입니다.
+**Learning:** 로그 삽입 등을 방지하기 위해 보안 토큰이나 식별자를 정리(sanitize)하더라도, 해당 값이 PII로 간주되는 경우 민감한 데이터가 중앙 로깅 시스템에 유출되는 것을 막기 위해 반드시 해시 처리 또는 지문화(fingerprinting)를 적용해야 합니다.
+**Prevention:** PII 로깅 정책을 준수하려면 정책 오버라이드의 `approverId`와 같은 민감한 식별자를 평문으로 로깅해서는 안 됩니다. 감사 로그를 기록하기 전에 반드시 널(null) 안정성을 포함한 해싱 또는 지문화(예: SHA-256 해시 및 16진수 인코딩)를 적용해야 합니다.

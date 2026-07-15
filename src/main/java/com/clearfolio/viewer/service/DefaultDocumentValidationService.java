@@ -115,7 +115,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             LOGGER.info(
                     "Blocked-format override accepted extension={} approverId={} tokenFingerprint={}",
                     sanitizeForLog(extension),
-                    sanitizeForLog(overrideApproverIdForAudit),
+                    fingerprintApproverId(overrideApproverIdForAudit),
                     tokenFingerprint(overrideTokenForAudit)
             );
         }
@@ -204,6 +204,20 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             byte[] hashed = digest.digest(approvalToken.getBytes(StandardCharsets.UTF_8));
             // Reused HexFormat for performance
             return HEX_FORMAT.formatHex(hashed, 0, FINGERPRINT_TRUNCATE_BYTES);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 digest unavailable", ex);
+        }
+    }
+
+    private String fingerprintApproverId(String approverId) {
+        if (approverId == null || approverId.isBlank()) {
+            return "";
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(approverId.getBytes(StandardCharsets.UTF_8));
+            // Reused HexFormat for performance
+            return HEX_FORMAT.formatHex(hashed);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

@@ -13,3 +13,7 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+
+## 2026-07-16 - 반복되는 동적 테이블 액션 버튼의 접근성 향상
+**Learning:** 데이터 테이블의 각 행마다 반복되는 액션 버튼(예: "세부 정보", "상태 JSON")은 스크린 리더 사용자에게 컨텍스트 없는 모호한 정보를 제공할 수 있습니다.
+**Action:** 동적 테이블의 반복되는 액션 요소에는 관련된 행의 데이터(예: 파일명)를 결합한 컨텍스트가 포함된 명확한 `aria-label`을 부여하여 접근성을 보장해야 합니다.

@@ -13,3 +13,7 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+
+## 2026-07-17 - Table Action Buttons Accessibility
+**Learning:** Repetitive table action buttons or links (like 'Details' or 'Open') without context-specific labels are confusing for screen reader users, as multiple buttons have the exact same accessible name.
+**Action:** Always provide dynamically generated, context-specific `aria-label` attributes that include row-specific identifiers (such as the filename) to these repetitive table actions.

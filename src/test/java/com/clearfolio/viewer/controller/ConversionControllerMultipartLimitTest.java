@@ -51,6 +51,8 @@ import com.clearfolio.viewer.service.PolicyOverrideRequest;
 )
 class ConversionControllerMultipartLimitTest {
 
+    private static final HexFormat HEX_FORMAT = HexFormat.of();
+
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @EnableConfigurationProperties(ConversionProperties.class)
@@ -149,7 +151,7 @@ class ConversionControllerMultipartLimitTest {
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             String payload = approverId.length() + ":" + approverId + extension;
             byte[] hashed = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashed);
+            return HEX_FORMAT.formatHex(hashed);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }

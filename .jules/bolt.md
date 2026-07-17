@@ -19,3 +19,6 @@
 ## 2026-07-13 - 단일 패스 문자열 치환 최적화 (O(N) 단일 스캔 및 지연 할당)
 **Learning:** `String.replace()`를 여러 번 체이닝하여 호출하면, 문자열 치환이 발생하지 않는 경우에도 내부적으로 불필요한 스캔이 중복 발생하고, 치환 시마다 새로운 문자열 객체와 char 배열이 할당되어 메모리 낭비와 성능 저하(GC 압박)가 발생한다.
 **Action:** 여러 문자를 한 번에 치환해야 하는 경우, O(N) 단일 스캔을 통해 `charAt()`으로 문자를 확인하고, 치환이 실제로 필요한 경우에만 `StringBuilder`를 지연 할당(Lazy allocation)하여 성능을 최적화하고 불필요한 메모리 할당을 방지한다.
+## 2026-07-17 - HexFormat 재사용 최적화
+**Learning:** `java.util.HexFormat.of()`를 매번 호출하는 것은 불필요한 객체 할당을 발생시킵니다.
+**Action:** `private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();` 로 선언하고 재사용해야 합니다.

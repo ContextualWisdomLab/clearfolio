@@ -35,6 +35,8 @@ public final class FileSystemArtifactStore implements ArtifactStore {
     private static final String PDF_SUFFIX = ".pdf";
     private static final String METADATA_SUFFIX = ".meta.properties";
 
+    private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();
+
     private final Path rootDir;
     private final BytesWriter bytesWriter;
     private final BytesReader bytesReader;
@@ -134,7 +136,7 @@ public final class FileSystemArtifactStore implements ArtifactStore {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] raw = digest.digest(bytes);
-            return java.util.HexFormat.of().formatHex(raw);
+            return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

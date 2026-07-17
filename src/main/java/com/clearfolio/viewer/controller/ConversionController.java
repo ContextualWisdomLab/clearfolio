@@ -55,6 +55,8 @@ public class ConversionController {
      */
     public static final String OPERATOR_ID_HEADER = "X-Clearfolio-Operator-Id";
 
+    private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();
+
     private final DocumentConversionService conversionService;
     private final TenantAccessService tenantAccessService;
     private final ArtifactLinkService artifactLinkService;
@@ -294,9 +296,9 @@ public class ConversionController {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(data);
-            // Optimization: java.util.HexFormat.of().formatHex() is faster
+            // Optimization: HexFormat.formatHex() is faster
             // and allocates less memory than String.format.
-            return java.util.HexFormat.of().formatHex(hash);
+            return HEX_FORMAT.formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 algorithm not available", e);
         }

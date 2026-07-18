@@ -135,6 +135,7 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("X-Clearfolio-Tenant-Id"));
             assertTrue(script.contains("X-Clearfolio-Permissions"));
             assertTrue(script.contains("deadLettered"));
+            assertTrue(script.contains("aria-busy"));
         }
     }
 

@@ -7,6 +7,7 @@
 ## [Unreleased]
 
 ### 추가된 기능 (Added)
+- **관리자 API 권한 검증 로직 추가**: `AdminController`의 엔드포인트에 `TenantAccessService`를 통한 `ADMIN_READ`, `ADMIN_WRITE` 권한 검증을 추가하여 보안을 강화했습니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.
   - 실패(dead-lettered) 상태인 작업을 관리자가 재시도 큐에 등록할 수 있는 `POST /api/v1/admin/convert/jobs/{jobId}/retry` 엔드포인트를 추가했습니다.

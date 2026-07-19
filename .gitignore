@@ -41,3 +41,4 @@ certs/
 
 # CodeGraph local index
 .codegraph/
+node_modules/

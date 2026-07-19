@@ -48,3 +48,5 @@
 
 ### Fixed
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정
+### 향상된 점 (Enhancements)
+* 접근성(UX/UI): 데이터 테이블 내 반복적인 'Details', 'Status JSON', 'Open viewer' 버튼 및 링크에 동적으로 컨텍스트를 포함하는 `aria-label`을 부여하여 스크린 리더 사용자의 접근성을 개선했습니다.

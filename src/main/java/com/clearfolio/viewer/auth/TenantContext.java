@@ -122,9 +122,11 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
             return null;
         }
 
-        String sanitized = value
-                .replace("\u0000", "")
-                .strip();
+        String sanitized = value;
+        if (sanitized.indexOf('\u0000') != -1) {
+            sanitized = sanitized.replace("\u0000", "");
+        }
+        sanitized = sanitized.strip();
         return sanitized.isEmpty() ? null : sanitized;
     }
 }

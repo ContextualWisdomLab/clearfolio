@@ -62,15 +62,7 @@ public class ArtifactStoreProperties {
      * @param rootDir artifact storage root directory
      */
     public void setRootDir(String rootDir) {
-        if (rootDir == null) {
-            this.rootDir = DEFAULT_ROOT_DIR;
-            return;
-        }
-        String sanitized = rootDir;
-        if (sanitized.indexOf('\u0000') != -1) {
-            sanitized = sanitized.replace("\u0000", "");
-        }
-        sanitized = sanitized.strip();
+        String sanitized = rootDir == null ? "" : rootDir.replace("\u0000", "").strip();
         this.rootDir = sanitized.isEmpty() ? DEFAULT_ROOT_DIR : sanitized;
     }
 
@@ -87,10 +79,6 @@ public class ArtifactStoreProperties {
         if (value == null) {
             return "";
         }
-        String sanitized = value;
-        if (sanitized.indexOf('\u0000') != -1) {
-            sanitized = sanitized.replace("\u0000", "");
-        }
-        return sanitized.strip().toLowerCase(Locale.ROOT);
+        return value.replace("\u0000", "").strip().toLowerCase(Locale.ROOT);
     }
 }

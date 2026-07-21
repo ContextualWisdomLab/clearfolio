@@ -44,11 +44,8 @@ public class ConversionProperties {
                 if (extension == null) {
                     continue;
                 }
-                String sanitized = extension;
-                if (sanitized.indexOf('\u0000') != -1) {
-                    sanitized = sanitized.replace("\u0000", "");
-                }
-                sanitized = sanitized
+                String sanitized = extension
+                        .replace("\u0000", "")
                         .trim()
                         .toLowerCase(Locale.ROOT);
                 if (!sanitized.isEmpty()) {

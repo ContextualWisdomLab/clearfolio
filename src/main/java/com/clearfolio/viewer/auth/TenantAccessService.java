@@ -158,7 +158,11 @@ public class TenantAccessService {
         if (value == null) {
             return null;
         }
-        String cleaned = value.replace("\u0000", "").strip();
+        String cleaned = value;
+        if (cleaned.indexOf('\u0000') != -1) {
+            cleaned = cleaned.replace("\u0000", "");
+        }
+        cleaned = cleaned.strip();
         return cleaned.isEmpty() ? null : cleaned;
     }
 }

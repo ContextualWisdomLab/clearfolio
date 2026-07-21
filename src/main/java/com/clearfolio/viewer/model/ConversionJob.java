@@ -122,7 +122,10 @@ public class ConversionJob {
         if (value == null) {
             return null;
         }
-        return value.replace("\u0000", "");
+        if (value.indexOf('\u0000') != -1) {
+            return value.replace("\u0000", "");
+        }
+        return value;
     }
 
     private String normalizeOrDefault(String value, String fallback) {

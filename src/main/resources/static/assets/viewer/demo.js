@@ -81,13 +81,16 @@ function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
   }
 }
 
-function createLink(href, label) {
+function createLink(href, label, ariaLabel) {
   const link = document.createElement("a");
   link.href = href;
   link.textContent = label;
   link.className = "table-link";
   link.target = "_blank";
   link.rel = "noopener noreferrer";
+  if (ariaLabel) {
+    link.setAttribute("aria-label", ariaLabel);
+  }
   return link;
 }
 
@@ -110,11 +113,14 @@ async function openJsonDocument(url, title) {
     : "Unable to load JSON evidence with the current tenant claim.";
 }
 
-function createActionButton(label, onClick) {
+function createActionButton(label, onClick, ariaLabel) {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
   button.className = "btn btn-secondary btn-compact";
+  if (ariaLabel) {
+    button.setAttribute("aria-label", ariaLabel);
+  }
   button.addEventListener("click", onClick);
   return button;
 }
@@ -138,7 +144,8 @@ function renderHistory(history = loadHistory()) {
     const submittedCell = document.createElement("td");
     const actionsCell = document.createElement("td");
 
-    fileCell.textContent = job.fileName || "Document";
+    const fileName = job.fileName || "Document";
+    fileCell.textContent = fileName;
     statusCell.textContent = job.status || "SUBMITTED";
     submittedCell.textContent = job.submittedAt || "";
     actionsCell.className = "table-actions";
@@ -147,19 +154,28 @@ function renderHistory(history = loadHistory()) {
       actionsCell.appendChild(createActionButton("Details", (e) => {
         const btn = e.currentTarget;
         const initialChildren = Array.from(btn.childNodes);
+        const originalAriaLabel = btn.getAttribute("aria-label");
+
         btn.disabled = true;
         btn.textContent = "Loading...";
+        if (originalAriaLabel) {
+          btn.setAttribute("aria-label", "Loading...");
+        }
+
         openJobDetail(job).finally(() => {
           btn.replaceChildren(...initialChildren);
           btn.disabled = false;
+          if (originalAriaLabel) {
+            btn.setAttribute("aria-label", originalAriaLabel);
+          }
         });
-      }));
+      }, `View details for ${fileName}`));
       actionsCell.appendChild(createActionButton("Status JSON", () => {
         void openJsonDocument(job.statusUrl, "Clearfolio status JSON");
-      }));
+      }, `Open status JSON for ${fileName}`));
     }
     if (job.jobId) {
-      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer"));
+      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer", `Open viewer for ${fileName}`));
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);

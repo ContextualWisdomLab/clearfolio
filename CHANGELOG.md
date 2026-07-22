@@ -48,3 +48,6 @@
 
 ### Fixed
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정
+
+### Changed
+- 성능 향상: `FileSystemArtifactStore`에서 파일 읽기 시 불필요한 `Files.exists()` 검사를 제거하여 디스크 I/O 최적화 및 TOCTOU 방지

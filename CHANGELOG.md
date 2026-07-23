@@ -48,3 +48,6 @@
 
 ### Fixed
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정
+
+### 보안 (Security)
+- 백엔드 관리자 API 엔드포인트에 대한 인증 및 인가(`TenantAccessService`) 적용.

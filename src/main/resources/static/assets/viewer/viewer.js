@@ -50,8 +50,13 @@ function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
+  const originalAriaLabel = el.retryBtn.getAttribute("aria-label");
+  el.retryBtn.dataset.originalAriaLabel = originalAriaLabel || "";
   el.retryBtn.disabled = true;
   el.retryBtn.textContent = "Refreshing...";
+  if (originalAriaLabel) {
+    el.retryBtn.setAttribute("aria-label", "Refreshing...");
+  }
 }
 
 function showError(message) {
@@ -62,6 +67,12 @@ function showError(message) {
   el.errorTitle.focus();
   el.retryBtn.disabled = false;
   el.retryBtn.textContent = "Refresh";
+  const originalAriaLabel = el.retryBtn.dataset.originalAriaLabel;
+  if (originalAriaLabel) {
+    el.retryBtn.setAttribute("aria-label", originalAriaLabel);
+  } else {
+    el.retryBtn.removeAttribute("aria-label");
+  }
 }
 
 function clearPreview() {
@@ -211,6 +222,12 @@ async function poll(docId, abortSignal) {
     el.liveStatus.textContent = "Ready.";
     el.retryBtn.disabled = false;
     el.retryBtn.textContent = "Refresh";
+    const originalAriaLabel = el.retryBtn.dataset.originalAriaLabel;
+    if (originalAriaLabel) {
+      el.retryBtn.setAttribute("aria-label", originalAriaLabel);
+    } else {
+      el.retryBtn.removeAttribute("aria-label");
+    }
 
     clearPreview();
     const path = bootstrap.data.previewResourcePath;

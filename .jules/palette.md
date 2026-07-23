@@ -13,3 +13,6 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+## 2026-07-23 - Handle aria-label on loading states
+**Learning:** Screen readers prioritize `aria-label` over text content. When dynamically updating a button's text content (like changing to "Loading..."), failing to also update its `aria-label` causes screen readers to miss the critical loading feedback and announce the original label instead.
+**Action:** When temporarily changing a button to a loading state, store its original `aria-label` (if any), update the `aria-label` to match the loading text, and restore the original label after the async operation completes.

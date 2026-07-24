@@ -6,10 +6,16 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
@@ -17,16 +23,22 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
+    private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService);
+        tenantAccessService = mock(TenantAccessService.class);
+        controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
+
+        TenantContext dummyContext = new TenantContext("test-tenant", "test-subject", java.util.Set.of());
+        when(tenantAccessService.require(any(), eq(TenantPermissions.ADMIN_READ))).thenReturn(dummyContext);
+        when(tenantAccessService.require(any(), eq(TenantPermissions.ADMIN_WRITE))).thenReturn(dummyContext);
     }
 
     @Test
@@ -37,6 +49,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
+                .header("Authorization", "Bearer dummy")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -55,6 +68,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .header("Authorization", "Bearer dummy")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -72,6 +86,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
+                .header("Authorization", "Bearer dummy")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -85,6 +100,7 @@ class AdminControllerTest {
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .header("Authorization", "Bearer dummy")
                 .exchange()
                 .expectStatus().isNoContent();
     }
@@ -96,6 +112,7 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header("Authorization", "Bearer dummy")
                 .exchange()
                 .expectStatus().isAccepted();
     }
@@ -107,6 +124,7 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header("Authorization", "Bearer dummy")
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -118,6 +136,7 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header("Authorization", "Bearer dummy")
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
     }

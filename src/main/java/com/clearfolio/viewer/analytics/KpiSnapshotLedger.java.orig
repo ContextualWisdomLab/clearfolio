@@ -96,14 +96,11 @@ public class KpiSnapshotLedger {
     }
 
     private void load() {
-        if (ledgerPath == null) {
+        if (ledgerPath == null || !Files.exists(ledgerPath)) {
             return;
         }
         try (Stream<String> lines = Files.lines(ledgerPath, StandardCharsets.UTF_8)) {
             lines.forEach(this::replayLine);
-        } catch (java.nio.file.NoSuchFileException ex) {
-            // ⚡ Bolt: Prevent TOCTOU and save an I/O stat call by catching NoSuchFileException
-            return;
         } catch (IOException | UncheckedIOException ex) {
             throw new IllegalStateException("kpi snapshot ledger cannot be loaded", ex);
         }

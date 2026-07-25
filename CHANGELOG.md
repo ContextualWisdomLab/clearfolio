@@ -1,5 +1,8 @@
 ## [Unreleased]
 ### Added
+- **관리자 API 권한 검증 추가**
+  - `AdminController`의 전체 관리자 엔드포인트에 `TenantAccessService`를 통한 `ADMIN_READ` 및 `ADMIN_WRITE` 권한 검증 로직을 추가하여 인증 우회를 방지했습니다.
+
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 
 # Changelog

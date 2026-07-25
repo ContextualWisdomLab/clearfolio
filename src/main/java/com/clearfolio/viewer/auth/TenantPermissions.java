@@ -50,6 +50,16 @@ public final class TenantPermissions {
      */
     public static final String ANALYTICS_READ = "analytics:read";
 
+    /**
+     * Permission required to list all conversion jobs across tenants.
+     */
+    public static final String ADMIN_READ = "admin:read";
+
+    /**
+     * Permission required to modify or delete jobs globally.
+     */
+    public static final String ADMIN_WRITE = "admin:write";
+
     private TenantPermissions() {
     }
 }

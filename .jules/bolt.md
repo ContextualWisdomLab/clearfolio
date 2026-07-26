@@ -19,3 +19,6 @@
 ## 2026-07-13 - 단일 패스 문자열 치환 최적화 (O(N) 단일 스캔 및 지연 할당)
 **Learning:** `String.replace()`를 여러 번 체이닝하여 호출하면, 문자열 치환이 발생하지 않는 경우에도 내부적으로 불필요한 스캔이 중복 발생하고, 치환 시마다 새로운 문자열 객체와 char 배열이 할당되어 메모리 낭비와 성능 저하(GC 압박)가 발생한다.
 **Action:** 여러 문자를 한 번에 치환해야 하는 경우, O(N) 단일 스캔을 통해 `charAt()`으로 문자를 확인하고, 치환이 실제로 필요한 경우에만 `StringBuilder`를 지연 할당(Lazy allocation)하여 성능을 최적화하고 불필요한 메모리 할당을 방지한다.
+## 2026-07-26 - Files.exists() 호출 제거를 통한 I/O 최적화 및 TOCTOU 방지
+**Learning:** 파일 읽기 작업 전에 `Files.exists()`를 호출하여 파일 존재 여부를 확인하는 것은 Time-Of-Check to Time-Of-Use (TOCTOU) 경쟁 조건을 발생시킬 수 있으며, 불필요한 파일 시스템 I/O를 추가로 발생시켜 성능을 저하시킵니다.
+**Action:** `Files.exists()`를 사용하지 말고 바로 파일을 읽는 작업을 수행한 뒤(`Files.readAllBytes()`, `Files.lines()` 등), 파일이 없을 경우 던져지는 `java.nio.file.NoSuchFileException`을 catch하여 처리하도록 코드를 변경해야 합니다.

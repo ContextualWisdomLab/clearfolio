@@ -48,3 +48,8 @@
 
 ### Fixed
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정
+
+## [Unreleased]
+### Added
+- [UX] 반복적인 테이블 액션 버튼("Details", "Status JSON", "Open viewer")에 행 특정 `aria-label`을 동적으로 추가하여 스크린 리더 사용자의 접근성을 개선했습니다.
+- [UX] 비동기 작업 중 "Details" 버튼이 "Loading..." 상태로 전환될 때 기존 `aria-label`이 올바르게 보존 및 복원되도록 수정했습니다.

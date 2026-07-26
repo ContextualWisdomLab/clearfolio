@@ -514,6 +514,16 @@ class DefaultDocumentValidationServiceTest {
     }
 
     @Test
+    void hashApproverIdReturnsNullStringWhenInputIsNull() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        Method method = DefaultDocumentValidationService.class.getDeclaredMethod("hashApproverId", String.class);
+        method.setAccessible(true);
+        String hashed = (String) method.invoke(validationService, (String) null);
+        assertEquals("null", hashed);
+    }
+
+    @Test
     void sanitizeForLogReplacesTabCharacter() throws Exception {
         ConversionProperties conversionProperties = new ConversionProperties();
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
@@ -523,6 +533,33 @@ class DefaultDocumentValidationServiceTest {
         String sanitized = (String) method.invoke(validationService, "approver\tid");
 
         assertEquals("approver_id", sanitized);
+    }
+
+    @Test
+    void throwsWhenSha256DigestIsUnavailableForHashApproverId() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        Method method = DefaultDocumentValidationService.class.getDeclaredMethod("hashApproverId", String.class);
+        method.setAccessible(true);
+
+        synchronized (SECURITY_PROVIDERS_LOCK) {
+            Provider[] providers = Security.getProviders();
+            for (Provider provider : providers) {
+                Security.removeProvider(provider.getName());
+            }
+            try {
+                java.lang.reflect.InvocationTargetException ex = assertThrows(
+                        java.lang.reflect.InvocationTargetException.class,
+                        () -> method.invoke(validationService, "approver-1")
+                );
+                assertEquals(IllegalStateException.class, ex.getCause().getClass());
+                assertEquals("SHA-256 digest unavailable", ex.getCause().getMessage());
+            } finally {
+                for (int index = 0; index < providers.length; index++) {
+                    Security.insertProviderAt(providers[index], index + 1);
+                }
+            }
+        }
     }
 
     @Test

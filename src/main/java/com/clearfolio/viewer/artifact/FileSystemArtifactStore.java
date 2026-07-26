@@ -22,6 +22,10 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class FileSystemArtifactStore implements ArtifactStore {
 
+    // ⚡ Bolt: Use a single, reusable HexFormat instance to reduce object
+    // allocations during byte-to-hex conversions.
+    private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();
+
     @FunctionalInterface
     interface BytesWriter {
         void write(Path path, byte[] bytes) throws IOException;
@@ -134,7 +138,9 @@ public final class FileSystemArtifactStore implements ArtifactStore {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] raw = digest.digest(bytes);
-            return java.util.HexFormat.of().formatHex(raw);
+            // ⚡ Bolt: Optimization: Reuse HEX_FORMAT instead of calling HexFormat.of()
+            // repeatedly to reduce object allocations.
+            return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }

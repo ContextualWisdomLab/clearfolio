@@ -48,3 +48,7 @@
 
 ### Fixed
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정
+
+## [Unreleased]
+### 변경 사항
+- **성능 개선**: `ConversionController`, `FileSystemArtifactStore`, `DefaultDocumentValidationService`에서 `HexFormat.of()`를 반복적으로 호출하던 부분을 수정하여, 재사용 가능한 단일 정적 `HEX_FORMAT` 인스턴스를 활용하도록 최적화함으로써 메모리 할당 및 가비지 컬렉션 오버헤드를 줄였습니다.

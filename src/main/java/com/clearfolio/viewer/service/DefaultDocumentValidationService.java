@@ -93,7 +93,9 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
 
             byte[] providedBytes;
             try {
-                providedBytes = HexFormat.of().parseHex(approvalToken);
+                // ⚡ Bolt: Optimization: Reuse HEX_FORMAT instead of calling HexFormat.of()
+                // repeatedly to reduce object allocations.
+                providedBytes = HEX_FORMAT.parseHex(approvalToken);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Invalid policy override signature.", e);
             }

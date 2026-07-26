@@ -50,6 +50,10 @@ import reactor.core.scheduler.Schedulers;
 @RestController
 public class ConversionController {
 
+    // ⚡ Bolt: Use a single, reusable HexFormat instance to reduce object
+    // allocations during byte-to-hex conversions.
+    private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();
+
     /**
      * Header used to identify the operator initiating a dead-letter retry.
      */
@@ -294,9 +298,9 @@ public class ConversionController {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(data);
-            // Optimization: java.util.HexFormat.of().formatHex() is faster
-            // and allocates less memory than String.format.
-            return java.util.HexFormat.of().formatHex(hash);
+            // ⚡ Bolt: Optimization: Reuse HEX_FORMAT instead of calling HexFormat.of()
+            // repeatedly to reduce object allocations.
+            return HEX_FORMAT.formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 algorithm not available", e);
         }

@@ -32,3 +32,7 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## 2026-07-26 - 어드민 엔드포인트 권한 부여 취약점 수정
+**Vulnerability:** AdminController 내 어드민 기능(job 삭제, 재시도, 목록 조회)에 대한 인증/인가(TenantAccessService)가 누락되어 누구나 접근 가능한 심각한 취약점이 발견되었습니다.
+**Learning:** 중요 API 엔드포인트는 항상 강력한 권한 확인(TenantPermissions) 계층을 거쳐야 함을 확인했습니다.
+**Prevention:** 모든 새로운 컨트롤러 및 민감한 API를 추가할 때는 TenantAccessService를 필수로 주입하고, 적절한 권한을 확인하는 로직을 반드시 포함해야 합니다.

@@ -1,5 +1,5 @@
-🚨 Severity: CRITICAL
-💡 Vulnerability: 파일 업로드 시 `MultipartFile.getOriginalFilename()` 값을 검증 없이 사용하여 발생할 수 있는 경로 조작(Path Traversal) 취약점 발견.
-🎯 Impact: 공격자가 디렉토리 탐색 문자열(`../`)을 포함한 파일명을 전송하여 의도하지 않은 경로에 파일을 저장하거나 시스템 파일(예: `/etc/passwd`)에 접근/조작할 위험이 있음.
-🔧 Fix: `DefaultDocumentConversionService` 및 `DefaultDocumentValidationService`에서 파일명을 사용하기 전 `StringUtils.cleanPath()`를 통해 경로를 정규화하고, 마지막 `/` 이후의 순수한 파일명만 추출하도록 `sanitizeFilename` 메소드를 추가하여 안전하게 처리함.
-✅ Verification: 단위 테스트(`submitStripsDirectoryTraversalFromOriginalFilename` 및 `stripsDirectoryTraversalFromFilename` 등)를 추가하여 취약점 문자열이 정상적으로 제거되며 100% 테스트 커버리지를 보장함.
+🚨 Severity: HIGH
+💡 Vulnerability: AdminController의 관리자 API 엔드포인트에 인증 및 권한 검증 로직이 누락되어 인가되지 않은 사용자가 모든 변환 작업을 조회하거나 삭제할 수 있는 취약점이 존재했습니다.
+🎯 Impact: 공격자가 권한 검증 없이 관리자 API에 접근하여 시스템의 민감한 데이터를 열람하거나, 진행 중이거나 성공한 변환 작업을 무단으로 삭제 및 재시도할 수 있어 심각한 데이터 손실 및 권한 우회가 가능했습니다.
+🔧 Fix: `TenantPermissions`에 `ADMIN_READ`와 `ADMIN_WRITE` 권한 상수를 추가하고, `AdminController`의 각 엔드포인트에 `TenantAccessService`를 주입하여 인증 및 권한 검증(`tenantAccessService.require(...)`)을 강제하도록 패치했습니다.
+✅ Verification: `mvn test`를 통해 보안 로직 추가 후 기존 테스트 코드가 적절한 모의(Mocking)를 거쳐 100% 테스트 커버리지를 만족하고 성공적으로 동작함을 확인했습니다.

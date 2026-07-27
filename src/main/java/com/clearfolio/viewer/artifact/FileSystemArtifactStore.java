@@ -86,14 +86,13 @@ public final class FileSystemArtifactStore implements ArtifactStore {
         }
 
         Path pdfPath = pdfPath(docId);
-        if (!Files.exists(pdfPath)) {
-            return Optional.empty();
-        }
 
         try {
             byte[] loaded = bytesReader.read(pdfPath);
             cache.put(docId, loaded);
             return Optional.of(loaded.clone());
+        } catch (java.nio.file.NoSuchFileException ex) {
+            return Optional.empty();
         } catch (IOException ex) {
             throw new IllegalStateException("failed to read artifact for docId " + docId, ex);
         }

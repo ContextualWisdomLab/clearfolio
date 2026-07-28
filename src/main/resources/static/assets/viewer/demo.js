@@ -81,13 +81,16 @@ function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
   }
 }
 
-function createLink(href, label) {
+function createLink(href, label, ariaLabel) {
   const link = document.createElement("a");
   link.href = href;
   link.textContent = label;
   link.className = "table-link";
   link.target = "_blank";
   link.rel = "noopener noreferrer";
+  if (ariaLabel) {
+    link.setAttribute("aria-label", ariaLabel);
+  }
   return link;
 }
 
@@ -110,12 +113,15 @@ async function openJsonDocument(url, title) {
     : "Unable to load JSON evidence with the current tenant claim.";
 }
 
-function createActionButton(label, onClick) {
+function createActionButton(label, onClick, ariaLabel) {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
   button.className = "btn btn-secondary btn-compact";
   button.addEventListener("click", onClick);
+  if (ariaLabel) {
+    button.setAttribute("aria-label", ariaLabel);
+  }
   return button;
 }
 
@@ -138,7 +144,8 @@ function renderHistory(history = loadHistory()) {
     const submittedCell = document.createElement("td");
     const actionsCell = document.createElement("td");
 
-    fileCell.textContent = job.fileName || "Document";
+    const rowTitle = job.fileName || "Document";
+    fileCell.textContent = rowTitle;
     statusCell.textContent = job.status || "SUBMITTED";
     submittedCell.textContent = job.submittedAt || "";
     actionsCell.className = "table-actions";
@@ -148,18 +155,20 @@ function renderHistory(history = loadHistory()) {
         const btn = e.currentTarget;
         const initialChildren = Array.from(btn.childNodes);
         btn.disabled = true;
+        btn.setAttribute("aria-label", "Loading...");
         btn.textContent = "Loading...";
         openJobDetail(job).finally(() => {
           btn.replaceChildren(...initialChildren);
+          btn.setAttribute("aria-label", `Details for ${rowTitle}`);
           btn.disabled = false;
         });
-      }));
+      }, `Details for ${rowTitle}`));
       actionsCell.appendChild(createActionButton("Status JSON", () => {
         void openJsonDocument(job.statusUrl, "Clearfolio status JSON");
-      }));
+      }, `Status JSON for ${rowTitle}`));
     }
     if (job.jobId) {
-      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer"));
+      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer", `Open viewer for ${rowTitle}`));
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);

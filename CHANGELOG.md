@@ -37,6 +37,10 @@
 - 신규 구현된 Repository, Service, Controller 계층에 대한 유닛 테스트(Unit Tests)를 작성하여 JaCoCo 기준 라인 및 브랜치 커버리지 100%를 달성했습니다.
 
 ### 보안 (Security)
+- **관리자 API 보안 인증 강화 (Admin API Security Enforcement)**
+  - 관리자 전용 엔드포인트(`GET /api/v1/admin/convert/jobs`, `DELETE /api/v1/admin/convert/jobs/{jobId}`, `POST /api/v1/admin/convert/jobs/{jobId}/retry`)에 `TenantAccessService`를 통한 보안 검증을 도입했습니다.
+  - 각각 `ADMIN_READ`, `ADMIN_WRITE` 권한(TenantPermissions)을 요구하도록 적용하여 허가되지 않은 사용자의 접근을 차단했습니다.
+
 - **의존성 취약점 일괄 정리 (trivy-fs / osv-scan 대응)**: Spring Boot 부모 POM을 `3.5.0`에서 `3.5.16`으로 올려 Spring Framework, Netty, Reactor Netty, logback 관련 다수의 HIGH/MEDIUM 권고를 해소했습니다.
 - Jackson 계열을 `jackson-bom` import로 `2.22.1`에 고정하여 jackson-databind case-insensitive deserialization bypass 권고(GHSA-5jmj-h7xm-6q6v / CVE-2026-54515)를 제거했습니다.
 - Apache Tika 표준 파서를 통해 유입되던 전이 의존성을 `dependencyManagement`로 고정했습니다: junrar `7.6.0`(경로 순회 RCE/파일 쓰기), commons-io `2.20.0`(XmlStreamReader DoS), commons-lang3 `3.18.0`, BouncyCastle `bcprov-jdk18on 1.84` 및 `bcpkix-jdk18on 1.84`(CRITICAL/Medium). 전체 347개 테스트 통과를 확인했습니다.

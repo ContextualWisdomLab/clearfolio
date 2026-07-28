@@ -136,11 +136,13 @@ public class ArtifactLinkLedger {
     }
 
     private void load() {
-        if (ledgerPath == null || !Files.exists(ledgerPath)) {
+        if (ledgerPath == null) {
             return;
         }
         try (Stream<String> lines = Files.lines(ledgerPath, StandardCharsets.UTF_8)) {
             lines.forEach(this::replayLine);
+        } catch (java.nio.file.NoSuchFileException ex) {
+            // Ignore missing ledger file
         } catch (IOException | UncheckedIOException ex) {
             throw new IllegalStateException("artifact link ledger cannot be loaded", ex);
         }

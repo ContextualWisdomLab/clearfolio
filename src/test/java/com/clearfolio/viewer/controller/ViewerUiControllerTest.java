@@ -115,6 +115,7 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("setTimeout"));
             assertTrue(script.contains("formatPercent"));
             assertTrue(script.contains("formatMilliseconds"));
+            assertTrue(script.contains("aria-busy"));
             assertTrue(script.contains("renderKpiEvidence"));
             assertTrue(script.contains("formatTimestamp"));
             assertTrue(script.contains("renderRecoveryEvidence"));

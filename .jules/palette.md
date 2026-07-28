@@ -13,3 +13,6 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+## 2026-07-28 - 비동기 버튼 로딩 상태에 대한 ARIA aria-busy 접근성 개선
+**Learning:** 비동기 작업(예: 파일 업로드, 데모 데이터 로드)이 진행되는 동안 버튼이 `disabled` 처리되더라도 스크린 리더 등 보조 기기는 현재 요소가 로딩 중인지 명확하게 인지하기 어려울 수 있습니다.
+**Action:** 동작이 시작될 때 동적으로 버튼 요소에 `aria-busy="true"`를 설정하고, `finally` 블록을 활용하여 동작이 완료(성공 또는 에러)되었을 때 해당 속성을 제거함으로써 접근성 상태를 올바르게 전달하도록 하였습니다.

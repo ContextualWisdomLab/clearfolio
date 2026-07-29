@@ -93,7 +93,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
 
             byte[] providedBytes;
             try {
-                providedBytes = HexFormat.of().parseHex(approvalToken);
+                providedBytes = HEX_FORMAT.parseHex(approvalToken);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Invalid policy override signature.", e);
             }

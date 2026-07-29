@@ -50,6 +50,8 @@ import reactor.core.scheduler.Schedulers;
 @RestController
 public class ConversionController {
 
+    private static final java.util.HexFormat HEX_FORMAT = java.util.HexFormat.of();
+
     /**
      * Header used to identify the operator initiating a dead-letter retry.
      */
@@ -296,7 +298,7 @@ public class ConversionController {
             byte[] hash = digest.digest(data);
             // Optimization: java.util.HexFormat.of().formatHex() is faster
             // and allocates less memory than String.format.
-            return java.util.HexFormat.of().formatHex(hash);
+            return HEX_FORMAT.formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 algorithm not available", e);
         }

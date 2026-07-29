@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.DateTimeException;
@@ -136,11 +137,13 @@ public class ArtifactLinkLedger {
     }
 
     private void load() {
-        if (ledgerPath == null || !Files.exists(ledgerPath)) {
+        if (ledgerPath == null) {
             return;
         }
         try (Stream<String> lines = Files.lines(ledgerPath, StandardCharsets.UTF_8)) {
             lines.forEach(this::replayLine);
+        } catch (NoSuchFileException ex) {
+            return;
         } catch (IOException | UncheckedIOException ex) {
             throw new IllegalStateException("artifact link ledger cannot be loaded", ex);
         }

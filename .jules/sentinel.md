@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-07-29 - 파일 시스템 TOCTOU(Time-Of-Check to Time-Of-Use) 취약점 완화
+**Vulnerability:** 파일 존재 여부를 `Files.exists(path)`로 확인한 후 `Files.readAllBytes(path)`로 읽어들이는 방식은 두 작업 사이에 파일 상태가 변경될 수 있는 경쟁 조건(Race Condition)을 유발하며 성능상으로도 불리합니다.
+**Learning:** 검사와 사용 사이의 시간 차이(TOCTOU)를 이용한 공격이 가능하거나, 파일이 그 사이에 삭제되어 예외가 발생할 수 있습니다.
+**Prevention:** `Files.exists()`를 통한 사전 검사 대신, 직접 파일을 읽고 `NoSuchFileException`을 캐치(catch)하여 처리하는 방식으로 변경해야 합니다. 이는 I/O 성능 향상에도 도움이 됩니다.

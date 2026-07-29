@@ -3,6 +3,7 @@ package com.clearfolio.viewer.artifact;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -86,14 +87,12 @@ public final class FileSystemArtifactStore implements ArtifactStore {
         }
 
         Path pdfPath = pdfPath(docId);
-        if (!Files.exists(pdfPath)) {
-            return Optional.empty();
-        }
-
         try {
             byte[] loaded = bytesReader.read(pdfPath);
             cache.put(docId, loaded);
             return Optional.of(loaded.clone());
+        } catch (NoSuchFileException ex) {
+            return Optional.empty();
         } catch (IOException ex) {
             throw new IllegalStateException("failed to read artifact for docId " + docId, ex);
         }

@@ -50,6 +50,11 @@ public final class TenantPermissions {
      */
     public static final String ANALYTICS_READ = "analytics:read";
 
+    /**
+     * Permission required to manage admin operations.
+     */
+    public static final String ADMIN_MANAGE = "admin:manage";
+
     private TenantPermissions() {
     }
 }

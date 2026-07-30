@@ -332,16 +332,38 @@ public class ArtifactLinkService {
     }
 
     private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.");
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+        int lastDot = token.lastIndexOf('.');
+        if (lastDot < 0) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        String payload = token.substring(0, lastDot);
+        String signature = token.substring(lastDot + 1);
+
+        int dotCount = 0;
+        int nextDotIndex = 0;
+        int startIdx = 0;
+        String[] parts = new String[TOKEN_FIELD_COUNT];
+
+        while ((nextDotIndex = payload.indexOf('.', startIdx)) >= 0) {
+            if (dotCount < TOKEN_FIELD_COUNT) {
+                parts[dotCount] = payload.substring(startIdx, nextDotIndex);
+            }
+            dotCount++;
+            startIdx = nextDotIndex + 1;
+        }
+
+        if (dotCount != TOKEN_FIELD_COUNT - 1) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+        if (startIdx <= payload.length()) {
+            parts[dotCount] = payload.substring(startIdx);
+        }
+
         String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+                signature.getBytes(StandardCharsets.US_ASCII))) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 

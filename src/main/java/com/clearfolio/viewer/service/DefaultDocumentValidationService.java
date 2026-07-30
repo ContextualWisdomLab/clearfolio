@@ -145,11 +145,12 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
             throw new IllegalArgumentException("File name contains null byte.");
         }
 
-        java.nio.file.Path leafName = java.nio.file.Path.of(fileName.strip()).getFileName();
-        if (leafName == null) {
+        String cleanPath = org.springframework.util.StringUtils.cleanPath(fileName.strip());
+        int lastSlash = cleanPath.lastIndexOf('/');
+        String normalized = lastSlash != -1 ? cleanPath.substring(lastSlash + 1) : cleanPath;
+        if (normalized.isEmpty()) {
             return "";
         }
-        String normalized = leafName.toString();
         int lastDot = normalized.lastIndexOf('.');
         if (lastDot <= 0 || lastDot == normalized.length() - 1) {
             return "";
@@ -199,6 +200,9 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
     }
 
     private String tokenFingerprint(String approvalToken) {
+        if (approvalToken == null) {
+            return null;
+        }
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashed = digest.digest(approvalToken.getBytes(StandardCharsets.UTF_8));

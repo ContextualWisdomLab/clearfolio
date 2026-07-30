@@ -15,6 +15,9 @@
   - KPI 스냅샷 증거를 다시 불러오는 `refreshKpiEvidence` 동작 중에 "Refresh evidence" 버튼을 비활성화하고 "Refreshing..." 이라는 피드백을 제공하여 사용자의 중복 클릭을 방지했습니다.
   - 버튼 상태 변경 시 내부 DOM 구조를 보존하기 위해 `Array.from(button.childNodes)`로 원래 노드를 저장하고, 성공 및 실패 후 `finally` 블록에서 `replaceChildren(...)`으로 안전하게 복원하도록 구현했습니다.
 
+### Fixed
+- `DefaultDocumentValidationService`의 `java.nio.file.Path.of` 기반 파일명 추출 로직을 `StringUtils.cleanPath()`로 변경하여 경로 탐색(Path Traversal) 공격 방지 강화
+- `tokenFingerprint` 메서드에서 인자가 null일 때 발생하는 `NullPointerException` 방지 로직 추가
 
 ## [0.1.0] - 2026-06-25
 

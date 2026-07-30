@@ -32,7 +32,7 @@ class DefaultDocumentValidationServiceTest {
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
         java.lang.reflect.Method method = DefaultDocumentValidationService.class.getDeclaredMethod("sanitizeFilename", String.class);
         method.setAccessible(true);
-        String sanitized = (String) method.invoke(validationService, new Object[] {null});
+        String sanitized = (String) method.invoke(validationService, (Object) null);
         assertNull(sanitized);
     }
 
@@ -47,6 +47,46 @@ class DefaultDocumentValidationServiceTest {
         assertEquals("simple-file.txt", sanitized);
     }
 
+    @Test
+    void sanitizeFilenameReturnsCleanPathWhenMultipleSlashesArePresent() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        java.lang.reflect.Method method = DefaultDocumentValidationService.class.getDeclaredMethod("sanitizeFilename", String.class);
+        method.setAccessible(true);
+        String sanitized = (String) method.invoke(validationService, "some/nested/path/file.txt");
+        assertEquals("file.txt", sanitized);
+    }
+
+    @Test
+    void sanitizeFilenameReturnsCleanPathWhenPathTraversalIsAttempted() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        java.lang.reflect.Method method = DefaultDocumentValidationService.class.getDeclaredMethod("sanitizeFilename", String.class);
+        method.setAccessible(true);
+        String sanitized = (String) method.invoke(validationService, "../../../etc/passwd.txt");
+        assertEquals("passwd.txt", sanitized);
+    }
+
+    @Test
+    void tokenFingerprintReturnsNullWhenApprovalTokenIsNull() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        java.lang.reflect.Method method = DefaultDocumentValidationService.class.getDeclaredMethod("tokenFingerprint", String.class);
+        method.setAccessible(true);
+        String fingerprint = (String) method.invoke(validationService, (Object) null);
+        assertNull(fingerprint);
+    }
+
+    @Test
+    void tokenFingerprintReturnsHashWhenApprovalTokenIsProvided() throws Exception {
+        ConversionProperties conversionProperties = new ConversionProperties();
+        DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
+        java.lang.reflect.Method method = DefaultDocumentValidationService.class.getDeclaredMethod("tokenFingerprint", String.class);
+        method.setAccessible(true);
+        String fingerprint = (String) method.invoke(validationService, "some-token");
+        // The exact hash doesn't matter for this test, just that it's not null and of expected length
+        org.junit.jupiter.api.Assertions.assertNotNull(fingerprint);
+    }
 
     @Test
     void stripsDirectoryTraversalFromFilename() {

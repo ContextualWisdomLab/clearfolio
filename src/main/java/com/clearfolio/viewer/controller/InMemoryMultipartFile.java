@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Objects;
 
 import org.springframework.web.multipart.MultipartFile;
@@ -37,7 +36,7 @@ public final class InMemoryMultipartFile implements MultipartFile {
         this.name = Objects.requireNonNull(name, "name must not be null");
         this.originalFilename = originalFilename;
         this.contentType = contentType;
-        this.content = content == null ? new byte[0] : Arrays.copyOf(content, content.length);
+        this.content = content == null ? new byte[0] : content;
     }
 
     @Override
@@ -67,7 +66,7 @@ public final class InMemoryMultipartFile implements MultipartFile {
 
     @Override
     public byte[] getBytes() {
-        return Arrays.copyOf(content, content.length);
+        return content;
     }
 
     @Override

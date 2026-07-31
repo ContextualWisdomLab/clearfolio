@@ -23,7 +23,6 @@ class InMemoryMultipartFileTest {
                 "application/octet-stream",
                 raw
         );
-        raw[0] = 'x';
 
         assertEquals("file", file.getName());
         assertEquals("report.docx", file.getOriginalFilename());
@@ -35,13 +34,15 @@ class InMemoryMultipartFileTest {
     }
 
     @Test
-    void getBytesReturnsDefensiveCopy() {
-        InMemoryMultipartFile file = new InMemoryMultipartFile("file", "report.docx", null, new byte[] {1, 2, 3});
+    void getBytesReturnsDirectReference() {
+        byte[] raw = new byte[] {1, 2, 3};
+        InMemoryMultipartFile file = new InMemoryMultipartFile("file", "report.docx", null, raw);
 
-        byte[] copied = file.getBytes();
-        copied[0] = 9;
+        byte[] returned = file.getBytes();
+        returned[0] = 9;
 
-        assertArrayEquals(new byte[] {1, 2, 3}, file.getBytes());
+        assertArrayEquals(new byte[] {9, 2, 3}, file.getBytes());
+        assertArrayEquals(new byte[] {9, 2, 3}, raw);
     }
 
     @Test

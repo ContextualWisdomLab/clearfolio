@@ -81,13 +81,16 @@ function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
   }
 }
 
-function createLink(href, label) {
+function createLink(href, label, ariaLabel) {
   const link = document.createElement("a");
   link.href = href;
   link.textContent = label;
   link.className = "table-link";
   link.target = "_blank";
   link.rel = "noopener noreferrer";
+  if (ariaLabel) {
+    link.setAttribute("aria-label", ariaLabel);
+  }
   return link;
 }
 
@@ -110,12 +113,15 @@ async function openJsonDocument(url, title) {
     : "Unable to load JSON evidence with the current tenant claim.";
 }
 
-function createActionButton(label, onClick) {
+function createActionButton(label, onClick, ariaLabel) {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
   button.className = "btn btn-secondary btn-compact";
   button.addEventListener("click", onClick);
+  if (ariaLabel) {
+    button.setAttribute("aria-label", ariaLabel);
+  }
   return button;
 }
 
@@ -147,19 +153,26 @@ function renderHistory(history = loadHistory()) {
       actionsCell.appendChild(createActionButton("Details", (e) => {
         const btn = e.currentTarget;
         const initialChildren = Array.from(btn.childNodes);
+        const initialAriaLabel = btn.getAttribute("aria-label");
         btn.disabled = true;
+        btn.setAttribute("aria-label", "Loading...");
         btn.textContent = "Loading...";
         openJobDetail(job).finally(() => {
           btn.replaceChildren(...initialChildren);
+          if (initialAriaLabel) {
+            btn.setAttribute("aria-label", initialAriaLabel);
+          } else {
+            btn.removeAttribute("aria-label");
+          }
           btn.disabled = false;
         });
-      }));
+      }, `Details for ${job.fileName || "Document"}`));
       actionsCell.appendChild(createActionButton("Status JSON", () => {
         void openJsonDocument(job.statusUrl, "Clearfolio status JSON");
-      }));
+      }, `Status JSON for ${job.fileName || "Document"}`));
     }
     if (job.jobId) {
-      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer"));
+      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer", `Open viewer for ${job.fileName || "Document"}`));
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
@@ -298,7 +311,9 @@ async function retryActiveJob() {
 
   const jobId = activeJobDetail.jobId;
   const initialChildren = Array.from(el.retryJobBtn.childNodes);
+  const initialAriaLabel = el.retryJobBtn.getAttribute("aria-label");
   el.retryJobBtn.disabled = true;
+  el.retryJobBtn.setAttribute("aria-label", "Loading...");
   el.retryJobBtn.textContent = "Retrying...";
   setStatus("Requesting operator retry...");
 
@@ -339,6 +354,11 @@ async function retryActiveJob() {
     setError("Network error while requesting retry. Retry when the service is reachable.");
   } finally {
     el.retryJobBtn.replaceChildren(...initialChildren);
+    if (initialAriaLabel) {
+      el.retryJobBtn.setAttribute("aria-label", initialAriaLabel);
+    } else {
+      el.retryJobBtn.removeAttribute("aria-label");
+    }
     el.retryJobBtn.disabled = false;
   }
 }
@@ -413,7 +433,9 @@ async function refreshKpis() {
 
 async function refreshKpiEvidence() {
   const initialChildren = Array.from(el.refreshEvidenceBtn.childNodes);
+  const initialAriaLabel = el.refreshEvidenceBtn.getAttribute("aria-label");
   el.refreshEvidenceBtn.disabled = true;
+  el.refreshEvidenceBtn.setAttribute("aria-label", "Loading...");
   el.refreshEvidenceBtn.textContent = "Refreshing...";
 
   try {
@@ -428,13 +450,20 @@ async function refreshKpiEvidence() {
     el.kpiExportStatus.textContent = "Snapshot evidence is unavailable while the service is unreachable.";
   } finally {
     el.refreshEvidenceBtn.replaceChildren(...initialChildren);
+    if (initialAriaLabel) {
+      el.refreshEvidenceBtn.setAttribute("aria-label", initialAriaLabel);
+    } else {
+      el.refreshEvidenceBtn.removeAttribute("aria-label");
+    }
     el.refreshEvidenceBtn.disabled = false;
   }
 }
 
 async function loadDemoData() {
   const initialChildren = Array.from(el.loadDemoDataBtn.childNodes);
+  const initialAriaLabel = el.loadDemoDataBtn.getAttribute("aria-label");
   el.loadDemoDataBtn.disabled = true;
+  el.loadDemoDataBtn.setAttribute("aria-label", "Loading...");
   el.loadDemoDataBtn.textContent = "Loading...";
   setStatus("Loading seeded buyer-demo story...");
 
@@ -459,6 +488,11 @@ async function loadDemoData() {
     setError("Unable to load seeded demo story.");
   } finally {
     el.loadDemoDataBtn.replaceChildren(...initialChildren);
+    if (initialAriaLabel) {
+      el.loadDemoDataBtn.setAttribute("aria-label", initialAriaLabel);
+    } else {
+      el.loadDemoDataBtn.removeAttribute("aria-label");
+    }
     el.loadDemoDataBtn.disabled = false;
   }
 }
@@ -506,7 +540,9 @@ async function submitDocument(event) {
   }
 
   const initialChildren = Array.from(el.submitBtn.childNodes);
+  const initialAriaLabel = el.submitBtn.getAttribute("aria-label");
   el.submitBtn.disabled = true;
+  el.submitBtn.setAttribute("aria-label", "Loading...");
   el.submitBtn.textContent = "Submitting...";
   setStatus("Submitting document...");
 
@@ -551,6 +587,11 @@ async function submitDocument(event) {
     setError("Network error while submitting. Retry when the service is reachable.");
   } finally {
     el.submitBtn.replaceChildren(...initialChildren);
+    if (initialAriaLabel) {
+      el.submitBtn.setAttribute("aria-label", initialAriaLabel);
+    } else {
+      el.submitBtn.removeAttribute("aria-label");
+    }
     el.submitBtn.disabled = false;
   }
 }

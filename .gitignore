@@ -41,3 +41,7 @@ certs/
 
 # CodeGraph local index
 .codegraph/
+node_modules/
+package.json
+pnpm-lock.yaml
+verify-aria-labels.mjs

@@ -1,4 +1,6 @@
 ## [Unreleased]
+### Performance
+* `ArtifactLinkService`: 토큰 파싱 시 `String.split()` 및 배열 복사 로직을 `lastIndexOf()`와 `substring()`으로 최적화하여 메모리 할당 및 GC 압박 감소.
 ### Added
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 

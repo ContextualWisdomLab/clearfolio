@@ -1,12 +1,13 @@
-## [Unreleased]
-### Added
-- **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
-
 # Changelog
 
 ## [Unreleased]
 
+### 성능 개선 (Performance)
+- `FileSystemArtifactStore`에서 `HexFormat` 객체를 상수로 재사용하여 불필요한 객체 생성을 방지하고 해시 문자열 변환 성능을 개선했습니다.
+- `ArtifactLinkService`의 `parseAndVerify`에서 `String.split` 대신 `lastIndexOf` 및 `substring`을 사용하여 토큰 파싱 시 문자열 결합 및 방어적 복사 연산을 제거하여 CPU 및 메모리 사용을 최적화했습니다.
+
 ### 추가된 기능 (Added)
+- **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.
   - 실패(dead-lettered) 상태인 작업을 관리자가 재시도 큐에 등록할 수 있는 `POST /api/v1/admin/convert/jobs/{jobId}/retry` 엔드포인트를 추가했습니다.

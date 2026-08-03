@@ -81,7 +81,23 @@ function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
   }
 }
 
+function isSafeUrl(urlStr) {
+  try {
+    const url = new URL(urlStr, window.location.href);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (e) {
+    return false;
+  }
+}
+
 function createLink(href, label) {
+  if (!isSafeUrl(href)) {
+    console.error("Blocked unsafe URL in link:", href);
+    const span = document.createElement("span");
+    span.textContent = label;
+    span.className = "table-link";
+    return span;
+  }
   const link = document.createElement("a");
   link.href = href;
   link.textContent = label;

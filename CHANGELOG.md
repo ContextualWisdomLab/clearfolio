@@ -48,3 +48,6 @@
 
 ### Fixed
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정
+
+### 보안 (Security)
+- **DOM 기반 XSS 취약점 조치**: `demo.js`의 `createLink` 함수에서 untrusted URL이 `href` 속성에 바로 할당될 때 발생할 수 있는 DOM 기반 XSS를 방지하기 위해 `isSafeUrl` 검증 로직(프로토콜이 `http:` 또는 `https:`인지 확인)을 도입했습니다.

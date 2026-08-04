@@ -6,6 +6,9 @@
 
 ## [Unreleased]
 
+### 보안 (Security)
+- **관리자 API 권한 검증 추가**: `AdminController`의 모든 엔드포인트(`GET /api/v1/admin/convert/jobs`, `DELETE /api/v1/admin/convert/jobs/{jobId}`, `POST /api/v1/admin/convert/jobs/{jobId}/retry`)에 대해 `TenantAccessService`를 통한 `ADMIN_READ` 및 `ADMIN_WRITE` 권한 검증 로직을 추가하여 인증 우회 취약점을 패치했습니다.
+
 ### 추가된 기능 (Added)
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.

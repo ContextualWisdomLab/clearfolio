@@ -50,6 +50,10 @@ public final class TenantPermissions {
      */
     public static final String ANALYTICS_READ = "analytics:read";
 
+    public static final String ADMIN_READ = "admin:read";
+
+    public static final String ADMIN_WRITE = "admin:write";
+
     private TenantPermissions() {
     }
 }

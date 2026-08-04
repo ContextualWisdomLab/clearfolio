@@ -12,8 +12,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
- * Verifies that the configured PDF.js viewer, module, and worker are packaged
- * together and that Clearfolio preserves its signed-artifact integration path.
+ * Verifies that the configured PDF.js module and worker are packaged together
+ * and that Clearfolio preserves its signed-artifact integration path.
  */
 class PdfJsAssetIntegrationTest {
 
@@ -21,15 +21,13 @@ class PdfJsAssetIntegrationTest {
     private static final String WEBJAR_ROOT = "/META-INF/resources/webjars/pdfjs-dist/" + PDF_JS_VERSION;
 
     @Test
-    void packagesMatchingViewerModuleAndWorkerAssets() throws Exception {
-        assertPackagedResource(WEBJAR_ROOT + "/web/viewer.html");
-        assertPackagedResource(WEBJAR_ROOT + "/web/viewer.mjs");
+    void packagesMatchingDisplayModuleAndWorkerAssets() throws Exception {
         assertPackagedResource(WEBJAR_ROOT + "/build/pdf.mjs");
         assertPackagedResource(WEBJAR_ROOT + "/build/pdf.worker.mjs");
     }
 
     @Test
-    void viewerShellPublishesTheSameVersionedViewerPath() {
+    void viewerShellPublishesTheSameVersionedModuleAndWorkerPaths() {
         WebTestClient.bindToController(new ViewerUiController())
                 .build()
                 .get()
@@ -38,11 +36,18 @@ class PdfJsAssetIntegrationTest {
                 .expectStatus().isOk()
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
                 .expectBody(String.class)
-                .value(body -> assertTrue(body.contains(
-                        "clearfolio-pdfjs-viewer-path\" content=\""
-                                + ViewerUiController.PDF_JS_VIEWER_PATH
-                                + "\""
-                )));
+                .value(body -> {
+                    assertTrue(body.contains(
+                            "clearfolio-pdfjs-module-path\" content=\""
+                                    + ViewerUiController.PDF_JS_MODULE_PATH
+                                    + "\""
+                    ));
+                    assertTrue(body.contains(
+                            "clearfolio-pdfjs-worker-path\" content=\""
+                                    + ViewerUiController.PDF_JS_WORKER_PATH
+                                    + "\""
+                    ));
+                });
     }
 
     @Test
@@ -51,10 +56,13 @@ class PdfJsAssetIntegrationTest {
             assertNotNull(input, "viewer.js must be packaged");
             String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
 
-            assertTrue(script.contains(ViewerUiController.PDF_JS_VIEWER_PATH));
+            assertTrue(script.contains(ViewerUiController.PDF_JS_MODULE_PATH));
+            assertTrue(script.contains(ViewerUiController.PDF_JS_WORKER_PATH));
+            assertTrue(script.contains("GlobalWorkerOptions.workerSrc"));
+            assertTrue(script.contains("getDocument({"));
             assertTrue(script.contains("get(\"artifactToken\")"));
             assertTrue(script.contains("artifactToken=${encodeURIComponent(externalArtifactToken)}"));
-            assertTrue(script.contains("renderPdfInline(artifactPath)"));
+            assertTrue(script.contains("await renderPdfInline(artifactPath)"));
         }
     }
 

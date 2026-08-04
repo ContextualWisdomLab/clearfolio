@@ -16,8 +16,8 @@ import org.springframework.web.util.HtmlUtils;
 @RestController
 public class ViewerUiController {
 
-    // Keep this in sync with `pom.xml` pdfjs-dist version.
-    static final String PDF_JS_VIEWER_PATH = "/webjars/pdfjs-dist/4.10.38/web/viewer.html";
+    // Keep this in sync with `pom.xml` pdfjs-dist version and viewer.js.
+    static final String PDF_JS_VIEWER_PATH = "/webjars/pdfjs-dist/6.1.200/web/viewer.html";
     private static final String INVALID_DOC_ID_SENTINEL = "invalid";
 
     /**

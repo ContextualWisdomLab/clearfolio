@@ -56,7 +56,22 @@ function loadHistory() {
 }
 
 function saveHistory(history) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 12)));
+  const safeHistory = history.map(job => ({
+      jobId: sanitizeString(job.jobId),
+      fileName: sanitizeString(job.fileName),
+      status: sanitizeString(job.status),
+      statusUrl: isSafeUrl(job.statusUrl) ? job.statusUrl : null,
+      submittedAt: sanitizeString(job.submittedAt),
+      attemptCount: typeof job.attemptCount === 'number' ? job.attemptCount : undefined,
+      maxAttempts: typeof job.maxAttempts === 'number' ? job.maxAttempts : undefined,
+      retryAt: sanitizeString(job.retryAt),
+      deadLettered: Boolean(job.deadLettered),
+      message: sanitizeString(job.message),
+      lastInspectedAt: sanitizeString(job.lastInspectedAt),
+      lastRecoveryAction: sanitizeString(job.lastRecoveryAction),
+      lastRecoveryAt: sanitizeString(job.lastRecoveryAt)
+  })).filter(job => job.jobId && job.status);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(safeHistory.slice(0, 12)));
 }
 
 function setStatus(message) {
@@ -83,17 +98,18 @@ function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
 
 function isSafeUrl(urlStr) {
   try {
-    const url = new URL(urlStr, window.location.origin);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch (e) {
-    return false;
+    const u = new URL(urlStr, window.location.origin);
+    return u.origin === window.location.origin ? urlStr : null;
+  } catch {
+    return null;
   }
 }
 
 function createLink(href, label, ariaLabel) {
   const link = document.createElement("a");
-  if (isSafeUrl(href)) {
-    link.href = href;
+  const safeHref = isSafeUrl(href);
+  if (safeHref) {
+    link.href = safeHref;
   } else {
     console.error("Blocked unsafe URL in link:", href);
     link.href = "#";

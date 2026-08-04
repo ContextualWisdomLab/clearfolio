@@ -63,8 +63,49 @@ class ConversionControllerTest {
         webTestClient = WebTestClient.bindToController(
                 controller
         ).controllerAdvice(new ApiExceptionHandler()).build();
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void constructorCapsMaxInMemorySizeAtIntegerMaxValue() throws Exception {
         ConversionController controller = new ConversionController(
@@ -78,8 +119,49 @@ class ConversionControllerTest {
         field.setAccessible(true);
 
         assertEquals(Integer.MAX_VALUE, field.getInt(controller));
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void toMultipartFileHandlesMissingContentTypeHeader() throws Exception {
         FilePart filePart = mock(FilePart.class);
@@ -100,8 +182,49 @@ class ConversionControllerTest {
         assertNull(file.getContentType());
         assertEquals("report.docx", file.getOriginalFilename());
         assertEquals(3L, file.getSize());
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void toMultipartFileHandlesNullContentTypeValue() throws Exception {
         FilePart filePart = mock(FilePart.class);
@@ -122,8 +245,49 @@ class ConversionControllerTest {
         InMemoryMultipartFile file = (InMemoryMultipartFile) method.invoke(controller, filePart, dataBuffer);
 
         assertNull(file.getContentType());
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void toMultipartFileCopiesContentTypeHeaderValue() throws Exception {
         FilePart filePart = mock(FilePart.class);
@@ -144,8 +308,49 @@ class ConversionControllerTest {
 
         assertEquals("application/pdf", file.getContentType());
         assertEquals("report.pdf", file.getOriginalFilename());
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void submitReturnsAcceptedWithJobId() {
         UUID jobId = UUID.randomUUID();
@@ -157,8 +362,49 @@ class ConversionControllerTest {
                 .jsonPath("$.jobId").isEqualTo(jobId.toString())
                 .jsonPath("$.status").isEqualTo("ACCEPTED")
                 .jsonPath("$.statusUrl").isEqualTo("/api/v1/convert/jobs/" + jobId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void submitReturnsUnsupportedFormatErrorPayload() {
         when(conversionService.submit(any(), any(), any())).thenThrow(new UnsupportedDocumentFormatException("hwp"));
@@ -170,8 +416,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("UNSUPPORTED_FORMAT")
                 .jsonPath("$.details.extension").isEqualTo("hwp")
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void submitForwardsPolicyOverrideHeadersToService() {
         UUID jobId = UUID.randomUUID();
@@ -194,8 +481,49 @@ class ConversionControllerTest {
         assertEquals("token-123", overrideRequest.approvalToken());
         assertEquals("approver-1", overrideRequest.approverId());
         assertEquals(TenantContext.DEMO_TENANT_ID, tenantCaptor.getValue().tenantId());
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void submitReturnsBadRequestWhenFilePartIsMissing() {
         webTestClient.post()
@@ -209,8 +537,49 @@ class ConversionControllerTest {
                 .jsonPath("$.errorCode").isEqualTo("BAD_REQUEST")
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void submitReturnsUnauthorizedWhenTenantClaimsAreMissing() {
         submitWithoutAuth("report.docx", "hello".getBytes())
@@ -218,8 +587,49 @@ class ConversionControllerTest {
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("UNAUTHORIZED")
                 .jsonPath("$.message").isEqualTo("auth token required");
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void statusReturnsNotFoundWhenJobMissing() {
         UUID jobId = UUID.randomUUID();
@@ -235,8 +645,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("NOT_FOUND")
                 .jsonPath("$.message").isEqualTo("job not found")
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void statusReturnsBadRequestForMalformedJobId() {
         webTestClient.get()
@@ -248,8 +699,49 @@ class ConversionControllerTest {
                 .jsonPath("$.errorCode").isEqualTo("BAD_REQUEST")
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void statusReturnsJobWhenFound() {
         UUID jobId = UUID.randomUUID();
@@ -276,8 +768,49 @@ class ConversionControllerTest {
                 .jsonPath("$.maxAttempts").isEqualTo(3)
                 .jsonPath("$.deadLettered").isEqualTo(false)
                 .jsonPath("$.retryAt").isEmpty();
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void statusReturnsDeadLetteredMetadataWhenJobIsTerminalFailed() {
         UUID jobId = UUID.randomUUID();
@@ -299,8 +832,49 @@ class ConversionControllerTest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(ConversionJobStatus.FAILED.name())
                 .jsonPath("$.deadLettered").isEqualTo(true);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void statusReturnsForbiddenWhenPermissionIsMissing() {
         UUID jobId = UUID.randomUUID();
@@ -313,8 +887,49 @@ class ConversionControllerTest {
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("FORBIDDEN")
                 .jsonPath("$.message").isEqualTo("missing permission: " + TenantPermissions.JOB_READ);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void statusHidesCrossTenantJobAsNotFound() {
         UUID jobId = UUID.randomUUID();
@@ -337,8 +952,49 @@ class ConversionControllerTest {
                 .expectStatus().isNotFound()
                 .expectBody()
                 .jsonPath("$.message").isEqualTo("job not found");
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void retryReturnsAcceptedWhenDeadLetteredJobIsEligible() {
         UUID jobId = UUID.randomUUID();
@@ -365,8 +1021,49 @@ class ConversionControllerTest {
                 .jsonPath("$.statusUrl").isEqualTo("/api/v1/convert/jobs/" + jobId);
 
         verify(conversionService).retryDeadLettered(jobId, "operator-7");
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void retryReturnsBadRequestWhenOperatorHeaderMissing() {
         UUID jobId = UUID.randomUUID();
@@ -381,8 +1078,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
                 .jsonPath("$.message").isEqualTo(ConversionController.OPERATOR_ID_HEADER + " header is required.")
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void retryReturnsBadRequestWhenOperatorHeaderIsBlank() {
         UUID jobId = UUID.randomUUID();
@@ -398,8 +1136,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("BAD_REQUEST")
                 .jsonPath("$.message").isEqualTo(ConversionController.OPERATOR_ID_HEADER + " header is required.")
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void retryReturnsNotFoundWhenJobMissing() {
         UUID jobId = UUID.randomUUID();
@@ -416,8 +1195,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("NOT_FOUND")
                 .jsonPath("$.message").isEqualTo("job not found")
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void retryReturnsConflictWhenJobIsNotEligible() {
         UUID jobId = UUID.randomUUID();
@@ -442,8 +1262,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("CONFLICT")
                 .jsonPath("$.message").isEqualTo("only dead-lettered failed jobs can be retried")
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void viewerReturnsConflictForSubmittedStatus() {
         UUID docId = UUID.randomUUID();
@@ -466,8 +1327,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("CONFLICT")
                 .jsonPath("$.message").value(value -> assertContains((String) value, "retry"))
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void viewerReturnsConflictForProcessingStatus() {
         UUID docId = UUID.randomUUID();
@@ -491,8 +1393,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("CONFLICT")
                 .jsonPath("$.message").value(value -> assertContains((String) value, "retry"))
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void viewerReturnsConflictForFailedStatus() {
         UUID docId = UUID.randomUUID();
@@ -516,8 +1459,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("CONFLICT")
                 .jsonPath("$.message").value(value -> assertContains((String) value, "FAILED"))
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void viewerReturnsConflictForDeadLetteredStatus() {
         UUID docId = UUID.randomUUID();
@@ -541,8 +1525,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("CONFLICT")
                 .jsonPath("$.message").value(value -> assertContains((String) value, "DEAD_LETTERED"))
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void viewerReturnsBootstrapForSucceededStatus() {
         UUID docId = UUID.randomUUID();
@@ -571,8 +1596,49 @@ class ConversionControllerTest {
                 .jsonPath("$.artifactLinkScope").isEqualTo(ArtifactLinkService.ARTIFACT_READ_SCOPE)
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
                 .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void downloadArtifactReturnsNotFoundWhenJobNotFound() {
         UUID jobId = UUID.randomUUID();
@@ -580,10 +1646,56 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
                 .exchange()
                 .expectStatus().isNotFound();
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void downloadArtifactReturnsConflictWhenJobNotSucceeded() {
         UUID jobId = UUID.randomUUID();
@@ -592,10 +1704,56 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
                 .exchange()
                 .expectStatus().isEqualTo(409);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void downloadArtifactReturnsNotFoundWhenArtifactMissing() {
         UUID jobId = UUID.randomUUID();
@@ -605,10 +1763,56 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
                 .exchange()
                 .expectStatus().isNotFound();
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void downloadArtifactReturnsPdfWithAttachmentDispositionAndChecksum() {
         UUID jobId = UUID.randomUUID();
@@ -621,14 +1825,60 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_PDF)
                 .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"my-report.pdf\"")
                 .expectHeader().valueEquals("X-Checksum-Sha256", "7ead0b44cc1a9959917fe0b59d7ecdec3afa4b30b94e77b76f2107c7508afe8b")
                 .expectBody(byte[].class).isEqualTo(pdfBytes);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void downloadArtifactNormalizesUnsafeFilenameForContentDisposition() {
         UUID jobId = UUID.randomUUID();
@@ -647,6 +1897,11 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().valueEquals(
@@ -654,8 +1909,49 @@ class ConversionControllerTest {
                         "attachment; filename=\"report___X-Injected__yes.pdf\""
                 )
                 .expectHeader().doesNotExist("X-Injected");
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void downloadArtifactHandlesNullFilename() {
         UUID jobId = UUID.randomUUID();
@@ -668,11 +1964,57 @@ class ConversionControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"document.pdf\"");
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void viewerReturnsNotFoundWhenJobMissing() {
         UUID docId = UUID.randomUUID();
@@ -688,8 +2030,49 @@ class ConversionControllerTest {
                 .jsonPath("$.code").isEqualTo("NOT_FOUND")
                 .jsonPath("$.message").isEqualTo("job not found")
                 .jsonPath("$.traceId").value(ConversionControllerTest::assertNonBlankTraceId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void viewerAliasRoutesReturnConflictForSubmittedStatus() {
         UUID docId = UUID.randomUUID();
@@ -712,9 +2095,91 @@ class ConversionControllerTest {
                     .expectBody()
                     .jsonPath("$.errorCode").isEqualTo("CONFLICT")
                     .jsonPath("$.message").value(value -> assertContains((String) value, "retry"));
-        }
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void viewerAliasRoutesReturnBootstrapWhenReady() {
         UUID docId = UUID.randomUUID();
@@ -743,9 +2208,91 @@ class ConversionControllerTest {
                 .jsonPath("$.artifactLinkUrl").value(value -> assertSignedArtifactUrl((String) value, docId))
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
                 .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
-        }
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void deleteJobRequiresDeletePermission() {
         UUID jobId = UUID.randomUUID();
@@ -760,8 +2307,49 @@ class ConversionControllerTest {
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("FORBIDDEN")
                 .jsonPath("$.message").value(value -> assertContains((String) value, TenantPermissions.JOB_DELETE));
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void deleteJobReturnsNotFoundWhenJobMissing() {
         UUID jobId = UUID.randomUUID();
@@ -775,8 +2363,49 @@ class ConversionControllerTest {
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("NOT_FOUND")
                 .jsonPath("$.message").isEqualTo("job not found");
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     @Test
     void deleteJobDeletesJobAndArtifact() {
         UUID jobId = UUID.randomUUID();
@@ -791,8 +2420,49 @@ class ConversionControllerTest {
 
         verify(conversionService).deleteJob(eq(jobId), any(TenantContext.class));
         // artifactStore deletion is verified in service tests
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
 
     @Test
     void deleteJobReturnsNotFoundForCrossTenantAccess() {
@@ -807,12 +2477,94 @@ class ConversionControllerTest {
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("NOT_FOUND")
                 .jsonPath("$.message").isEqualTo("job not found");
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     private WebTestClient.ResponseSpec submit(String filename, byte[] content) {
         return submit(filename, content, null, null, null);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     private WebTestClient.ResponseSpec submitWithoutAuth(String filename, byte[] content) {
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
         builder.part("file", content)
@@ -824,8 +2576,49 @@ class ConversionControllerTest {
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(BodyInserters.fromMultipartData(builder.build()))
                 .exchange();
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     private WebTestClient.ResponseSpec submit(
             String filename,
             byte[] content,
@@ -843,19 +2636,183 @@ class ConversionControllerTest {
         request.headers(ConversionControllerTest::addAllPermissions);
         if (policyOverride != null) {
             request.header(PolicyOverrideRequest.POLICY_OVERRIDE_HEADER, policyOverride);
-        }
-        if (approvalToken != null) {
-            request.header(PolicyOverrideRequest.APPROVAL_TOKEN_HEADER, approvalToken);
-        }
-        if (approverId != null) {
-            request.header(PolicyOverrideRequest.APPROVER_ID_HEADER, approverId);
-        }
 
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}        if (approvalToken != null) {
+            request.header(PolicyOverrideRequest.APPROVAL_TOKEN_HEADER, approvalToken);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}        if (approverId != null) {
+            request.header(PolicyOverrideRequest.APPROVER_ID_HEADER, approverId);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
         return request
                 .body(BodyInserters.fromMultipartData(builder.build()))
                 .exchange();
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     private static void addAllPermissions(HttpHeaders headers) {
         addAuth(
                 headers,
@@ -869,24 +2826,586 @@ class ConversionControllerTest {
                         TenantPermissions.ANALYTICS_READ
                 )
         );
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     private static void addAuth(HttpHeaders headers, String permissions) {
         headers.add(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID);
         headers.add(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID);
         headers.add(TenantContext.PERMISSIONS_HEADER, permissions);
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     private static void assertContains(String actual, String expected) {
         assertTrue(actual.contains(expected));
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     private static void assertNonBlankTraceId(Object value) {
         String traceId = (String) value;
         assertFalse(traceId.isBlank());
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
     }
 
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
     private static void assertSignedArtifactUrl(String actual, UUID docId) {
         assertTrue(actual.startsWith("/artifacts/" + docId + ".pdf?artifactToken="));
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+}
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
+    }
+
+    @Test
+    void downloadArtifactRequiresJobReadPermission() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> {
+                    h.set("X-Clearfolio-Tenant-Id", "tenant-1");
+                    h.set("X-Clearfolio-Subject-Id", "user-1");
+                })
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void downloadArtifactRequiresHeaders() {
+        UUID jobId = UUID.randomUUID();
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void downloadArtifactReturnsNotFoundForCrossTenantAccess() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "other-user", "test.pdf", "application/pdf", "hash", 100, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webClient.get()
+                .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
+                .headers(h -> h.setAll(DEMO_HEADERS))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("NOT_FOUND");
     }
 }

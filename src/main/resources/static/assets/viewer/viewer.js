@@ -51,6 +51,7 @@ function setLoading(message) {
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
   el.retryBtn.disabled = true;
+  el.retryBtn.setAttribute("aria-busy", "true");
   el.retryBtn.textContent = "Refreshing...";
 }
 
@@ -60,6 +61,7 @@ function showError(message) {
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
+  el.retryBtn.removeAttribute("aria-busy");
   el.retryBtn.disabled = false;
   el.retryBtn.textContent = "Refresh";
 }
@@ -209,6 +211,7 @@ async function poll(docId, abortSignal) {
 
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
+    el.retryBtn.removeAttribute("aria-busy");
     el.retryBtn.disabled = false;
     el.retryBtn.textContent = "Refresh";
 

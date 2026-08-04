@@ -16,8 +16,9 @@ import org.springframework.web.util.HtmlUtils;
 @RestController
 public class ViewerUiController {
 
-    // Keep this in sync with `pom.xml` pdfjs-dist version and viewer.js.
-    static final String PDF_JS_VIEWER_PATH = "/webjars/pdfjs-dist/6.1.200/web/viewer.html";
+    // Keep these in sync with `pom.xml` pdfjs-dist version and viewer.js.
+    static final String PDF_JS_MODULE_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.mjs";
+    static final String PDF_JS_WORKER_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.worker.mjs";
     private static final String INVALID_DOC_ID_SENTINEL = "invalid";
 
     /**
@@ -70,7 +71,8 @@ public class ViewerUiController {
                     <meta name="referrer" content="no-referrer" />
                     <meta name="clearfolio-doc-id" content="{{DOC_ID}}" />
                     <meta name="clearfolio-initial-state" content="{{INITIAL_STATE}}" />
-                    <meta name="clearfolio-pdfjs-viewer-path" content="{{PDFJS_VIEWER_PATH}}" />
+                    <meta name="clearfolio-pdfjs-module-path" content="{{PDFJS_MODULE_PATH}}" />
+                    <meta name="clearfolio-pdfjs-worker-path" content="{{PDFJS_WORKER_PATH}}" />
                     <title>Clearfolio Viewer</title>
                     <link rel="stylesheet" href="/assets/viewer/viewer.css" />
                   </head>
@@ -133,7 +135,8 @@ public class ViewerUiController {
         return template
                 .replace("{{DOC_ID}}", docIdString)
                 .replace("{{INITIAL_STATE}}", initialState)
-                .replace("{{PDFJS_VIEWER_PATH}}", PDF_JS_VIEWER_PATH);
+                .replace("{{PDFJS_MODULE_PATH}}", PDF_JS_MODULE_PATH)
+                .replace("{{PDFJS_WORKER_PATH}}", PDF_JS_WORKER_PATH);
     }
 
     private static String demoShellHtml() {

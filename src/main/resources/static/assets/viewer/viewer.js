@@ -1,4 +1,5 @@
 const POLL_DELAY_MS = 1500;
+const PDF_JS_VIEWER_PATH = "/webjars/pdfjs-dist/6.1.200/web/viewer.html";
 const DEMO_AUTH_HEADERS = {
   "X-Clearfolio-Tenant-Id": "buyer-demo",
   "X-Clearfolio-Subject-Id": "buyer-demo-operator",
@@ -110,9 +111,11 @@ function renderPdfInline(path) {
     console.error("Blocked unsafe URL in PDF inline:", path);
     return;
   }
+  // The prebuilt PDF.js viewer resolves its matching viewer.mjs and
+  // build/pdf.worker.mjs from the same versioned WebJar directory.
   const viewerPath =
     getMetaContent("clearfolio-pdfjs-viewer-path") ||
-    "/webjars/pdfjs-dist/4.10.38/web/viewer.html";
+    PDF_JS_VIEWER_PATH;
   const viewerUrl = `${viewerPath}?file=${encodeURIComponent(path)}`;
   const frame = document.createElement("iframe");
   frame.src = viewerUrl;

@@ -2,6 +2,8 @@ package com.clearfolio.viewer.controller;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 import java.util.Arrays;
 import java.util.UUID;
@@ -9,21 +11,36 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.http.HttpHeaders;
 
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
+    private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService);
+        tenantAccessService = mock(TenantAccessService.class);
+
+        // Mock TenantAccessService behavior for tests
+        when(tenantAccessService.require(any(), eq(TenantPermissions.ADMIN_READ))).thenReturn(
+                new TenantContext(TenantContext.DEMO_TENANT_ID, TenantContext.DEMO_SUBJECT_ID, null)
+        );
+        when(tenantAccessService.require(any(), eq(TenantPermissions.ADMIN_WRITE))).thenReturn(
+                new TenantContext(TenantContext.DEMO_TENANT_ID, TenantContext.DEMO_SUBJECT_ID, null)
+        );
+
+        controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -37,6 +54,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
+                .headers(headers -> addAuth(headers, TenantPermissions.ADMIN_READ))
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -55,6 +73,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .headers(headers -> addAuth(headers, TenantPermissions.ADMIN_READ))
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -72,6 +91,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
+                .headers(headers -> addAuth(headers, TenantPermissions.ADMIN_READ))
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -85,6 +105,7 @@ class AdminControllerTest {
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .headers(headers -> addAuth(headers, TenantPermissions.ADMIN_WRITE))
                 .exchange()
                 .expectStatus().isNoContent();
     }
@@ -96,6 +117,7 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .headers(headers -> addAuth(headers, TenantPermissions.ADMIN_WRITE))
                 .exchange()
                 .expectStatus().isAccepted();
     }
@@ -107,6 +129,7 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .headers(headers -> addAuth(headers, TenantPermissions.ADMIN_WRITE))
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -118,7 +141,14 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .headers(headers -> addAuth(headers, TenantPermissions.ADMIN_WRITE))
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+    }
+
+    private static void addAuth(HttpHeaders headers, String permissions) {
+        headers.add(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID);
+        headers.add(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID);
+        headers.add(TenantContext.PERMISSIONS_HEADER, permissions);
     }
 }

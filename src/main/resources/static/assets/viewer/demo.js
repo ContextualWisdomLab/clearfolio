@@ -122,6 +122,7 @@ function createActionButton(label, onClick) {
 function jsonHeaders(extra = {}) {
   return {
     Accept: "application/json",
+    "X-CSRF-Token": "demo-csrf-token",
     ...DEMO_AUTH_HEADERS,
     ...extra,
   };

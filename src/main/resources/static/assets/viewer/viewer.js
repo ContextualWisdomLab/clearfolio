@@ -86,7 +86,9 @@ function clearPreview() {
 function isSafeUrl(urlStr) {
   try {
     const url = new URL(urlStr, window.location.origin);
-    return url.protocol === "http:" || url.protocol === "https:";
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    const allowedHosts = ["localhost", window.location.hostname];
+    return allowedHosts.includes(url.hostname);
   } catch (e) {
     return false;
   }
@@ -121,6 +123,7 @@ function renderPdfInline(path) {
   frame.title = "Document preview";
   frame.loading = "lazy";
   frame.className = "preview-frame";
+  frame.sandbox = "allow-scripts allow-same-origin";
   el.preview.appendChild(frame);
 }
 

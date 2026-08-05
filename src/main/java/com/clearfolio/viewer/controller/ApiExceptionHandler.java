@@ -156,7 +156,7 @@ public class ApiExceptionHandler {
                         resolveTraceId(exchange),
                         Map.of(
                                 "parameter", ex.getName(),
-                                "value", String.valueOf(ex.getValue())
+                                "value", safeTypeMismatchValue(ex.getValue())
                         )
                 ));
     }
@@ -235,6 +235,10 @@ public class ApiExceptionHandler {
             return Integer.toString(code);
         }
         return resolved.name();
+    }
+
+    private String safeTypeMismatchValue(Object rejectedValue) {
+        return rejectedValue == null ? "null" : "[redacted]";
     }
 
     private String sanitizeForLog(final String value) {

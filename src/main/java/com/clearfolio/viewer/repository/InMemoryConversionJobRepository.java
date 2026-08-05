@@ -67,8 +67,13 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
                         return existingJobId;
                     }
 
-                    ConversionJob replaced = jobs.put(candidate.getJobId(), candidate);
-                    removeContentIndex(replaced);
+                    ConversionJob identifierCollision = jobs.putIfAbsent(
+                            candidate.getJobId(),
+                            candidate
+                    );
+                    if (identifierCollision != null && identifierCollision != candidate) {
+                        throw new IllegalStateException("Conversion job identifier collision.");
+                    }
                     created.set(true);
                     canonical.set(candidate);
                     return candidate.getJobId();
@@ -325,7 +330,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
 
     private void indexContentHash(ConversionJob job) {
         if (job.getContentHash() != null && !job.getContentHash().isBlank()) {
-            jobsByTenantAndContentHash.put(
+            jobsByTenantAndContentHash.putIfAbsent(
                     contentKey(job.getTenantId(), job.getContentHash()),
                     job.getJobId()
             );

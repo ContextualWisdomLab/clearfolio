@@ -29,6 +29,7 @@
 - 관리자 delete/retry가 검증된 `TenantContext`를 tenant-aware service mutation boundary에 전달하도록 변경해 controller 우회 호출에서도 소유권 검사가 적용되도록 했습니다.
 - tenant-aware service 기본 구현은 global lookup 또는 legacy mutation을 호출하지 않고 `false`/`NOT_FOUND`로 실패 종료합니다. 모듈형 대체 adapter는 원자적 tenant-scoped mutation을 명시적으로 구현해야 관리자 작업을 성공시킬 수 있습니다.
 - 관리자 delete/retry는 `deleteByTenantAndId`와 `retryDeadLetteredForTenant` 원자적 tenant-scoped persistence contract를 사용합니다. artifact cleanup은 소유권이 확인된 repository 삭제가 성공한 뒤에만 실행되며, worker enqueue는 소유권 확인과 dead-letter 상태 전이가 원자적으로 성공한 뒤에만 실행됩니다.
+- tenant-scoped lookup/delete/retry는 누락된 job UUID를 예외로 노출하지 않고 empty/`false`/`NOT_FOUND`로 실패 종료하며 기존 저장 상태를 변경하지 않습니다.
 - tenant-and-content-hash 보조 인덱스가 현재 UUID 레코드의 tenant/hash와 일치하는지 재검증하고, 동일 UUID 교체 시 이전 인덱스를 제거하며, find-or-store UUID 충돌을 fail-closed 처리해 stale 인덱스나 stale 관찰이 다른 tenant 작업으로 해석되는 경로를 차단했습니다.
 - tenant-scoped 삭제와 동일 UUID 교체가 동시에 발생해도 primary job map과 tenant-content secondary index가 하나의 임계 구역에서 함께 갱신되도록 직렬화해, 교체 작업의 유효 인덱스를 지연된 삭제 정리가 제거하는 경쟁 조건을 차단했습니다.
 - 관리자 허용·거부·미존재·재시도 불가·실패 결정을 actor/tenant별 도메인 분리 HMAC 지문으로 기록하고, raw subject·tenant·claim signature·문서 메타데이터가 감사 로그와 retry provenance에 남지 않도록 했습니다.

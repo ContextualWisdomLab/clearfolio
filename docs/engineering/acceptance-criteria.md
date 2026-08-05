@@ -50,13 +50,15 @@ suppress warnings, omit test-report verification, or present evidence containing
 skipped or zero executed tests.
 
 The report gate requires at least one Surefire `TEST-*.xml` report, a positive
-total test count, and zero skipped tests. When Failsafe `TEST-*.xml` reports are
-present, the same positive-count and zero-skip rules apply. Missing, malformed,
-empty, negative-count, or skipped report evidence fails closed. Each XML report
-must be UTF-8, may include a UTF-8 byte-order mark, is limited to 16 MiB, and is
-rejected before parsing when it contains a NUL byte, DTD, or entity declaration.
-This prevents alternate encodings from hiding external-entity or expansion
-payloads from the pre-parse checks, even when test code can write report files.
+total test count, zero skipped tests, zero failures, and zero errors. When
+Failsafe `TEST-*.xml` reports are present, the same rules apply. Missing,
+malformed, empty, negative-count, skipped, failing, or error-bearing report
+evidence fails closed even when a preceding Maven process returned success.
+Each XML report must be UTF-8, may include a UTF-8 byte-order mark, is limited to
+16 MiB, and is rejected before parsing when it contains a NUL byte, DTD, or
+entity declaration. This prevents alternate encodings from hiding
+external-entity or expansion payloads from the pre-parse checks, even when test
+code can write report files.
 
 ## Mandatory AC evidence mapping
 

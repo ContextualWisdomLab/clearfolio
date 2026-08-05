@@ -1,40 +1,49 @@
 # KRW 2B Sale-Readiness Evidence
 
-Date: 2026-07-02
-Verification source head SHA before this evidence refresh:
-`7df3ac8b8253cd1a445ba7faddbf99bc9a5c5fcd`
+Original evidence date: 2026-07-02  
+Original verification source head: `7df3ac8b8253cd1a445ba7faddbf99bc9a5c5fcd`  
+Latest dependency-evidence refresh: 2026-08-05  
+Netty SBOM generation source head: `3b6e43426790ab8590c9ef50656bfb5cbbb206ce`
+
+## Evidence Boundary
+
+This directory combines a historical sale-readiness snapshot with selected generated artifacts that remain under executable drift contracts. A `Pass` result describes the named artifact and its source revision; it is not automatically transferable to a later source head.
+
+The committed CycloneDX JSON and generated third-party attribution are shareable buyer data-room evidence. GitHub Actions logs and the one-day generation artifact are transient provenance. Any dependency change must regenerate the SBOM, attribution, hashes, and exact-head acceptance evidence before release.
 
 ## Gate Summary
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Java runtime | Pass, Java 26.0.1 runtime with Java 21 release-target compile | `java-version.txt`, `compile.log` |
-| Compile warnings/deprecations | Pass | `compile.log` |
-| Tests + JaCoCo | Pass, 357 tests, `classes=49`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
-| JavaDoc | Pass, `javadoc_warnings_or_errors=none` | `javadoc.log`, `javadoc-status.txt` |
-| Markdown lint | Pass, 0 errors across changed docs | `markdownlint.log` |
-| JS syntax | Pass | `node-check.log` |
-| SAST | Pass, 0 findings | `semgrep.log`, `semgrep.json` |
-| SBOM | Pass, CycloneDX 1.6, 61 components, 0 components without license metadata | `sbom-cyclonedx.log`, `sbom-cyclonedx.json`, `sbom-status.txt` |
-| License review | Pass, buyer-release policy checker reports 61 allowed components, 0 review-required components, 0 unlisted violations, and passes `--require-no-review` | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
-| Third-party attribution | Pass, generated buyer data-room attribution contains all 61 current SBOM components and passes drift check | `docs/legal/2026-07-03-third-party-attribution.md`, `third-party-attribution-check.log` |
-| Buyer data-room manifest | Pass, manifest references required buyer evidence artifacts, all local paths exist, and ready gates reference only ready artifacts | `docs/diligence/2026-07-03-buyer-data-room-manifest.json`, `buyer-dataroom-manifest-check.log` |
-| Buyer readiness scorecard | Pass, generated scorecard reports 23 artifacts, 8 readiness gates, 38 percent conservative gate readiness, and ready-gate evidence integrity pass from the current data-room manifest | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, `buyer-readiness-scorecard-summary.json` |
-| Figma Slides generation payload | Pass, payload check reports 11 slides, 4 objectives, and 0 errors; actual Slides generation still requires Figma team or organization plan selection | `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json`, `figma-deck-payload-check.json` |
-| Auth/tenant, signed artifacts, and KPI snapshots | Partial, runtime tenant enforcement, optional gateway HMAC tenant-claim validation, production-profile fail-closed startup without signed tenant secret, signed artifact tokens, token revocation, artifact read audit API, optional file-backed artifact-link ledger replay, optional file-backed KPI snapshot ledger replay, and tenant-scoped KPI snapshot export API implemented; OIDC/JWT and centralized durable revocation/audit/analytics persistence pending | `docs/security/2026-07-02-auth-tenant-model.md`, `docs/security/2026-07-02-signed-artifact-link-design.md`, auth/artifact/analytics tests |
-| Buyer deployment integration | Pass for buyer sandbox scope; `buyer-demo` Spring profile, gateway-signed header contract, connector API table, OpenAPI connector seed, smoke path, and cutover gates are documented; buyer tenant import and production OIDC/JWT profile remain follow-up | `src/main/resources/application-buyer-demo.yml`, `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`, `docs/deployment/clearfolio-buyer-connector.openapi.yaml` |
-| Durable job repository design, state-store, lifecycle event, and recovery sweep slice | Partial, code boundary implemented; `ConversionJobStateStore` routes worker success/failure and operator retry transitions, `ConversionJobLifecycleEvent` records process-local append-only transition evidence, and `DefaultConversionWorker` now re-enqueues due submitted jobs plus stale processing leases from available repository state, while SQL persistence remains pending for true process-restart durability | `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`, state-store, lifecycle event, and recovery sweep tests |
-| Seeded buyer-demo screenshots | Pass for local screenshot scope; seeded desktop and mobile viewports render after `Load demo story`, with no mobile horizontal overflow and uploaded FigJam screenshot nodes `25:1423` and `25:1422` | `seeded-demo-story-verification.md`, `screenshots/seeded-demo-desktop-viewport.png`, `screenshots/seeded-demo-mobile-viewport.png` |
-| Buyer diligence closure map | Pass for FigJam handoff scope; added `Clearfolio KRW 2B Buyer Diligence Closure Map`, `Clearfolio Buyer Readiness Scorecard Gate Map`, and `Clearfolio Buyer Diligence Slides Storyboard` on the existing evidence board, and captured Slides generation prerequisites plus deck outline | `docs/design/2026-07-03-buyer-diligence-slides-and-closure-map.md`, `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md` |
-| Local smoke | Pass, signed tenant claims plus file-backed artifact/KPI ledgers, KPI snapshot export API, buyer-demo KPI evidence panel, and operator recovery evidence panel | `smoke-local.txt`, `smoke-app.log`, `smoke-ui-root.txt` |
-| GitHub PR state | Seeded buyer-demo story branch is refreshed on current `main`; review and queued checks are not treated as blockers | PR body and GitHub UI |
+| Java runtime | Pass for original snapshot, Java 26.0.1 runtime with Java 21 release-target compile | `java-version.txt`, `compile.log` |
+| Compile warnings/deprecations | Pass for original snapshot | `compile.log` |
+| Tests + JaCoCo | Pass for original snapshot, 357 tests, `classes=49`, `line_missed=0`, `branch_missed=0` | `mvn-test.log`, `test-jacoco.log`, `jacoco.csv`, `jacoco-status.txt` |
+| JavaDoc | Pass for original snapshot, `javadoc_warnings_or_errors=none` | `javadoc.log`, `javadoc-status.txt` |
+| Markdown lint | Pass for original snapshot, 0 errors across changed docs | `markdownlint.log` |
+| JS syntax | Pass for original snapshot | `node-check.log` |
+| SAST | Pass for original snapshot, 0 findings | `semgrep.log`, `semgrep.json` |
+| SBOM | Refreshed 2026-08-05, CycloneDX 1.6, 61 components, 17 Netty components at `4.1.136.Final`, 0 components without license metadata | `sbom-cyclonedx.json`, Netty ADR, permanent drift test |
+| License review | Pass for current 61-component generated SBOM; 0 review-required and 0 unlisted violations under buyer-release policy | `docs/security/2026-07-02-license-allowlist-review.md`, `license-policy-summary.json`, `license-policy-test.log` |
+| Third-party attribution | Refreshed from the same generated SBOM and protected by byte-for-byte renderer drift validation | `docs/legal/2026-07-03-third-party-attribution.md`, `scripts/test_render_third_party_attribution.py` |
+| Buyer data-room manifest | Pass for original snapshot; required local paths existed and ready gates cited only ready artifacts | `docs/diligence/2026-07-03-buyer-data-room-manifest.json`, `buyer-dataroom-manifest-check.log` |
+| Buyer readiness scorecard | Pass for original snapshot; 23 artifacts, 8 readiness gates, 38 percent conservative gate readiness | `docs/diligence/2026-07-03-buyer-readiness-scorecard.md`, `buyer-readiness-scorecard-summary.json` |
+| Figma Slides generation payload | Pass for payload scope; 11 slides, 4 objectives, 0 errors; actual Slides generation still requires an eligible Figma plan | `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json`, `figma-deck-payload-check.json` |
+| Auth/tenant, signed artifacts, and KPI snapshots | Partial; runtime tenant enforcement, signed claims, signed artifact tokens, revocation, audit, and file-backed ledgers exist, while production OIDC/JWT and centralized durable persistence remain pending | Security model, artifact, analytics, and persistence tests |
+| Buyer deployment integration | Pass for buyer sandbox scope; connector seed, gateway-signed claims, smoke path, and cutover gates documented | Buyer deployment playbook, connector OpenAPI, buyer-demo profile |
+| Durable job repository and recovery slice | Partial; code boundary, state store, lifecycle events, and process-local recovery exist, while SQL process-restart durability remains pending | Persistence plan and repository/state-store tests |
+| Seeded buyer-demo screenshots | Pass for local screenshot scope; desktop/mobile seeded story, no mobile overflow | Seeded demo verification and screenshots |
+| Buyer diligence closure map | Pass for FigJam handoff scope | Design handoff documentation |
+| Local smoke | Pass for original signed-tenant, artifact-ledger, KPI-ledger, viewer, revocation, and recovery scope | `smoke-local.txt`, `smoke-app.log`, `smoke-ui-root.txt` |
+| GitHub PR state | Dynamic; queued or waiting review does not stop productive work but is never counted as merge acceptance | Current exact-head PR checks and reviews |
 
 ## SAST
 
-Command:
+Command used for the original evidence snapshot:
 
 ```bash
-uvx semgrep --config p/java --metrics=off --error --json --output docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json src/main/java src/test/java
+uvx semgrep --config p/java --metrics=off --error --json \
+  --output docs/qa/evidence/2026-07-02-krw2b-sale-readiness/semgrep.json \
+  src/main/java src/test/java
 ```
 
 Result:
@@ -45,53 +54,77 @@ Result:
 - Findings: 0.
 - Errors: 0.
 
-Evidence:
+Evidence: `semgrep.json`.
 
-- `semgrep.json`
+## SBOM Generation
 
-## SBOM
-
-Command:
+### Canonical command
 
 ```bash
-mvn -DskipTests org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom -Dcyclonedx.skipAttach=true -Dcyclonedx.outputFormat=json -Dcyclonedx.outputName=clearfolio-viewer-sbom
+mvn -B --no-transfer-progress -DskipTests \
+  org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom \
+  -Dcyclonedx.skipAttach=true \
+  -DoutputFormat=json \
+  -DoutputName=bom
 ```
 
-Result:
+CycloneDX Maven Plugin 2.9.1 writes the canonical JSON output to `target/bom.json`. `outputFormat` and `outputName` are Maven user properties without a `cyclonedx.` prefix. The earlier evidence command incorrectly prefixed those two properties and is superseded by this contract.
+
+### Deterministic provenance
+
+Read-only workflow run `31004040777` generated the accepted dependency evidence at `2026-08-05T12:07:15Z`.
+
+| Field | Value |
+| --- | --- |
+| Source head | `3b6e43426790ab8590c9ef50656bfb5cbbb206ce` |
+| Generator | `org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom` |
+| Artifact ID | `8929593015` |
+| Artifact archive SHA-256 | `07a0325e08157f00dda28c58ed4e41af51863cccb2ceea2c4e378ead77dc337f` |
+| SBOM SHA-256 | `e138a9263edb40c613d5f159acba8fa89ee848a7cef4b6619e095c48451b095c` |
+| Attribution SHA-256 | `e19a3767a545bd059e50003882d8ff2f8a3ff4d3b8fd28d3f305eead61261da9` |
+| CycloneDX specification | `1.6` |
+| Total components | `61` |
+| Netty components | `17` |
+| Netty version set | exactly `4.1.136.Final` |
+| Components without license metadata | `0` |
+
+```mermaid
+flowchart LR
+    H[Exact source head] --> R[Maven dependency resolution]
+    R --> G[CycloneDX 2.9.1]
+    G --> B[target/bom.json]
+    B --> V[Component and edge verifier]
+    V --> A[Attribution renderer]
+    B --> C[Committed SBOM]
+    A --> D[Committed attribution]
+    C --> T[Permanent drift test]
+    D --> T
+```
+
+The verifier requires every Netty component version, purl, bom-ref, and dependency edge to resolve to `4.1.136.Final`. It rejects the historical `4.1.135.Final` line, an empty component list, unmatched dependency references, or attribution that cannot be reproduced from the committed JSON.
+
+### Current generated result
 
 - CycloneDX BOM format: 1.6.
 - Components: 61.
 - Components without license metadata: 0.
 - Unique license metadata entries: 3.
-- Engineering license review is now documented in
-  `docs/security/2026-07-02-license-allowlist-review.md`.
-- The unused `tika-parsers-standard-package` dependency was removed, which
-  eliminated Tika transitive review-required components `jhighlight`, `junrar`,
-  and `juniversalchardet` from the current SBOM.
-- Spring Boot's default Logback starter was replaced with
-  `spring-boot-starter-log4j2`, and `jakarta.annotation-api` is excluded from
-  the current starter paths.
-- The standard-library license policy checker passes buyer-release mode:
-  61 allowed components, 0 review-required components, and 0 unlisted
-  violations with `--require-no-review`.
-- The standard-library attribution renderer generates
-  `docs/legal/2026-07-03-third-party-attribution.md` from the same SBOM and
-  the drift check confirms that the data-room attribution file is current.
-- The buyer data-room manifest checker confirms the sale-readiness package links
-  to required local evidence and current Figma/GitHub handoff URLs, and prevents
-  ready gates from citing partial or external artifacts as complete evidence.
-- The buyer readiness scorecard generator reports 23 current data-room
-  artifacts, 8 readiness gates, 38 percent conservative gate readiness, and
-  ready-gate evidence integrity pass while keeping partial gates as discount
-  risks.
-- The Figma Slides payload checker confirms the buyer diligence deck payload has
-  11 slides, 4 objectives, explicit no-Code-Connect wording, readiness
-  scorecard content, discount-risk content, and claim-boundary wording.
+- The unused `tika-parsers-standard-package` dependency remains absent, eliminating Tika transitive review-required components `jhighlight`, `junrar`, and `juniversalchardet` from the buyer-release graph.
+- Spring Boot's default Logback starter is replaced with `spring-boot-starter-log4j2`, and `jakarta.annotation-api` remains excluded from the current starter paths.
+- The standard-library attribution renderer generates `docs/legal/2026-07-03-third-party-attribution.md` from the same SBOM.
+- The buyer-release license policy records 61 allowed components, 0 review-required components, and 0 unlisted violations.
 
-Evidence:
+Primary generated evidence:
+
+- `sbom-cyclonedx.json`
+- `docs/legal/2026-07-03-third-party-attribution.md`
+- `docs/security/2026-08-05-netty-4.1.136-remediation.md`
+- `scripts/test_render_third_party_attribution.py`
+- `src/test/java/com/clearfolio/viewer/config/DependencyPolicyTest.java`
+
+Related historical and buyer-handoff evidence:
 
 - `sbom-cyclonedx.log`
-- `sbom-cyclonedx.json`
 - `sbom-status.txt`
 - `license-policy.log`
 - `license-policy-summary.json`
@@ -101,7 +134,6 @@ Evidence:
 - `buyer-readiness-scorecard-summary.json`
 - `figma-deck-payload-check.json`
 - `docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json`
-- `docs/legal/2026-07-03-third-party-attribution.md`
 - `docs/security/2026-07-02-license-allowlist-review.md`
 - `docs/security/2026-07-02-license-policy.json`
 - `docs/security/2026-07-02-auth-tenant-model.md`
@@ -116,78 +148,36 @@ Evidence:
 - `docs/superpowers/plans/2026-07-02-conversion-job-lifecycle-events.md`
 - `docs/superpowers/plans/2026-07-03-conversion-recovery-sweep.md`
 - `buyer-deployment-slice-verification.md`
-- FigJam diagrams:
-  [Clearfolio Gateway Signed Tenant Claims Flow](https://www.figma.com/board/114nJPcTcQzXvAEIS9T4gM)
-  and `Clearfolio KPI Snapshot Evidence Ledger Flow` plus
-  `Clearfolio KPI Snapshot Export Evidence API Flow` and
-  `Clearfolio Buyer Demo KPI Evidence Panel Flow` plus
-  `Clearfolio Operator Recovery Evidence Flow` and
-  `Clearfolio Conversion State Store Implementation Flow` plus
-  `Clearfolio Conversion Lifecycle Event Trail Flow` plus
-  `Clearfolio Buyer Readiness Scorecard Gate Map` plus
-  `Clearfolio Buyer Diligence Slides Storyboard` plus
-  `Clearfolio Ready Gate Evidence Integrity Check` plus
-  `Clearfolio Conversion Recovery Sweep Flow`.
+
+FigJam handoff includes the gateway signed-tenant flow, KPI snapshot ledger/export flows, buyer-demo KPI panel, operator recovery flow, conversion state-store and lifecycle-event flows, buyer readiness gate map, diligence slides storyboard, ready-gate evidence integrity check, and conversion recovery sweep flow.
 
 ## Local Smoke
 
-Command path:
+Original command path:
 
-- Start app on a random local port with
-  `clearfolio.tenant-claims.hmac-secret` and
-  `clearfolio.artifact-link-ledger.path` plus
-  `clearfolio.analytics-snapshot-ledger.path` configured.
+- Start the application on a random local port with `clearfolio.tenant-claims.hmac-secret`, `clearfolio.artifact-link-ledger.path`, and `clearfolio.analytics-snapshot-ledger.path` configured.
+- Verify the root shell, buyer-demo KPI and recovery panels, demo assets, signed claims, upload and status polling, viewer/bootstrap, signed and ranged artifact access, read audit, revocation, cross-tenant concealment, KPI snapshots and exports, and file-backed ledger append evidence.
+
+Original result:
+
 - Runtime Java: 21.0.11.
-- Verify `GET /`, buyer-demo KPI evidence panel markup,
-  buyer-demo operator recovery evidence panel markup, `/assets/viewer/demo.js`,
-  demo JS KPI export endpoint reference,
-  missing-auth KPI denial, unsigned tenant-claim KPI denial, authenticated empty
-  KPI snapshot with signed tenant claims, authenticated empty KPI export lookup,
-  document upload with signed tenant headers, status polling to `SUCCEEDED`,
-  `/viewer/{docId}`, authenticated viewer bootstrap, signed artifact URL
-  creation, unsigned artifact denial, signed artifact range access, artifact
-  read audit lookup, artifact token revocation, revoked-token denial,
-  cross-tenant status denial, post-upload KPI snapshot, post-upload KPI export
-  lookup, and file-backed KPI snapshot ledger append evidence.
-
-Result:
-
-- Root shell: 200.
-- Root shell evidence panel: present.
-- Root shell operator recovery panel: present.
-- Demo JS: 200.
-- Demo JS KPI export endpoint reference: present.
-- Missing-auth KPI: 401.
-- Unsigned tenant-claim KPI with secret configured: 401.
-- Authenticated empty KPI: 200.
-- Authenticated empty KPI exports: 200, 1 record, tenant id omitted.
-- Final conversion status: `SUCCEEDED`.
-- Status tenant: `buyer-demo`.
-- Viewer HTML: 200.
-- Viewer bootstrap: 200.
-- Artifact link creation: 200.
-- Unsigned artifact read: 401.
-- Signed artifact range read: 206.
-- Artifact read audit lookup: 200, 1 event, last status 206.
-- Artifact token revocation: 200, `revoked=true`.
-- Revoked artifact read: 403.
+- Root shell: 200; evidence and recovery panels present.
+- Missing or unsigned tenant claims: 401.
+- Authenticated empty KPI and exports: 200.
+- Final conversion status: `SUCCEEDED` for tenant `buyer-demo`.
+- Viewer and bootstrap: 200.
+- Signed artifact range read: 206; unsigned read: 401.
+- Artifact read audit: 200; revocation succeeded; revoked read: 403.
 - Cross-tenant status lookup: 404.
-- Post-upload KPI: `totalJobs=1`, `succeededJobs=1`,
-  `conversionSuccessRate=1.0`, numeric `p95TimeToPreviewMs`.
-- Post-upload KPI exports: 200, 2 records, latest `totalJobs=1`, tenant id
-  omitted.
-- Artifact ledger file: present, 2 `ISSUED` lines, 1 `REVOKED` line,
-  and 1 `READ` line.
-- KPI snapshot ledger file: present, 2 `SNAPSHOT` lines.
+- Post-upload KPI: one successful job and numeric preview latency.
+- Artifact and KPI ledger append evidence present.
 
 Evidence:
 
 - `smoke-local.txt`
 - `smoke-ui-root.txt`
+- `smoke-app.log`
 
-## GitHub Checks
+## GitHub Acceptance
 
-This evidence refresh was produced locally before publishing the recovery-sweep
-branch. The PR body should carry the local gate results from this file. Review
-and queued GitHub checks are not treated as blockers for continuing the
-sale-readiness work.
+The historical snapshot is not a substitute for current pull-request evidence. A release or merge requires the exact current head to pass repository CI, Maven `verify`, zero missed production lines and branches, warning-free public Javadocs, Security Scan, SAST, every fuzz target, dependency/security review, current automated review, zero unresolved threads, and a counted independent approval. Queued, pending, cancelled, skipped-required, stale-head, or local-only results are not passing.

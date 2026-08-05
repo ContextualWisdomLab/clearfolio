@@ -56,6 +56,13 @@ class AuditKeySeparationGuardTest {
     }
 
     @Test
+    void permitsMissingPolicyKeyWhenPolicySigningIsDisabled() {
+        ConversionProperties properties = new ConversionProperties();
+
+        assertDoesNotThrow(() -> new AuditKeySeparationGuard(properties));
+    }
+
+    @Test
     void permitsDisabledSecurityPurposesWithoutComparingMissingValues() {
         assertDoesNotThrow(() -> AuditKeySeparationGuard.requireDistinct(null, "audit-key"));
         assertDoesNotThrow(() -> AuditKeySeparationGuard.requireDistinct("policy-key", null));

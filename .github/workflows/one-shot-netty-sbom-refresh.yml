@@ -1,0 +1,94 @@
+name: One-shot Netty SBOM refresh
+
+on:
+  push:
+    branches:
+      - fix/pii-logging-16240128950440010639
+    paths:
+      - .github/workflows/one-shot-netty-sbom-refresh.yml
+
+permissions:
+  contents: read
+
+jobs:
+  generate-evidence:
+    name: Generate exact-head SBOM evidence
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Verify exact checked-out revision
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+
+      - name: Use preinstalled Temurin JDK 21
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
+
+      - name: Generate CycloneDX aggregate SBOM
+        run: >-
+          mvn -B --no-transfer-progress -DskipTests
+          org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom
+          -Dcyclonedx.skipAttach=true
+          -Dcyclonedx.outputFormat=json
+          -Dcyclonedx.outputName=clearfolio-viewer-sbom
+
+      - name: Render and verify generated buyer evidence
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          generated_dir="$RUNNER_TEMP/generated-buyer-evidence"
+          mkdir -p "$generated_dir"
+          cp target/clearfolio-viewer-sbom.json "$generated_dir/sbom-cyclonedx.json"
+          python3 scripts/render_third_party_attribution.py \
+            --sbom "$generated_dir/sbom-cyclonedx.json" \
+            --output "$generated_dir/third-party-attribution.md"
+          cp "$generated_dir/sbom-cyclonedx.json" \
+            docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json
+          cp "$generated_dir/third-party-attribution.md" \
+            docs/legal/2026-07-03-third-party-attribution.md
+          python3 scripts/test_render_third_party_attribution.py
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          generated = Path(os.environ["RUNNER_TEMP"]) / "generated-buyer-evidence"
+          sbom_path = generated / "sbom-cyclonedx.json"
+          attribution_path = generated / "third-party-attribution.md"
+          sbom = json.loads(sbom_path.read_text(encoding="utf-8"))
+          netty = [item for item in sbom.get("components", []) if item.get("group") == "io.netty"]
+          if not netty:
+              raise SystemExit("generated SBOM omitted the resolved Netty family")
+          versions = {str(item.get("version", "")) for item in netty}
+          if versions != {"4.1.136.Final"}:
+              raise SystemExit(f"generated Netty versions were not coherent: {sorted(versions)}")
+          manifest = {
+              "source_head_sha": os.environ["EXPECTED_SHA"],
+              "generator": "org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom",
+              "netty_component_count": len(netty),
+              "netty_version": "4.1.136.Final",
+              "sbom_sha256": hashlib.sha256(sbom_path.read_bytes()).hexdigest(),
+              "attribution_sha256": hashlib.sha256(attribution_path.read_bytes()).hexdigest(),
+          }
+          (generated / "generation-manifest.json").write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload generated evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: netty-sbom-refresh-${{ github.sha }}
+          path: ${{ runner.temp }}/generated-buyer-evidence
+          if-no-files-found: error
+          retention-days: 1

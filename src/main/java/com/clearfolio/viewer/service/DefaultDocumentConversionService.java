@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -304,6 +305,17 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * {@inheritDoc}
      */
     @Override
+    public Iterable<ConversionJob> getJobsForTenant(TenantContext tenantContext) {
+        if (tenantContext == null) {
+            return List.of();
+        }
+        return repository.findAllByTenantId(tenantContext.tenantId());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Iterable<ConversionJob> getAllJobs() {
         return repository.findAll();
     }
@@ -388,7 +400,6 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            // Reused HexFormat for performance
             return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);

@@ -1,6 +1,7 @@
 package com.clearfolio.viewer.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
@@ -26,9 +27,10 @@ import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
 class TenantScopedRetryContractTest {
 
     @Test
-    void interfaceDefaultRejectsUnownedJobsBeforeLegacyMutation() {
+    void interfaceDefaultFailsClosedWithoutLookupOrLegacyMutation() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = job(jobId, "tenant-a", "default-contract");
+        AtomicInteger getJobCalls = new AtomicInteger();
         AtomicReference<UUID> retriedJobId = new AtomicReference<>();
         AtomicReference<String> retriedOperatorId = new AtomicReference<>();
         DocumentConversionService service = new DocumentConversionService() {
@@ -39,6 +41,7 @@ class TenantScopedRetryContractTest {
 
             @Override
             public Optional<ConversionJob> getJob(UUID requestedJobId) {
+                getJobCalls.incrementAndGet();
                 return jobId.equals(requestedJobId) ? Optional.of(job) : Optional.empty();
             }
 
@@ -74,11 +77,12 @@ class TenantScopedRetryContractTest {
                 service.retryDeadLettered(jobId, tenantB, "operator-cross-tenant")
         );
         assertEquals(
-                RetryDeadLetterResult.ACCEPTED,
+                RetryDeadLetterResult.NOT_FOUND,
                 service.retryDeadLettered(jobId, tenantA, "operator-owned")
         );
-        assertEquals(jobId, retriedJobId.get());
-        assertEquals("operator-owned", retriedOperatorId.get());
+        assertEquals(0, getJobCalls.get());
+        assertNull(retriedJobId.get());
+        assertNull(retriedOperatorId.get());
     }
 
     @Test

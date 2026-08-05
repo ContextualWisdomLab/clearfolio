@@ -17,6 +17,7 @@
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
 - CI가 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하며, 합성 merge revision은 별도 호환성 작업에서 검증하도록 분리했습니다.
 - Maven `verify` 단계에서 JaCoCo production line 및 branch missed count가 각각 0인지 강제하고, 실패 시 누락 위치 진단을 출력하도록 했습니다.
+- Maven `verify` 단계에서 Java 21 public Javadocs를 `doclint=all`로 생성하고 warning 또는 error가 하나라도 발생하면 실패하도록 했습니다. 공개 record 구성요소, 생성자, enum 값, 필드와 매개변수 문서를 초보자도 코드 분석 없이 이해할 수 있는 수준으로 보완했습니다.
 - Jazzer fuzzing도 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하도록 강화했습니다.
 - CycloneDX Maven Plugin 2.9.1의 정확한 `outputFormat`/`outputName` 사용자 속성으로 생성한 61개 구성요소 SBOM과 제3자 고지문을 buyer evidence에 반영했습니다. 생성 source head, UTC 시각, artifact/archive/SBOM/attribution 해시, 17개 Netty 구성요소의 purl·bom-ref·dependency-edge 정합성, 로컬 생성 증거와 공유 가능한 데이터룸 증거의 경계를 ADR 및 실행 가능한 drift test로 고정했습니다.
 

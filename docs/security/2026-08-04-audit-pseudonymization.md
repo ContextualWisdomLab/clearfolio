@@ -10,7 +10,7 @@ The approver field is named `approverFingerprint`, not `approverId`, so downstre
 
 ### Policy override key
 
-A configured `conversion.policy-override-secret` authorizes blocked-document policy exceptions and must contain at least 32 UTF-8 bytes. Blank or absent configuration keeps policy override disabled. A nonblank value below the minimum fails application startup before any conversion endpoint can accept traffic. The startup gate measures encoded bytes rather than Java character count, does not log the supplied value, and remains independent of the audit-key separation check.
+A configured `conversion.policy-override-secret` authorizes blocked-document policy exceptions and must contain at least 32 UTF-8 bytes. Blank or absent configuration keeps policy override disabled. A nonblank value below the minimum fails application startup before any conversion endpoint can accept traffic. Configuring a valid policy-override key without a dedicated audit pseudonym key also fails startup, because accepting an administrative exception without approver-correlatable audit evidence would make the security decision operationally unauditable. The startup gates measure encoded bytes rather than Java character count and never log supplied key material.
 
 Deployments must generate this key from a cryptographically secure random source and must not use a password, person or tenant identifier, repository token, or other human-memorable value. The minimum-length gate prevents a weak configured secret from reducing the effective security of the HMAC approval token even when the HMAC algorithm itself is correctly implemented (National Institute of Standards and Technology, 2008; Turan & Brandão, 2024).
 
@@ -31,9 +31,9 @@ The first 128 bits are encoded as lowercase hexadecimal and prefixed by the non-
 <key-version>:<32 lowercase hexadecimal characters>
 ```
 
-The implementation preserves the exact Java string bytes supplied after the policy override has passed its existing identity validation. It does not lowercase, Unicode-normalize, or trim inside the pseudonymizer because those transformations would silently alter identity semantics. Null input produces `absent:<key-version>`. An empty Java string is not absent: it is processed as a zero-length identifier through the same domain-separated HMAC and produces a normal versioned fingerprint. A missing dedicated key produces `unavailable:<key-version>` and never falls back to plaintext, the policy-signing secret, or an unkeyed identifier hash.
+The implementation preserves the exact Java string bytes supplied after the policy override has passed its existing identity validation. It does not lowercase, Unicode-normalize, or trim inside the pseudonymizer because those transformations would silently alter identity semantics. Null input produces `absent:<key-version>`. An empty Java string is not absent: it is processed as a zero-length identifier through the same domain-separated HMAC and produces a normal versioned fingerprint. A missing dedicated key produces `unavailable:<key-version>` only while policy-override signing is disabled and never falls back to plaintext, the policy-signing secret, or an unkeyed identifier hash. Once a policy-signing key is configured, a missing or blank audit key prevents application startup.
 
-A configured audit pseudonym secret must contain at least 32 UTF-8 bytes and must be generated from a cryptographically secure random source. The byte-length gate prevents accidentally deploying a short human-memorable secret whose effective strength would bound the HMAC protection. Blank or absent configuration retains the explicit non-correlatable `unavailable` behavior; a nonblank weak key fails application startup. FIPS 198-1 remains the current final NIST HMAC standard while NIST SP 800-224 remains an initial public draft; NIST expects the final SP to be published concurrently with withdrawal of FIPS 198-1 (National Institute of Standards and Technology, 2008, 2025; Turan & Brandão, 2024).
+A configured audit pseudonym secret must contain at least 32 UTF-8 bytes and must be generated from a cryptographically secure random source. The byte-length gate prevents accidentally deploying a short human-memorable secret whose effective strength would bound the HMAC protection. Blank or absent configuration retains the explicit non-correlatable `unavailable` behavior only for deployments where policy override remains disabled; a nonblank weak key, or an absent key paired with an enabled policy-signing key, fails application startup. FIPS 198-1 remains the current final NIST HMAC standard while NIST SP 800-224 remains an initial public draft; NIST expects the final SP to be published concurrently with withdrawal of FIPS 198-1 (National Institute of Standards and Technology, 2008, 2025; Turan & Brandão, 2024).
 
 Only an absent key-version property defaults to `v1`. Explicit blank, oversized, or unsafe key-version values fail application startup so one version label can never identify multiple key generations accidentally. The accepted format is one to 32 Java UTF-16 code units matching the implementation-equivalent expression `^[\p{L}\p{Nd}._-]{1,32}$`: each character must satisfy Java `Character.isLetterOrDigit` or be `.`, `_`, or `-`. The value is retained as a Java Unicode string and written by the configured log encoding; deployments use UTF-8 log output. Control characters, separators, whitespace, slashes, and other punctuation are rejected.
 
@@ -59,14 +59,14 @@ conversion.audit-pseudonym-secret
 conversion.audit-pseudonym-key-version
 ```
 
-Spring reads each file's contents as the corresponding property. The deployment must restrict file ownership and mode, prevent inclusion in container images and support bundles, and avoid logging the imported values. If the optional config tree is absent, the application retains safe disabled defaults. Production policy must require the needed values before enabling policy override operations.
+Spring reads each file's contents as the corresponding property. The deployment must restrict file ownership and mode, prevent inclusion in container images and support bundles, and avoid logging the imported values. If the optional config tree is absent, the application retains safe disabled defaults because policy override remains disabled. If a deployment supplies `conversion.policy-override-secret`, it must supply a distinct strong `conversion.audit-pseudonym-secret` in the same rollout; otherwise startup fails before traffic is accepted.
 
 ## Key ownership and rotation
 
 - `conversion.policy-override-secret` is an authorization key owned by the security function. It must contain at least 32 UTF-8 bytes, be generated from a cryptographically secure random source, and be rotated through the deployment secret manager.
-- `conversion.audit-pseudonym-secret` is owned by the security or privacy operations function and must be stored in the deployment secret manager.
+- `conversion.audit-pseudonym-secret` is owned by the security or privacy operations function and must be stored in the deployment secret manager. It is mandatory whenever `conversion.policy-override-secret` is configured.
 - The configured audit value must contain at least 32 UTF-8 bytes and should be a uniformly random 256-bit-or-stronger value rather than a password or identifier.
-- The application startup guard rejects identical nonblank values for `conversion.audit-pseudonym-secret` and `conversion.policy-override-secret`. Deployment policy must additionally keep the audit key operationally separate from tenant-claims signing keys, encryption keys, and API credentials; those keys are owned by their respective subsystems and are not all available to this component's startup guard.
+- The application startup guard rejects an enabled policy-signing key without a configured audit key and rejects identical nonblank values for `conversion.audit-pseudonym-secret` and `conversion.policy-override-secret`. Deployment policy must additionally keep the audit key operationally separate from tenant-claims signing keys, encryption keys, and API credentials; those keys are owned by their respective subsystems and are not all available to this component's startup guard.
 - `conversion.audit-pseudonym-key-version` is a non-secret identifier such as `2026-08` but is mounted with the same versioned configuration bundle to keep key and label rotation atomic.
 - Rotation changes both the secret and version. During an investigation that spans a rotation boundary, operators must treat fingerprints from different versions as intentionally unlinkable unless an approved, separately controlled re-identification process exists.
 - Retired keys must not remain in application configuration. Any escrow or incident-response copy must be access-controlled, time-bounded, and audited.
@@ -93,10 +93,11 @@ Automated tests must prove:
 - determinism within one key version and domain;
 - separation across keys, versions, and domains;
 - startup rejection of configured policy-override and audit keys shorter than 32 UTF-8 bytes;
+- startup rejection when policy-override signing is enabled without a configured audit pseudonym key;
 - acceptance of multibyte policy keys based on encoded byte length rather than character count;
 - rejection of invalid explicit key versions;
 - startup rejection when policy and audit purposes reuse the same nonblank key;
-- distinct absent, empty, and unavailable approver behavior;
+- distinct absent, empty, and unavailable approver behavior while policy signing is disabled;
 - rejection of null, empty, or blank approval tokens before token fingerprinting;
 - safe handling of Unicode and control characters;
 - no raw approver identifier or approval token in captured policy-override audit output;

@@ -53,9 +53,10 @@ The report gate requires at least one Surefire `TEST-*.xml` report, a positive
 total test count, and zero skipped tests. When Failsafe `TEST-*.xml` reports are
 present, the same positive-count and zero-skip rules apply. Missing, malformed,
 empty, negative-count, or skipped report evidence fails closed. Each XML report
-is limited to 16 MiB and rejected before parsing when it contains a DTD or entity
-declaration, preventing external-entity reads and entity-expansion denial of
-service even when test code can write report files.
+must be UTF-8, may include a UTF-8 byte-order mark, is limited to 16 MiB, and is
+rejected before parsing when it contains a NUL byte, DTD, or entity declaration.
+This prevents alternate encodings from hiding external-entity or expansion
+payloads from the pre-parse checks, even when test code can write report files.
 
 ## Mandatory AC evidence mapping
 

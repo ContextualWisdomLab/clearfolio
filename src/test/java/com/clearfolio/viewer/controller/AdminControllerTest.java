@@ -104,11 +104,11 @@ class AdminControllerTest {
     }
 
     @Test
-    void listReturnsOnlyTenantOwnedJobsAndAppliesDeadLetterFilter() {
+    void listUsesTenantScopedServiceAndAppliesDeadLetterFilter() {
         ConversionJob deadLettered = job(TENANT_ID, "dead.pdf", true);
         ConversionJob ready = job(TENANT_ID, "ready.pdf", false);
-        ConversionJob otherTenant = job("tenant-south", "secret.pdf", false);
-        when(conversionService.getAllJobs()).thenReturn(List.of(deadLettered, ready, otherTenant));
+        when(conversionService.getJobsForTenant(any(TenantContext.class)))
+                .thenReturn(List.of(deadLettered, ready));
         HttpHeaders headers = signedHeaders(TENANT_ID, SUBJECT_ID, TenantPermissions.ADMIN_READ);
 
         requestJobs(headers)
@@ -130,18 +130,24 @@ class AdminControllerTest {
                 .jsonPath("$.jobs.length()").isEqualTo(1)
                 .jsonPath("$.jobs[0].fileName").isEqualTo("ready.pdf");
 
-        verify(conversionService, times(3)).getAllJobs();
+        verify(conversionService, times(3)).getJobsForTenant(
+                argThat(context -> TENANT_ID.equals(context.tenantId()))
+        );
+        verify(conversionService, never()).getAllJobs();
     }
 
     @Test
     void listServiceFailureReturnsGenericInternalError() {
-        when(conversionService.getAllJobs()).thenThrow(new IllegalStateException("repository unavailable"));
+        when(conversionService.getJobsForTenant(any(TenantContext.class)))
+                .thenThrow(new IllegalStateException("repository unavailable"));
 
         requestJobs(signedHeaders(TENANT_ID, SUBJECT_ID, TenantPermissions.ADMIN_READ))
                 .expectStatus().is5xxServerError()
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("INTERNAL_ERROR")
                 .jsonPath("$.message").isEqualTo("Unexpected error");
+
+        verify(conversionService, never()).getAllJobs();
     }
 
     @Test

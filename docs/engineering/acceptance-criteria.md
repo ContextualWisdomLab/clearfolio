@@ -50,7 +50,10 @@ suppress warnings, omit test-report verification, or present evidence containing
 skipped or zero executed tests.
 
 The report gate requires at least one Surefire `TEST-*.xml` report, a positive
-total test count, zero skipped tests, zero failures, and zero errors. When
+total test count, zero skipped tests, zero failures, and zero errors. Every
+`testsuite` element must explicitly provide non-negative integer `tests`,
+`skipped`, `failures`, and `errors` attributes; an omitted outcome count is
+incomplete evidence and fails closed rather than being inferred as zero. When
 Failsafe `TEST-*.xml` reports are present, the same rules apply. Missing,
 malformed, empty, negative-count, skipped, failing, or error-bearing report
 evidence fails closed even when a preceding Maven process returned success.

@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.config;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,6 +13,7 @@ import java.util.TreeMap;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.junit.jupiter.api.Test;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
@@ -39,6 +41,18 @@ class DependencyPolicyTest {
         assertSpringStarterExcludes(dependencies, "org.springframework.boot:spring-boot-starter-validation");
     }
 
+    @Test
+    void pomPinsPatchedNettyLineForReactiveHttpServing() throws Exception {
+        Document document = parsedPom();
+        Element properties = (Element) document.getElementsByTagName("properties").item(0);
+
+        assertEquals(
+                "4.1.136.Final",
+                directChildTextOf(properties, "netty.version"),
+                "Spring Boot's managed Netty line must be overridden to the reviewed 4.1.136.Final security release"
+        );
+    }
+
     private static void assertSpringStarterExcludes(
             Map<String, DependencyDeclaration> dependencies,
             String coordinate
@@ -60,15 +74,7 @@ class DependencyPolicyTest {
     }
 
     private static Map<String, DependencyDeclaration> declaredDependencies() throws Exception {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        factory.setXIncludeAware(false);
-        factory.setExpandEntityReferences(false);
-
-        var document = factory.newDocumentBuilder().parse(Path.of("pom.xml").toFile());
-        var dependencyNodes = document.getElementsByTagName("dependency");
+        var dependencyNodes = parsedPom().getElementsByTagName("dependency");
         Map<String, DependencyDeclaration> dependencies = new TreeMap<>();
         for (int i = 0; i < dependencyNodes.getLength(); i++) {
             Element dependency = (Element) dependencyNodes.item(i);
@@ -80,6 +86,16 @@ class DependencyPolicyTest {
             dependencies.put(declaration.coordinate(), declaration);
         }
         return dependencies;
+    }
+
+    private static Document parsedPom() throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);
+        return factory.newDocumentBuilder().parse(Path.of("pom.xml").toFile());
     }
 
     private static Set<String> exclusionsOf(Element dependency) {

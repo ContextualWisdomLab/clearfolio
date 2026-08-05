@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -50,7 +51,12 @@ class TenantScopedAtomicMutationBoundaryTest {
                 .thenReturn(false);
         when(repository.deleteByTenantAndId(TENANT_CONTEXT.tenantId(), ownedId))
                 .thenReturn(true);
-        DefaultDocumentConversionService service = service(repository, stateStore, artifactStore, mock(ConversionWorker.class));
+        DefaultDocumentConversionService service = service(
+                repository,
+                stateStore,
+                artifactStore,
+                mock(ConversionWorker.class)
+        );
 
         assertFalse(service.deleteJob(missingId, TENANT_CONTEXT));
         assertTrue(service.deleteJob(ownedId, TENANT_CONTEXT));
@@ -112,6 +118,50 @@ class TenantScopedAtomicMutationBoundaryTest {
         verify(worker, never()).enqueue(missingId);
         verify(worker, never()).enqueue(activeId);
         verify(worker).enqueue(acceptedId);
+    }
+
+    @Test
+    void compatibilityRepositoryDefaultDoesNotInvokeGlobalDelete() {
+        AtomicInteger globalDeleteCalls = new AtomicInteger();
+        ConversionJobRepository repository = new ConversionJobRepository() {
+            @Override
+            public ConversionJob save(ConversionJob job) {
+                return job;
+            }
+
+            @Override
+            public Optional<ConversionJob> findById(UUID jobId) {
+                return Optional.empty();
+            }
+
+            @Override
+            public Optional<ConversionJob> findByContentHash(String contentHash) {
+                return Optional.empty();
+            }
+
+            @Override
+            public List<ConversionJob> findAll() {
+                return List.of();
+            }
+
+            @Override
+            public FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
+                return new FindOrStoreResult(candidate, true);
+            }
+
+            @Override
+            public void deleteById(UUID jobId) {
+                globalDeleteCalls.incrementAndGet();
+            }
+        };
+
+        boolean deleted = repository.deleteByTenantAndId(
+                TENANT_CONTEXT.tenantId(),
+                UUID.randomUUID()
+        );
+
+        assertFalse(deleted);
+        assertEquals(0, globalDeleteCalls.get());
     }
 
     @Test

@@ -6,7 +6,24 @@ import java.util.Locale;
 import com.clearfolio.viewer.model.ConversionJob;
 
 /**
- * API payload that initializes the viewer for a converted document.
+ * API payload that initializes the document viewer with lifecycle metadata,
+ * renderer selection, and an optional tenant-authorized artifact link.
+ *
+ * @param docId stable document or conversion-job identifier
+ * @param status current conversion lifecycle state
+ * @param fileName original client-visible source filename
+ * @param viewerMode viewer implementation selected for the rendered artifact
+ * @param previewResourcePath resource URL used by the viewer shell
+ * @param createdAt time at which the conversion job was accepted
+ * @param startedAt time at which processing began, or {@code null}
+ * @param completedAt time at which processing completed, or {@code null}
+ * @param sourceExtension normalized lowercase source-file extension
+ * @param rendererAdapter adapter selected for the source document family
+ * @param artifactLinkUrl signed artifact URL, or {@code null} when unavailable
+ * @param artifactLinkExpiresAt expiry time of the signed artifact URL, or
+ *        {@code null}
+ * @param artifactLinkScope authorization scope encoded into the artifact link,
+ *        or {@code null}
  */
 public record ViewerBootstrapResponse(
         String docId,

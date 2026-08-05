@@ -21,6 +21,7 @@ import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
+import com.clearfolio.viewer.repository.ConversionJobStateStore.TenantRetryOutcome;
 import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
 
 /**
@@ -226,12 +227,12 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             return false;
         }
 
-        Optional<ConversionJob> job = repository.findByTenantAndId(tenantContext.tenantId(), jobId);
-        if (job.isEmpty()) {
+        boolean deleted = repository.deleteByTenantAndId(tenantContext.tenantId(), jobId);
+        if (!deleted) {
             return false;
         }
 
-        deleteJob(job.get().getJobId());
+        deleteArtifact(jobId);
         return true;
     }
 
@@ -240,11 +241,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      */
     @Override
     public void deleteJob(UUID jobId) {
-        try {
-            artifactStore.deletePdf(jobId);
-        } catch (Exception ex) {
-            log.warn("Failed to delete artifact for job {}", jobId, ex);
-        }
+        deleteArtifact(jobId);
         repository.deleteById(jobId);
     }
 
@@ -261,11 +258,19 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             return RetryDeadLetterResult.NOT_FOUND;
         }
 
-        Optional<ConversionJob> existing = repository.findByTenantAndId(
+        TenantRetryOutcome outcome = stateStore.retryDeadLetteredForTenant(
                 tenantContext.tenantId(),
-                jobId
+                jobId,
+                operatorId
         );
-        return retryExistingJob(existing, operatorId);
+        return switch (outcome) {
+            case ACCEPTED -> {
+                conversionWorker.enqueue(jobId);
+                yield RetryDeadLetterResult.ACCEPTED;
+            }
+            case NOT_FOUND -> RetryDeadLetterResult.NOT_FOUND;
+            case NOT_ELIGIBLE -> RetryDeadLetterResult.NOT_ELIGIBLE;
+        };
     }
 
     /**
@@ -277,11 +282,13 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
     }
 
     /**
-     * Applies the retry transition to a job that has already been selected by
-     * the caller's required authorization scope.
+     * Applies the legacy unscoped retry transition to a selected job.
      *
-     * @param existing selected conversion job, or empty when no authorized job exists
-     * @param operatorId privacy-safe operator fingerprint recorded by the state store
+     * <p>Administrative callers do not use this compatibility path. They use
+     * the atomic tenant-aware state-store operation instead.</p>
+     *
+     * @param existing selected conversion job, or empty when no job exists
+     * @param operatorId operator identifier recorded by the state store
      * @return accepted, not-found, or not-eligible retry result
      */
     private RetryDeadLetterResult retryExistingJob(
@@ -318,6 +325,14 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
     @Override
     public Iterable<ConversionJob> getAllJobs() {
         return repository.findAll();
+    }
+
+    private void deleteArtifact(UUID jobId) {
+        try {
+            artifactStore.deletePdf(jobId);
+        } catch (Exception ex) {
+            log.warn("Failed to delete artifact for job {}", jobId, ex);
+        }
     }
 
     private void seedPdfPassthroughArtifact(ConversionJob job, MultipartFile file) {

@@ -37,6 +37,8 @@ Retry receives one atomic state-store outcome: `ACCEPTED`, concealed `NOT_FOUND`
 
 The historical unscoped delete method and two-argument retry method remain compatibility contracts for non-administrative adapters only. Their tenant-aware service, repository, and state-store defaults fail closed without reading a job or invoking either legacy mutation. A production adapter must explicitly override the tenant-aware methods and perform tenant selection and mutation within one persistence boundary before an administrative request can succeed. Clearfolio's in-memory durable implementation supplies those scoped atomic overrides.
 
+The content-hash secondary index is also tenant-bound. Replacing a stored UUID invalidates the replaced job's tenant-and-hash index before the replacement is indexed. Lookup validates that the current UUID record still matches the requested tenant-and-hash key, and find-or-store rejects a colliding UUID rather than changing the current record's ownership. These defenses prevent a stale secondary index or stale preliminary observation from disclosing, deleting, retrying, or deduplicating against another tenant's job.
+
 ## Audit evidence
 
 Administrative evidence contains only:
@@ -62,6 +64,8 @@ Automated tests must exercise the real signed-claim verifier and prove:
 - delete and retry cross tenant-aware persistence boundaries without a separate lookup or unscoped mutation call;
 - failed tenant-scoped deletion never touches the artifact store, while successful deletion cleans the owned artifact after repository authorization;
 - compatibility-only service, repository, and state-store adapters cannot reach global lookup, delete, or retry methods through tenant-aware defaults;
+- replacing a UUID cannot leave an old tenant-and-content-hash lookup that resolves to the replacement, and a colliding find-or-store candidate fails without changing current ownership;
+- stale observations cannot delete or retry a same-UUID replacement owned by another tenant;
 - the durable retry state store rejects invalid, missing, cross-tenant, and ineligible targets without an unauthorized transition or worker enqueue;
 - accepted retry provenance is a domain-separated keyed fingerprint, never a raw or unkeyed subject value;
 - not-found, not-eligible, repository failure, artifact-cleanup failure, and retry failure paths return stable non-leaking responses;

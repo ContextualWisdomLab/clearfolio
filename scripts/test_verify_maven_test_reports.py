@@ -68,7 +68,7 @@ class MavenTestReportGateTest(unittest.TestCase):
             reports = target / "surefire-reports"
             reports.mkdir(parents=True)
             (reports / "TEST-bom.xml").write_bytes(
-                b'\xef\xbb\xbf<testsuite tests="1" skipped="0"/>'
+                b'\xef\xbb\xbf<testsuite tests="1" skipped="0" errors="0" failures="0"/>'
             )
 
             summary = verify_maven_reports(target)
@@ -133,6 +133,35 @@ class MavenTestReportGateTest(unittest.TestCase):
                     _write_report(target / "surefire-reports", tests=invalid_count)
 
                     with self.assertRaisesRegex(ReportGateError, "non-negative integer"):
+                        verify_maven_reports(target)
+
+    def test_rejects_missing_required_suite_counts(self) -> None:
+        """Fail closed when a Maven suite omits mandatory outcome counts."""
+        for missing_attribute in ("tests", "skipped", "failures", "errors"):
+            with self.subTest(missing_attribute=missing_attribute):
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    target = Path(temporary_directory)
+                    reports = target / "surefire-reports"
+                    reports.mkdir(parents=True)
+                    attributes = {
+                        "tests": "1",
+                        "skipped": "0",
+                        "failures": "0",
+                        "errors": "0",
+                    }
+                    del attributes[missing_attribute]
+                    serialized_attributes = " ".join(
+                        f'{name}="{value}"' for name, value in attributes.items()
+                    )
+                    (reports / "TEST-missing.xml").write_text(
+                        f"<testsuite {serialized_attributes}/>",
+                        encoding="utf-8",
+                    )
+
+                    with self.assertRaisesRegex(
+                        ReportGateError,
+                        f"missing required {missing_attribute} attribute",
+                    ):
                         verify_maven_reports(target)
 
     def test_rejects_malformed_xml_and_missing_test_suite(self) -> None:

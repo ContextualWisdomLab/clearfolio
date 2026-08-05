@@ -39,19 +39,14 @@ def _non_negative_count(report: Path, suite: ET.Element, attribute: str) -> int:
 
 
 def _read_bounded_report(report: Path) -> bytes:
-    """Read one report only when its size and XML declarations are safe."""
+    """Read one report atomically within the byte and XML-declaration limits."""
     try:
-        report_size = report.stat().st_size
-    except OSError as error:
-        raise ReportGateError(f"{report} metadata cannot be read: {error}") from error
-    if report_size > MAX_REPORT_BYTES:
-        raise ReportGateError(
-            f"{report} exceeds the {MAX_REPORT_BYTES}-byte limit ({report_size} bytes)"
-        )
-    try:
-        report_bytes = report.read_bytes()
+        with report.open("rb") as report_stream:
+            report_bytes = report_stream.read(MAX_REPORT_BYTES + 1)
     except OSError as error:
         raise ReportGateError(f"{report} cannot be read: {error}") from error
+    if len(report_bytes) > MAX_REPORT_BYTES:
+        raise ReportGateError(f"{report} exceeds the {MAX_REPORT_BYTES}-byte limit")
     uppercase_bytes = report_bytes.upper()
     if any(marker in uppercase_bytes for marker in _FORBIDDEN_XML_DECLARATIONS):
         raise ReportGateError(f"{report} contains a forbidden DTD or entity declaration")

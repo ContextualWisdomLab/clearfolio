@@ -111,7 +111,7 @@ class MavenTestReportGateTest(unittest.TestCase):
 
     def test_rejects_reported_test_failures_and_errors(self) -> None:
         """Do not trust report evidence that contradicts a successful Maven exit."""
-        for attribute in ("failures", "errors"):
+        for attribute, singular in (("failures", "failure"), ("errors", "error")):
             with self.subTest(attribute=attribute):
                 with tempfile.TemporaryDirectory() as temporary_directory:
                     target = Path(temporary_directory)
@@ -120,7 +120,7 @@ class MavenTestReportGateTest(unittest.TestCase):
 
                     with self.assertRaisesRegex(
                         ReportGateError,
-                        f"Surefire reported 1 test {attribute}",
+                        f"Surefire reported 1 test {singular}",
                     ):
                         verify_maven_reports(target)
 

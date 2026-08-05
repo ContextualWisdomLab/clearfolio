@@ -61,6 +61,36 @@ public interface DocumentConversionService {
     RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId);
 
     /**
+     * Retries a dead-lettered conversion job owned by the supplied tenant.
+     *
+     * <p>The default implementation preserves compatibility for adapters that
+     * have not yet implemented an atomic tenant-aware transition. Durable
+     * implementations should override this method so ownership and transition
+     * are enforced within one persistence boundary.</p>
+     *
+     * @param jobId conversion job identifier
+     * @param tenantContext tenant and subject claims for the retry request
+     * @param operatorId privacy-safe operator fingerprint that triggered retry
+     * @return accepted, not-found, or not-eligible retry outcome
+     */
+    default RetryDeadLetterResult retryDeadLettered(
+            UUID jobId,
+            TenantContext tenantContext,
+            String operatorId
+    ) {
+        if (tenantContext == null) {
+            return RetryDeadLetterResult.NOT_FOUND;
+        }
+
+        Optional<ConversionJob> job = getJob(jobId);
+        if (job.isEmpty() || !job.get().belongsToTenant(tenantContext.tenantId())) {
+            return RetryDeadLetterResult.NOT_FOUND;
+        }
+
+        return retryDeadLettered(jobId, operatorId);
+    }
+
+    /**
      * Deletes a conversion job owned by the supplied tenant context.
      *
      * @param jobId conversion job identifier

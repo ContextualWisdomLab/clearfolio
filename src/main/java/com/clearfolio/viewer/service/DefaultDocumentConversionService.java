@@ -102,6 +102,18 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         );
     }
 
+    /**
+     * Creates the conversion service with repository-backed lifecycle state and
+     * an isolated in-memory artifact store.
+     *
+     * <p>This convenience constructor is intended for tests and legacy wiring
+     * that do not provide lifecycle and artifact-store collaborators directly.</p>
+     *
+     * @param repository conversion job repository
+     * @param validationService document validation service
+     * @param conversionWorker conversion worker
+     * @param conversionProperties conversion configuration values
+     */
     public DefaultDocumentConversionService(
             ConversionJobRepository repository,
             DocumentValidationService validationService,
@@ -111,11 +123,21 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
                 repository,
                 validationService,
                 conversionWorker,
-                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
+                new InMemoryArtifactStore(),
                 conversionProperties
         );
     }
 
+    /**
+     * Creates the conversion service with repository-backed lifecycle state and
+     * the supplied artifact store.
+     *
+     * @param repository conversion job repository
+     * @param validationService document validation service
+     * @param conversionWorker conversion worker
+     * @param artifactStore generated artifact store used for PDF passthrough seeding
+     * @param conversionProperties conversion configuration values
+     */
     public DefaultDocumentConversionService(
             ConversionJobRepository repository,
             DocumentValidationService validationService,
@@ -229,8 +251,42 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * {@inheritDoc}
      */
     @Override
+    public RetryDeadLetterResult retryDeadLettered(
+            UUID jobId,
+            TenantContext tenantContext,
+            String operatorId
+    ) {
+        if (tenantContext == null) {
+            return RetryDeadLetterResult.NOT_FOUND;
+        }
+
+        Optional<ConversionJob> existing = repository.findByTenantAndId(
+                tenantContext.tenantId(),
+                jobId
+        );
+        return retryExistingJob(existing, operatorId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId) {
-        Optional<ConversionJob> existing = repository.findById(jobId);
+        return retryExistingJob(repository.findById(jobId), operatorId);
+    }
+
+    /**
+     * Applies the retry transition to a job that has already been selected by
+     * the caller's required authorization scope.
+     *
+     * @param existing selected conversion job, or empty when no authorized job exists
+     * @param operatorId privacy-safe operator fingerprint recorded by the state store
+     * @return accepted, not-found, or not-eligible retry result
+     */
+    private RetryDeadLetterResult retryExistingJob(
+            Optional<ConversionJob> existing,
+            String operatorId
+    ) {
         if (existing.isEmpty()) {
             return RetryDeadLetterResult.NOT_FOUND;
         }

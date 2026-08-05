@@ -112,15 +112,14 @@ public final class AuditPseudonymizer {
         if (keyVersion == null) {
             return DEFAULT_KEY_VERSION;
         }
-        String normalized = keyVersion.strip();
-        if (normalized.isEmpty()) {
+        if (keyVersion.isEmpty()) {
             throw new IllegalArgumentException("audit pseudonym key version must not be blank");
         }
-        if (normalized.length() > MAX_KEY_VERSION_LENGTH) {
+        if (keyVersion.length() > MAX_KEY_VERSION_LENGTH) {
             throw new IllegalArgumentException("audit pseudonym key version is too long");
         }
-        for (int index = 0; index < normalized.length(); index++) {
-            char character = normalized.charAt(index);
+        for (int index = 0; index < keyVersion.length(); index++) {
+            char character = keyVersion.charAt(index);
             boolean safe = Character.isLetterOrDigit(character)
                     || character == '.'
                     || character == '_'
@@ -129,7 +128,7 @@ public final class AuditPseudonymizer {
                 throw new IllegalArgumentException("audit pseudonym key version contains unsafe characters");
             }
         }
-        return normalized;
+        return keyVersion;
     }
 
     private static String requireDomain(String domain) {

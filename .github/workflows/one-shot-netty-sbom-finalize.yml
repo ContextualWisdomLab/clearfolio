@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: one-shot-netty-sbom-finalize-artifact-v2-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+  group: one-shot-netty-sbom-finalize-artifact-v3-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -134,7 +134,6 @@ jobs:
               raise SystemExit("attribution bytes differ from the successful read-only artifact")
           PY
           python3 scripts/test_render_third_party_attribution.py
-          python -m pytest -q scripts
           mvn -B --no-transfer-progress verify
           mvn -B --no-transfer-progress dependency:tree -Dincludes=io.netty
 

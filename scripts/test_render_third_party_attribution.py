@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import unittest
-import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -26,7 +26,9 @@ SBOM_PATH = (
 ATTRIBUTION_PATH = (
     REPOSITORY_ROOT / "docs" / "legal" / "2026-07-03-third-party-attribution.md"
 )
-MAVEN_NAMESPACE = {"maven": "http://maven.apache.org/POM/4.0.0"}
+NETTY_VERSION_PATTERN = re.compile(
+    r"<netty\.version>\s*([^<\s]+)\s*</netty\.version>"
+)
 
 
 def component(group: str, name: str, version: str, license_id: str, purl: str) -> dict:
@@ -41,12 +43,11 @@ def component(group: str, name: str, version: str, license_id: str, purl: str) -
 
 
 def managed_netty_version() -> str:
-    """Read the reviewed Netty family version from the real Maven project."""
-    root = ElementTree.parse(POM_PATH).getroot()
-    element = root.find("maven:properties/maven:netty.version", MAVEN_NAMESPACE)
-    if element is None or not element.text or not element.text.strip():
-        raise AssertionError("pom.xml must declare a non-blank netty.version property")
-    return element.text.strip()
+    """Read the reviewed Netty family version from the trusted project POM."""
+    matches = NETTY_VERSION_PATTERN.findall(POM_PATH.read_text(encoding="utf-8"))
+    if len(matches) != 1:
+        raise AssertionError("pom.xml must declare exactly one non-blank netty.version property")
+    return matches[0]
 
 
 class ThirdPartyAttributionTest(unittest.TestCase):

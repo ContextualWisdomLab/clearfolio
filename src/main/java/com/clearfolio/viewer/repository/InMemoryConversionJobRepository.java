@@ -322,10 +322,11 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     }
 
     private boolean matchesContentIndex(ConversionJob job, String expectedContentKey) {
-        return job != null
-                && job.getContentHash() != null
-                && !job.getContentHash().isBlank()
-                && contentKey(job.getTenantId(), job.getContentHash()).equals(expectedContentKey);
+        return expectedContentKey.equals(
+                Optional.ofNullable(job)
+                        .map(current -> contentKey(current.getTenantId(), current.getContentHash()))
+                        .orElse("")
+        );
     }
 
     private void indexContentHash(ConversionJob job) {

@@ -1,6 +1,7 @@
 package com.clearfolio.viewer.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -10,10 +11,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import com.clearfolio.viewer.model.ConversionJob;
+import com.clearfolio.viewer.model.ConversionJobStatus;
+import com.clearfolio.viewer.repository.ConversionJobStateStore.TenantRetryOutcome;
 
 /**
- * Proves that administrative listing can be bounded at the repository layer
- * before another tenant's job objects reach the service or controller.
+ * Proves that administrative operations are bounded at the repository layer
+ * before another tenant's job objects or mutations cross the service boundary.
  */
 class InMemoryConversionJobRepositoryTenantScopeTest {
 
@@ -44,16 +47,121 @@ class InMemoryConversionJobRepositoryTenantScopeTest {
 
         assertTrue(repository.findAllByTenantId(null).isEmpty());
         assertTrue(repository.findAllByTenantId("   ").isEmpty());
+        assertFalse(repository.deleteByTenantAndId(null, UUID.randomUUID()));
+        assertFalse(repository.deleteByTenantAndId("   ", UUID.randomUUID()));
+        assertEquals(
+                TenantRetryOutcome.NOT_FOUND,
+                repository.retryDeadLetteredForTenant(null, UUID.randomUUID(), "actor")
+        );
+        assertEquals(
+                TenantRetryOutcome.NOT_FOUND,
+                repository.retryDeadLetteredForTenant("   ", UUID.randomUUID(), "actor")
+        );
+    }
+
+    @Test
+    void tenantScopedDeleteConcealsMissingAndCrossTenantJobsThenRemovesOwnedIndex() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob north = job("tenant-north", "north.pdf");
+        ConversionJob south = job("tenant-south", "south.pdf");
+        repository.save(north);
+        repository.save(south);
+
+        assertFalse(repository.deleteByTenantAndId("tenant-north", UUID.randomUUID()));
+        assertFalse(repository.deleteByTenantAndId("tenant-north", south.getJobId()));
+        assertTrue(repository.findById(south.getJobId()).isPresent());
+        assertTrue(repository.deleteByTenantAndId(" tenant-north ", north.getJobId()));
+        assertTrue(repository.findById(north.getJobId()).isEmpty());
+        assertTrue(repository.findByTenantAndContentHash(
+                "tenant-north",
+                north.getContentHash()
+        ).isEmpty());
+    }
+
+    @Test
+    void tenantScopedDeleteHandlesJobsWithoutIndexedContentHashes() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob nullHash = job("tenant-north", "null-hash.pdf", null);
+        ConversionJob blankHash = job("tenant-north", "blank-hash.pdf", "   ");
+        repository.save(nullHash);
+        repository.save(blankHash);
+
+        assertTrue(repository.deleteByTenantAndId("tenant-north", nullHash.getJobId()));
+        assertTrue(repository.deleteByTenantAndId("tenant-north", blankHash.getJobId()));
+        repository.deleteById(UUID.randomUUID());
+    }
+
+    @Test
+    void tenantScopedRetryAtomicallyConcealsOwnershipAndMapsEligibility() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        ConversionJob active = job("tenant-north", "active.pdf");
+        ConversionJob retryable = deadLetteredJob("tenant-north", "retryable.pdf");
+        ConversionJob south = deadLetteredJob("tenant-south", "south-secret.pdf");
+        repository.save(active);
+        repository.save(retryable);
+        repository.save(south);
+
+        assertEquals(
+                TenantRetryOutcome.NOT_FOUND,
+                repository.retryDeadLetteredForTenant(
+                        "tenant-north",
+                        UUID.randomUUID(),
+                        "actor-missing"
+                )
+        );
+        assertEquals(
+                TenantRetryOutcome.NOT_FOUND,
+                repository.retryDeadLetteredForTenant(
+                        "tenant-north",
+                        south.getJobId(),
+                        "actor-cross-tenant"
+                )
+        );
+        assertEquals(
+                TenantRetryOutcome.NOT_ELIGIBLE,
+                repository.retryDeadLetteredForTenant(
+                        "tenant-north",
+                        active.getJobId(),
+                        "actor-active"
+                )
+        );
+        assertEquals(
+                TenantRetryOutcome.ACCEPTED,
+                repository.retryDeadLetteredForTenant(
+                        " tenant-north ",
+                        retryable.getJobId(),
+                        "actor-owned"
+                )
+        );
+        assertEquals(ConversionJobStatus.SUBMITTED, retryable.getStatus());
+        assertTrue(retryable.getStatusMessage().contains("actor-owned"));
+        assertEquals(
+                1,
+                repository.findLifecycleEventsByJobId(retryable.getJobId()).stream()
+                        .filter(event -> "conversion.retry.accepted".equals(event.eventType()))
+                        .count()
+        );
+    }
+
+    private static ConversionJob deadLetteredJob(String tenantId, String fileName) {
+        ConversionJob job = job(tenantId, fileName);
+        assertTrue(job.markProcessing("first attempt"));
+        job.markDeadLettered("retries exhausted");
+        return job;
     }
 
     private static ConversionJob job(String tenantId, String fileName) {
+        return job(tenantId, fileName, UUID.randomUUID().toString());
+    }
+
+    private static ConversionJob job(String tenantId, String fileName, String contentHash) {
         return new ConversionJob(
                 UUID.randomUUID(),
                 tenantId,
                 "owner",
                 fileName,
                 "application/pdf",
-                UUID.randomUUID().toString(),
+                contentHash,
                 100L,
                 3
         );

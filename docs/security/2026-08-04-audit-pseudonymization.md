@@ -8,6 +8,12 @@ The approver field is named `approverFingerprint`, not `approverId`, so downstre
 
 ## Cryptographic contract
 
+### Policy override key
+
+A configured `conversion.policy-override-secret` authorizes blocked-document policy exceptions and must contain at least 32 UTF-8 bytes. Blank or absent configuration keeps policy override disabled. A nonblank value below the minimum fails application startup before any conversion endpoint can accept traffic. The startup gate measures encoded bytes rather than Java character count, does not log the supplied value, and remains independent of the audit-key separation check.
+
+Deployments must generate this key from a cryptographically secure random source and must not use a password, person or tenant identifier, repository token, or other human-memorable value. The minimum-length gate prevents a weak configured secret from reducing the effective security of the HMAC approval token even when the HMAC algorithm itself is correctly implemented (National Institute of Standards and Technology, 2008; Turan & Brandão, 2024).
+
 ### Approver identifier
 
 The approver fingerprint is calculated as follows:
@@ -57,8 +63,9 @@ Spring reads each file's contents as the corresponding property. The deployment 
 
 ## Key ownership and rotation
 
+- `conversion.policy-override-secret` is an authorization key owned by the security function. It must contain at least 32 UTF-8 bytes, be generated from a cryptographically secure random source, and be rotated through the deployment secret manager.
 - `conversion.audit-pseudonym-secret` is owned by the security or privacy operations function and must be stored in the deployment secret manager.
-- The configured value must contain at least 32 UTF-8 bytes and should be a uniformly random 256-bit-or-stronger value rather than a password or identifier.
+- The configured audit value must contain at least 32 UTF-8 bytes and should be a uniformly random 256-bit-or-stronger value rather than a password or identifier.
 - The application startup guard rejects identical nonblank values for `conversion.audit-pseudonym-secret` and `conversion.policy-override-secret`. Deployment policy must additionally keep the audit key operationally separate from tenant-claims signing keys, encryption keys, and API credentials; those keys are owned by their respective subsystems and are not all available to this component's startup guard.
 - `conversion.audit-pseudonym-key-version` is a non-secret identifier such as `2026-08` but is mounted with the same versioned configuration bundle to keep key and label rotation atomic.
 - Rotation changes both the secret and version. During an investigation that spans a rotation boundary, operators must treat fingerprints from different versions as intentionally unlinkable unless an approved, separately controlled re-identification process exists.
@@ -85,7 +92,8 @@ Automated tests must prove:
 
 - determinism within one key version and domain;
 - separation across keys, versions, and domains;
-- rejection of configured keys shorter than 32 UTF-8 bytes;
+- startup rejection of configured policy-override and audit keys shorter than 32 UTF-8 bytes;
+- acceptance of multibyte policy keys based on encoded byte length rather than character count;
 - rejection of invalid explicit key versions;
 - startup rejection when policy and audit purposes reuse the same nonblank key;
 - distinct absent, empty, and unavailable approver behavior;

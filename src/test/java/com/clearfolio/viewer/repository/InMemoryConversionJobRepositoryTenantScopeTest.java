@@ -2,6 +2,7 @@ package com.clearfolio.viewer.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -60,6 +61,73 @@ class InMemoryConversionJobRepositoryTenantScopeTest {
     }
 
     @Test
+    void replacingAJobIdentifierCannotLeakThroughThePreviousTenantHashIndex() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        UUID sharedJobId = UUID.randomUUID();
+        ConversionJob observedNorth = job(
+                sharedJobId,
+                "tenant-north",
+                "north-original.pdf",
+                "north-content-hash"
+        );
+        ConversionJob replacementSouth = job(
+                sharedJobId,
+                "tenant-south",
+                "south-replacement.pdf",
+                "south-content-hash"
+        );
+        repository.save(observedNorth);
+        repository.save(replacementSouth);
+
+        assertTrue(repository.findByTenantAndContentHash(
+                "tenant-north",
+                observedNorth.getContentHash()
+        ).isEmpty());
+        assertSame(
+                replacementSouth,
+                repository.findByTenantAndContentHash(
+                        "tenant-south",
+                        replacementSouth.getContentHash()
+                ).orElseThrow()
+        );
+
+        ConversionJob newNorthCandidate = job(
+                "tenant-north",
+                "north-recreated.pdf",
+                observedNorth.getContentHash()
+        );
+        ConversionJobRepository.FindOrStoreResult result = repository.findOrStoreByContentHash(
+                newNorthCandidate
+        );
+
+        assertTrue(result.created());
+        assertSame(newNorthCandidate, result.canonicalJob());
+    }
+
+    @Test
+    void staleTenantObservationCannotDeleteAReplacementOwnedByAnotherTenant() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        UUID sharedJobId = UUID.randomUUID();
+        ConversionJob observedNorth = job(
+                sharedJobId,
+                "tenant-north",
+                "north-observed.pdf",
+                "north-observed-hash"
+        );
+        ConversionJob replacementSouth = job(
+                sharedJobId,
+                "tenant-south",
+                "south-current.pdf",
+                "south-current-hash"
+        );
+        repository.save(observedNorth);
+        repository.save(replacementSouth);
+
+        assertFalse(repository.deleteByTenantAndId("tenant-north", sharedJobId));
+        assertSame(replacementSouth, repository.findById(sharedJobId).orElseThrow());
+    }
+
+    @Test
     void tenantScopedDeleteConcealsMissingAndCrossTenantJobsThenRemovesOwnedIndex() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
         ConversionJob north = job("tenant-north", "north.pdf");
@@ -89,6 +157,38 @@ class InMemoryConversionJobRepositoryTenantScopeTest {
         assertTrue(repository.deleteByTenantAndId("tenant-north", nullHash.getJobId()));
         assertTrue(repository.deleteByTenantAndId("tenant-north", blankHash.getJobId()));
         repository.deleteById(UUID.randomUUID());
+    }
+
+    @Test
+    void staleTenantObservationCannotRetryAReplacementOwnedByAnotherTenant() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        UUID sharedJobId = UUID.randomUUID();
+        ConversionJob observedNorth = deadLetteredJob(
+                sharedJobId,
+                "tenant-north",
+                "north-observed.pdf",
+                "north-observed-retry-hash"
+        );
+        ConversionJob replacementSouth = deadLetteredJob(
+                sharedJobId,
+                "tenant-south",
+                "south-current.pdf",
+                "south-current-retry-hash"
+        );
+        repository.save(observedNorth);
+        repository.save(replacementSouth);
+
+        assertEquals(
+                TenantRetryOutcome.NOT_FOUND,
+                repository.retryDeadLetteredForTenant(
+                        "tenant-north",
+                        sharedJobId,
+                        "actor-from-stale-observation"
+                )
+        );
+        assertSame(replacementSouth, repository.findById(sharedJobId).orElseThrow());
+        assertEquals(ConversionJobStatus.FAILED, replacementSouth.getStatus());
+        assertTrue(replacementSouth.isDeadLettered());
     }
 
     @Test
@@ -144,7 +244,21 @@ class InMemoryConversionJobRepositoryTenantScopeTest {
     }
 
     private static ConversionJob deadLetteredJob(String tenantId, String fileName) {
-        ConversionJob job = job(tenantId, fileName);
+        return deadLetteredJob(
+                UUID.randomUUID(),
+                tenantId,
+                fileName,
+                UUID.randomUUID().toString()
+        );
+    }
+
+    private static ConversionJob deadLetteredJob(
+            UUID jobId,
+            String tenantId,
+            String fileName,
+            String contentHash
+    ) {
+        ConversionJob job = job(jobId, tenantId, fileName, contentHash);
         assertTrue(job.markProcessing("first attempt"));
         job.markDeadLettered("retries exhausted");
         return job;
@@ -155,8 +269,17 @@ class InMemoryConversionJobRepositoryTenantScopeTest {
     }
 
     private static ConversionJob job(String tenantId, String fileName, String contentHash) {
+        return job(UUID.randomUUID(), tenantId, fileName, contentHash);
+    }
+
+    private static ConversionJob job(
+            UUID jobId,
+            String tenantId,
+            String fileName,
+            String contentHash
+    ) {
         return new ConversionJob(
-                UUID.randomUUID(),
+                jobId,
                 tenantId,
                 "owner",
                 fileName,

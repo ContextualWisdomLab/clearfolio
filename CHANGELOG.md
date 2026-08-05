@@ -5,6 +5,9 @@
 ### Changed
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
 
+### Security
+- Spring Boot가 관리하는 전체 Netty 모듈군을 `4.1.136.Final`로 일괄 고정하고, POM·CycloneDX SBOM·third-party attribution·dependency graph의 버전 일치를 fail-closed 계약으로 검증합니다.
+
 # Changelog
 
 ## [Unreleased]

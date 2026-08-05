@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Final
 
 REPORT_PATTERN: Final[str] = "TEST-*.xml"
+MAX_REPORT_BYTES: Final[int] = 16 * 1024 * 1024
+_FORBIDDEN_XML_DECLARATIONS: Final[tuple[bytes, ...]] = (b"<!DOCTYPE", b"<!ENTITY")
 
 
 class ReportGateError(RuntimeError):
@@ -36,10 +38,32 @@ def _non_negative_count(report: Path, suite: ET.Element, attribute: str) -> int:
     return value
 
 
-def _suite_elements(report: Path) -> list[ET.Element]:
-    """Parse one report and return every concrete test-suite element."""
+def _read_bounded_report(report: Path) -> bytes:
+    """Read one report only when its size and XML declarations are safe."""
     try:
-        root = ET.parse(report).getroot()
+        report_size = report.stat().st_size
+    except OSError as error:
+        raise ReportGateError(f"{report} metadata cannot be read: {error}") from error
+    if report_size > MAX_REPORT_BYTES:
+        raise ReportGateError(
+            f"{report} exceeds the {MAX_REPORT_BYTES}-byte limit ({report_size} bytes)"
+        )
+    try:
+        report_bytes = report.read_bytes()
+    except OSError as error:
+        raise ReportGateError(f"{report} cannot be read: {error}") from error
+    uppercase_bytes = report_bytes.upper()
+    if any(marker in uppercase_bytes for marker in _FORBIDDEN_XML_DECLARATIONS):
+        raise ReportGateError(f"{report} contains a forbidden DTD or entity declaration")
+    return report_bytes
+
+
+def _suite_elements(report: Path) -> list[ET.Element]:
+    """Parse one bounded entity-free report and return concrete test suites."""
+    report_bytes = _read_bounded_report(report)
+    try:
+        # The bounded input was pre-scanned for DTD and entity declarations.
+        root = ET.fromstring(report_bytes)  # nosemgrep: python.lang.security.use-defused-xml-parse.use-defused-xml-parse
     except ET.ParseError as error:
         raise ReportGateError(f"{report} is not valid XML: {error}") from error
 

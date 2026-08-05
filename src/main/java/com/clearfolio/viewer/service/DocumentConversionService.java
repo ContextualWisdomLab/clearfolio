@@ -64,53 +64,39 @@ public interface DocumentConversionService {
     /**
      * Retries a dead-lettered conversion job owned by the supplied tenant.
      *
-     * <p>The default implementation preserves compatibility for adapters that
-     * have not yet implemented an atomic tenant-aware transition. Durable
-     * implementations should override this method so ownership and transition
-     * are enforced within one persistence boundary.</p>
+     * <p>The default fails closed without reading a job or invoking the legacy
+     * unscoped retry method. A concrete service must override this method and
+     * enforce tenant selection and the retry transition within one persistence
+     * boundary before an administrative caller can receive an accepted result.</p>
      *
      * @param jobId conversion job identifier
      * @param tenantContext tenant and subject claims for the retry request
      * @param operatorId privacy-safe operator fingerprint that triggered retry
-     * @return accepted, not-found, or not-eligible retry outcome
+     * @return not-found until the implementation supplies an atomic tenant-aware
+     *         retry operation
      */
     default RetryDeadLetterResult retryDeadLettered(
             UUID jobId,
             TenantContext tenantContext,
             String operatorId
     ) {
-        if (tenantContext == null) {
-            return RetryDeadLetterResult.NOT_FOUND;
-        }
-
-        Optional<ConversionJob> job = getJob(jobId);
-        if (job.isEmpty() || !job.get().belongsToTenant(tenantContext.tenantId())) {
-            return RetryDeadLetterResult.NOT_FOUND;
-        }
-
-        return retryDeadLettered(jobId, operatorId);
+        return RetryDeadLetterResult.NOT_FOUND;
     }
 
     /**
      * Deletes a conversion job owned by the supplied tenant context.
      *
+     * <p>The default fails closed without reading a job or invoking the legacy
+     * unscoped delete method. A concrete service must override this method and
+     * enforce tenant selection and deletion within one persistence boundary.</p>
+     *
      * @param jobId conversion job identifier
      * @param tenantContext tenant and subject claims for the delete request
-     * @return true when an owned job was deleted; false when it was missing or
-     *         belonged to another tenant
+     * @return false until the implementation supplies an atomic tenant-aware
+     *         delete operation
      */
     default boolean deleteJob(UUID jobId, TenantContext tenantContext) {
-        if (tenantContext == null) {
-            return false;
-        }
-
-        Optional<ConversionJob> job = getJob(jobId);
-        if (job.isEmpty() || !job.get().belongsToTenant(tenantContext.tenantId())) {
-            return false;
-        }
-
-        deleteJob(jobId);
-        return true;
+        return false;
     }
 
     /**

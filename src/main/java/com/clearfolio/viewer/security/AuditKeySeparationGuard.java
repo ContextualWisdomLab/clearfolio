@@ -8,14 +8,16 @@ import org.springframework.stereotype.Component;
 import com.clearfolio.viewer.config.ConversionProperties;
 
 /**
- * Fails application startup when configured policy-signing key material is weak
- * or when policy signing and audit pseudonymization reuse the same key.
+ * Fails application startup when policy-override key material cannot support a
+ * private and attributable administrative audit trail.
  *
  * <p>The policy-override key protects an administrative authorization decision,
- * so a configured value must contain at least 32 UTF-8 bytes. The policy and
- * audit HMAC purposes also form separate security domains. Reusing one value
- * would allow a holder of the audit key to create policy-override signatures,
- * so nonblank configured values must remain distinct.</p>
+ * so a configured value must contain at least 32 UTF-8 bytes. Enabling that
+ * signing key also requires a dedicated audit pseudonym key: accepting an
+ * override while emitting only an unavailable marker would prevent operators
+ * from distinguishing approvers during an investigation. The policy and audit
+ * HMAC purposes remain separate security domains, and their configured values
+ * must therefore be distinct.</p>
  */
 @Component
 public final class AuditKeySeparationGuard {
@@ -28,11 +30,11 @@ public final class AuditKeySeparationGuard {
      * @param properties bound conversion configuration
      */
     public AuditKeySeparationGuard(ConversionProperties properties) {
-        requireStrongPolicySecret(properties.getPolicyOverrideSecret());
-        requireDistinct(
-                properties.getPolicyOverrideSecret(),
-                properties.getAuditPseudonymSecret()
-        );
+        String policySecret = properties.getPolicyOverrideSecret();
+        String auditSecret = properties.getAuditPseudonymSecret();
+        requireStrongPolicySecret(policySecret);
+        requireAuditKeyWhenPolicySigningIsEnabled(policySecret, auditSecret);
+        requireDistinct(policySecret, auditSecret);
     }
 
     static void requireStrongPolicySecret(String policySecret) {
@@ -43,6 +45,17 @@ public final class AuditKeySeparationGuard {
                 < MINIMUM_POLICY_SECRET_BYTES) {
             throw new IllegalStateException(
                     "policy override key must contain at least 32 UTF-8 bytes"
+            );
+        }
+    }
+
+    static void requireAuditKeyWhenPolicySigningIsEnabled(
+            String policySecret,
+            String auditSecret
+    ) {
+        if (isConfigured(policySecret) && !isConfigured(auditSecret)) {
+            throw new IllegalStateException(
+                    "audit pseudonym key is required when policy override signing is enabled"
             );
         }
     }

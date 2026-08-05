@@ -78,6 +78,12 @@ def _suite_elements(report: Path) -> list[ET.Element]:
     return suites
 
 
+def _reported_count_error(display_name: str, count: int, attribute: str) -> ReportGateError:
+    """Build one readable failure for nonzero Maven outcome evidence."""
+    noun = attribute[:-1] if count == 1 else attribute
+    return ReportGateError(f"{display_name} reported {count} test {noun}")
+
+
 def _verify_report_family(
     report_directory: Path,
     *,
@@ -95,16 +101,24 @@ def _verify_report_family(
 
     total_tests = 0
     total_skipped = 0
+    total_failures = 0
+    total_errors = 0
     for report in reports:
         for suite in _suite_elements(report):
             total_tests += _non_negative_count(report, suite, "tests")
             total_skipped += _non_negative_count(report, suite, "skipped")
+            total_failures += _non_negative_count(report, suite, "failures")
+            total_errors += _non_negative_count(report, suite, "errors")
 
     if total_tests == 0:
         raise ReportGateError(f"{display_name} executed zero tests")
     if total_skipped > 0:
         noun = "test" if total_skipped == 1 else "tests"
         raise ReportGateError(f"{display_name} reported {total_skipped} skipped {noun}")
+    if total_failures > 0:
+        raise _reported_count_error(display_name, total_failures, "failures")
+    if total_errors > 0:
+        raise _reported_count_error(display_name, total_errors, "errors")
     return total_tests, total_skipped
 
 

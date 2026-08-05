@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -12,6 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +36,10 @@ class InMemoryConversionJobRepositoryConcurrencyTest {
             UUID sharedJobId = UUID.randomUUID();
             CountDownLatch deleteCleanupReached = new CountDownLatch(1);
             CountDownLatch releaseDeleteCleanup = new CountDownLatch(1);
+            CountDownLatch replacementTaskStarted = new CountDownLatch(1);
             CountDownLatch replacementIndexReached = new CountDownLatch(1);
+            AtomicReference<Thread> deleteThread = new AtomicReference<>();
+            AtomicReference<Thread> replacementThread = new AtomicReference<>();
             BlockingContentHashJob original = new BlockingContentHashJob(
                     sharedJobId,
                     "tenant-north",
@@ -54,26 +60,41 @@ class InMemoryConversionJobRepositoryConcurrencyTest {
 
             ExecutorService executor = Executors.newFixedThreadPool(2);
             try {
-                Future<Boolean> deleteResult = executor.submit(
-                        () -> repository.deleteByTenantAndId("tenant-north", sharedJobId)
-                );
+                Future<Boolean> deleteResult = executor.submit(() -> {
+                    deleteThread.set(Thread.currentThread());
+                    return repository.deleteByTenantAndId("tenant-north", sharedJobId);
+                });
                 assertTrue(
                         deleteCleanupReached.await(2, TimeUnit.SECONDS),
                         "tenant delete did not reach secondary-index cleanup"
                 );
 
-                Future<ConversionJob> saveResult = executor.submit(() -> repository.save(replacement));
-                boolean replacementEnteredBeforeDeleteReleased = replacementIndexReached.await(
-                        1,
-                        TimeUnit.SECONDS
+                Future<ConversionJob> saveResult = executor.submit(() -> {
+                    replacementThread.set(Thread.currentThread());
+                    replacementTaskStarted.countDown();
+                    return repository.save(replacement);
+                });
+                assertTrue(
+                        replacementTaskStarted.await(2, TimeUnit.SECONDS),
+                        "replacement save task did not start"
                 );
-                if (replacementEnteredBeforeDeleteReleased) {
-                    assertSame(replacement, saveResult.get(2, TimeUnit.SECONDS));
-                }
+                assertBlockedByDeleteCriticalSection(
+                        replacementThread.get(),
+                        deleteThread.get(),
+                        saveResult
+                );
+                assertTrue(
+                        replacementIndexReached.getCount() == 1L,
+                        "replacement reached index work before delete released the critical section"
+                );
 
                 releaseDeleteCleanup.countDown();
                 assertTrue(deleteResult.get(2, TimeUnit.SECONDS));
                 assertSame(replacement, saveResult.get(2, TimeUnit.SECONDS));
+                assertTrue(
+                        replacementIndexReached.await(2, TimeUnit.SECONDS),
+                        "replacement did not reach index work after delete released the critical section"
+                );
             } finally {
                 releaseDeleteCleanup.countDown();
                 executor.shutdownNow();
@@ -88,6 +109,46 @@ class InMemoryConversionJobRepositoryConcurrencyTest {
                     ).orElseThrow()
             );
         });
+    }
+
+    /**
+     * Requires the replacement save to be blocked on the repository monitor
+     * still owned by the paused delete operation. A completed save is a failure,
+     * because it means the test did not establish the intended interleaving.
+     *
+     * @param replacementThread thread executing the replacement save
+     * @param deleteThread thread holding the repository critical section
+     * @param saveResult replacement-save future used to reject early completion
+     */
+    private static void assertBlockedByDeleteCriticalSection(
+            Thread replacementThread,
+            Thread deleteThread,
+            Future<?> saveResult
+    ) {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (System.nanoTime() < deadline) {
+            assertTrue(
+                    !saveResult.isDone(),
+                    "replacement save completed before delete cleanup was released"
+            );
+            if (replacementThread.getState() == Thread.State.BLOCKED) {
+                ThreadInfo threadInfo = ManagementFactory.getThreadMXBean().getThreadInfo(
+                        replacementThread.threadId()
+                );
+                assertTrue(threadInfo != null, "replacement thread metadata was unavailable");
+                assertTrue(
+                        threadInfo.getLockOwnerId() == deleteThread.threadId(),
+                        "replacement save blocked on a monitor not owned by the delete operation"
+                );
+                return;
+            }
+            Thread.onSpinWait();
+        }
+        assertTrue(
+                false,
+                "replacement save did not block on the delete critical section; observed state="
+                        + replacementThread.getState()
+        );
     }
 
     /**

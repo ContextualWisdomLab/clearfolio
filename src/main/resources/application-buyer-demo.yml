@@ -25,7 +25,9 @@ clearfolio:
   artifact-token:
     secret: ${CLEARFOLIO_ARTIFACT_TOKEN_SECRET:}
   tenant-claims:
-    hmac-secret: ${CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET:}
+    # `hmac-secret` is loaded from the config-tree secret mount configured in
+    # application.yml. Runtime authentication must not read secret material
+    # directly from an environment placeholder.
     max-skew-seconds: ${CLEARFOLIO_TENANT_CLAIMS_MAX_SKEW_SECONDS:300}
   artifact-link-ledger:
     path: ${CLEARFOLIO_ARTIFACT_LINK_LEDGER_PATH:}

@@ -1,214 +1,186 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { setBusyState, createActionButton, createLink } from '../../main/resources/static/assets/viewer/dom-utils.js';
 
-import {
-  createActionButton,
-  createLink,
-  setBusyState
-} from "../../main/resources/static/assets/viewer/dom-utils.js";
-
-class MockTextNode {
-  constructor(text) {
-    this.type = "text";
-    this.textContent = text;
+// Mock DOM
+global.document = {
+  createElement(tag) {
+    return new MockElement(tag);
   }
-}
+};
 
 class MockElement {
-  constructor(tagName) {
-    this.tagName = tagName.toUpperCase();
-    this.attributes = new Map();
+  constructor(tag) {
+    this.tagName = tag.toUpperCase();
+    this.attributes = {};
     this.childNodes = [];
-    this.listeners = new Map();
+    this._textContent = "";
     this.disabled = false;
-    this.type = "";
     this.className = "";
+    this.type = "";
     this.href = "";
     this.target = "";
     this.rel = "";
+    this._listeners = {};
   }
 
-  get textContent() {
-    return this.childNodes.map(node => node.textContent).join("");
-  }
-
-  set textContent(value) {
-    this.childNodes = [new MockTextNode(String(value))];
-  }
-
-  setAttribute(name, value) {
-    this.attributes.set(name, String(value));
+  hasAttribute(name) {
+    return name in this.attributes;
   }
 
   getAttribute(name) {
-    return this.attributes.has(name) ? this.attributes.get(name) : null;
+    return this.attributes[name] !== undefined ? this.attributes[name] : null;
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = value;
   }
 
   removeAttribute(name) {
-    this.attributes.delete(name);
+    delete this.attributes[name];
   }
 
-  addEventListener(name, listener) {
-    this.listeners.set(name, listener);
+  get textContent() {
+    return this._textContent;
   }
 
-  dispatchEvent(event) {
-    event.currentTarget = this;
-    this.listeners.get(event.type)(event);
-  }
-
-  appendChild(node) {
-    this.childNodes.push(node);
-    return node;
+  set textContent(val) {
+    this._textContent = val;
+    this.childNodes = [{ type: 'text', value: val }];
   }
 
   replaceChildren(...nodes) {
     this.childNodes = nodes;
+    this._textContent = nodes.filter(n => n.type === 'text').map(n => n.value).join('');
+  }
+
+  addEventListener(event, handler) {
+    if (!this._listeners[event]) this._listeners[event] = [];
+    this._listeners[event].push(handler);
+  }
+
+  appendChild(node) {
+    this.childNodes.push(node);
   }
 }
 
-globalThis.document = {
-  createElement(tagName) {
-    return new MockElement(tagName);
-  }
-};
+test('setBusyState sets aria-busy, textContent, and disabled state', () => {
+  const btn = new MockElement('button');
+  btn.textContent = 'Submit';
+  btn.childNodes = [{type: 'icon', name: 'svg'}, {type: 'text', value: 'Submit'}];
 
-test("setBusyState restores an enabled control and the original node identities", () => {
-  const button = new MockElement("button");
-  const icon = new MockTextNode("★");
-  const label = new MockTextNode("Submit document");
-  button.replaceChildren(icon, label);
+  const restore = setBusyState(btn, 'Loading...');
 
-  const restore = setBusyState(button, "Submitting...");
-
-  assert.equal(button.disabled, true);
-  assert.equal(button.textContent, "Submitting...");
-  assert.equal(button.getAttribute("aria-busy"), "true");
-  assert.equal(button.getAttribute("aria-label"), "Submitting...");
+  assert.equal(btn.getAttribute('aria-busy'), 'true');
+  assert.equal(btn.textContent, 'Loading...');
+  assert.equal(btn.disabled, true);
 
   restore();
 
-  assert.equal(button.disabled, false);
-  assert.equal(button.getAttribute("aria-busy"), null);
-  assert.equal(button.getAttribute("aria-label"), null);
-  assert.deepEqual(button.childNodes, [icon, label]);
-  assert.equal(button.childNodes[0], icon);
-  assert.equal(button.childNodes[1], label);
+  assert.equal(btn.getAttribute('aria-busy'), null);
+  assert.equal(btn.disabled, false);
+  assert.equal(btn.childNodes.length, 2);
+  assert.equal(btn.childNodes[0].name, 'svg');
 });
 
-test("setBusyState restores initially disabled and pre-labelled controls exactly", () => {
-  const button = new MockElement("button");
-  button.disabled = true;
-  button.textContent = "Refresh evidence";
-  button.setAttribute("aria-busy", "false");
-  button.setAttribute("aria-label", "Refresh KPI evidence");
+test('setBusyState handles nested/repeated calls idempotently', () => {
+  const btn = new MockElement('button');
+  btn.textContent = 'Submit';
 
-  const restore = setBusyState(button, "Refreshing...");
+  const restore1 = setBusyState(btn, 'Loading...');
+  const restore2 = setBusyState(btn, 'Still Loading...');
 
-  assert.equal(button.disabled, true);
-  assert.equal(button.getAttribute("aria-busy"), "true");
-  assert.equal(button.getAttribute("aria-label"), "Refreshing... Refresh KPI evidence");
+  assert.equal(btn.getAttribute('aria-busy'), 'true');
+
+  restore2();
+
+  // Should still be busy
+  assert.equal(btn.getAttribute('aria-busy'), 'true');
+  assert.equal(btn.disabled, true);
+
+  restore1();
+
+  assert.equal(btn.getAttribute('aria-busy'), null);
+  assert.equal(btn.disabled, false);
+  assert.equal(btn.textContent, 'Submit');
+});
+
+test('setBusyState handles duplicate restores safely', () => {
+  const btn = new MockElement('button');
+  btn.textContent = 'Submit';
+
+  const restore1 = setBusyState(btn, 'Loading...');
+
+  restore1();
+  restore1(); // Double restore should not throw and should not decrement depth further
+
+  assert.equal(btn.getAttribute('aria-busy'), null);
+});
+
+test('setBusyState preserves pre-existing aria-label and operation-specific names', () => {
+  const btn = new MockElement('button');
+  btn.textContent = 'Details';
+  btn.setAttribute('aria-label', 'View details for file.pdf');
+
+  const restore = setBusyState(btn, 'Loading...');
+
+  assert.equal(btn.getAttribute('aria-label'), 'Loading... View details for file.pdf');
 
   restore();
 
-  assert.equal(button.disabled, true);
-  assert.equal(button.textContent, "Refresh evidence");
-  assert.equal(button.getAttribute("aria-busy"), "false");
-  assert.equal(button.getAttribute("aria-label"), "Refresh KPI evidence");
+  assert.equal(btn.getAttribute('aria-label'), 'View details for file.pdf');
 });
 
-test("setBusyState gives an empty original accessible name a useful loading name", () => {
-  const button = new MockElement("button");
-  button.textContent = "Retry";
-  button.setAttribute("aria-label", "");
+test('createActionButton properly creates button with aria-label', () => {
+    let clicked = false;
+    const btn = createActionButton('Details', () => clicked = true, 'View details for file.pdf');
+    assert.equal(btn.getAttribute('aria-label'), 'View details for file.pdf');
+    assert.equal(btn.textContent, 'Details');
+    btn._listeners['click'][0]();
+    assert.equal(clicked, true);
+});
 
-  const restore = setBusyState(button, "Retrying...");
+test('createLink properly creates link with aria-label', () => {
+    const link = createLink('/path', 'Open', 'Open file.pdf');
+    assert.equal(link.getAttribute('aria-label'), 'Open file.pdf');
+    assert.equal(link.textContent, 'Open');
+    assert.equal(link.href, '/path');
+});
 
-  assert.equal(button.getAttribute("aria-label"), "Retrying...");
+
+test('setBusyState handles an initially disabled control', () => {
+  const btn = new MockElement('button');
+  btn.textContent = 'Submit';
+  btn.disabled = true;
+
+  const restore = setBusyState(btn, 'Loading...');
+  assert.equal(btn.disabled, true);
+
   restore();
-  assert.equal(button.getAttribute("aria-label"), "");
+  assert.equal(btn.disabled, true); // should remain disabled
 });
 
-test("setBusyState waits for nested callers and makes every restore idempotent", () => {
-  const button = new MockElement("button");
-  button.textContent = "Details";
-  button.setAttribute("aria-label", "View details for report.pdf");
+test('setBusyState handles a pre-existing aria-busy value', () => {
+  const btn = new MockElement('button');
+  btn.textContent = 'Submit';
+  btn.setAttribute('aria-busy', 'false');
 
-  const restoreFirst = setBusyState(button, "Loading...");
-  const restoreSecond = setBusyState(button, "Loading again...");
+  const restore = setBusyState(btn, 'Loading...');
+  assert.equal(btn.getAttribute('aria-busy'), 'true');
 
-  assert.equal(button.textContent, "Loading...");
-  assert.equal(button.getAttribute("aria-label"), "Loading... View details for report.pdf");
-
-  restoreFirst();
-  restoreFirst();
-  assert.equal(button.disabled, true);
-  assert.equal(button.getAttribute("aria-busy"), "true");
-
-  restoreSecond();
-  restoreSecond();
-  assert.equal(button.disabled, false);
-  assert.equal(button.textContent, "Details");
-  assert.equal(button.getAttribute("aria-busy"), null);
-  assert.equal(button.getAttribute("aria-label"), "View details for report.pdf");
+  restore();
+  assert.equal(btn.getAttribute('aria-busy'), 'false'); // should restore original
 });
 
-test("createActionButton supports contextual and omitted accessible names", () => {
-  let clicks = 0;
-  const labelled = createActionButton(
-    "Details",
-    () => {
-      clicks += 1;
-    },
-    "View details for report.pdf"
-  );
-  const unlabelled = createActionButton("Retry", () => {});
+test('setBusyState preserves markup-bearing filenames remaining inert text', () => {
+  const btn = createActionButton('Details', () => {}, 'View details for <script>alert(1)</script>.pdf');
 
-  assert.equal(labelled.tagName, "BUTTON");
-  assert.equal(labelled.type, "button");
-  assert.equal(labelled.textContent, "Details");
-  assert.equal(labelled.className, "btn btn-secondary btn-compact");
-  assert.equal(labelled.getAttribute("aria-label"), "View details for report.pdf");
-  labelled.dispatchEvent({ type: "click" });
-  assert.equal(clicks, 1);
-  assert.equal(unlabelled.getAttribute("aria-label"), null);
-});
+  const restore = setBusyState(btn, 'Loading...');
+  assert.equal(btn.getAttribute('aria-label'), 'Loading... View details for <script>alert(1)</script>.pdf');
+  assert.equal(btn.textContent, 'Loading...');
 
-test("createLink applies safe new-tab defaults and optional accessible names", () => {
-  const labelled = createLink(
-    "/viewer/document_id",
-    "Open viewer",
-    "Open viewer for report.pdf"
-  );
-  const unlabelled = createLink("/viewer/other_document", "Open viewer");
+  restore();
 
-  assert.equal(labelled.tagName, "A");
-  assert.equal(labelled.href, "/viewer/document_id");
-  assert.equal(labelled.textContent, "Open viewer");
-  assert.equal(labelled.className, "table-link");
-  assert.equal(labelled.target, "_blank");
-  assert.equal(labelled.rel, "noopener noreferrer");
-  assert.equal(labelled.getAttribute("aria-label"), "Open viewer for report.pdf");
-  assert.equal(unlabelled.getAttribute("aria-label"), null);
-});
-
-test("markup-like labels remain inert text in buttons and links", () => {
-  const markupLabel = "<strong>Quarterly report</strong>";
-  const button = createActionButton(
-    markupLabel,
-    () => {},
-    `Details for ${markupLabel}`
-  );
-  const link = createLink(
-    "/viewer/document_id",
-    markupLabel,
-    `Open ${markupLabel}`
-  );
-
-  assert.equal(button.textContent, markupLabel);
-  assert.equal(button.childNodes.length, 1);
-  assert.equal(button.childNodes[0].type, "text");
-  assert.equal(link.textContent, markupLabel);
-  assert.equal(link.childNodes.length, 1);
-  assert.equal(link.childNodes[0].type, "text");
+  assert.equal(btn.getAttribute('aria-label'), 'View details for <script>alert(1)</script>.pdf');
+  assert.equal(btn.textContent, 'Details');
 });

@@ -1,71 +1,78 @@
+
 const busyStates = new WeakMap();
 
 /**
- * Applies a nested-safe asynchronous busy state to a button.
+ * Sets an element to an idempotent busy state backed by a WeakMap depth counter.
+ * Returns an idempotent restore function.
  *
- * <p>The first caller snapshots the button's child nodes, disabled state, and
- * relevant ARIA attributes. Later callers only increment a depth counter.
- * Each returned callback is idempotent, and the original state is restored
- * only after every caller has released its busy state.</p>
- *
- * @param {HTMLButtonElement} button button that starts asynchronous work
- * @param {string} loadingText visible and accessible pending-state label
- * @returns {() => void} idempotent callback that releases one busy-state claim
+ * @param {HTMLElement} btn - The element to set as busy.
+ * @param {string} loadingText - The text to display while busy.
+ * @returns {function} A function to restore the element to its original state.
  */
-export function setBusyState(button, loadingText) {
-  let state = busyStates.get(button);
+export function setBusyState(btn, loadingText) {
+  let state = busyStates.get(btn);
 
-  if (state === undefined) {
+  if (!state) {
     state = {
       depth: 0,
-      originalNodes: Array.from(button.childNodes),
-      originalDisabled: button.disabled,
-      originalAriaBusy: button.getAttribute("aria-busy"),
-      originalAriaLabel: button.getAttribute("aria-label")
+      originalNodes: Array.from(btn.childNodes || []),
+      originalDisabled: btn.disabled,
+      originalAriaBusy: btn.getAttribute("aria-busy"),
+      originalAriaLabel: btn.getAttribute("aria-label")
     };
-    busyStates.set(button, state);
+    busyStates.set(btn, state);
 
-    button.disabled = true;
-    button.textContent = loadingText;
-    button.setAttribute("aria-busy", "true");
-    button.setAttribute(
-      "aria-label",
-      state.originalAriaLabel === null || state.originalAriaLabel === ""
-        ? loadingText
-        : `${loadingText} ${state.originalAriaLabel}`
-    );
+    btn.disabled = true;
+    btn.textContent = loadingText;
+    btn.setAttribute("aria-busy", "true");
+
+    // Optionally set operation-specific accessible name if needed, but textContent handles it mostly.
+    // If the element had an aria-label, we might want to update it to the loading text to be safe
+    // but the instructions say "preserve original ... aria-label" which we do in the state.
+    if (state.originalAriaLabel) {
+      btn.setAttribute("aria-label", loadingText + " " + state.originalAriaLabel);
+    }
   }
 
-  state.depth += 1;
+  state.depth++;
+
   let restored = false;
 
-  return function restoreBusyState() {
-    if (restored) {
-      return;
-    }
+  return function restore() {
+    if (restored) return;
     restored = true;
-    state.depth -= 1;
 
-    if (state.depth !== 0) {
-      return;
+    const currentState = busyStates.get(btn);
+    if (!currentState) return; // Should not happen
+
+    currentState.depth--;
+
+    if (currentState.depth === 0) {
+      busyStates.delete(btn);
+
+      btn.removeAttribute("aria-busy");
+      if (currentState.originalAriaBusy !== null) {
+        btn.setAttribute("aria-busy", currentState.originalAriaBusy);
+      }
+
+      if (currentState.originalAriaLabel !== null) {
+        btn.setAttribute("aria-label", currentState.originalAriaLabel);
+      } else {
+        btn.removeAttribute("aria-label");
+      }
+
+      if (typeof btn.replaceChildren === 'function') {
+        btn.replaceChildren(...currentState.originalNodes);
+      } else {
+        btn.textContent = "";
+        currentState.originalNodes.forEach(node => btn.appendChild(node));
+      }
+
+      btn.disabled = currentState.originalDisabled;
     }
-
-    busyStates.delete(button);
-    restoreNullableAttribute(button, "aria-busy", state.originalAriaBusy);
-    restoreNullableAttribute(button, "aria-label", state.originalAriaLabel);
-    button.replaceChildren(...state.originalNodes);
-    button.disabled = state.originalDisabled;
   };
 }
 
-/**
- * Creates a new-tab link with an optional contextual accessible name.
- *
- * @param {string} href destination URL
- * @param {string} label visible link text
- * @param {string | undefined} ariaLabel contextual accessible name
- * @returns {HTMLAnchorElement} configured link element
- */
 export function createLink(href, label, ariaLabel) {
   const link = document.createElement("a");
   link.href = href;
@@ -73,44 +80,20 @@ export function createLink(href, label, ariaLabel) {
   link.className = "table-link";
   link.target = "_blank";
   link.rel = "noopener noreferrer";
-  if (ariaLabel !== undefined) {
+  if (ariaLabel) {
     link.setAttribute("aria-label", ariaLabel);
   }
   return link;
 }
 
-/**
- * Creates a compact action button with an optional contextual accessible name.
- *
- * @param {string} label visible button text
- * @param {(event: Event) => void} onClick click handler
- * @param {string | undefined} ariaLabel contextual accessible name
- * @returns {HTMLButtonElement} configured action button
- */
 export function createActionButton(label, onClick, ariaLabel) {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
   button.className = "btn btn-secondary btn-compact";
-  if (ariaLabel !== undefined) {
+  if (ariaLabel) {
     button.setAttribute("aria-label", ariaLabel);
   }
   button.addEventListener("click", onClick);
   return button;
-}
-
-/**
- * Restores an attribute exactly, distinguishing absence from an empty value.
- *
- * @param {HTMLElement} element element whose attribute is restored
- * @param {string} attributeName attribute to restore
- * @param {string | null} originalValue original value or null when absent
- * @returns {void}
- */
-function restoreNullableAttribute(element, attributeName, originalValue) {
-  if (originalValue === null) {
-    element.removeAttribute(attributeName);
-  } else {
-    element.setAttribute(attributeName, originalValue);
-  }
 }

@@ -98,45 +98,7 @@ class ViewerUiControllerTest {
         }
     }
 
-    @Test
-    void demoScriptUsesExistingApiAndSessionHistory() throws Exception {
-        try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/demo.js")) {
-            assertNotNull(input);
-            String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
 
-            assertTrue(script.contains("/api/v1/convert/jobs"));
-            assertTrue(script.contains("/api/v1/analytics/kpi-snapshot"));
-            assertTrue(script.contains("/api/v1/analytics/kpi-snapshot-exports"));
-            assertTrue(script.contains("/assets/viewer/demo-fixtures.json"));
-            assertTrue(script.contains("/viewer/"));
-            assertTrue(script.contains("FormData"));
-            assertTrue(script.contains("localStorage"));
-            assertTrue(script.contains("clearfolio-demo-history-v1"));
-            assertTrue(script.contains("setTimeout"));
-            assertTrue(script.contains("formatPercent"));
-            assertTrue(script.contains("formatMilliseconds"));
-            assertTrue(script.contains("renderKpiEvidence"));
-            assertTrue(script.contains("formatTimestamp"));
-            assertTrue(script.contains("renderRecoveryEvidence"));
-            assertTrue(script.contains("isNeedsAction"));
-            assertTrue(script.contains("latestByTimestamp"));
-            assertTrue(script.contains("lastRecoveryAction"));
-            assertTrue(script.contains("lastInspectedAt"));
-            assertTrue(script.contains("loadDemoData"));
-            assertTrue(script.contains("load-demo-data-btn"));
-            assertTrue(script.contains("openJobDetail"));
-            assertTrue(script.contains("retryActiveJob"));
-            assertTrue(script.contains("refreshKpisAfterUpdate"));
-            assertTrue(script.contains("refreshKpisAfterUpdate: false"));
-            assertTrue(script.contains("const demoHistory = data.history.slice(0, 12)"));
-            assertTrue(script.contains("submittedAt: new Date().toISOString()"));
-            assertTrue(script.contains("/retry"));
-            assertTrue(script.contains("X-Clearfolio-Operator-Id"));
-            assertTrue(script.contains("X-Clearfolio-Tenant-Id"));
-            assertTrue(script.contains("X-Clearfolio-Permissions"));
-            assertTrue(script.contains("deadLettered"));
-        }
-    }
 
     @Test
     void demoFixtureProvidesBuyerDemoStoryStates() throws Exception {

@@ -1,5 +1,3 @@
-import { createActionButton, createLink, setBusyState } from "./dom-utils.js";
-
 const STORAGE_KEY = "clearfolio-demo-history-v1";
 const KPI_ENDPOINT = "/api/v1/analytics/kpi-snapshot";
 const KPI_EXPORTS_ENDPOINT = "/api/v1/analytics/kpi-snapshot-exports";
@@ -73,6 +71,19 @@ function setError(message) {
   el.errorTitle.focus();
 }
 
+
+function setBusyState(btn, loadingText) {
+  const originalNodes = Array.from(btn.childNodes);
+  btn.disabled = true;
+  btn.textContent = loadingText;
+  btn.setAttribute("aria-busy", "true");
+  return function restore() {
+    btn.removeAttribute("aria-busy");
+    btn.replaceChildren(...originalNodes);
+    btn.disabled = false;
+  };
+}
+
 function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
   const history = loadHistory();
   const next = history.map(job => (job.jobId === jobId ? { ...job, ...patch } : job));
@@ -82,6 +93,8 @@ function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
     void refreshKpis();
   }
 }
+
+
 
 async function openJsonDocument(url, title) {
   const popup = window.open("", "_blank");
@@ -101,6 +114,8 @@ async function openJsonDocument(url, title) {
     ? JSON.stringify(data, null, 2)
     : "Unable to load JSON evidence with the current tenant claim.";
 }
+
+
 
 function jsonHeaders(extra = {}) {
   return {
@@ -242,6 +257,7 @@ async function openJobDetail(job) {
     setStatus("Seeded job detail loaded.");
     return;
   }
+
   if (!job.statusUrl) {
     return;
   }

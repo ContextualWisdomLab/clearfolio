@@ -1,6 +1,14 @@
 spring:
   application:
     name: clearfolio-viewer
+  config:
+    # Runtime key material is mounted as a Spring Boot config tree rather than
+    # carried in process environment variables. The environment variable below
+    # selects only the bootstrap directory. Mount files named
+    # `conversion.policy-override-secret`,
+    # `conversion.audit-pseudonym-secret`, and
+    # `conversion.audit-pseudonym-key-version` in this directory.
+    import: "optional:configtree:${CLEARFOLIO_SECRET_CONFIG_DIR:/run/secrets/clearfolio/}"
   codec:
     max-in-memory-size: ${conversion.max-upload-size-bytes}
 
@@ -9,7 +17,6 @@ conversion:
     - hwp
     - hwpx
   worker-threads: 4
-  policy-override-secret: "${CONVERSION_POLICY_OVERRIDE_SECRET:}"
   queue-capacity: 200
   max-retry-attempts: 3
   retry-initial-delay-ms: 500

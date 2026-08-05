@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.exception.UnsupportedDocumentFormatException;
+import com.clearfolio.viewer.security.AuditPseudonymizer;
 
 /**
  * Default document validator that enforces extension and size constraints.
@@ -32,6 +33,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
     private final Set<String> blockedExtensions;
     private final long maxUploadSizeBytes;
     private final String policyOverrideSecret;
+    private final AuditPseudonymizer auditPseudonymizer;
 
     /**
      * Creates the validation service from conversion configuration values.
@@ -42,6 +44,10 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         this.blockedExtensions = conversionProperties.getBlockedExtensions();
         this.maxUploadSizeBytes = conversionProperties.getMaxUploadSizeBytes();
         this.policyOverrideSecret = conversionProperties.getPolicyOverrideSecret();
+        this.auditPseudonymizer = new AuditPseudonymizer(
+                conversionProperties.getAuditPseudonymSecret(),
+                conversionProperties.getAuditPseudonymKeyVersion()
+        );
     }
 
     /**
@@ -113,9 +119,9 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
 
         if (blockedExtension) {
             LOGGER.info(
-                    "Blocked-format override accepted extension={} approverId={} tokenFingerprint={}",
+                    "Blocked-format override accepted extension={} approverFingerprint={} tokenFingerprint={}",
                     sanitizeForLog(extension),
-                    sanitizeForLog(overrideApproverIdForAudit),
+                    auditPseudonymizer.fingerprint(overrideApproverIdForAudit),
                     tokenFingerprint(overrideTokenForAudit)
             );
         }
@@ -202,7 +208,6 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hashed = digest.digest(approvalToken.getBytes(StandardCharsets.UTF_8));
-            // Reused HexFormat for performance
             return HEX_FORMAT.formatHex(hashed, 0, FINGERPRINT_TRUNCATE_BYTES);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
@@ -213,8 +218,6 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
         if (value == null) {
             return "";
         }
-        // ⚡ Bolt: Single-pass string sanitization
-        // Avoids multiple allocations from chained replace() calls.
         StringBuilder sb = null;
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);

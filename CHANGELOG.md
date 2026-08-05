@@ -5,6 +5,10 @@
 ### Changed
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
 
+### Security
+- 정책 재정의 승인자의 원문 식별자를 감사 로그에서 제거하고, 전용 회전형 키와 도메인 분리를 사용하는 HMAC 기반 `approverFingerprint`로 대체했습니다. 전용 키가 없으면 원문이나 비키 해시로 폴백하지 않고 비상관 `unavailable` 표식을 기록합니다.
+- 감사 가명화 키의 소유권, 회전, 보존, 사고 대응 및 GDPR상 가명정보의 개인정보 지위를 문서화하고, 원문 승인자 식별자와 승인 토큰이 로그에 남지 않는 회귀 테스트를 추가했습니다.
+
 # Changelog
 
 ## [Unreleased]

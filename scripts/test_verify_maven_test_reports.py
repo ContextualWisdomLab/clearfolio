@@ -61,6 +61,20 @@ class MavenTestReportGateTest(unittest.TestCase):
 
         self.assertEqual({"surefire": (2, 0), "failsafe": (4, 0)}, summary)
 
+    def test_accepts_utf8_byte_order_mark(self) -> None:
+        """Allow the harmless UTF-8 BOM emitted by some XML writers."""
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            target = Path(temporary_directory)
+            reports = target / "surefire-reports"
+            reports.mkdir(parents=True)
+            (reports / "TEST-bom.xml").write_bytes(
+                b'\xef\xbb\xbf<testsuite tests="1" skipped="0"/>'
+            )
+
+            summary = verify_maven_reports(target)
+
+        self.assertEqual({"surefire": (1, 0)}, summary)
+
     def test_rejects_missing_surefire_reports(self) -> None:
         """Fail when Maven produced no authoritative unit-test evidence."""
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -125,7 +139,7 @@ class MavenTestReportGateTest(unittest.TestCase):
                 verify_maven_reports(target)
 
     def test_rejects_doctype_and_entity_declarations_before_xml_parsing(self) -> None:
-        """Prevent external entities and expansion bombs in report evidence."""
+        """Prevent external entities and expansion bombs in UTF-8 report evidence."""
         payloads = (
             b'<!DOCTYPE testsuite SYSTEM "file:///etc/passwd"><testsuite tests="1"/>',
             b'<!ENTITY payload "boom"><testsuite tests="1"/>',
@@ -139,6 +153,30 @@ class MavenTestReportGateTest(unittest.TestCase):
                     (reports / "TEST-unsafe.xml").write_bytes(payload)
 
                     with self.assertRaisesRegex(ReportGateError, "DTD or entity declaration"):
+                        verify_maven_reports(target)
+
+    def test_rejects_utf16_encoded_declaration_bypasses(self) -> None:
+        """Reject encodings that could hide dangerous declarations from byte scans."""
+        dangerous_xml = (
+            '<!DOCTYPE testsuite [<!ENTITY payload SYSTEM "file:///etc/passwd">]>'
+            '<testsuite tests="1">&payload;</testsuite>'
+        )
+        payloads = (
+            dangerous_xml.encode("utf-16"),
+            dangerous_xml.encode("utf-16-le"),
+        )
+        for payload in payloads:
+            with self.subTest(prefix=payload[:8]):
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    target = Path(temporary_directory)
+                    reports = target / "surefire-reports"
+                    reports.mkdir(parents=True)
+                    (reports / "TEST-encoded.xml").write_bytes(payload)
+
+                    with self.assertRaisesRegex(
+                        ReportGateError,
+                        "UTF-8|NUL byte",
+                    ):
                         verify_maven_reports(target)
 
     def test_rejects_oversized_report_before_xml_parsing(self) -> None:

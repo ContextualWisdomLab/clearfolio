@@ -82,7 +82,7 @@ public interface ConversionJobRepository {
      * <p>The default deliberately returns an empty result rather than falling
      * back to {@link #findAll()}. Every durable repository adapter must
      * implement a tenant predicate in its storage query before administrative
-     * callers may receive job objects.
+     * callers may receive job objects.</p>
      *
      * @param tenantId authenticated tenant identifier
      * @return tenant-owned jobs, or an empty list until the adapter implements
@@ -116,6 +116,21 @@ public interface ConversionJobRepository {
      * @return canonical stored conversion job and whether the candidate was created
      */
     FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate);
+
+    /**
+     * Deletes one job only when it is owned by the supplied tenant.
+     *
+     * <p>The default fails closed without calling the global delete method.
+     * Durable repository adapters must override this method with one atomic
+     * tenant-predicate delete operation.</p>
+     *
+     * @param tenantId authenticated tenant identifier
+     * @param jobId conversion job identifier
+     * @return true only when an owned job was deleted
+     */
+    default boolean deleteByTenantAndId(String tenantId, UUID jobId) {
+        return false;
+    }
 
     /**
      * Deletes a conversion job by identifier.

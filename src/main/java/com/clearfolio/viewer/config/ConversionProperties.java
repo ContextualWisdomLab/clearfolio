@@ -26,6 +26,14 @@ public class ConversionProperties {
     private long processingLeaseTimeoutMs = 60_000L;
 
     /**
+     * Creates conversion properties with bounded worker, retry, upload, lease,
+     * policy-override, and privacy-safe audit defaults.
+     */
+    public ConversionProperties() {
+        // Field initializers define secure defaults before Spring binds deployment values.
+    }
+
+    /**
      * Returns file extensions that are blocked from upload.
      *
      * @return blocked extension set

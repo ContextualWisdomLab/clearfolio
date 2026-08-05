@@ -35,6 +35,13 @@ public class ApiExceptionHandler {
     private long configuredMaxUploadSize = 5242880L;
 
     /**
+     * Creates the exception handler registered by Spring WebFlux controller advice.
+     */
+    public ApiExceptionHandler() {
+        // Spring injects the configured upload limit after constructing this stateless handler.
+    }
+
+    /**
      * Handles blocked or unsupported document format requests.
      *
      * @param ex thrown format exception

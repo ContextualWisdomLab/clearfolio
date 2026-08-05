@@ -26,6 +26,19 @@ class AuditKeySeparationGuardTest {
     }
 
     @Test
+    void rejectsEnabledPolicySigningWithoutAnAuditPseudonymKey() {
+        ConversionProperties properties = new ConversionProperties();
+        properties.setPolicyOverrideSecret(POLICY_KEY);
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> new AuditKeySeparationGuard(properties)
+        );
+
+        assertTrue(exception.getMessage().contains("audit pseudonym key is required"));
+    }
+
+    @Test
     void rejectsConfiguredPolicyKeyShorterThanThirtyTwoUtf8Bytes() {
         ConversionProperties properties = new ConversionProperties();
         properties.setPolicyOverrideSecret("short-policy-key");
@@ -51,6 +64,7 @@ class AuditKeySeparationGuardTest {
     void acceptsConfiguredPolicyKeyMeasuredAsThirtyTwoOrMoreUtf8Bytes() {
         ConversionProperties properties = new ConversionProperties();
         properties.setPolicyOverrideSecret("가나다라마바사아자차카");
+        properties.setAuditPseudonymSecret(AUDIT_KEY);
 
         assertDoesNotThrow(() -> new AuditKeySeparationGuard(properties));
     }
@@ -58,6 +72,14 @@ class AuditKeySeparationGuardTest {
     @Test
     void permitsMissingPolicyKeyWhenPolicySigningIsDisabled() {
         ConversionProperties properties = new ConversionProperties();
+
+        assertDoesNotThrow(() -> new AuditKeySeparationGuard(properties));
+    }
+
+    @Test
+    void permitsAnAuditKeyWhenPolicySigningIsDisabled() {
+        ConversionProperties properties = new ConversionProperties();
+        properties.setAuditPseudonymSecret(AUDIT_KEY);
 
         assertDoesNotThrow(() -> new AuditKeySeparationGuard(properties));
     }

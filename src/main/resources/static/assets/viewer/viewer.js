@@ -1,4 +1,6 @@
 const POLL_DELAY_MS = 1500;
+const PDF_JS_MODULE_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.mjs";
+const PDF_JS_WORKER_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.worker.mjs";
 const DEMO_AUTH_HEADERS = {
   "X-Clearfolio-Tenant-Id": "buyer-demo",
   "X-Clearfolio-Subject-Id": "buyer-demo-operator",
@@ -15,6 +17,8 @@ const el = {
   openJsonLink: document.getElementById("open-json-link"),
   preview: document.getElementById("preview"),
 };
+
+let pdfJsModulePromise;
 
 function getMetaContent(name) {
   const meta = document.querySelector(`meta[name="${name}"]`);
@@ -65,7 +69,7 @@ function showError(message) {
 }
 
 function clearPreview() {
-  const nodes = Array.from(el.preview.querySelectorAll("iframe, img, pre, a"));
+  const nodes = Array.from(el.preview.querySelectorAll("iframe, img, pre, a, canvas, .pdf-preview-meta"));
   for (const node of nodes) {
     node.remove();
   }
@@ -81,22 +85,27 @@ function clearPreview() {
   }
 }
 
-function isSafeUrl(urlStr) {
+function resolveSameOriginHttpUrl(urlStr) {
+  if (typeof urlStr !== "string" || urlStr.trim() === "") {
+    return null;
+  }
   try {
     const url = new URL(urlStr, window.location.origin);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch (e) {
-    return false;
+    const safeProtocol = url.protocol === "http:" || url.protocol === "https:";
+    const safeAuthority = url.origin === window.location.origin && url.username === "" && url.password === "";
+    return safeProtocol && safeAuthority ? url.href : null;
+  } catch (_error) {
+    return null;
   }
 }
 
 function renderPreviewLink(path) {
-  if (!isSafeUrl(path)) {
-    console.error("Blocked unsafe URL in preview link:", path);
+  const resolvedPath = resolveSameOriginHttpUrl(path);
+  if (resolvedPath === null) {
     return;
   }
   const link = document.createElement("a");
-  link.href = path;
+  link.href = resolvedPath;
   link.textContent = "Open artifact";
   link.className = "btn btn-secondary";
   link.target = "_blank";
@@ -105,21 +114,67 @@ function renderPreviewLink(path) {
   el.preview.appendChild(link);
 }
 
-function renderPdfInline(path) {
-  if (!isSafeUrl(path)) {
-    console.error("Blocked unsafe URL in PDF inline:", path);
-    return;
+function getPdfJsModule() {
+  if (!pdfJsModulePromise) {
+    const modulePath = getMetaContent("clearfolio-pdfjs-module-path") || PDF_JS_MODULE_PATH;
+    const workerPath = getMetaContent("clearfolio-pdfjs-worker-path") || PDF_JS_WORKER_PATH;
+    const resolvedModulePath = resolveSameOriginHttpUrl(modulePath);
+    const resolvedWorkerPath = resolveSameOriginHttpUrl(workerPath);
+    if (resolvedModulePath === null || resolvedWorkerPath === null) {
+      return Promise.reject(new Error("PDF.js asset configuration is invalid"));
+    }
+    pdfJsModulePromise = import(resolvedModulePath).then(pdfJs => {
+      pdfJs.GlobalWorkerOptions.workerSrc = resolvedWorkerPath;
+      return pdfJs;
+    });
   }
-  const viewerPath =
-    getMetaContent("clearfolio-pdfjs-viewer-path") ||
-    "/webjars/pdfjs-dist/4.10.38/web/viewer.html";
-  const viewerUrl = `${viewerPath}?file=${encodeURIComponent(path)}`;
-  const frame = document.createElement("iframe");
-  frame.src = viewerUrl;
-  frame.title = "Document preview";
-  frame.loading = "lazy";
-  frame.className = "preview-frame";
-  el.preview.appendChild(frame);
+  return pdfJsModulePromise;
+}
+
+async function renderPdfInline(path) {
+  const resolvedPath = resolveSameOriginHttpUrl(path);
+  if (resolvedPath === null) {
+    throw new Error("PDF preview resource is invalid");
+  }
+
+  const pdfJs = await getPdfJsModule();
+  const loadingTask = pdfJs.getDocument({
+    url: resolvedPath,
+    withCredentials: true,
+  });
+  const pdfDocument = await loadingTask.promise;
+  try {
+    const page = await pdfDocument.getPage(1);
+    const unscaledViewport = page.getViewport({ scale: 1 });
+    const availableWidth = Math.max(320, el.preview.clientWidth - 32);
+    const renderScale = Math.min(2, availableWidth / unscaledViewport.width);
+    const viewport = page.getViewport({ scale: renderScale });
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { alpha: false });
+    if (context === null) {
+      throw new Error("Canvas rendering is unavailable");
+    }
+
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    canvas.style.width = "100%";
+    canvas.style.height = "auto";
+    canvas.className = "pdf-preview-canvas";
+    canvas.setAttribute("role", "img");
+    canvas.setAttribute("aria-label", `Rendered first page of a ${pdfDocument.numPages}-page PDF`);
+
+    await page.render({ canvasContext: context, viewport }).promise;
+    el.preview.appendChild(canvas);
+
+    const metadata = document.createElement("p");
+    metadata.className = "help pdf-preview-meta";
+    metadata.textContent = pdfDocument.numPages === 1
+      ? "Showing the document page."
+      : `Showing page 1 of ${pdfDocument.numPages}. Open the artifact for the complete document.`;
+    el.preview.appendChild(metadata);
+  } finally {
+    await pdfDocument.destroy();
+  }
 }
 
 async function fetchJson(url, signal) {
@@ -207,28 +262,28 @@ async function poll(docId, abortSignal) {
       return;
     }
 
-    el.preview.setAttribute("aria-busy", "false");
-    el.liveStatus.textContent = "Ready.";
-    el.retryBtn.disabled = false;
-    el.retryBtn.textContent = "Refresh";
-
     clearPreview();
     const path = bootstrap.data.previewResourcePath;
     if (typeof path === "string" && path.endsWith(".pdf")) {
-      renderPdfInline(path);
+      await renderPdfInline(path);
     }
     if (typeof path === "string" && path.length > 0) {
       renderPreviewLink(path);
     }
-  } catch (err) {
+
+    el.preview.setAttribute("aria-busy", "false");
+    el.liveStatus.textContent = "Ready.";
+    el.retryBtn.disabled = false;
+    el.retryBtn.textContent = "Refresh";
+  } catch (_error) {
     if (abortSignal.aborted) {
       return;
     }
-    showError("Network error while loading preview. Please retry.");
+    showError("Network or rendering error while loading preview. Please retry.");
   }
 }
 
-function init() {
+async function init() {
   const docId = getDocId();
   if (!docId) {
     el.docMeta.textContent = "Missing docId.";
@@ -247,18 +302,20 @@ function init() {
   // External integration mode: when the URL carries a signed artifactToken
   // (issued via POST /api/v1/viewer/{docId}/artifact-links), render the
   // artifact directly and skip the tenant-header bootstrap. Possession of a
-  // valid signed token already grants artifact read access, so this adds no
-  // new authority — it only lets external apps (e.g. ScopeWeave) open the
-  // PDF.js viewer page instead of the raw PDF bytes.
+  // valid signed token already grants artifact read access.
   const externalArtifactToken = new URLSearchParams(window.location.search).get("artifactToken");
   if (externalArtifactToken) {
-    el.preview.setAttribute("aria-busy", "false");
-    el.liveStatus.textContent = "Ready.";
     el.retryBtn.hidden = true;
     clearPreview();
     const artifactPath = `/artifacts/${encodeURIComponent(docId)}.pdf?artifactToken=${encodeURIComponent(externalArtifactToken)}`;
-    renderPdfInline(artifactPath);
-    renderPreviewLink(artifactPath);
+    try {
+      await renderPdfInline(artifactPath);
+      renderPreviewLink(artifactPath);
+      el.preview.setAttribute("aria-busy", "false");
+      el.liveStatus.textContent = "Ready.";
+    } catch (_error) {
+      showError("Unable to render the signed artifact preview.");
+    }
     return;
   }
 
@@ -291,4 +348,4 @@ function init() {
   start();
 }
 
-init();
+void init();

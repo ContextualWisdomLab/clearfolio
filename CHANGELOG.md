@@ -2,6 +2,9 @@
 ### Added
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 
+### Changed
+- PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
+
 # Changelog
 
 ## [Unreleased]

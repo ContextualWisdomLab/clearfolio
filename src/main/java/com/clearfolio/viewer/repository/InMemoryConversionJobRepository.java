@@ -31,16 +31,19 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     private final ConcurrentHashMap<UUID, ConversionJob> jobs = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, UUID> jobsByTenantAndContentHash = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<ConversionJobLifecycleEvent> lifecycleEvents = new ConcurrentLinkedQueue<>();
+    private final Object jobIndexLock = new Object();
 
     /**
      * {@inheritDoc}
      */
     @Override
     public ConversionJob save(ConversionJob job) {
-        ConversionJob previous = jobs.put(job.getJobId(), job);
-        removeContentIndex(previous);
-        indexContentHash(job);
-        return job;
+        synchronized (jobIndexLock) {
+            ConversionJob previous = jobs.put(job.getJobId(), job);
+            removeContentIndex(previous);
+            indexContentHash(job);
+            return job;
+        }
     }
 
     /**
@@ -48,41 +51,43 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
      */
     @Override
     public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
-        String contentHash = candidate.getContentHash();
-        if (contentHash == null || contentHash.isBlank()) {
-            save(candidate);
-            appendLifecycleEvent(candidate, EVENT_SUBMITTED, null);
-            return new ConversionJobRepository.FindOrStoreResult(candidate, true);
+        synchronized (jobIndexLock) {
+            String contentHash = candidate.getContentHash();
+            if (contentHash == null || contentHash.isBlank()) {
+                save(candidate);
+                appendLifecycleEvent(candidate, EVENT_SUBMITTED, null);
+                return new ConversionJobRepository.FindOrStoreResult(candidate, true);
+            }
+
+            String contentKey = contentKey(candidate.getTenantId(), contentHash);
+            AtomicBoolean created = new AtomicBoolean(false);
+            AtomicReference<ConversionJob> canonical = new AtomicReference<>();
+            jobsByTenantAndContentHash.compute(
+                    contentKey,
+                    (key, existingJobId) -> {
+                        ConversionJob existing = existingJobId == null ? null : jobs.get(existingJobId);
+                        if (matchesContentIndex(existing, key)) {
+                            canonical.set(existing);
+                            return existingJobId;
+                        }
+
+                        ConversionJob identifierCollision = jobs.putIfAbsent(
+                                candidate.getJobId(),
+                                candidate
+                        );
+                        if (identifierCollision != null) {
+                            throw new IllegalStateException("Conversion job identifier collision.");
+                        }
+                        created.set(true);
+                        canonical.set(candidate);
+                        return candidate.getJobId();
+                    }
+            );
+
+            ConversionJob storedJob = canonical.get();
+            appendLifecycleEvent(storedJob, created.get() ? EVENT_SUBMITTED : EVENT_DEDUPE_HIT, null);
+            return new ConversionJobRepository.FindOrStoreResult(storedJob, created.get());
         }
-
-        String contentKey = contentKey(candidate.getTenantId(), contentHash);
-        AtomicBoolean created = new AtomicBoolean(false);
-        AtomicReference<ConversionJob> canonical = new AtomicReference<>();
-        jobsByTenantAndContentHash.compute(
-                contentKey,
-                (key, existingJobId) -> {
-                    ConversionJob existing = existingJobId == null ? null : jobs.get(existingJobId);
-                    if (matchesContentIndex(existing, key)) {
-                        canonical.set(existing);
-                        return existingJobId;
-                    }
-
-                    ConversionJob identifierCollision = jobs.putIfAbsent(
-                            candidate.getJobId(),
-                            candidate
-                    );
-                    if (identifierCollision != null) {
-                        throw new IllegalStateException("Conversion job identifier collision.");
-                    }
-                    created.set(true);
-                    canonical.set(candidate);
-                    return candidate.getJobId();
-                }
-        );
-
-        ConversionJob storedJob = canonical.get();
-        appendLifecycleEvent(storedJob, created.get() ? EVENT_SUBMITTED : EVENT_DEDUPE_HIT, null);
-        return new ConversionJobRepository.FindOrStoreResult(storedJob, created.get());
     }
 
     /**
@@ -110,13 +115,15 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
             return Optional.empty();
         }
 
-        String expectedContentKey = contentKey(tenantId, contentHash);
-        UUID jobId = jobsByTenantAndContentHash.get(expectedContentKey);
-        if (jobId == null) {
-            return Optional.empty();
-        }
+        synchronized (jobIndexLock) {
+            String expectedContentKey = contentKey(tenantId, contentHash);
+            UUID jobId = jobsByTenantAndContentHash.get(expectedContentKey);
+            if (jobId == null) {
+                return Optional.empty();
+            }
 
-        return findById(jobId).filter(job -> matchesContentIndex(job, expectedContentKey));
+            return findById(jobId).filter(job -> matchesContentIndex(job, expectedContentKey));
+        }
     }
 
     /**
@@ -150,22 +157,17 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
             return false;
         }
 
-        String normalizedTenantId = tenantId.strip();
-        AtomicReference<ConversionJob> removed = new AtomicReference<>();
-        jobs.computeIfPresent(jobId, (ignored, existing) -> {
-            if (!existing.belongsToTenant(normalizedTenantId)) {
-                return existing;
+        synchronized (jobIndexLock) {
+            String normalizedTenantId = tenantId.strip();
+            ConversionJob existing = jobs.get(jobId);
+            if (existing == null || !existing.belongsToTenant(normalizedTenantId)) {
+                return false;
             }
-            removed.set(existing);
-            return null;
-        });
 
-        ConversionJob deletedJob = removed.get();
-        if (deletedJob == null) {
-            return false;
+            jobs.remove(jobId);
+            removeContentIndex(existing);
+            return true;
         }
-        removeContentIndex(deletedJob);
-        return true;
     }
 
     /**
@@ -173,7 +175,9 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
      */
     @Override
     public void deleteById(UUID jobId) {
-        removeContentIndex(jobs.remove(jobId));
+        synchronized (jobIndexLock) {
+            removeContentIndex(jobs.remove(jobId));
+        }
     }
 
     /**

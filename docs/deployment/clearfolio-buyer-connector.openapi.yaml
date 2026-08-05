@@ -34,8 +34,11 @@ paths:
       operationId: submitConversionJob
       summary: Submit a document for asynchronous preview conversion.
       description: >
-        Requires `job:create`. The buyer gateway must add signed Clearfolio
-        tenant headers when `CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET` is enabled.
+        Requires `job:create`. The authenticated buyer gateway must strip any
+        untrusted inbound `X-Clearfolio-*` claim headers, then add canonical
+        signed Clearfolio tenant headers. Runtime verification reads
+        `clearfolio.tenant-claims.hmac-secret` from the config-tree mount
+        selected by `CLEARFOLIO_SECRET_CONFIG_DIR`.
       parameters:
         - $ref: "#/components/parameters/TenantId"
         - $ref: "#/components/parameters/SubjectId"

@@ -1,6 +1,6 @@
 # Engineering Acceptance Criteria
 
-Last updated: 2026-08-05
+Last updated: 2026-08-06
 
 This document is the canonical acceptance policy for the current Clearfolio
 Viewer delivery baseline. Historical evidence snapshots remain useful for
@@ -37,15 +37,22 @@ a coordinated update to `AGENTS.md`, `CLAUDE.md`, and both architecture maps.
 - This repository owns the Clearfolio Viewer side of the contract and its state,
   authorization, document, artifact, and operational gates.
 
-## Required local acceptance command
+## Required local acceptance commands
 
 ```bash
 mvn -B --no-transfer-progress verify
+python3 scripts/verify_maven_test_reports.py
 ```
 
-The command is intentionally shared with CI. A contributor must not substitute
+The commands are intentionally shared with CI. A contributor must not substitute
 `mvn test`, skip the documentation execution, disable JaCoCo, lower a threshold,
-or suppress warnings when presenting merge evidence.
+suppress warnings, omit test-report verification, or present evidence containing
+skipped or zero executed tests.
+
+The report gate requires at least one Surefire `TEST-*.xml` report, a positive
+total test count, and zero skipped tests. When Failsafe `TEST-*.xml` reports are
+present, the same positive-count and zero-skip rules apply. Missing, malformed,
+empty, negative-count, or skipped report evidence fails closed.
 
 ## Mandatory AC evidence mapping
 
@@ -55,7 +62,7 @@ or suppress warnings when presenting merge evidence.
 | docstring | Maven Javadoc Plugin 3.12.0 runs Java 21 doclint for public production APIs and fails on warnings or errors | `mvn -B --no-transfer-progress verify`; inspect `target/reports/apidocs` and the exact-head CI job |
 | non-blocking web | Request paths do not execute document conversion inline | `ConversionController`, `DefaultDocumentConversionService`, and their concurrency/integration tests |
 | lightweight queue | Capacity, rejection, retry, processing lease, and dead-letter behavior are executable contracts | `ConversionExecutorConfig`, `DefaultConversionWorker`, repository/state-store tests, and exact-head fuzzing |
-| warning 0 | Java compilation uses `-Xlint:all -Werror` | `mvn -B --no-transfer-progress verify` |
+| warning 0 | Java compilation uses `-Xlint:all -Werror`; Maven report acceptance rejects skipped and zero-test evidence | `mvn -B --no-transfer-progress verify`, `python3 scripts/verify_maven_test_reports.py`, and exact-head CI |
 | deprecated 0 | Deprecated API warnings are build failures | `mvn -B --no-transfer-progress verify` |
 | 1-day schedule+security verification | Required GitHub Checks must be successful for the exact current head; queued, pending, cancelled, stale-head, or skipped-required outcomes are not passing | Delivery-plan evidence plus GitHub CI, Security Scan, SAST Semgrep, fuzz, automated review, independent approval, and branch-protection evidence |
 
@@ -99,6 +106,10 @@ or suppress warnings when presenting merge evidence.
 Apache Software Foundation. (2026). *Apache Maven Javadoc Plugin 3.12.0:
 `javadoc:javadoc`*. Retrieved August 5, 2026, from
 https://maven.apache.org/plugins/maven-javadoc-plugin/javadoc-mojo.html
+
+Apache Software Foundation. (2026). *Surefire reports*. Maven Surefire Plugin.
+Retrieved August 6, 2026, from
+https://maven.apache.org/surefire/maven-surefire-plugin/examples/reporting.html
 
 JaCoCo. (2026). *JaCoCo Maven plug-in: `jacoco:check`*. Retrieved August 5,
 2026, from https://www.jacoco.org/jacoco/trunk/doc/check-mojo.html

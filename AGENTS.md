@@ -82,15 +82,18 @@ Codex, Cursor, opencode, …) working in this repo.
 - Reference implementation: xtrmLLMBatchPython's pgcrypto-encrypted Postgres
   credential registry (`get_credential(name)`). Reuse that pattern (a DB-backed
   KV is fine) unless a dedicated KV is adopted.
-- **This repo applies** — it is a Spring Boot service with real runtime secrets
-  (artifact-token HMAC secret, tenant-claims HMAC secret). **Known deviation to
-  migrate:** those secrets are currently injected straight from env via Spring
-  placeholders in `application-buyer-demo.yml`
-  (`clearfolio.artifact-token.secret: ${CLEARFOLIO_ARTIFACT_TOKEN_SECRET:}`,
-  `clearfolio.tenant-claims.hmac-secret: ${CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET:}`,
-  consumed by `ArtifactLinkService` / `TenantAccessService`). Move these to a
-  KV-backed lookup so env is only the bootstrap transport into the KV. New
-  secrets/credentials must go through the KV from the start, not new env reads.
+- **This repo applies** — it is a Spring Boot service with real runtime secrets.
+  The tenant-claims HMAC secret is loaded as
+  `clearfolio.tenant-claims.hmac-secret` from the Spring config-tree credential
+  mount selected by the non-secret `CLEARFOLIO_SECRET_CONFIG_DIR` bootstrap
+  setting; do not restore direct runtime environment binding for that key.
+  **Known deviation to migrate:** the artifact-token HMAC secret is still
+  injected directly from an environment placeholder in
+  `application-buyer-demo.yml`
+  (`clearfolio.artifact-token.secret: ${CLEARFOLIO_ARTIFACT_TOKEN_SECRET:}`),
+  consumed by `ArtifactLinkService`. Move it to a KV-backed lookup so env is
+  only the bootstrap transport into the KV. New secrets/credentials must go
+  through the KV from the start, not new env reads.
 
 ### Code exploration
 

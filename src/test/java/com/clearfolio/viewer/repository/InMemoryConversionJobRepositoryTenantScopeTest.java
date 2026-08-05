@@ -3,6 +3,7 @@ package com.clearfolio.viewer.repository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -102,6 +103,35 @@ class InMemoryConversionJobRepositoryTenantScopeTest {
 
         assertTrue(result.created());
         assertSame(newNorthCandidate, result.canonicalJob());
+    }
+
+    @Test
+    void findOrStoreRejectsAJobIdentifierCollisionWithoutChangingOwnership() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        UUID sharedJobId = UUID.randomUUID();
+        ConversionJob currentSouth = job(
+                sharedJobId,
+                "tenant-south",
+                "south-current.pdf",
+                "south-current-hash"
+        );
+        ConversionJob collidingNorth = job(
+                sharedJobId,
+                "tenant-north",
+                "north-collision.pdf",
+                "north-collision-hash"
+        );
+        repository.save(currentSouth);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> repository.findOrStoreByContentHash(collidingNorth)
+        );
+        assertSame(currentSouth, repository.findById(sharedJobId).orElseThrow());
+        assertTrue(repository.findByTenantAndContentHash(
+                "tenant-north",
+                collidingNorth.getContentHash()
+        ).isEmpty());
     }
 
     @Test

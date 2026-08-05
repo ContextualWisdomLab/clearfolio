@@ -25,13 +25,17 @@ Every endpoint applies the same fail-closed sequence:
 3. Verify signed claims and their freshness.
 4. Require the action-specific permission.
 5. Pass the verified `TenantContext` into the object-specific service mutation.
-6. Select the target through a tenant-scoped repository lookup before evaluating or applying the mutation.
+6. Select and mutate the target through one tenant-scoped persistence operation.
 7. Return a non-enumerating not-found response for absent or cross-tenant objects.
 8. Emit privacy-safe authorization evidence for the resulting outcome.
 
-List responses filter the complete repository result to the verified tenant before applying the optional dead-letter status filter. Delete and retry do not perform controller-level read-then-write authorization. Their service contracts receive the verified tenant context and enforce ownership at the mutation boundary, so non-HTTP callers cannot reach an unscoped administrative mutation by bypassing the controller.
+List responses apply the tenant predicate before job objects cross the repository boundary and then apply the optional dead-letter status filter. Delete and retry do not perform controller-level or service-level read-then-write authorization. Their service contracts pass the authenticated tenant to atomic repository or state-store operations, so non-HTTP callers cannot reach an unscoped administrative mutation by bypassing the controller.
 
-The historical unscoped delete method and two-argument retry method remain compatibility contracts for non-administrative adapters only. Their tenant-aware interface defaults fail closed by returning `false` or `NOT_FOUND` without reading a job or invoking either legacy mutation. A production adapter must explicitly override the tenant-aware methods and perform tenant selection and mutation within one persistence boundary before an administrative request can succeed. Clearfolio's durable implementation supplies those scoped overrides.
+Deletion first performs the tenant-predicate repository deletion. Artifact cleanup is attempted only after that owned deletion succeeds, so a missing or cross-tenant identifier cannot delete another tenant's artifact. A cleanup failure remains an operational orphan-cleanup concern, not an authorization bypass, and is recorded without restoring access to the deleted job.
+
+Retry receives one atomic state-store outcome: `ACCEPTED`, concealed `NOT_FOUND`, or `NOT_ELIGIBLE`. The worker is enqueued only after the state store has atomically verified ownership and moved the owned dead-lettered job back to submitted state.
+
+The historical unscoped delete method and two-argument retry method remain compatibility contracts for non-administrative adapters only. Their tenant-aware service, repository, and state-store defaults fail closed without reading a job or invoking either legacy mutation. A production adapter must explicitly override the tenant-aware methods and perform tenant selection and mutation within one persistence boundary before an administrative request can succeed. Clearfolio's in-memory durable implementation supplies those scoped atomic overrides.
 
 ## Audit evidence
 
@@ -55,11 +59,12 @@ Automated tests must exercise the real signed-claim verifier and prove:
 - missing `admin:read` or `admin:write` permissions fail before service access;
 - list results contain only tenant-owned jobs for all dead-letter filter states;
 - missing and cross-tenant delete/retry targets produce indistinguishable not-found responses;
-- delete and retry cross a tenant-aware service boundary without a separate controller lookup or unscoped administrative mutation call;
-- compatibility-only service adapters cannot reach `getJob`, legacy delete, or legacy retry through the tenant-aware interface defaults;
-- the durable retry service rejects null, missing, and cross-tenant contexts without state transition or worker enqueue;
+- delete and retry cross tenant-aware persistence boundaries without a separate lookup or unscoped mutation call;
+- failed tenant-scoped deletion never touches the artifact store, while successful deletion cleans the owned artifact after repository authorization;
+- compatibility-only service, repository, and state-store adapters cannot reach global lookup, delete, or retry methods through tenant-aware defaults;
+- the durable retry state store rejects invalid, missing, cross-tenant, and ineligible targets without an unauthorized transition or worker enqueue;
 - accepted retry provenance is a domain-separated keyed fingerprint, never a raw or unkeyed subject value;
-- not-found, not-eligible, repository failure, deletion failure, and retry failure paths return stable non-leaking responses;
+- not-found, not-eligible, repository failure, artifact-cleanup failure, and retry failure paths return stable non-leaking responses;
 - audit output contains no raw tenant, subject, signature, filename, or document data;
 - JaCoCo reports 100% line and branch coverage for the `com.clearfolio.viewer.*` production package.
 

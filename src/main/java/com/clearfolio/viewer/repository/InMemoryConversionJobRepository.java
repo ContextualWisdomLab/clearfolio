@@ -153,7 +153,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
      */
     @Override
     public boolean deleteByTenantAndId(String tenantId, UUID jobId) {
-        if (tenantId == null || tenantId.isBlank()) {
+        if (tenantId == null || tenantId.isBlank() || jobId == null) {
             return false;
         }
 
@@ -291,7 +291,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
             UUID jobId,
             String operatorId
     ) {
-        if (tenantId == null || tenantId.isBlank()) {
+        if (tenantId == null || tenantId.isBlank() || jobId == null) {
             return TenantRetryOutcome.NOT_FOUND;
         }
 

@@ -72,6 +72,7 @@ public class ArtifactLinkService {
      * Creates the link service with an optional configured HMAC secret.
      *
      * @param artifactStore artifact byte store
+     * @param artifactLinkLedger issued-link, revocation, and read-audit ledger
      * @param configuredSecret optional deployment secret
      */
     @Autowired

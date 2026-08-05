@@ -26,6 +26,13 @@ public class ArtifactStoreProperties {
     private String rootDir = DEFAULT_ROOT_DIR;
 
     /**
+     * Creates artifact-store properties with restart-surviving filesystem defaults.
+     */
+    public ArtifactStoreProperties() {
+        // Field initializers provide the secure deployment defaults.
+    }
+
+    /**
      * Returns the configured artifact store mode.
      *
      * @return artifact store mode

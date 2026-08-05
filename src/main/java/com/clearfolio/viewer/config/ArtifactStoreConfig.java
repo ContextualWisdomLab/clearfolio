@@ -16,6 +16,13 @@ import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
 public class ArtifactStoreConfig {
 
     /**
+     * Creates the Spring configuration component for artifact storage.
+     */
+    public ArtifactStoreConfig() {
+        // Spring creates this stateless configuration object before invoking its bean method.
+    }
+
+    /**
      * Creates the artifact store selected by configuration; the disk-backed
      * store is the default so artifacts survive application restarts.
      *

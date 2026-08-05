@@ -1,9 +1,9 @@
 name: One-shot Netty SBOM refresh
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/pii-logging-16240128950440010639
+      - main
     paths:
       - .github/workflows/one-shot-netty-sbom-refresh.yml
 
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: one-shot-netty-sbom-refresh
+  group: one-shot-netty-sbom-refresh-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
@@ -19,27 +19,32 @@ jobs:
     if: >-
       github.repository == 'ContextualWisdomLab/clearfolio'
       && github.actor == 'seonghobae'
-      && github.ref == 'refs/heads/fix/pii-logging-16240128950440010639'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.head.ref == 'fix/pii-logging-16240128950440010639'
     name: Generate, verify, commit, and remove one-shot helper
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
     steps:
-      - name: Checkout exact pushed head without persisted credentials
+      - name: Checkout exact pull request head without persisted credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
 
       - name: Verify immutable trigger identity
         env:
-          EXPECTED_SHA: ${{ github.sha }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BRANCH: fix/pii-logging-16240128950440010639
+          LIVE_BRANCH: ${{ github.event.pull_request.head.ref }}
+          LIVE_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-          test "$GITHUB_REF" = refs/heads/fix/pii-logging-16240128950440010639
+          test "$LIVE_BRANCH" = "$EXPECTED_BRANCH"
+          test "$LIVE_REPOSITORY" = "$GITHUB_REPOSITORY"
 
       - name: Use preinstalled Temurin JDK 21
         run: |
@@ -104,8 +109,8 @@ jobs:
 
       - name: Commit generated evidence and remove this helper
         env:
-          EXPECTED_SHA: ${{ github.sha }}
-          HEAD_BRANCH: fix/pii-logging-16240128950440010639
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
           PUSH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail

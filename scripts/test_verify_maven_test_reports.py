@@ -109,6 +109,21 @@ class MavenTestReportGateTest(unittest.TestCase):
             with self.assertRaisesRegex(ReportGateError, "Failsafe reported 1 skipped test"):
                 verify_maven_reports(target)
 
+    def test_rejects_reported_test_failures_and_errors(self) -> None:
+        """Do not trust report evidence that contradicts a successful Maven exit."""
+        for attribute in ("failures", "errors"):
+            with self.subTest(attribute=attribute):
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    target = Path(temporary_directory)
+                    values = {attribute: "1"}
+                    _write_report(target / "surefire-reports", **values)
+
+                    with self.assertRaisesRegex(
+                        ReportGateError,
+                        f"Surefire reported 1 test {attribute}",
+                    ):
+                        verify_maven_reports(target)
+
     def test_rejects_invalid_or_negative_report_counts(self) -> None:
         """Treat malformed count metadata as unusable acceptance evidence."""
         for invalid_count in ("not-a-number", "-1"):

@@ -81,11 +81,10 @@ public class AdminController {
 
         try {
             List<ConversionJob> filtered = new ArrayList<>();
-            for (ConversionJob job : conversionService.getAllJobs()) {
-                boolean tenantOwned = job.belongsToTenant(context.tenantId());
+            for (ConversionJob job : conversionService.getJobsForTenant(context)) {
                 boolean deadLetterMatches = deadLettered == null
                         || job.isDeadLettered() == deadLettered;
-                if (tenantOwned && deadLetterMatches) {
+                if (deadLetterMatches) {
                     filtered.add(job);
                 }
             }

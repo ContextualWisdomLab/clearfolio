@@ -79,9 +79,20 @@ class ThirdPartyAttributionTest(unittest.TestCase):
         self.assertIn("# Third-Party Attribution", markdown)
         self.assertIn("SBOM format: CycloneDX 1.6", markdown)
         self.assertIn("Component count: 2", markdown)
-        self.assertLess(markdown.index("com.example:alpha"), markdown.index("org.springframework:spring-core"))
-        self.assertIn("| com.example:alpha | 1.0.0 | MIT | `pkg:maven/com.example/alpha@1.0.0?type=jar` |", markdown)
-        self.assertIn("| org.springframework:spring-core | 6.2.7 | Apache-2.0 | `pkg:maven/org.springframework/spring-core@6.2.7?type=jar` |", markdown)
+        self.assertLess(
+            markdown.index("com.example:alpha"),
+            markdown.index("org.springframework:spring-core"),
+        )
+        self.assertIn(
+            "| com.example:alpha | 1.0.0 | MIT | "
+            "`pkg:maven/com.example/alpha@1.0.0?type=jar` |",
+            markdown,
+        )
+        self.assertIn(
+            "| org.springframework:spring-core | 6.2.7 | Apache-2.0 | "
+            "`pkg:maven/org.springframework/spring-core@6.2.7?type=jar` |",
+            markdown,
+        )
 
     def test_marks_missing_license_metadata_for_release_review(self) -> None:
         """Surface components whose SBOM license metadata needs human review."""
@@ -98,9 +109,10 @@ class ThirdPartyAttributionTest(unittest.TestCase):
         self.assertIn("NOASSERTION", markdown)
 
     def test_buyer_evidence_tracks_reviewed_netty_security_line(self) -> None:
-        """Require generated SBOM and attribution to match the Maven Netty line."""
+        """Require the generated SBOM graph and attribution to match Maven."""
         expected_version = managed_netty_version()
-        sbom = json.loads(SBOM_PATH.read_text(encoding="utf-8"))
+        sbom_text = SBOM_PATH.read_text(encoding="utf-8")
+        sbom = json.loads(sbom_text)
         netty_components = [
             item
             for item in sbom.get("components", [])
@@ -117,18 +129,43 @@ class ThirdPartyAttributionTest(unittest.TestCase):
             {str(item.get("version", "")) for item in netty_components},
             "every resolved Netty module must match pom.xml netty.version",
         )
+        component_refs = set()
         for item in netty_components:
             coordinate = f"io.netty:{item.get('name', '<unknown>')}"
+            purl = str(item.get("purl", ""))
+            bom_ref = str(item.get("bom-ref", ""))
             self.assertIn(
                 f"@{expected_version}",
-                str(item.get("purl", "")),
+                purl,
                 f"{coordinate} purl must identify the reviewed Netty version",
             )
             self.assertIn(
                 f"@{expected_version}",
-                str(item.get("bom-ref", "")),
+                bom_ref,
                 f"{coordinate} bom-ref must identify the reviewed Netty version",
             )
+            component_refs.add(bom_ref)
+
+        dependency_refs = set()
+        for dependency in sbom.get("dependencies", []):
+            dependency_ref = str(dependency.get("ref", ""))
+            if "pkg:maven/io.netty/" in dependency_ref:
+                dependency_refs.add(dependency_ref)
+            dependency_refs.update(
+                str(item)
+                for item in dependency.get("dependsOn", [])
+                if "pkg:maven/io.netty/" in str(item)
+            )
+        self.assertEqual(
+            component_refs,
+            dependency_refs,
+            "every Netty dependency edge must resolve to one current component ref",
+        )
+        self.assertNotIn(
+            "4.1.135.Final",
+            sbom_text,
+            "the historical Spring-managed Netty line must be absent from the SBOM",
+        )
 
         actual_attribution = ATTRIBUTION_PATH.read_text(encoding="utf-8")
         self.assertEqual(
@@ -149,6 +186,11 @@ class ThirdPartyAttributionTest(unittest.TestCase):
         self.assertTrue(
             all(f"| {expected_version} |" in row for row in netty_rows),
             "every attribution row must use the reviewed Netty version",
+        )
+        self.assertNotIn(
+            "4.1.135.Final",
+            actual_attribution,
+            "the historical Netty line must be absent from buyer attribution",
         )
 
 

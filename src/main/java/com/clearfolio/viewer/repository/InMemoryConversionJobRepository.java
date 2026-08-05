@@ -37,10 +37,9 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
      */
     @Override
     public ConversionJob save(ConversionJob job) {
-        jobs.put(job.getJobId(), job);
-        if (job.getContentHash() != null && !job.getContentHash().isBlank()) {
-            jobsByTenantAndContentHash.putIfAbsent(contentKey(job.getTenantId(), job.getContentHash()), job.getJobId());
-        }
+        ConversionJob previous = jobs.put(job.getJobId(), job);
+        removeContentIndex(previous);
+        indexContentHash(job);
         return job;
     }
 
@@ -62,15 +61,14 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         jobsByTenantAndContentHash.compute(
                 contentKey,
                 (key, existingJobId) -> {
-                    if (existingJobId != null) {
-                        ConversionJob existing = jobs.get(existingJobId);
-                        if (existing != null) {
-                            canonical.set(existing);
-                            return existingJobId;
-                        }
+                    ConversionJob existing = existingJobId == null ? null : jobs.get(existingJobId);
+                    if (matchesContentIndex(existing, key)) {
+                        canonical.set(existing);
+                        return existingJobId;
                     }
 
-                    jobs.put(candidate.getJobId(), candidate);
+                    ConversionJob replaced = jobs.put(candidate.getJobId(), candidate);
+                    removeContentIndex(replaced);
                     created.set(true);
                     canonical.set(candidate);
                     return candidate.getJobId();
@@ -79,7 +77,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
 
         ConversionJob storedJob = canonical.get();
         appendLifecycleEvent(storedJob, created.get() ? EVENT_SUBMITTED : EVENT_DEDUPE_HIT, null);
-        return new ConversionJobRepository.FindOrStoreResult(canonical.get(), created.get());
+        return new ConversionJobRepository.FindOrStoreResult(storedJob, created.get());
     }
 
     /**
@@ -107,12 +105,13 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
             return Optional.empty();
         }
 
-        UUID jobId = jobsByTenantAndContentHash.get(contentKey(tenantId, contentHash));
+        String expectedContentKey = contentKey(tenantId, contentHash);
+        UUID jobId = jobsByTenantAndContentHash.get(expectedContentKey);
         if (jobId == null) {
             return Optional.empty();
         }
 
-        return findById(jobId);
+        return findById(jobId).filter(job -> matchesContentIndex(job, expectedContentKey));
     }
 
     /**
@@ -315,6 +314,22 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
 
     private String normalizeTenantId(String tenantId) {
         return tenantId == null || tenantId.isBlank() ? "buyer-demo" : tenantId.strip();
+    }
+
+    private boolean matchesContentIndex(ConversionJob job, String expectedContentKey) {
+        return job != null
+                && job.getContentHash() != null
+                && !job.getContentHash().isBlank()
+                && contentKey(job.getTenantId(), job.getContentHash()).equals(expectedContentKey);
+    }
+
+    private void indexContentHash(ConversionJob job) {
+        if (job.getContentHash() != null && !job.getContentHash().isBlank()) {
+            jobsByTenantAndContentHash.put(
+                    contentKey(job.getTenantId(), job.getContentHash()),
+                    job.getJobId()
+            );
+        }
     }
 
     private void removeContentIndex(ConversionJob removed) {

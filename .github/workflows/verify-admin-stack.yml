@@ -1,0 +1,55 @@
+name: Verify administrator stack
+
+on:
+  push:
+    branches:
+      - fix/admin-endpoint-auth-12756902097463012709
+    paths:
+      - '.github/workflows/verify-admin-stack.yml'
+      - 'pom.xml'
+      - 'src/main/**'
+      - 'src/test/**'
+      - 'docs/security/2026-08-05-administrative-authorization.md'
+      - 'CHANGELOG.md'
+  pull_request:
+    branches:
+      - fix/pii-logging-16240128950440010639
+    paths:
+      - '.github/workflows/verify-admin-stack.yml'
+      - 'pom.xml'
+      - 'src/main/**'
+      - 'src/test/**'
+      - 'docs/security/2026-08-05-administrative-authorization.md'
+      - 'CHANGELOG.md'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-admin-stack-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Exact-head Maven and documentation verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Use preinstalled Temurin JDK 21
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
+
+      - name: Verify exact checked-out head
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+          mvn -B --no-transfer-progress test
+          mvn -q -DskipTests javadoc:javadoc
+          git diff --check

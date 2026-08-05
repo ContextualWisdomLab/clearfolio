@@ -53,6 +53,56 @@ class DependencyPolicyTest {
         );
     }
 
+    @Test
+    void mavenVerifyGeneratesWarningFreePublicApiJavadocs() throws Exception {
+        Document document = parsedPom();
+        Element properties = (Element) document.getElementsByTagName("properties").item(0);
+
+        assertEquals(
+                "3.12.0",
+                directChildTextOf(properties, "maven.javadoc.version"),
+                "the warning-free public Javadoc gate must use the reviewed Maven Javadoc Plugin release"
+        );
+
+        Element plugin = buildPlugin(
+                document,
+                "org.apache.maven.plugins",
+                "maven-javadoc-plugin"
+        );
+        assertTrue(
+                plugin != null,
+                "mvn verify must include the Maven Javadoc Plugin instead of relying on undocumented local checks"
+        );
+        assertEquals(
+                "${maven.javadoc.version}",
+                directChildTextOf(plugin, "version"),
+                "the Javadoc plugin version must be controlled by the authoritative version property"
+        );
+
+        Element configuration = directChildElementOf(plugin, "configuration");
+        assertTrue(configuration != null, "the Javadoc plugin must declare fail-closed configuration");
+        assertEquals("all", directChildTextOf(configuration, "doclint"));
+        assertEquals("true", directChildTextOf(configuration, "failOnError"));
+        assertEquals("true", directChildTextOf(configuration, "failOnWarnings"));
+        assertEquals("public", directChildTextOf(configuration, "show"));
+
+        Element execution = executionById(plugin, "validate-public-api-documentation");
+        assertTrue(
+                execution != null,
+                "the public Javadoc acceptance gate must have a stable execution identifier"
+        );
+        assertEquals(
+                "verify",
+                directChildTextOf(execution, "phase"),
+                "public Javadoc validation must run in the authoritative Maven verify lifecycle"
+        );
+        assertTrue(
+                directChildTextsOf(directChildElementOf(execution, "goals"), "goal")
+                        .contains("javadoc"),
+                "the verify-bound execution must invoke the Javadoc goal"
+        );
+    }
+
     private static void assertSpringStarterExcludes(
             Map<String, DependencyDeclaration> dependencies,
             String coordinate
@@ -108,13 +158,65 @@ class DependencyPolicyTest {
         return exclusions;
     }
 
-    private static String directChildTextOf(Element dependency, String tagName) {
-        for (Node node = dependency.getFirstChild(); node != null; node = node.getNextSibling()) {
-            if (node instanceof Element element && tagName.equals(element.getTagName())) {
-                return element.getTextContent().strip();
+    private static Element buildPlugin(
+            Document document,
+            String groupId,
+            String artifactId
+    ) {
+        var pluginNodes = document.getElementsByTagName("plugin");
+        for (int index = 0; index < pluginNodes.getLength(); index++) {
+            Element plugin = (Element) pluginNodes.item(index);
+            if (groupId.equals(directChildTextOf(plugin, "groupId"))
+                    && artifactId.equals(directChildTextOf(plugin, "artifactId"))) {
+                return plugin;
             }
         }
-        return "";
+        return null;
+    }
+
+    private static Element executionById(Element plugin, String executionId) {
+        Element executions = directChildElementOf(plugin, "executions");
+        if (executions == null) {
+            return null;
+        }
+        for (Node node = executions.getFirstChild(); node != null; node = node.getNextSibling()) {
+            if (node instanceof Element execution
+                    && "execution".equals(execution.getTagName())
+                    && executionId.equals(directChildTextOf(execution, "id"))) {
+                return execution;
+            }
+        }
+        return null;
+    }
+
+    private static Set<String> directChildTextsOf(Element parent, String tagName) {
+        Set<String> values = new HashSet<>();
+        if (parent == null) {
+            return values;
+        }
+        for (Node node = parent.getFirstChild(); node != null; node = node.getNextSibling()) {
+            if (node instanceof Element element && tagName.equals(element.getTagName())) {
+                values.add(element.getTextContent().strip());
+            }
+        }
+        return values;
+    }
+
+    private static Element directChildElementOf(Element parent, String tagName) {
+        if (parent == null) {
+            return null;
+        }
+        for (Node node = parent.getFirstChild(); node != null; node = node.getNextSibling()) {
+            if (node instanceof Element element && tagName.equals(element.getTagName())) {
+                return element;
+            }
+        }
+        return null;
+    }
+
+    private static String directChildTextOf(Element dependency, String tagName) {
+        Element child = directChildElementOf(dependency, tagName);
+        return child == null ? "" : child.getTextContent().strip();
     }
 
     private record DependencyDeclaration(String groupId, String artifactId, Set<String> exclusions) {

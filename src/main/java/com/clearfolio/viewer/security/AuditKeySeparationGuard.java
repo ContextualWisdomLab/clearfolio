@@ -8,15 +8,19 @@ import org.springframework.stereotype.Component;
 import com.clearfolio.viewer.config.ConversionProperties;
 
 /**
- * Fails application startup when policy signing and audit pseudonymization use
- * the same configured key material.
+ * Fails application startup when configured policy-signing key material is weak
+ * or when policy signing and audit pseudonymization reuse the same key.
  *
- * <p>The two HMAC purposes form separate security domains. Reusing one value
+ * <p>The policy-override key protects an administrative authorization decision,
+ * so a configured value must contain at least 32 UTF-8 bytes. The policy and
+ * audit HMAC purposes also form separate security domains. Reusing one value
  * would allow a holder of the audit key to create policy-override signatures,
  * so nonblank configured values must remain distinct.</p>
  */
 @Component
 public final class AuditKeySeparationGuard {
+
+    private static final int MINIMUM_POLICY_SECRET_BYTES = 32;
 
     /**
      * Validates the bound conversion security configuration during bean startup.
@@ -24,10 +28,23 @@ public final class AuditKeySeparationGuard {
      * @param properties bound conversion configuration
      */
     public AuditKeySeparationGuard(ConversionProperties properties) {
+        requireStrongPolicySecret(properties.getPolicyOverrideSecret());
         requireDistinct(
                 properties.getPolicyOverrideSecret(),
                 properties.getAuditPseudonymSecret()
         );
+    }
+
+    static void requireStrongPolicySecret(String policySecret) {
+        if (!isConfigured(policySecret)) {
+            return;
+        }
+        if (policySecret.getBytes(StandardCharsets.UTF_8).length
+                < MINIMUM_POLICY_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    "policy override key must contain at least 32 UTF-8 bytes"
+            );
+        }
     }
 
     static void requireDistinct(String policySecret, String auditSecret) {

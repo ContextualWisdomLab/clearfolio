@@ -167,7 +167,6 @@
       <version>0.30.0</version>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
 
   <build>
@@ -195,6 +194,32 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>run-node-tests</id>
+            <phase>test</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>node</executable>
+              <arguments>
+                <argument>--test</argument>
+                <argument>--experimental-test-coverage</argument>
+                <argument>--test-coverage-include=src/main/resources/static/assets/viewer/dom-utils.js</argument>
+                <argument>--test-coverage-lines=100</argument>
+                <argument>--test-coverage-branches=100</argument>
+                <argument>--test-coverage-functions=100</argument>
+                <argument>src/test/js/dom-utils.test.mjs</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>

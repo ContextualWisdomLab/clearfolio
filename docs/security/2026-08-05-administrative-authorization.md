@@ -39,6 +39,8 @@ The historical unscoped delete method and two-argument retry method remain compa
 
 The content-hash secondary index is also tenant-bound. Replacing a stored UUID invalidates the replaced job's tenant-and-hash index before the replacement is indexed. Lookup validates that the current UUID record still matches the requested tenant-and-hash key, and find-or-store rejects a colliding UUID rather than changing the current record's ownership. These defenses prevent a stale secondary index or stale preliminary observation from disclosing, deleting, retrying, or deduplicating against another tenant's job.
 
+The in-memory adapter updates the primary UUID map and the tenant-content secondary index under one shared critical section for save, find-or-store, indexed lookup, tenant-scoped deletion, and compatibility deletion. This prevents a delayed deletion cleanup from removing the valid secondary index of a concurrent same-UUID replacement. Durable adapters must provide the equivalent invariant with a database transaction, conditional write, or another storage-native atomicity mechanism; process-local locking is not an interoperability contract.
+
 ## Audit evidence
 
 Administrative evidence contains only:
@@ -65,6 +67,7 @@ Automated tests must exercise the real signed-claim verifier and prove:
 - failed tenant-scoped deletion never touches the artifact store, while successful deletion cleans the owned artifact after repository authorization;
 - compatibility-only service, repository, and state-store adapters cannot reach global lookup, delete, or retry methods through tenant-aware defaults;
 - replacing a UUID cannot leave an old tenant-and-content-hash lookup that resolves to the replacement, and a colliding find-or-store candidate fails without changing current ownership;
+- a concurrent tenant-scoped delete cannot remove the tenant-content index of a same-UUID replacement saved while deletion is in progress;
 - stale observations cannot delete or retry a same-UUID replacement owned by another tenant;
 - the durable retry state store rejects invalid, missing, cross-tenant, and ineligible targets without an unauthorized transition or worker enqueue;
 - accepted retry provenance is a domain-separated keyed fingerprint, never a raw or unkeyed subject value;

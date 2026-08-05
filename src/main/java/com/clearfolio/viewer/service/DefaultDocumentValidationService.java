@@ -93,7 +93,7 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
                     PolicyOverrideRequest.APPROVER_ID_HEADER + " is required when policy override is true."
             );
 
-            if (policyOverrideSecret == null || policyOverrideSecret.isBlank()) {
+            if (policyOverrideSecret.isBlank()) {
                 throw new IllegalStateException("Policy override secret is not configured.");
             }
 

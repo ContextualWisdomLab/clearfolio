@@ -24,7 +24,11 @@ def _local_name(tag: str) -> str:
 
 def _non_negative_count(report: Path, suite: ET.Element, attribute: str) -> int:
     """Read one required non-negative integer test-suite attribute."""
-    raw_value = suite.get(attribute, "0")
+    raw_value = suite.get(attribute)
+    if raw_value is None:
+        raise ReportGateError(
+            f"{report} testsuite is missing required {attribute} attribute"
+        )
     try:
         value = int(raw_value)
     except ValueError as error:

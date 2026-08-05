@@ -7,9 +7,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import verify_maven_test_reports as report_gate
 from verify_maven_test_reports import ReportGateError, verify_maven_reports
 
 
@@ -121,6 +123,35 @@ class MavenTestReportGateTest(unittest.TestCase):
             (reports / "TEST-empty.xml").write_text("<report/>", encoding="utf-8")
             with self.assertRaisesRegex(ReportGateError, "contains no testsuite"):
                 verify_maven_reports(target)
+
+    def test_rejects_doctype_and_entity_declarations_before_xml_parsing(self) -> None:
+        """Prevent external entities and expansion bombs in report evidence."""
+        payloads = (
+            b'<!DOCTYPE testsuite SYSTEM "file:///etc/passwd"><testsuite tests="1"/>',
+            b'<!ENTITY payload "boom"><testsuite tests="1"/>',
+        )
+        for payload in payloads:
+            with self.subTest(payload=payload[:20]):
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    target = Path(temporary_directory)
+                    reports = target / "surefire-reports"
+                    reports.mkdir(parents=True)
+                    (reports / "TEST-unsafe.xml").write_bytes(payload)
+
+                    with self.assertRaisesRegex(ReportGateError, "DTD or entity declaration"):
+                        verify_maven_reports(target)
+
+    def test_rejects_oversized_report_before_xml_parsing(self) -> None:
+        """Bound parser memory exposure even when test code writes a large report."""
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            target = Path(temporary_directory)
+            reports = target / "surefire-reports"
+            reports.mkdir(parents=True)
+            (reports / "TEST-large.xml").write_bytes(b"<testsuite" + b" " * 64 + b"/>")
+
+            with mock.patch.object(report_gate, "MAX_REPORT_BYTES", 32):
+                with self.assertRaisesRegex(ReportGateError, "exceeds the 32-byte limit"):
+                    verify_maven_reports(target)
 
     def test_ci_invokes_report_gate_after_maven_verify(self) -> None:
         """Keep the executable report gate in the exact-head Maven job."""

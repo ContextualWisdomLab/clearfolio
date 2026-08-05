@@ -1,3 +1,5 @@
+import { createActionButton, createLink, setBusyState } from "./dom-utils.js";
+
 const STORAGE_KEY = "clearfolio-demo-history-v1";
 const KPI_ENDPOINT = "/api/v1/analytics/kpi-snapshot";
 const KPI_EXPORTS_ENDPOINT = "/api/v1/analytics/kpi-snapshot-exports";
@@ -72,17 +74,6 @@ function setError(message) {
 }
 
 
-function setBusyState(btn, loadingText) {
-  const originalNodes = Array.from(btn.childNodes);
-  btn.disabled = true;
-  btn.textContent = loadingText;
-  btn.setAttribute("aria-busy", "true");
-  return function restore() {
-    btn.removeAttribute("aria-busy");
-    btn.replaceChildren(...originalNodes);
-    btn.disabled = false;
-  };
-}
 
 function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
   const history = loadHistory();

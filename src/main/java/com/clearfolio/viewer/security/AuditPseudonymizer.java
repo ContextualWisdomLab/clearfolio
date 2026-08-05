@@ -21,6 +21,8 @@ public final class AuditPseudonymizer {
     private static final String HMAC_SHA_256 = "HmacSHA256";
     private static final String DEFAULT_KEY_VERSION = "v1";
     private static final String APPROVER_DOMAIN = "clearfolio:audit-approver:v1";
+    private static final String ADMIN_ACTOR_DOMAIN = "clearfolio:audit-admin-actor:v1";
+    private static final String ADMIN_TENANT_DOMAIN = "clearfolio:audit-admin-tenant:v1";
     private static final int FINGERPRINT_BYTES = 16;
     private static final int MIN_SECRET_BYTES = 32;
     private static final int MAX_KEY_VERSION_LENGTH = 32;
@@ -39,6 +41,28 @@ public final class AuditPseudonymizer {
      */
     public AuditPseudonymizer(String secret, String keyVersion) {
         this(secret, keyVersion, APPROVER_DOMAIN);
+    }
+
+    /**
+     * Creates a pseudonymizer for administrative actor identifiers.
+     *
+     * @param secret dedicated audit pseudonym secret
+     * @param keyVersion non-sensitive key-rotation identifier
+     * @return actor-domain pseudonymizer
+     */
+    public static AuditPseudonymizer forAdministrativeActor(String secret, String keyVersion) {
+        return new AuditPseudonymizer(secret, keyVersion, ADMIN_ACTOR_DOMAIN);
+    }
+
+    /**
+     * Creates a pseudonymizer for administrative tenant identifiers.
+     *
+     * @param secret dedicated audit pseudonym secret
+     * @param keyVersion non-sensitive key-rotation identifier
+     * @return tenant-domain pseudonymizer
+     */
+    public static AuditPseudonymizer forAdministrativeTenant(String secret, String keyVersion) {
+        return new AuditPseudonymizer(secret, keyVersion, ADMIN_TENANT_DOMAIN);
     }
 
     /**

@@ -21,6 +21,8 @@ public class ConversionProperties {
     private double retryBackoffMultiplier = 2.0;
     private long maxUploadSizeBytes = 5 * 1024 * 1024L;
     private String policyOverrideSecret = "";
+    private String auditPseudonymSecret = "";
+    private String auditPseudonymKeyVersion = "v1";
     private long processingLeaseTimeoutMs = 60_000L;
 
     /**
@@ -198,6 +200,44 @@ public class ConversionProperties {
      */
     public void setPolicyOverrideSecret(String policyOverrideSecret) {
         this.policyOverrideSecret = policyOverrideSecret == null ? "" : policyOverrideSecret;
+    }
+
+    /**
+     * Returns the dedicated secret used to pseudonymize audit identifiers.
+     *
+     * @return audit pseudonym secret
+     */
+    public String getAuditPseudonymSecret() {
+        return auditPseudonymSecret;
+    }
+
+    /**
+     * Sets the dedicated secret used to pseudonymize audit identifiers.
+     *
+     * @param auditPseudonymSecret audit pseudonym secret
+     */
+    public void setAuditPseudonymSecret(String auditPseudonymSecret) {
+        this.auditPseudonymSecret = auditPseudonymSecret == null ? "" : auditPseudonymSecret;
+    }
+
+    /**
+     * Returns the non-sensitive key version included in audit fingerprints.
+     *
+     * @return audit pseudonym key version
+     */
+    public String getAuditPseudonymKeyVersion() {
+        return auditPseudonymKeyVersion;
+    }
+
+    /**
+     * Sets the non-sensitive key version included in audit fingerprints.
+     *
+     * @param auditPseudonymKeyVersion audit pseudonym key version
+     */
+    public void setAuditPseudonymKeyVersion(String auditPseudonymKeyVersion) {
+        this.auditPseudonymKeyVersion = auditPseudonymKeyVersion == null
+                ? "v1"
+                : auditPseudonymKeyVersion;
     }
 
     /**

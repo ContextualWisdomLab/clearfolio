@@ -18,10 +18,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.exception.UnsupportedDocumentFormatException;
+import com.clearfolio.viewer.security.AuditKeySeparationGuard;
 import com.clearfolio.viewer.security.AuditPseudonymizer;
 
 /**
  * Default document validator that enforces extension and size constraints.
+ *
+ * <p>Construction also validates the complete policy-override key contract, so
+ * direct standalone or modular use cannot bypass the same fail-closed security
+ * checks that Spring applies during application startup.</p>
  */
 @Service
 public class DefaultDocumentValidationService implements DocumentValidationService {
@@ -38,9 +43,19 @@ public class DefaultDocumentValidationService implements DocumentValidationServi
     /**
      * Creates the validation service from conversion configuration values.
      *
+     * <p>When policy override is enabled, construction rejects a weak signing
+     * key, a missing dedicated audit pseudonym key, or reuse of one key for both
+     * security purposes. This invariant applies even when callers construct the
+     * service outside the Spring container.</p>
+     *
      * @param conversionProperties conversion configuration values
+     * @throws NullPointerException if {@code conversionProperties} is
+     *         {@code null}
+     * @throws IllegalStateException if policy-override key material is weak,
+     *         incomplete, or reused across security purposes
      */
     public DefaultDocumentValidationService(ConversionProperties conversionProperties) {
+        AuditKeySeparationGuard.validate(conversionProperties);
         this.blockedExtensions = conversionProperties.getBlockedExtensions();
         this.maxUploadSizeBytes = conversionProperties.getMaxUploadSizeBytes();
         this.policyOverrideSecret = conversionProperties.getPolicyOverrideSecret();

@@ -35,6 +35,8 @@ Deletion first performs the tenant-predicate repository deletion. Artifact clean
 
 Retry receives one atomic state-store outcome: `ACCEPTED`, concealed `NOT_FOUND`, or `NOT_ELIGIBLE`. The worker is enqueued only after the state store has atomically verified ownership and moved the owned dead-lettered job back to submitted state.
 
+A missing job identifier is treated as an absent object at every tenant-scoped lookup, delete, and retry boundary. Repository adapters return an empty lookup, `false`, or `NOT_FOUND` without invoking a global lookup, mutating stored state, deleting an artifact, or enqueueing work. This keeps internal and modular callers on the same non-enumerating contract even when a malformed or incomplete adapter call bypasses HTTP path binding.
+
 The historical unscoped delete method and two-argument retry method remain compatibility contracts for non-administrative adapters only. Their tenant-aware service, repository, and state-store defaults fail closed without reading a job or invoking either legacy mutation. A production adapter must explicitly override the tenant-aware methods and perform tenant selection and mutation within one persistence boundary before an administrative request can succeed. Clearfolio's in-memory durable implementation supplies those scoped atomic overrides.
 
 The content-hash secondary index is also tenant-bound. Replacing a stored UUID invalidates the replaced job's tenant-and-hash index before the replacement is indexed. Lookup validates that the current UUID record still matches the requested tenant-and-hash key, and find-or-store rejects a colliding UUID rather than changing the current record's ownership. These defenses prevent a stale secondary index or stale preliminary observation from disclosing, deleting, retrying, or deduplicating against another tenant's job.
@@ -63,6 +65,7 @@ Automated tests must exercise the real signed-claim verifier and prove:
 - missing `admin:read` or `admin:write` permissions fail before service access;
 - list results contain only tenant-owned jobs for all dead-letter filter states;
 - missing and cross-tenant delete/retry targets produce indistinguishable not-found responses;
+- a missing job identifier fails closed across tenant-scoped lookup, delete, and retry while leaving existing stored state unchanged;
 - delete and retry cross tenant-aware persistence boundaries without a separate lookup or unscoped mutation call;
 - failed tenant-scoped deletion never touches the artifact store, while successful deletion cleans the owned artifact after repository authorization;
 - compatibility-only service, repository, and state-store adapters cannot reach global lookup, delete, or retry methods through tenant-aware defaults;

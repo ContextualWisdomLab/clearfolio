@@ -2,6 +2,7 @@ package com.clearfolio.viewer.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -26,16 +27,21 @@ import com.clearfolio.viewer.config.ConversionProperties;
 
 class DefaultDocumentValidationServiceAuditTest {
 
-    private static final String AUDIT_PSEUDONYM_SECRET =
+    private static final String POLICY_OVERRIDE_SECRET =
             "0123456789abcdef0123456789abcdef";
+    private static final String AUDIT_PSEUDONYM_SECRET =
+            "fedcba9876543210fedcba9876543210";
 
     @Test
     void acceptedOverrideLogsOnlyPrivacySafeFingerprints() {
         String approverId = "employee-007@example.com";
-        String policySecret = "policy-signing-secret";
-        String approvalToken = generateSignature(approverId, "hwp", policySecret);
+        String approvalToken = generateSignature(
+                approverId,
+                "hwp",
+                POLICY_OVERRIDE_SECRET
+        );
         ConversionProperties properties = configuredProperties(
-                policySecret,
+                POLICY_OVERRIDE_SECRET,
                 AUDIT_PSEUDONYM_SECRET,
                 "rotation-7"
         );
@@ -65,32 +71,19 @@ class DefaultDocumentValidationServiceAuditTest {
     }
 
     @Test
-    void missingDedicatedAuditKeyUsesNonCorrelatableSentinel() {
-        String approverId = "employee-008";
-        String policySecret = "policy-signing-secret";
-        String approvalToken = generateSignature(approverId, "hwp", policySecret);
-        ConversionProperties properties = configuredProperties(policySecret, "", "v9");
-        DefaultDocumentValidationService service = new DefaultDocumentValidationService(properties);
-        CapturingAppender appender = attachAppender();
+    void enabledPolicySigningRejectsMissingDedicatedAuditKeyBeforeLogging() {
+        ConversionProperties properties = configuredProperties(
+                POLICY_OVERRIDE_SECRET,
+                "",
+                "v9"
+        );
 
-        try {
-            service.validateOrThrow(
-                    new MockMultipartFile(
-                            "file",
-                            "contract.hwp",
-                            "application/octet-stream",
-                            new byte[] {1}
-                    ),
-                    PolicyOverrideRequest.of("true", approvalToken, approverId)
-            );
-        } finally {
-            appender.closeAndDetach();
-        }
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> new DefaultDocumentValidationService(properties)
+        );
 
-        String auditLine = appender.singleMessage();
-        assertTrue(auditLine.contains("approverFingerprint=unavailable:v9"));
-        assertFalse(auditLine.contains(approverId));
-        assertFalse(auditLine.contains(approvalToken));
+        assertTrue(exception.getMessage().contains("audit pseudonym key is required"));
     }
 
     @Test

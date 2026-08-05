@@ -71,7 +71,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
                             candidate.getJobId(),
                             candidate
                     );
-                    if (identifierCollision != null && identifierCollision != candidate) {
+                    if (identifierCollision != null) {
                         throw new IllegalStateException("Conversion job identifier collision.");
                     }
                     created.set(true);

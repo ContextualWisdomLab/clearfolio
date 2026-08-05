@@ -10,7 +10,7 @@ from typing import Final
 
 REPORT_PATTERN: Final[str] = "TEST-*.xml"
 MAX_REPORT_BYTES: Final[int] = 16 * 1024 * 1024
-_FORBIDDEN_XML_DECLARATIONS: Final[tuple[bytes, ...]] = (b"<!DOCTYPE", b"<!ENTITY")
+_FORBIDDEN_XML_DECLARATIONS: Final[tuple[str, ...]] = ("<!DOCTYPE", "<!ENTITY")
 
 
 class ReportGateError(RuntimeError):
@@ -39,7 +39,7 @@ def _non_negative_count(report: Path, suite: ET.Element, attribute: str) -> int:
 
 
 def _read_bounded_report(report: Path) -> bytes:
-    """Read one report atomically within the byte and XML-declaration limits."""
+    """Read one UTF-8 report within the byte and XML-declaration limits."""
     try:
         with report.open("rb") as report_stream:
             report_bytes = report_stream.read(MAX_REPORT_BYTES + 1)
@@ -47,17 +47,25 @@ def _read_bounded_report(report: Path) -> bytes:
         raise ReportGateError(f"{report} cannot be read: {error}") from error
     if len(report_bytes) > MAX_REPORT_BYTES:
         raise ReportGateError(f"{report} exceeds the {MAX_REPORT_BYTES}-byte limit")
-    uppercase_bytes = report_bytes.upper()
-    if any(marker in uppercase_bytes for marker in _FORBIDDEN_XML_DECLARATIONS):
+
+    try:
+        report_text = report_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError as error:
+        raise ReportGateError(f"{report} must use UTF-8 XML encoding: {error}") from error
+    if "\x00" in report_text:
+        raise ReportGateError(f"{report} contains a forbidden NUL byte")
+
+    uppercase_text = report_text.upper()
+    if any(marker in uppercase_text for marker in _FORBIDDEN_XML_DECLARATIONS):
         raise ReportGateError(f"{report} contains a forbidden DTD or entity declaration")
     return report_bytes
 
 
 def _suite_elements(report: Path) -> list[ET.Element]:
-    """Parse one bounded entity-free report and return concrete test suites."""
+    """Parse one bounded UTF-8 entity-free report and return concrete test suites."""
     report_bytes = _read_bounded_report(report)
     try:
-        # The bounded input was pre-scanned for DTD and entity declarations.
+        # Input is bounded, strict UTF-8, NUL-free, and pre-scanned for DTD/entity declarations.
         root = ET.fromstring(report_bytes)  # nosemgrep: python.lang.security.use-defused-xml-parse.use-defused-xml-parse
     except ET.ParseError as error:
         raise ReportGateError(f"{report} is not valid XML: {error}") from error

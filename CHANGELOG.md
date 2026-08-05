@@ -5,6 +5,10 @@
 ### Security
 - 정책 재정의 승인자의 원문 식별자를 감사 로그에서 제거하고, 전용 회전형 키와 도메인 분리를 사용하는 HMAC 기반 `approverFingerprint`로 대체했습니다. 전용 키가 없으면 원문이나 비키 해시로 폴백하지 않고 비상관 `unavailable` 표식을 기록합니다.
 - 감사 가명화 키의 소유권, 회전, 보존, 사고 대응 및 GDPR상 가명정보의 개인정보 지위를 문서화하고, 원문 승인자 식별자와 승인 토큰이 로그에 남지 않는 회귀 테스트를 추가했습니다.
+- 관리자 API에 서명된 tenant claim 검증, `admin:read`/`admin:write` 최소 권한, tenant 소유권 검사를 적용했습니다. 누락 및 cross-tenant 객체는 동일한 not-found 응답으로 은폐합니다.
+- 관리자 delete/retry가 검증된 `TenantContext`를 tenant-aware service mutation boundary에 전달하도록 변경해, controller 우회 호출에서도 소유권 검사가 적용되고 read-then-mutate 간격이 생기지 않도록 했습니다.
+- 관리자 허용·거부·미존재·재시도 불가·실패 결정을 actor/tenant별 도메인 분리 HMAC 지문으로 기록하고, raw subject·tenant·claim signature·문서 메타데이터가 감사 로그와 retry provenance에 남지 않도록 했습니다.
+- buyer-demo profile의 tenant-claims HMAC secret 환경변수 직접 바인딩을 제거하고 공통 Spring config-tree secret mount에서 읽도록 변경했습니다.
 
 # Changelog
 

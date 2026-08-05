@@ -75,6 +75,7 @@ jobs:
             fi
             exit 1
           fi
+          python3 scripts/verify_maven_test_reports.py
 
   merge-compatibility:
     name: Maven merge compatibility
@@ -93,7 +94,9 @@ jobs:
           echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
           echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
       - name: Verify merged result
-        run: mvn -B --no-transfer-progress verify
+        run: |
+          mvn -B --no-transfer-progress verify
+          python3 scripts/verify_maven_test_reports.py
 
   script-checks:
     name: Buyer-readiness script tests

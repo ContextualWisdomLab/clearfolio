@@ -37,7 +37,6 @@ jobs:
           org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom
           -Dcyclonedx.skipAttach=true
           -Dcyclonedx.outputFormat=json
-          -Dcyclonedx.outputName=clearfolio-viewer-sbom
 
       - name: Render and verify generated buyer evidence
         env:
@@ -46,7 +45,8 @@ jobs:
           set -euo pipefail
           generated_dir="$RUNNER_TEMP/generated-buyer-evidence"
           mkdir -p "$generated_dir"
-          cp target/clearfolio-viewer-sbom.json "$generated_dir/sbom-cyclonedx.json"
+          test -s target/bom.json
+          cp target/bom.json "$generated_dir/sbom-cyclonedx.json"
           python3 scripts/render_third_party_attribution.py \
             --sbom "$generated_dir/sbom-cyclonedx.json" \
             --output "$generated_dir/third-party-attribution.md"
@@ -74,6 +74,7 @@ jobs:
           manifest = {
               "source_head_sha": os.environ["EXPECTED_SHA"],
               "generator": "org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom",
+              "generated_file": "target/bom.json",
               "netty_component_count": len(netty),
               "netty_version": "4.1.136.Final",
               "sbom_sha256": hashlib.sha256(sbom_path.read_bytes()).hexdigest(),

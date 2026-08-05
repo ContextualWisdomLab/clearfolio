@@ -1,0 +1,119 @@
+name: Finalize Netty generated evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/finalize-netty-generated-evidence.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finalize-netty-generated-evidence-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  finalize-evidence:
+    if: >-
+      github.repository == 'ContextualWisdomLab/clearfolio'
+      && github.actor == 'seonghobae'
+      && github.event.pull_request.number == 165
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.head.ref == 'fix/pii-logging-16240128950440010639'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout exact same-repository pull request head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - name: Verify immutable input identity
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Use preinstalled Temurin JDK 21
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
+      - name: Regenerate and validate current buyer evidence
+        run: |
+          set -euo pipefail
+          mvn -B --no-transfer-progress -DskipTests \
+            org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom \
+            -Dcyclonedx.skipAttach=true \
+            -Dcyclonedx.outputFormat=json
+          test -s target/bom.json
+          cp target/bom.json \
+            docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json
+          python3 scripts/render_third_party_attribution.py \
+            --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json \
+            --output docs/legal/2026-07-03-third-party-attribution.md
+          python3 scripts/test_render_third_party_attribution.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          sbom_path = Path(
+              'docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json'
+          )
+          attribution_path = Path(
+              'docs/legal/2026-07-03-third-party-attribution.md'
+          )
+          sbom_text = sbom_path.read_text(encoding='utf-8')
+          sbom = json.loads(sbom_text)
+          netty = [
+              item for item in sbom.get('components', [])
+              if item.get('group') == 'io.netty'
+          ]
+          if len(netty) != 17:
+              raise SystemExit(
+                  f'expected 17 resolved Netty components, observed {len(netty)}'
+              )
+          versions = {str(item.get('version', '')) for item in netty}
+          if versions != {'4.1.136.Final'}:
+              raise SystemExit(
+                  f'generated Netty versions were not coherent: {sorted(versions)}'
+              )
+          for item in netty:
+              expected = f"@{item['version']}"
+              if expected not in str(item.get('bom-ref', '')):
+                  raise SystemExit(f"Netty bom-ref mismatch: {item.get('bom-ref')}")
+              if expected not in str(item.get('purl', '')):
+                  raise SystemExit(f"Netty purl mismatch: {item.get('purl')}")
+          attribution = attribution_path.read_text(encoding='utf-8')
+          if '4.1.135.Final' in sbom_text or '4.1.135.Final' in attribution:
+              raise SystemExit('stale Netty evidence remains')
+          if attribution.count('| io.netty:') != len(netty):
+              raise SystemExit('attribution Netty component count drifted')
+          PY
+          python -m pytest -q scripts
+          mvn -B --no-transfer-progress verify
+      - name: Commit evidence only when live branch is unchanged
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PUSH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "+refs/heads/${HEAD_BRANCH}:refs/remotes/origin/${HEAD_BRANCH}"
+          test "$(git rev-parse refs/remotes/origin/${HEAD_BRANCH})" = "$EXPECTED_SHA"
+          git add \
+            docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json \
+            docs/legal/2026-07-03-third-party-attribution.md
+          git diff --cached --check
+          git diff --cached --quiet && {
+            echo '::error::Generated evidence did not change.'
+            exit 1
+          }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs(evidence): regenerate Netty 4.1.136 buyer evidence'
+          auth_header="$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 | tr -d '\n')"
+          echo "::add-mask::$auth_header"
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $auth_header" \
+            push origin "HEAD:${HEAD_BRANCH}"

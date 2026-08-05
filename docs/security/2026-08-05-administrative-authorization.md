@@ -31,7 +31,7 @@ Every endpoint applies the same fail-closed sequence:
 
 List responses filter the complete repository result to the verified tenant before applying the optional dead-letter status filter. Delete and retry do not perform controller-level read-then-write authorization. Their service contracts receive the verified tenant context and enforce ownership at the mutation boundary, so non-HTTP callers cannot reach an unscoped administrative mutation by bypassing the controller.
 
-The legacy two-argument retry method remains only as a compatibility contract for non-administrative adapters. Administrative HTTP flows call the tenant-aware three-argument method. The durable implementation performs the tenant-scoped selection before invoking the shared state transition and therefore does not rely on a controller-side ownership check.
+The historical unscoped delete method and two-argument retry method remain compatibility contracts for non-administrative adapters only. Their tenant-aware interface defaults fail closed by returning `false` or `NOT_FOUND` without reading a job or invoking either legacy mutation. A production adapter must explicitly override the tenant-aware methods and perform tenant selection and mutation within one persistence boundary before an administrative request can succeed. Clearfolio's durable implementation supplies those scoped overrides.
 
 ## Audit evidence
 
@@ -56,6 +56,7 @@ Automated tests must exercise the real signed-claim verifier and prove:
 - list results contain only tenant-owned jobs for all dead-letter filter states;
 - missing and cross-tenant delete/retry targets produce indistinguishable not-found responses;
 - delete and retry cross a tenant-aware service boundary without a separate controller lookup or unscoped administrative mutation call;
+- compatibility-only service adapters cannot reach `getJob`, legacy delete, or legacy retry through the tenant-aware interface defaults;
 - the durable retry service rejects null, missing, and cross-tenant contexts without state transition or worker enqueue;
 - accepted retry provenance is a domain-separated keyed fingerprint, never a raw or unkeyed subject value;
 - not-found, not-eligible, repository failure, deletion failure, and retry failure paths return stable non-leaking responses;

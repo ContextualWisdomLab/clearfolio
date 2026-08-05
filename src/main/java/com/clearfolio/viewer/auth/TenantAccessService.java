@@ -26,6 +26,7 @@ import com.clearfolio.viewer.model.ConversionJob;
 public class TenantAccessService {
 
     private static final String HMAC_SHA_256 = "HmacSHA256";
+    private static final int MIN_SIGNED_CLAIMS_SECRET_BYTES = 32;
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
 
     private final String claimsHmacSecret;
@@ -61,6 +62,10 @@ public class TenantAccessService {
     /**
      * Resolves tenant claims and verifies the required permission.
      *
+     * <p>This method preserves the repository's explicit unsigned demo mode for
+     * non-privileged local flows. Privileged endpoints must use
+     * {@link #requireSigned(HttpHeaders, String)} instead.</p>
+     *
      * @param headers request headers
      * @param permission required permission
      * @return verified tenant context
@@ -82,6 +87,27 @@ public class TenantAccessService {
     }
 
     /**
+     * Resolves claims for a privileged endpoint and requires a strong verifier.
+     *
+     * <p>The endpoint is unavailable rather than falling back to unsigned
+     * client-supplied headers when the signed-claim HMAC secret is absent or
+     * contains fewer than 32 UTF-8 bytes.</p>
+     *
+     * @param headers request headers
+     * @param permission required permission
+     * @return verified tenant context
+     */
+    public TenantContext requireSigned(HttpHeaders headers, String permission) {
+        if (!hasStrongSignedClaimsVerifier()) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "signed auth verifier unavailable"
+            );
+        }
+        return require(headers, permission);
+    }
+
+    /**
      * Hides resources that do not belong to the request tenant.
      *
      * @param context verified tenant context
@@ -91,6 +117,12 @@ public class TenantAccessService {
         if (context == null || job == null || !job.belongsToTenant(context.tenantId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
         }
+    }
+
+    private boolean hasStrongSignedClaimsVerifier() {
+        return claimsHmacSecret != null
+                && claimsHmacSecret.getBytes(StandardCharsets.UTF_8).length
+                >= MIN_SIGNED_CLAIMS_SECRET_BYTES;
     }
 
     private void requireSignedClaimsWhenConfigured(HttpHeaders headers, TenantContext context) {

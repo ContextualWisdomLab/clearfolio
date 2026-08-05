@@ -71,14 +71,14 @@ class PolicyOverrideRequestTest {
     @Test
     void toStringNormalizesControlCharactersInPrintableOverrideFlag() {
         PolicyOverrideRequest request = PolicyOverrideRequest.of(
-                "tr\nue\t",
+                "tr\r\nue\t",
                 "secret-token",
                 "sensitive-user\r\n1\t"
         );
 
         String rendered = request.toString();
 
-        assertTrue(rendered.contains("policyOverride='tr_ue_'"));
+        assertTrue(rendered.contains("policyOverride='tr__ue_'"));
         assertTrue(rendered.contains("approverId='[redacted]'"));
         assertFalse(rendered.contains("sensitive-user"));
     }

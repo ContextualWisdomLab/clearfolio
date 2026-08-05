@@ -251,7 +251,7 @@ public class ConversionController {
         }
 
         String sanitized = sanitizeFilenameBase(baseName);
-        if (sanitized.isBlank() || sanitized.chars().allMatch(character -> character == '.' || character == '_')) {
+        if (sanitized.chars().allMatch(character -> character == '.' || character == '_')) {
             sanitized = "document";
         }
         return sanitized + ".pdf";

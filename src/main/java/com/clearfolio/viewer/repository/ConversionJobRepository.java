@@ -66,7 +66,10 @@ public interface ConversionJobRepository {
      * @return matching conversion job when found and owned by the tenant
      */
     default Optional<ConversionJob> findByTenantAndId(String tenantId, UUID jobId) {
-        return findById(jobId).filter(job -> job.belongsToTenant(tenantId));
+        if (tenantId == null || tenantId.isBlank() || jobId == null) {
+            return Optional.empty();
+        }
+        return findById(jobId).filter(job -> job.belongsToTenant(tenantId.strip()));
     }
 
     /**

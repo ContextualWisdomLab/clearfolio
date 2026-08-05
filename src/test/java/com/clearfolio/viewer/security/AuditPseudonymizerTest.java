@@ -99,7 +99,19 @@ class AuditPseudonymizerTest {
         assertTrue(new AuditPseudonymizer(AUDIT_KEY_ONE, null).fingerprint("id").startsWith("v1:"));
         assertThrows(
                 IllegalArgumentException.class,
+                () -> new AuditPseudonymizer(AUDIT_KEY_ONE, "")
+        );
+        assertThrows(
+                IllegalArgumentException.class,
                 () -> new AuditPseudonymizer(AUDIT_KEY_ONE, " ")
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new AuditPseudonymizer(AUDIT_KEY_ONE, " v1")
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new AuditPseudonymizer(AUDIT_KEY_ONE, "v1 ")
         );
         assertThrows(
                 IllegalArgumentException.class,

@@ -22,12 +22,6 @@ public class ViewerUiController {
     private static final String INVALID_DOC_ID_SENTINEL = "invalid";
 
     /**
-     * Creates the stateless viewer UI controller.
-     */
-    public ViewerUiController() {
-    }
-
-    /**
      * Returns the buyer-demo document intake shell.
      *
      * @return HTML payload for document intake and session history

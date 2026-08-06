@@ -72,7 +72,6 @@ public class ArtifactLinkService {
      * Creates the link service with an optional configured HMAC secret.
      *
      * @param artifactStore artifact byte store
-     * @param artifactLinkLedger issued-link, revocation, and read-audit ledger
      * @param configuredSecret optional deployment secret
      */
     @Autowired
@@ -333,16 +332,42 @@ public class ArtifactLinkService {
     }
 
     private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+        // 성능 최적화: String.split("\\.") 및 String.join을 제거하고
+        // indexOf/lastIndexOf 기반의 수동 파싱을 적용하여 최적화합니다.
+        int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        String payload = token.substring(0, lastDotIndex);
+        String signature = token.substring(lastDotIndex + 1);
+
+        String[] parts = new String[TOKEN_FIELD_COUNT];
+        int start = 0;
+        for (int i = 0; i < TOKEN_FIELD_COUNT; i++) {
+            if (i == TOKEN_FIELD_COUNT - 1) {
+                int nextDot = token.indexOf('.', start);
+                if (nextDot != lastDotIndex) {
+                    throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                }
+                parts[i] = token.substring(start, lastDotIndex);
+            } else {
+                int nextDot = token.indexOf('.', start);
+                if (nextDot == -1 || nextDot >= lastDotIndex) {
+                    throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                }
+                parts[i] = token.substring(start, nextDot);
+                start = nextDot + 1;
+            }
+            if (parts[i].isEmpty()) {
+                throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            }
+        }
+
         String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+                signature.getBytes(StandardCharsets.US_ASCII))) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
@@ -422,7 +447,11 @@ public class ArtifactLinkService {
         if (value == null) {
             return null;
         }
-        String cleaned = value.replace("\u0000", "").strip();
+        String cleaned = value;
+        if (cleaned.indexOf('\u0000') != -1) {
+            cleaned = cleaned.replace("\u0000", "");
+        }
+        cleaned = cleaned.strip();
         return cleaned.isEmpty() ? null : cleaned;
     }
 
@@ -442,6 +471,9 @@ public class ArtifactLinkService {
     }
 
     private static String decode(String value) {
+        if (!value.matches("^[a-zA-Z0-9_-]+$")) {
+            throw new IllegalArgumentException("invalid Base64URL string");
+        }
         return new String(URL_DECODER.decode(value), StandardCharsets.UTF_8);
     }
 

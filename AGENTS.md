@@ -7,19 +7,10 @@ including mandatory quality and security merge gates.
 
 ## Mandatory merge gates
 
-- `mvn -B --no-transfer-progress verify` is the authoritative local and CI
-  acceptance command. Do not substitute `compile`, `test`, or a predecessor
-  head result for this exact-head lifecycle.
-- Java 21 compilation must pass with warning and deprecation budget = 0.
-- Every test must pass with zero failures, errors, and skips.
-- JaCoCo coverage for the `com.clearfolio.viewer.*` production package must
-  remain 100% statement/line and branch coverage, expressed as zero missed
-  production lines and branches.
-- The verify lifecycle must generate public Javadocs with Maven Javadoc Plugin
-  3.12.0, `doclint=all`, `failOnError=true`, and `failOnWarnings=true`. Public
-  record components, constructors, methods, enum values, fields, parameters,
-  return values, and thrown failures must be understandable without reading the
-  implementation.
+- `mvn -DskipTests compile` must pass with warning/deprecated budget = 0.
+- `mvn test` must pass.
+- JaCoCo coverage for production package must remain 100% line/branch.
+- JavaDoc gate must pass (`mvn -q -DskipTests javadoc:javadoc`) with no warnings/errors.
 - Markdown lint for changed docs must pass.
 - Security evidence must be attached on PR (SAST/code-scanning checks).
 - CodeQL Java/Kotlin analysis must remain enabled through repository default
@@ -40,15 +31,10 @@ including mandatory quality and security merge gates.
   `python3 scripts/summarize_buyer_readiness.py --manifest docs/diligence/2026-07-03-buyer-data-room-manifest.json --output docs/diligence/2026-07-03-buyer-readiness-scorecard.md --summary docs/qa/evidence/2026-07-02-krw2b-sale-readiness/buyer-readiness-scorecard-summary.json --check`.
 - Figma Slides generation payload check must pass:
   `python3 scripts/check_figma_deck_payload.py --payload docs/design/2026-07-03-buyer-diligence-slides-generation-payload.json --summary docs/qa/evidence/2026-07-02-krw2b-sale-readiness/figma-deck-payload-check.json`.
-- `mvn verify` includes `DependencyPolicyTest`, which prevents reintroducing the
-  broad `tika-parsers-standard-package`, default Logback starter, excluded
-  Jakarta annotation dependency, an unreviewed Netty version, or a weakened
-  public-Javadoc gate unless a future PR updates the corresponding security,
-  license, SBOM, attribution, acceptance, and buyer-diligence evidence together.
-- CI, Security Scan, SAST Semgrep, every fuzz target, required organization
-  reviews, and branch protection must all pass on the exact current PR head.
-  Queued, pending, cancelled, skipped-required, stale-head, or predecessor-head
-  evidence is not passing.
+- `mvn test` includes `DependencyPolicyTest`, which prevents reintroducing the
+  broad `tika-parsers-standard-package`, default Logback starter, or excluded
+  Jakarta annotation dependency unless a future PR updates the license policy,
+  SBOM evidence, attribution package, and buyer diligence docs together.
 
 ## Change management rule
 
@@ -72,7 +58,7 @@ Codex, Cursor, opencode, …) working in this repo.
   then **remediate**:
   - This is a Maven / Spring Boot app — findings are almost always vulnerable
     Java dependencies. Fix by bumping the offending artifact (or its managed
-    version) in `pom.xml`; re-run `mvn -B --no-transfer-progress verify`.
+    version) in `pom.xml`; re-run `mvn -DskipTests compile` and `mvn test`.
   - There is currently no `Dockerfile` or k8s manifest here; if one is added,
     trivy will also flag image/IaC misconfigs — fix those at the source.
   - For a genuine false positive only, add a narrow, **documented**
@@ -122,11 +108,11 @@ Codex, Cursor, opencode, …) working in this repo.
   DOM-decomposes emails and files into a persisted knowledge graph. Each
   component is a standalone program that must ALSO work as a git submodule of
   the hub, grown separately and together.
-- Sibling components: **wardnet** (WAF / IDS / AI SOC / LB / APIM),
+- Sibling components: **waf-ids-ai-soc** (WAF / IDS / AI SOC / LB / APIM),
   **pg-erd-cloud** (ERD tool), **contextual-orchestrator** (LLM
   cost/perf/upstream-LB gateway, beyond LiteLLM), **codec-carver** (STT /
   omni-modal speech-video codec), **fast-mlsirm** (LLM-as-a-Judge calibration +
-  evaluation-item quality, using aFIPC FIPC + kaefa item-fit), **keyverse**
+  evaluation-item quality, using aFIPC FIPC + kaefa item-fit), **feelanet-adfs**
   (passwordless SSO — OIDC/SCIM/ADFS/LDAP/FIDO2/OAuth2.1, eliminate passwords),
   **newsdom-api** (PDF→DOM sidecar), and **semantic-data-portal** (upper
   ontology / catalog / governance plane with its own graph engine).

@@ -35,13 +35,6 @@ public class ApiExceptionHandler {
     private long configuredMaxUploadSize = 5242880L;
 
     /**
-     * Creates the exception handler registered by Spring WebFlux controller advice.
-     */
-    public ApiExceptionHandler() {
-        // Spring injects the configured upload limit after constructing this stateless handler.
-    }
-
-    /**
      * Handles blocked or unsupported document format requests.
      *
      * @param ex thrown format exception
@@ -163,7 +156,7 @@ public class ApiExceptionHandler {
                         resolveTraceId(exchange),
                         Map.of(
                                 "parameter", ex.getName(),
-                                "value", safeTypeMismatchValue(ex.getValue())
+                                "value", String.valueOf(ex.getValue())
                         )
                 ));
     }
@@ -242,10 +235,6 @@ public class ApiExceptionHandler {
             return Integer.toString(code);
         }
         return resolved.name();
-    }
-
-    private String safeTypeMismatchValue(Object rejectedValue) {
-        return rejectedValue == null ? "null" : "[redacted]";
     }
 
     private String sanitizeForLog(final String value) {

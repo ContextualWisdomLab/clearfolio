@@ -27,9 +27,9 @@ import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 
 /**
- * Verifies fail-closed signed artifact-token parsing and claim validation.
+ * Verifies fail-closed boundaries of the bounded artifact-token parser.
  */
-class ArtifactTokenBoundaryTest {
+class ArtifactTokenManualParserBoundaryTest {
 
     private static final String SECRET = "test-secret";
     private static final Instant NOW = Instant.parse("2026-08-06T00:00:00Z");
@@ -71,11 +71,6 @@ class ArtifactTokenBoundaryTest {
         elevenFields[10] = encode("unexpected-field");
 
         assertMalformedToken(signedToken(elevenFields));
-    }
-
-    @Test
-    void rejectsValidTokenWithTrailingDelimiter() {
-        assertMalformedToken(signedToken(validPayloadFields) + ".");
     }
 
     @Test

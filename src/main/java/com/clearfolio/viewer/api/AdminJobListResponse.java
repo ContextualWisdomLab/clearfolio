@@ -1,14 +1,10 @@
 package com.clearfolio.viewer.api;
 
 import java.util.List;
-
 import com.clearfolio.viewer.model.ConversionJob;
 
 /**
- * Administrative API payload containing conversion jobs that already passed
- * the caller's authorization and tenant-scope checks.
- *
- * @param jobs ordered job summaries safe to return to the authorized caller
+ * Payload representing a list of conversion jobs for admin view.
  */
 public record AdminJobListResponse(
         List<ConversionJobStatusResponse> jobs

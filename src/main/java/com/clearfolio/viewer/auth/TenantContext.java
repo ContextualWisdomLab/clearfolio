@@ -9,18 +9,7 @@ import java.util.Set;
 import org.springframework.http.HttpHeaders;
 
 /**
- * Header-derived tenant and permission claims for one authenticated request.
- *
- * <p>The tenant identifier defines the data-isolation boundary, the subject
- * identifies the authenticated user or service, and the immutable permission
- * set limits which operations that subject may perform. Callers should obtain
- * contexts through the signed-claim authorization boundary rather than trusting
- * raw client headers directly.</p>
- *
- * @param tenantId normalized tenant identifier that scopes all repository and
- *        artifact access
- * @param subjectId normalized authenticated user or service identifier
- * @param permissions immutable normalized permission claims for the subject
+ * Header-derived tenant and permission claims for the current request.
  */
 public record TenantContext(String tenantId, String subjectId, Set<String> permissions) {
 

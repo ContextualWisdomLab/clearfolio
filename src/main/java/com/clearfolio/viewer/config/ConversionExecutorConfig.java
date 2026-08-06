@@ -13,13 +13,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 public class ConversionExecutorConfig {
 
     /**
-     * Creates the stateless Spring configuration component for conversion execution.
-     */
-    public ConversionExecutorConfig() {
-        // Spring creates this component before requesting the bounded executor bean.
-    }
-
-    /**
      * Creates the conversion executor backed by a bounded thread pool.
      *
      * @param conversionProperties conversion runtime properties

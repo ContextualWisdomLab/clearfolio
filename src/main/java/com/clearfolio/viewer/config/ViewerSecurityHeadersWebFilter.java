@@ -27,23 +27,11 @@ public class ViewerSecurityHeadersWebFilter implements WebFilter {
 
     private final String frameAncestors;
 
-    /**
-     * Creates a viewer security filter with a normalized CSP frame-ancestor policy.
-     *
-     * @param frameAncestors configured CSP {@code frame-ancestors} source list
-     */
     public ViewerSecurityHeadersWebFilter(
             @Value("${viewer.security.frame-ancestors:self}") String frameAncestors) {
         this.frameAncestors = normalizeFrameAncestors(frameAncestors);
     }
 
-    /**
-     * Applies viewer-only browser security headers before the response is committed.
-     *
-     * @param exchange current reactive HTTP exchange
-     * @param chain remaining WebFlux filter chain
-     * @return completion signal for the filtered request
-     */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String path = exchange.getRequest().getPath().value();

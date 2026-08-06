@@ -9,7 +9,6 @@ public class ArtifactTokenException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
-    /** HTTP response status associated with this verified token failure category. */
     private final HttpStatus status;
 
     /**

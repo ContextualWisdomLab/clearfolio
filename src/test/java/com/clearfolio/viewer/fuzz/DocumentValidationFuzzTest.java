@@ -21,17 +21,11 @@ import com.clearfolio.viewer.service.PolicyOverrideRequest;
  */
 final class DocumentValidationFuzzTest {
 
-    private static final String POLICY_OVERRIDE_KEY =
-            "0123456789abcdef0123456789abcdef";
-    private static final String AUDIT_PSEUDONYM_KEY =
-            "fedcba9876543210fedcba9876543210";
-
     private final DefaultDocumentValidationService validator = createValidator();
 
     private static DefaultDocumentValidationService createValidator() {
         ConversionProperties properties = new ConversionProperties();
-        properties.setPolicyOverrideSecret(POLICY_OVERRIDE_KEY);
-        properties.setAuditPseudonymSecret(AUDIT_PSEUDONYM_KEY);
+        properties.setPolicyOverrideSecret("fuzz-test-secret");
         return new DefaultDocumentValidationService(properties);
     }
 

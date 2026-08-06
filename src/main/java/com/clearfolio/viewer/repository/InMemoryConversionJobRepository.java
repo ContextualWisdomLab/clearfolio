@@ -33,13 +33,6 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     private final ConcurrentLinkedQueue<ConversionJobLifecycleEvent> lifecycleEvents = new ConcurrentLinkedQueue<>();
 
     /**
-     * Creates an empty thread-safe process-local job repository and lifecycle ledger.
-     */
-    public InMemoryConversionJobRepository() {
-        // Concurrent collections are initialized eagerly for immediate multi-worker use.
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override

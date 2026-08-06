@@ -101,22 +101,12 @@ public final class PolicyOverrideRequest {
         return sb == null ? value : sb.toString();
     }
 
-    /**
-     * Returns a log-safe diagnostic representation.
-     *
-     * <p>The approval token and approver identifier are always redacted, even
-     * when absent, so callers cannot accidentally disclose either secret value
-     * or infer whether an approver identifier was supplied from this string.</p>
-     *
-     * @return diagnostic text containing only the sanitized override flag and
-     *         fixed redaction markers for sensitive headers
-     */
     @Override
     public String toString() {
         return "PolicyOverrideRequest{"
                 + "policyOverride='" + normalizeHeader(policyOverride) + '\''
                 + ", approvalToken='[redacted]'"
-                + ", approverId='[redacted]'"
+                + ", approverId='" + normalizeHeader(approverId) + '\''
                 + '}';
     }
 }

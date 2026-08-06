@@ -1,7 +1,7 @@
 # PRD: Clearfolio Viewer Unified Document Preview (Internal)
 
 Date: 2026-02-23
-Last updated: 2026-08-05
+Last updated: 2026-02-23
 Owner: Product Manager
 Sources: `docs/architecture.md`, `docs/trd-integrated-document-viewer-platform.md`, `docs/prd-integrated-document-viewer-platform.md`, `docs/engineering/acceptance-criteria.md`, `docs/workflow/one-day-delivery-plan.md`, `docs/diagrams/*`, `AGENTS.md`
 
@@ -196,7 +196,7 @@ Minimum claims/scopes (MVP intent):
   - preview session creation
   - viewer access (success/fail)
   - blocked-format attempts
-  - exception lane approvals (including `approverFingerprint`, token fingerprint, and rationale id if available); the raw approver identifier is never logged
+  - exception lane approvals (including approver id, token fingerprint, and rationale id if available)
   - operator-triggered retries
 
 ### 10.4 Browser security headers / CSP
@@ -306,4 +306,4 @@ Minimum one-day deliverables:
 - Risk: Office formats (`docx`/`pptx`/`xlsx`) preview quality depends on converter availability; failures could impact perceived “unified” promise if not clearly messaged.
 - Risk: Gateway-induced header/proxy limitations can constrain token propagation; mitigation is short-lived viewer session tokens and minimized header set.
 - Risk: Strict no-warnings/no-deprecations gates can slow dependency upgrades; mitigate with explicit upgrade windows and pre-merge checks.
-- Risk: Exception lane governance (who can approve, how approvals are issued) can expand scope; mitigate by treating policy token issuance as external and logging only the token fingerprint and `approverFingerprint`; the raw approver identifier remains validation input only and is never logged.
+- Risk: Exception lane governance (who can approve, how approvals are issued) can expand scope; mitigate by treating policy token issuance as external and logging only fingerprint + approver id.

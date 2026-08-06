@@ -29,7 +29,7 @@ sequenceDiagram
     EH-->>C: 400 UNSUPPORTED_FORMAT
   else extension blocked and override=true
     alt token/approver valid
-      Val-->>Val: audit-safe log(extension, approverFingerprint, tokenFingerprint)
+      Val-->>Val: audit-safe log(extension, approverId, tokenFingerprint)
       Val-->>Svc: validation ok
       Svc->>Repo: findOrStoreByContentHash(job)
       Svc->>W: enqueue(jobId) when created
@@ -59,8 +59,6 @@ sequenceDiagram
     EH-->>C: 409/404 error payload
   end
 ```
-
-`approverFingerprint` is the versioned, domain-separated keyed audit pseudonym; the raw approver identifier is never written to the audit-safe log.
 
 ## Deterministic adapter baseline
 

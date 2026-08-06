@@ -3,12 +3,7 @@ package com.clearfolio.viewer.api;
 import java.util.UUID;
 
 /**
- * API payload returned after Clearfolio durably accepts a conversion request
- * for asynchronous processing.
- *
- * @param jobId stable identifier used for status, viewer, and artifact requests
- * @param status initial lifecycle state exposed to the client
- * @param statusUrl same-origin URL from which the client can poll job state
+ * API payload returned when a conversion request is accepted.
  */
 public record SubmitConversionResponse(UUID jobId, String status, String statusUrl) {
 

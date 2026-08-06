@@ -1,42 +1,51 @@
-# Durable artifact-deletion receipt boundary
+# Durable artifact-deletion lifecycle
 
-- **Status:** Accepted foundation; HTTP mutation and cleanup-worker integration remain future slices.
+- **Status:** Integrated reference implementation
 - **Decision date:** 2026-08-06
 - **Owner issue:** #263
 - **Format version:** `RECEIPT_V1`
 
 ## Decision
 
-Clearfolio records each accepted artifact-deletion lifecycle as immutable,
-versioned receipt snapshots. The reference adapter is an append-only UTF-8 ledger
-that forces each snapshot to storage before returning. A standalone caller may
-use the in-memory constructor, while the Spring application defaults to
-`data/artifact-deletion-receipts.log` so pending evidence can be replayed after a
-process restart.
+Clearfolio records every accepted artifact-deletion lifecycle as immutable,
+versioned receipt snapshots before removing conversion-job metadata. The Spring
+runtime uses an append-only file ledger at
+`data/artifact-deletion-receipts.log`, while standalone and test consumers may
+use the in-memory adapter behind the same `ArtifactDeletionReceiptStore`
+contract.
 
-This foundation does **not** yet change the administrative DELETE response, move
-job tombstoning and receipt creation into one transaction, revoke signed links,
-or run an artifact-cleanup worker. Those are separate bounded slices under
-issue `#263`. Until they integrate, the existing delete path remains best effort
-and the CodeRabbit incomplete-cleanup finding must remain open.
+`DefaultDocumentConversionService` delegates tenant-scoped and legacy deletion
+to `ArtifactDeletionCoordinator`. The coordinator persists deletion intent,
+tombstones metadata, attempts byte cleanup, records controlled failure evidence,
+and recovers incomplete work after startup and on a bounded fixed-delay
+schedule. A storage exception is no longer reduced to a log line and lost.
 
-## Immutable receipt identity
+The reference implementation closes the process-local and restart-loss gap that
+caused CWE-459 orphaned document bytes. A future database deployment should
+still replace the file ledger and metadata repository with one transactional
+outbox transaction. The current receipt-first ordering is crash recoverable but
+does not claim cross-resource ACID atomicity.
+
+## Authorization and immutable identity
+
+Tenant deletion begins with `findByTenantAndId`. Missing and cross-tenant
+identifiers return `false` before the artifact store or receipt store is read.
+Only the already-authorized tenant and permanently reserved conversion-job UUID
+enter the deletion lifecycle.
 
 One receipt identity contains:
 
 - `request_id`: deletion idempotency identifier;
 - `tenant_id`: tenant that owned the conversion job;
 - `job_id`: permanently reserved conversion-job identifier;
-- `artifact_checksum`: lowercase SHA-256 digest for the exact artifact bytes;
-- `audit_correlation_id`: privacy-safe correlation value, never a raw subject,
-  tenant secret, token, filename, or document value;
+- `artifact_checksum`: lowercase SHA-256 digest for the observed artifact bytes;
+- `audit_correlation_id`: random privacy-safe lifecycle correlation;
 - `requested_at`: durable request time.
 
-A repeated request returns the existing object only when every immutable field
-matches. A different request, tenant, artifact digest, audit correlation, or
-request time for the same `job_id` fails closed. This complements #268's
-permanent UUID reservation and prevents cleanup work from being rebound to a
-new tenant or artifact generation.
+Raw subjects, filenames, tokens, storage paths, exception messages, and document
+content never enter the receipt or metric tags. A repeated request is accepted
+only when tenant, job, checksum, correlation, and time identify the same durable
+request. Conflicting identity fails closed.
 
 ## Monotonic lifecycle
 
@@ -51,108 +60,123 @@ stateDiagram-v2
     ARTIFACT_CLEANUP_COMPLETED --> [*]
 ```
 
-Every snapshot records `state_changed_at`. Time cannot move backward relative to
-the previous durable transition. `ARTIFACT_CLEANUP_COMPLETED` is terminal.
-Failures increment `attempt_count`, record `last_attempt_at`, and accept only a
-controlled lowercase code matching `[a-z0-9_]{1,64}`. Exception messages,
-storage paths, raw identifiers, stack traces, and document metadata are not
-valid failure codes.
+Every snapshot records `state_changed_at`; time cannot move backward and
+`ARTIFACT_CLEANUP_COMPLETED` is terminal. Failures increment `attempt_count`,
+record `last_attempt_at`, and accept only controlled lowercase codes matching
+`[a-z0-9_]{1,64}`. Current coordinator codes are:
 
-Attempt evidence is internally consistent and immutable across replay:
+- `artifact_store_read_failed`;
+- `artifact_store_delete_failed`;
+- `artifact_checksum_mismatch`.
 
-- `attempt_count == 0` requires absent `last_attempt_at`;
-- `attempt_count > 0` requires a `last_attempt_at` no later than
-  `state_changed_at`;
-- requested and metadata-tombstoned receipts cannot claim cleanup attempts;
-- only pending-to-failed increments the count and advances `last_attempt_at`;
-- retry-pending and completed snapshots preserve the prior count and latest
-  attempt instant exactly.
+The ledger rejects inconsistent attempt evidence, illegal successors,
+non-monotonic timestamps, unsafe failure details, malformed identity, and
+attempt erasure across retry or completion.
 
-A replayed snapshot that erases, rewrites, advances, or invents attempt evidence
-outside those transitions fails closed.
+## Receipt-first deletion flow
 
-## Persistence and replay
+1. Resolve tenant ownership at the repository boundary.
+2. Read the current artifact before metadata mutation.
+3. Bind a present artifact to SHA-256. Bind absence to the SHA-256 digest of the
+   empty byte sequence.
+4. Force the `DELETION_REQUESTED` receipt to durable storage.
+5. Tombstone metadata without releasing the UUID reservation.
+6. Force `METADATA_TOMBSTONED` and `ARTIFACT_CLEANUP_PENDING`.
+7. Re-read the artifact before deletion. A non-empty expected digest must match.
+8. Delete bytes and metadata sidecar through `ArtifactStore.deletePdf`.
+9. Force `ARTIFACT_CLEANUP_COMPLETED`, or force one controlled failed state for
+   later retry.
 
-The reference file adapter applies the following contract:
+The empty digest is an explicit absence sentinel. If a conversion worker writes
+late bytes after the initial absent snapshot, the permanently reserved job UUID
+proves that those bytes still belong to the tombstoned lifecycle, so the
+coordinator removes them. A non-empty mismatched digest is retained and flagged
+instead of deleting bytes that cannot be proven to match the receipt.
 
-1. serialize one complete `RECEIPT_V1` snapshot;
-2. encode variable text fields as Base64URL and separate fields with tabs;
-3. reject records longer than 16 KiB during replay;
-4. write the full record and a fixed ASCII LF (`0x0A`) terminator through one
-   append-only file channel, treating LF as the record commit delimiter;
-5. call `FileChannel.force(true)` before exposing the transition as durable;
-6. replay only delimiter-committed records with bounded, strict UTF-8 decoding;
-7. reject any non-empty unterminated final tail instead of interpreting a
-   potentially torn or pre-force append as durable evidence;
-8. validate record shape, immutable identity, state timestamps, attempt evidence,
-   and legal predecessor-to-successor transitions;
-9. fail application construction on malformed, conflicting, oversized,
-   unterminated, or non-monotonic evidence.
+## Persistence and crash recovery
 
-A missing ledger file means an empty store. A malformed existing file or
-unterminated final record is not silently skipped, truncated, or replayed.
-Startup does not mutate audit evidence as an implicit recovery action; operators
-must preserve the original bytes and use a controlled, reviewable recovery
-procedure. Completed receipts are retained for audit and idempotency but
-excluded from the pending-work view.
+Each complete `RECEIPT_V1` snapshot is encoded as bounded strict UTF-8,
+Base64URL-encodes variable text, uses tab-separated fields and one fixed ASCII
+LF commit delimiter, and is appended through `FileChannel`. The ledger calls
+`force(true)` before exposing the transition as durable.
+
+Startup replay rejects malformed Base64URL, invalid state, timestamp or count,
+immutable-identity conflicts, oversized records, illegal transitions, and every
+non-empty unterminated final tail. It never silently truncates forensic evidence.
+A missing ledger means an empty store; a malformed existing ledger prevents
+startup.
+
+`ArtifactDeletionCoordinator` replays every nonterminal state:
+
+- `DELETION_REQUESTED`: confirm or apply the tenant metadata tombstone;
+- `METADATA_TOMBSTONED`: queue cleanup;
+- `ARTIFACT_CLEANUP_PENDING`: retry the interrupted attempt;
+- `ARTIFACT_CLEANUP_FAILED`: return to pending and retry;
+- `ARTIFACT_CLEANUP_COMPLETED`: perform no work.
+
+Recovery is serialized in the reference process and bounded by
+`clearfolio.artifact-deletion-cleanup.max-receipts-per-run`, default `100`.
+Scheduled retry uses
+`clearfolio.artifact-deletion-cleanup.retry-delay-ms`, default `30000`.
+Confidential-byte cleanup has no terminal retry count; operators must alert on
+persistent failure rather than discard the receipt.
+
+## Metrics and privacy
+
+Micrometer registers:
+
+- `clearfolio.artifact.deletion.attempts{outcome="completed"}`;
+- `clearfolio.artifact.deletion.attempts{outcome="failed"}`;
+- `clearfolio.artifact.deletion.pending`.
+
+Only the fixed `outcome` label is used. These meters can be exported through a
+Micrometer-compatible OpenTelemetry registry without changing the coordinator.
+No high-cardinality or secret-bearing value is used as a tag.
 
 ## Modular and MSA contract
 
-`ArtifactDeletionReceiptStore` is the versioned service boundary. An external
-PostgreSQL, event-store, or message-broker adapter may replace the file ledger,
-but it must preserve:
+`ArtifactDeletionReceiptStore`, `ConversionJobRepository`, and `ArtifactStore`
+remain replaceable boundaries. PostgreSQL, event-store, object-store, queue, or
+remote-service adapters must preserve:
 
+- tenant authorization before lookup or mutation;
 - one permanently reserved `job_id` lifecycle;
-- exact immutable request identity;
-- tenant and artifact-digest binding;
+- exact immutable request identity and idempotency;
+- artifact digest or generation binding;
 - monotonic state and time;
-- idempotent duplicate requests;
 - controlled privacy-safe failure evidence;
-- restart-replay of pending and failed work;
+- restart-safe pending-work replay;
+- bounded consumer backpressure;
 - terminal completion retention;
 - fail-closed conflict behavior.
 
-Future database objects must use descriptive two-or-more-word `snake_case`
-names, including `deletion_request`, `deletion_receipt`,
-`artifact_cleanup_task`, `job_tombstone`, and `audit_event`.
+Database objects must contain at least two descriptive words and use
+`snake_case`, including `artifact_deletion_receipt`, `artifact_cleanup_task`,
+`conversion_job_tombstone`, and `deletion_audit_event`.
 
-## Required next slices
+## Remaining acquisition-readiness work
 
-### Atomic tombstone and outbox
+The next bounded database slice should commit job tombstone, deletion receipt,
+and cleanup outbox task in one transaction. A remote object-store adapter should
+bind deletion to an immutable object version or generation instead of relying
+only on byte digest. The product API and accessible viewer should additionally
+surface accepted, pending, failed, and completed deletion states rather than
+representing metadata tombstoning as full physical completion.
 
-Create the receipt, metadata tombstone, and cleanup task in one durable
-transaction. A crash must not leave a tombstone without a replayable task or a
-task without an authorized tombstone.
-
-### Exact-generation cleanup worker
-
-The worker must revalidate tenant, `job_id`, artifact checksum or storage
-generation, receipt state, and revocation state before deletion. Stale receipts
-must be rejected rather than deleting newer bytes.
-
-### Truthful API and accessible UI
-
-The product must distinguish accepted, cleanup pending, cleanup failed, and
-completed states. It must never return a completed deletion while confidential
-artifact bytes or valid signed links remain available.
+Release evidence still requires the integrated exact head to pass full Maven
+verification, zero skipped tests, 100% production statement and branch coverage,
+warning-free public Javadocs, CI, Security Scan, SAST, fuzzing, Strix,
+CodeRabbit, OpenCode/Noema, and independent protected-branch approval.
 
 ## Verification requirements
 
-- exact duplicate request object identity;
-- conflicting same-job requests fail closed;
-- every legal and illegal transition;
-- nondecreasing transition timestamps;
-- internally consistent and transition-preserved attempt evidence;
-- controlled failure-code validation;
-- attempt-count persistence across retries and restart;
-- strict UTF-8, malformed-line, oversized-line, conflicting-replay, and
-  unterminated-final-tail rejection;
-- fixed host-independent LF record delimiters;
-- completed receipts excluded from pending work but retained after restart;
-- production line and branch coverage of 100%;
-- complete beginner-readable public Javadocs;
-- exact-head CI, Security Scan, SAST, fuzzing, independent review, and protected
-  merge evidence before integration.
+The deterministic suite covers tenant concealment, successful completion,
+read-before-mutation failure, durable delete failure, controlled failure codes,
+restart replay, already-tombstoned recovery, pending-at-crash recovery, digest
+mismatch, absence-sentinel late writes, bounded batches, fixed metric tags,
+invalid configuration, idempotent duplicates, conflicting identities, every
+legal and illegal ledger transition, strict UTF-8, oversized input,
+unterminated-tail rejection, and completed-receipt retention.
 
 ## References
 

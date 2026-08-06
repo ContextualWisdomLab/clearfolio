@@ -74,6 +74,11 @@ class ArtifactTokenBoundaryTest {
     }
 
     @Test
+    void rejectsValidTokenWithTrailingDelimiter() {
+        assertMalformedToken(signedToken(validPayloadFields) + ".");
+    }
+
+    @Test
     void rejectsSignedPayloadWithAnEmptyRequiredField() {
         String[] fields = validPayloadFields.clone();
         fields[1] = "";

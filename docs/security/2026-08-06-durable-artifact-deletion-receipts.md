@@ -8,11 +8,11 @@
 ## Decision
 
 Clearfolio records every accepted artifact-deletion lifecycle as immutable,
-versioned receipt snapshots before removing conversion-job metadata. The Spring
-runtime uses an append-only file ledger at
-`data/artifact-deletion-receipts.log`, while standalone and test consumers may
-use the in-memory adapter behind the same `ArtifactDeletionReceiptStore`
-contract.
+versioned receipt snapshots **before the first artifact-store read and before
+removing conversion-job metadata**. The Spring runtime uses an append-only file
+ledger at `data/artifact-deletion-receipts.log`, while standalone and test
+consumers may use the in-memory adapter behind the same
+`ArtifactDeletionReceiptStore` contract.
 
 `DurableDocumentDeletionService` is the primary `DocumentConversionService`
 decorator. It delegates submission, lookup, retry, and listing to the existing
@@ -20,10 +20,15 @@ decorator. It delegates submission, lookup, retry, and listing to the existing
 deletion to `ArtifactDeletionCoordinator`. This preserves conversion behavior
 and keeps the deletion worker independently replaceable.
 
-The coordinator persists deletion intent, tombstones metadata, attempts exact
-artifact cleanup, records controlled failure evidence, and recovers incomplete
-work after startup and on a bounded fixed-delay schedule. A storage exception is
-no longer reduced to a log line and lost.
+The coordinator first persists deletion intent with a controlled
+`pending` artifact-checksum marker. It then reads the artifact under the same
+per-job lifecycle fence. A successful read durably replaces the marker with the
+exact SHA-256 digest, or with the explicit absent-artifact digest when no bytes
+exist. Only after that exact binding may metadata be tombstoned and physical
+cleanup begin. If the initial artifact read fails, metadata remains intact, the
+pending receipt remains restart-recoverable, and a low-cardinality failed
+attempt signal is emitted. An unreadable artifact is never represented by the
+absent-artifact digest.
 
 The reference implementation closes the process-local and restart-loss gap that
 caused CWE-459 orphaned document bytes. A future database deployment must still
@@ -44,9 +49,16 @@ One receipt identity contains:
 - `request_id`: deletion idempotency identifier;
 - `tenant_id`: tenant that owned the conversion job;
 - `job_id`: permanently reserved conversion-job identifier;
-- `artifact_checksum`: lowercase SHA-256 digest for the observed artifact bytes;
+- `artifact_checksum`: the controlled `pending` marker until the first
+  successful artifact snapshot, then the immutable lowercase SHA-256 digest for
+  the observed generation;
 - `audit_correlation_id`: random privacy-safe lifecycle correlation;
 - `requested_at`: durable request time.
+
+The `pending` marker is deliberately **not** a digest and is valid only while the
+receipt remains `DELETION_REQUESTED`. `markMetadataTombstoned` rejects a pending
+marker. The marker therefore cannot be interpreted as proof that bytes are
+absent and cannot weaken the exact-generation deletion fence.
 
 Raw subjects, filenames, tokens, storage paths, exception messages, and document
 content never enter the receipt or aggregate operational evidence. Repeated
@@ -57,8 +69,9 @@ the same intended effect. Conflicting tenant or artifact identity fails closed.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> DELETION_REQUESTED
-    DELETION_REQUESTED --> METADATA_TOMBSTONED
+    [*] --> DELETION_REQUESTED: persist pending marker
+    DELETION_REQUESTED --> DELETION_REQUESTED: bind exact digest
+    DELETION_REQUESTED --> METADATA_TOMBSTONED: digest must be bound
     METADATA_TOMBSTONED --> ARTIFACT_CLEANUP_PENDING
     ARTIFACT_CLEANUP_PENDING --> ARTIFACT_CLEANUP_COMPLETED
     ARTIFACT_CLEANUP_PENDING --> ARTIFACT_CLEANUP_FAILED
@@ -67,51 +80,63 @@ stateDiagram-v2
 ```
 
 Every snapshot records `state_changed_at`; time cannot move backward and
-`ARTIFACT_CLEANUP_COMPLETED` is terminal. Failures increment `attempt_count`,
-record `last_attempt_at`, and accept only controlled lowercase codes matching
-`[a-z0-9_]{1,64}`. Current coordinator codes are:
+`ARTIFACT_CLEANUP_COMPLETED` is terminal. Cleanup failures increment
+`attempt_count`, record `last_attempt_at`, and accept only controlled lowercase
+codes matching `[a-z0-9_]{1,64}`. The pre-snapshot read failure remains a
+`DELETION_REQUESTED` receipt with the pending marker and is additionally counted
+by the dimension-free failed-attempt metric; it does not fabricate a cleanup
+failure transition before an exact generation exists. Current cleanup codes are:
 
 - `artifact_store_read_failed`;
 - `artifact_store_delete_failed`;
 - `artifact_checksum_mismatch`.
 
 The ledger rejects inconsistent attempt evidence, illegal successors,
-non-monotonic timestamps, unsafe failure details, malformed identity, and
-attempt erasure across retry or completion.
+non-monotonic timestamps, unsafe failure details, malformed identity, illegal
+checksum rebinding, and attempt erasure across retry or completion.
 
 ## Receipt-first deletion flow
 
 1. Resolve tenant ownership at the repository boundary.
-2. Read the current artifact before metadata mutation.
-3. Bind a present artifact to SHA-256. Bind absence to the SHA-256 digest of the
-   empty byte sequence.
-4. Force the `DELETION_REQUESTED` receipt to durable storage.
-5. Tombstone metadata without releasing the UUID reservation.
-6. Force `METADATA_TOMBSTONED` and `ARTIFACT_CLEANUP_PENDING`.
-7. Re-read the artifact before deletion. A non-empty expected digest must match.
-8. Delete bytes and sidecar metadata through `ArtifactStore.deletePdf`.
-9. Force `ARTIFACT_CLEANUP_COMPLETED`, or force one controlled failed state for
-   later retry.
+2. Confirm that SHA-256 is available before accepting work that cannot later be
+   generation-bound.
+3. Force a `DELETION_REQUESTED` receipt with the controlled `pending` checksum
+   marker to durable storage.
+4. Read the current artifact under the per-job lifecycle fence. If the read
+   fails or returns an invalid result, retain the pending receipt, keep metadata
+   intact, emit aggregate failure evidence, and retry after startup or schedule.
+5. On a successful read, bind a present artifact to SHA-256. Bind true absence
+   to the SHA-256 digest of the empty byte sequence. Force the same receipt
+   identity with that exact digest before any metadata mutation.
+6. Tombstone metadata without releasing the UUID reservation.
+7. Force `METADATA_TOMBSTONED` and `ARTIFACT_CLEANUP_PENDING`.
+8. Re-read the artifact before deletion. A non-empty expected digest must match.
+9. Delete bytes and sidecar metadata through `ArtifactStore.deletePdf`.
+10. Force `ARTIFACT_CLEANUP_COMPLETED`, or force one controlled cleanup-failed
+    state for later retry.
 
-The empty digest is an explicit absence sentinel. A non-empty mismatched digest
-is retained and flagged instead of deleting bytes that cannot be proven to match
-the receipt.
+The empty digest is an explicit **confirmed-absence** sentinel. It is written
+only after `ArtifactStore.getPdf` has successfully returned an empty
+`Optional`. An exception or invalid read result keeps the non-digest `pending`
+marker instead. A non-empty mismatched digest is retained and flagged instead
+of deleting bytes that cannot be proven to match the receipt.
 
 ## Conversion/deletion generation fence
 
 `ArtifactLifecycleLockRegistry` provides a fixed-memory per-job lock stripe in
 the standalone process. `ArtifactDeletionCoordinator` and
 `LifecycleFencedArtifactStore` use the same Spring-managed registry. Artifact
-reads, writes, and deletes are therefore serialized with receipt creation and
-metadata tombstoning for the same job identifier.
+reads, writes, and deletes are therefore serialized with receipt creation,
+checksum binding, and metadata tombstoning for the same job identifier.
 
 `LifecycleFencedArtifactStore.putPdf` rejects every write after a durable receipt
-exists, including pending and failed cleanup. This prevents an already-running
-conversion from recreating bytes after cleanup completes. If publication wins
-the lock first, deletion snapshots and removes that published generation. If
-deletion wins first, the later write fails closed. Multi-instance and remote
-object-store adapters must provide an equivalent distributed generation fence or
-object-version precondition.
+exists, including a pre-snapshot pending receipt and failed cleanup. This
+prevents an already-running conversion from recreating bytes after cleanup
+completes or changing the generation between a failed initial read and its later
+recovery. If publication wins the lock first, deletion snapshots and removes
+that published generation. If deletion wins first, the later write fails closed.
+Multi-instance and remote object-store adapters must provide an equivalent
+distributed generation fence or object-version precondition.
 
 ## Persistence and crash recovery
 
@@ -121,14 +146,18 @@ LF commit delimiter, and is appended through `FileChannel`. The ledger calls
 `force(true)` before exposing the transition as durable.
 
 Startup replay rejects malformed Base64URL, invalid state, timestamp or count,
-immutable-identity conflicts, oversized records, illegal transitions, and every
-non-empty unterminated final tail. It never silently truncates forensic evidence.
-A missing ledger means an empty store; a malformed existing ledger prevents
+immutable-request conflicts, illegal pending-marker placement, unsupported
+checksum rebinding, oversized records, illegal transitions, and every non-empty
+unterminated final tail. It never silently truncates forensic evidence. A
+missing ledger means an empty store; a malformed existing ledger prevents
 startup.
 
 `ArtifactDeletionCoordinator` replays every nonterminal state:
 
-- `DELETION_REQUESTED`: confirm or apply the tenant metadata tombstone;
+- `DELETION_REQUESTED` with `pending`: retry the exact artifact snapshot while
+  metadata remains intact; if successful, durably bind the digest and continue;
+- `DELETION_REQUESTED` with an exact digest: confirm or apply the tenant metadata
+  tombstone;
 - `METADATA_TOMBSTONED`: queue cleanup;
 - `ARTIFACT_CLEANUP_PENDING`: retry the interrupted attempt;
 - `ARTIFACT_CLEANUP_FAILED`: return to pending and retry;
@@ -164,7 +193,9 @@ service adapters must preserve:
 
 - tenant authorization before lookup or mutation;
 - one permanently reserved `job_id` lifecycle;
+- a durable pre-snapshot deletion intent before the first artifact read;
 - exact immutable request identity and idempotency;
+- one-way pending-marker-to-exact-digest binding before metadata tombstoning;
 - artifact digest or generation binding;
 - conversion/deletion generation fencing;
 - monotonic state and time;
@@ -195,13 +226,14 @@ CodeRabbit, OpenCode/Noema, and independent protected-branch approval.
 ## Verification requirements
 
 The deterministic suite covers tenant concealment, successful completion,
-read-before-mutation failure, durable delete failure, controlled failure codes,
-restart replay, already-tombstoned recovery, pending-at-crash recovery, digest
-mismatch, repeated DELETE idempotency, write-after-receipt rejection,
-in-flight publication serialization, bounded batches, aggregate evidence,
-invalid configuration, conflicting identities, every legal and illegal ledger
-transition, strict UTF-8, oversized input, unterminated-tail rejection, and
-completed-receipt retention.
+durable pre-snapshot read failure across restart, metadata preservation before
+checksum binding, confirmed absence versus unreadable-artifact distinction,
+durable delete failure, controlled cleanup failure codes, restart replay,
+already-tombstoned recovery, pending-at-crash recovery, digest mismatch,
+repeated DELETE idempotency, write-after-receipt rejection, in-flight publication
+serialization, bounded batches, aggregate evidence, invalid configuration,
+conflicting identities, legal and illegal ledger transitions, strict UTF-8,
+oversized input, unterminated-tail rejection, and completed-receipt retention.
 
 ## References
 

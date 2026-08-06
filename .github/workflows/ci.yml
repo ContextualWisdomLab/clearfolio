@@ -5,6 +5,7 @@ on:
     branches: [main]
   # Run exact-head, synthetic-merge, and buyer-readiness gates for every pull
   # request target so stacked PRs receive the same evidence as main-bound PRs.
+  # Every source-head change must therefore earn fresh, non-inherited evidence.
   pull_request: {}
 
 permissions:

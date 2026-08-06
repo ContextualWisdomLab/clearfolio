@@ -34,9 +34,9 @@ import org.springframework.stereotype.Repository;
  *
  * <p>The file-backed mode writes a complete immutable receipt snapshot for each
  * legal transition and forces the file channel before returning. Startup replay
- * uses bounded strict UTF-8 lines and validates immutable identity, timestamps,
- * and monotonic transitions before exposing pending work. An empty path selects
- * the standalone in-memory adapter.</p>
+ * uses bounded strict UTF-8 lines and validates immutable request identity,
+ * exact artifact-digest capture, timestamps, and monotonic transitions before
+ * exposing pending work. An empty path selects the standalone in-memory adapter.</p>
  */
 @Repository
 public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
@@ -55,9 +55,7 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
     private final ConcurrentMap<UUID, ArtifactDeletionReceipt> receiptsByJobId = new ConcurrentHashMap<>();
     private final Path ledgerPath;
 
-    /**
-     * Creates a standalone in-memory deletion ledger.
-     */
+    /** Creates a standalone in-memory deletion ledger. */
     public ArtifactDeletionLedger() {
         this((Path) null);
     }
@@ -80,9 +78,7 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
         load();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public synchronized ArtifactDeletionReceipt request(
             UUID requestId,
@@ -119,48 +115,56 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
         return requested;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public synchronized ArtifactDeletionReceipt recordArtifactChecksum(
+            UUID jobId,
+            String artifactChecksum,
+            Instant capturedAt
+    ) {
+        UUID requiredJobId = Objects.requireNonNull(jobId, "jobId");
+        ArtifactDeletionReceipt current = receiptsByJobId.get(requiredJobId);
+        if (current == null) {
+            throw missingReceipt();
+        }
+        ArtifactDeletionReceipt updated = current.captureArtifactChecksum(artifactChecksum, capturedAt);
+        if (!current.hasSameRequestIdentity(updated)) {
+            throw conflictingReceipt();
+        }
+        append(updated);
+        receiptsByJobId.put(requiredJobId, updated);
+        return updated;
+    }
+
+    /** {@inheritDoc} */
     @Override
     public ArtifactDeletionReceipt markMetadataTombstoned(UUID jobId, Instant transitionedAt) {
         return transition(jobId, current -> current.markMetadataTombstoned(transitionedAt));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public ArtifactDeletionReceipt markCleanupPending(UUID jobId, Instant transitionedAt) {
         return transition(jobId, current -> current.markCleanupPending(transitionedAt));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public ArtifactDeletionReceipt recordCleanupFailure(
             UUID jobId,
             String failureCode,
             Instant attemptedAt
     ) {
-        return transition(
-                jobId,
-                current -> current.recordCleanupFailure(failureCode, attemptedAt)
-        );
+        return transition(jobId, current -> current.recordCleanupFailure(failureCode, attemptedAt));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public ArtifactDeletionReceipt markCleanupCompleted(UUID jobId, Instant completedAt) {
         return transition(jobId, current -> current.markCleanupCompleted(completedAt));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Optional<ArtifactDeletionReceipt> findByJobId(UUID jobId) {
         if (jobId == null) {
@@ -169,9 +173,7 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
         return Optional.ofNullable(receiptsByJobId.get(jobId));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public List<ArtifactDeletionReceipt> pendingReceipts() {
         return receiptsByJobId.values().stream()
@@ -180,9 +182,7 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
                 .toList();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public int pendingCount() {
         return Math.toIntExact(receiptsByJobId.values().stream()
@@ -264,10 +264,11 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
             receiptsByJobId.put(replayed.jobId(), replayed);
             return;
         }
-        if (!current.hasSameIdentity(replayed)) {
+        boolean checksumCapture = isChecksumCaptureTransition(current, replayed);
+        if (!current.hasSameIdentity(replayed) && !checksumCapture) {
             throw invalidLine();
         }
-        validateReplayTransition(current, replayed);
+        validateReplayTransition(current, replayed, checksumCapture);
         receiptsByJobId.put(replayed.jobId(), replayed);
     }
 
@@ -341,16 +342,31 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
         );
     }
 
-    private static void validateReplayTransition(
+    private static boolean isChecksumCaptureTransition(
             ArtifactDeletionReceipt current,
             ArtifactDeletionReceipt replayed
+    ) {
+        return current.state() == ArtifactDeletionState.DELETION_REQUESTED
+                && replayed.state() == ArtifactDeletionState.DELETION_REQUESTED
+                && current.isArtifactChecksumPending()
+                && !replayed.isArtifactChecksumPending()
+                && current.hasSameRequestIdentity(replayed)
+                && hasSameAttemptEvidence(current, replayed);
+    }
+
+    private static void validateReplayTransition(
+            ArtifactDeletionReceipt current,
+            ArtifactDeletionReceipt replayed,
+            boolean checksumCapture
     ) {
         if (replayed.stateChangedAt().isBefore(current.stateChangedAt())) {
             throw invalidLine();
         }
         boolean valid = switch (current.state()) {
-            case DELETION_REQUESTED -> replayed.state() == ArtifactDeletionState.METADATA_TOMBSTONED
-                    && hasSameAttemptEvidence(current, replayed);
+            case DELETION_REQUESTED -> checksumCapture || (
+                    replayed.state() == ArtifactDeletionState.METADATA_TOMBSTONED
+                            && hasSameAttemptEvidence(current, replayed)
+            );
             case METADATA_TOMBSTONED -> replayed.state() == ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING
                     && hasSameAttemptEvidence(current, replayed);
             case ARTIFACT_CLEANUP_PENDING -> (

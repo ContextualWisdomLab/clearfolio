@@ -100,6 +100,14 @@ class ArtifactTokenBoundaryTest {
     }
 
     @Test
+    void rejectsSignedPayloadWithAWhitespaceOnlyRequiredField() {
+        String[] fields = validPayloadFields.clone();
+        fields[1] = encode(" \t");
+
+        assertMalformedToken(signedToken(fields));
+    }
+
+    @Test
     void rejectsSignedPayloadWithMalformedBase64Url() {
         String[] fields = validPayloadFields.clone();
         fields[1] = "*";

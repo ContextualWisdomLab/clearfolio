@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  # Every pull request target, including immutable stack branches, receives the
+  # same exact-head, synthetic-merge, and buyer-readiness acceptance evidence.
+  pull_request: {}
 
 permissions:
   contents: read

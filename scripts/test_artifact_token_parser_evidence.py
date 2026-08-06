@@ -44,6 +44,7 @@ def test_bounded_token_contract_keeps_signed_boundary_regressions() -> None:
     required_tests = (
         "rejectsSignedPayloadWithOnlyNineFields",
         "rejectsSignedPayloadWithElevenFields",
+        "rejectsValidTokenWithTrailingDelimiter",
         "rejectsSignedPayloadWithAnEmptyRequiredField",
         "rejectsSignedPayloadWithMalformedBase64Url",
         "rejectsSignedPayloadWithNonNumericEpochSecond",

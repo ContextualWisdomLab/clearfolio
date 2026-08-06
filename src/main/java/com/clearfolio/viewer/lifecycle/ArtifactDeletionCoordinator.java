@@ -26,11 +26,16 @@ import com.clearfolio.viewer.repository.ConversionJobRepository;
  * Coordinates receipt-first metadata tombstoning and restart-safe artifact cleanup.
  *
  * <p>Each document lifecycle is serialized by a fixed-memory per-job lock shared
- * with conversion. Different document identifiers may progress concurrently,
- * so a slow artifact store cannot serialize every deletion and recovery task in
- * the process. Replaceable durable adapters may use transactions,
- * object-generation preconditions, compare-and-set state, or a single-consumer
- * outbox while preserving the same per-generation contract.</p>
+ * with conversion. An authorized request is persisted before the first artifact
+ * read. If that read is temporarily unavailable, metadata remains intact and the
+ * pending receipt is recoverable after restart; metadata tombstoning begins only
+ * after the exact artifact digest (or explicit absence digest) is durable.</p>
+ *
+ * <p>Different document identifiers may progress concurrently, so a slow
+ * artifact store cannot serialize every deletion and recovery task in the
+ * process. Replaceable durable adapters may use transactions, object-generation
+ * preconditions, compare-and-set state, or a single-consumer outbox while
+ * preserving the same per-generation contract.</p>
  */
 @Component
 public class ArtifactDeletionCoordinator {
@@ -197,11 +202,8 @@ public class ArtifactDeletionCoordinator {
         if (existing.isEmpty()) {
             return resumeExistingReceiptForTenantLocked(jobId, tenantId);
         }
-        ArtifactDeletionReceipt receipt = requestReceipt(
-                tenantId,
-                jobId,
-                snapshotChecksum(jobId)
-        );
+        ensureSha256Available();
+        ArtifactDeletionReceipt receipt = requestReceipt(tenantId, jobId);
         resumeReceiptLocked(receipt);
         return true;
     }
@@ -217,12 +219,9 @@ public class ArtifactDeletionCoordinator {
             repository.deleteById(jobId);
             return;
         }
+        ensureSha256Available();
         ConversionJob job = existing.get();
-        ArtifactDeletionReceipt receipt = requestReceipt(
-                job.getTenantId(),
-                jobId,
-                snapshotChecksum(jobId)
-        );
+        ArtifactDeletionReceipt receipt = requestReceipt(job.getTenantId(), jobId);
         resumeReceiptLocked(receipt);
     }
 
@@ -250,15 +249,46 @@ public class ArtifactDeletionCoordinator {
     }
 
     private void resumeRequested(ArtifactDeletionReceipt receipt) {
-        boolean deleted = repository.deleteByTenantAndId(receipt.tenantId(), receipt.jobId());
-        if (!deleted && repository.findByTenantAndId(receipt.tenantId(), receipt.jobId()).isPresent()) {
+        ArtifactDeletionReceipt exactReceipt = receipt;
+        if (receipt.isArtifactChecksumPending()) {
+            Optional<String> capturedChecksum = trySnapshotChecksum(receipt.jobId());
+            if (capturedChecksum.isEmpty()) {
+                return;
+            }
+            exactReceipt = receiptStore.recordArtifactChecksum(
+                    receipt.jobId(),
+                    capturedChecksum.orElseThrow(),
+                    Instant.now()
+            );
+        }
+        boolean deleted = repository.deleteByTenantAndId(exactReceipt.tenantId(), exactReceipt.jobId());
+        if (!deleted && repository.findByTenantAndId(exactReceipt.tenantId(), exactReceipt.jobId()).isPresent()) {
             throw new IllegalStateException("tenant-scoped metadata tombstone was not applied");
         }
         ArtifactDeletionReceipt tombstoned = receiptStore.markMetadataTombstoned(
-                receipt.jobId(),
+                exactReceipt.jobId(),
                 Instant.now()
         );
         queueAndAttempt(tombstoned);
+    }
+
+    private Optional<String> trySnapshotChecksum(UUID jobId) {
+        Optional<byte[]> artifact;
+        try {
+            artifact = Objects.requireNonNull(
+                    artifactStore.getPdf(jobId),
+                    "artifactStore.getPdf"
+            );
+        } catch (RuntimeException exception) {
+            metrics.recordFailed();
+            log.warn(
+                    "Artifact deletion retained a pre-snapshot receipt. cause={}",
+                    exception.getClass().getName()
+            );
+            return Optional.empty();
+        }
+        return Optional.of(artifact.map(ArtifactDeletionCoordinator::sha256)
+                .orElse(ABSENT_ARTIFACT_CHECKSUM));
     }
 
     private void queueAndAttempt(ArtifactDeletionReceipt receipt) {
@@ -301,16 +331,11 @@ public class ArtifactDeletionCoordinator {
         metrics.recordFailed();
     }
 
-    private ArtifactDeletionReceipt requestReceipt(
-            String tenantId,
-            UUID jobId,
-            String artifactChecksum
-    ) {
+    private ArtifactDeletionReceipt requestReceipt(String tenantId, UUID jobId) {
         Optional<ArtifactDeletionReceipt> existing = receiptStore.findByJobId(jobId);
         if (existing.isPresent()) {
             ArtifactDeletionReceipt receipt = existing.get();
-            if (!receipt.tenantId().equals(tenantId)
-                    || !receipt.artifactChecksum().equals(artifactChecksum)) {
+            if (!receipt.tenantId().equals(tenantId)) {
                 throw new IllegalStateException("artifact deletion receipt conflicts with the active lifecycle");
             }
             return receipt;
@@ -320,19 +345,18 @@ public class ArtifactDeletionCoordinator {
                 requestId,
                 tenantId,
                 jobId,
-                artifactChecksum,
+                ArtifactDeletionReceipt.PENDING_ARTIFACT_CHECKSUM,
                 "cleanup-v1:" + requestId.toString().replace("-", ""),
                 Instant.now()
         );
     }
 
-    private String snapshotChecksum(UUID jobId) {
-        Optional<byte[]> artifact = Objects.requireNonNull(
-                artifactStore.getPdf(jobId),
-                "artifactStore.getPdf"
-        );
-        return artifact.map(ArtifactDeletionCoordinator::sha256)
-                .orElse(ABSENT_ARTIFACT_CHECKSUM);
+    private static void ensureSha256Available() {
+        try {
+            MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 digest unavailable", exception);
+        }
     }
 
     private static String sha256(byte[] bytes) {

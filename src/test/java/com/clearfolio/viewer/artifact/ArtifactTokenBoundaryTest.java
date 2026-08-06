@@ -79,6 +79,19 @@ class ArtifactTokenBoundaryTest {
     }
 
     @Test
+    void rejectsDelimiterFreeMalformedToken() {
+        assertMalformedToken(encode("malformed-token"));
+    }
+
+    @Test
+    void rejectsStructurallyValidTokenWithMismatchedSignature() {
+        String payload = String.join(".", validPayloadFields);
+        String mismatchedSignature = hmac(payload + ".different-message");
+
+        assertMalformedToken(payload + "." + mismatchedSignature);
+    }
+
+    @Test
     void rejectsSignedPayloadWithAnEmptyRequiredField() {
         String[] fields = validPayloadFields.clone();
         fields[1] = "";

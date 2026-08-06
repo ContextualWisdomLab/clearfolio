@@ -2,7 +2,6 @@ package com.clearfolio.viewer.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -105,18 +104,9 @@ class ServiceInterfaceDefaultMethodsTest {
     }
 
     @Test
-    void documentConversionServiceTenantDeleteDefaultFiltersByTenantBeforeDeleting() {
+    void documentConversionServiceTenantDeleteDefaultFailsClosedWithoutLookupOrMutation() {
         UUID jobId = UUID.randomUUID();
-        ConversionJob job = new ConversionJob(
-                jobId,
-                "tenant-a",
-                "user-1",
-                "report.docx",
-                "application/octet-stream",
-                "hash-default-delete",
-                1L,
-                3
-        );
+        AtomicReference<UUID> lookedUpJobId = new AtomicReference<>();
         AtomicReference<UUID> deletedJobId = new AtomicReference<>();
         DocumentConversionService service = new DocumentConversionService() {
             @Override
@@ -126,7 +116,8 @@ class ServiceInterfaceDefaultMethodsTest {
 
             @Override
             public Optional<ConversionJob> getJob(UUID requestedJobId) {
-                return jobId.equals(requestedJobId) ? Optional.of(job) : Optional.empty();
+                lookedUpJobId.set(requestedJobId);
+                return Optional.empty();
             }
 
             @Override
@@ -149,13 +140,12 @@ class ServiceInterfaceDefaultMethodsTest {
                 jobId,
                 new com.clearfolio.viewer.auth.TenantContext("tenant-b", "user-2", java.util.Set.of())
         ));
-        assertEquals(null, deletedJobId.get());
-
-        assertTrue(service.deleteJob(
+        assertFalse(service.deleteJob(
                 jobId,
                 new com.clearfolio.viewer.auth.TenantContext("tenant-a", "user-1", java.util.Set.of())
         ));
-        assertEquals(jobId, deletedJobId.get());
+        assertEquals(null, lookedUpJobId.get());
+        assertEquals(null, deletedJobId.get());
     }
 
     @Test

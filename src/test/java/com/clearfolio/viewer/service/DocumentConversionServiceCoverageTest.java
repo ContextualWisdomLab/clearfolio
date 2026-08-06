@@ -15,12 +15,12 @@ import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.model.ConversionJob;
 
 /**
- * Verifies that the compatibility delete contract fails closed before mutation.
+ * Verifies that the compatibility delete contract fails closed before lookup or mutation.
  */
 class DocumentConversionServiceCoverageTest {
 
     @Test
-    void tenantScopedDeleteRejectsMissingContextAndMissingJobBeforeMutation() {
+    void tenantScopedDeleteRejectsMissingContextAndUnimplementedScopeBeforeMutation() {
         UUID jobId = UUID.randomUUID();
         AtomicInteger lookupCount = new AtomicInteger();
         AtomicInteger deleteCount = new AtomicInteger();
@@ -60,7 +60,7 @@ class DocumentConversionServiceCoverageTest {
                 jobId,
                 new TenantContext("tenant-a", "subject-a", Set.of())
         ));
-        assertEquals(1, lookupCount.get());
+        assertEquals(0, lookupCount.get());
         assertEquals(0, deleteCount.get());
     }
 }

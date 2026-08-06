@@ -13,6 +13,13 @@ spring:
     import: "optional:configtree:${CLEARFOLIO_SECRET_CONFIG_DIR:/run/secrets/clearfolio/}"
   codec:
     max-in-memory-size: ${conversion.max-upload-size-bytes}
+  task:
+    scheduling:
+      # Keep bounded artifact cleanup from monopolizing Spring's default
+      # single scheduler thread. Per-job lifecycle locks still serialize the
+      # same document generation while unrelated scheduled work can progress.
+      pool:
+        size: 2
 
 conversion:
   blocked-extensions:

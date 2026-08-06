@@ -8,10 +8,17 @@ import java.util.regex.Pattern;
 /**
  * Immutable evidence for one tenant-bound artifact-deletion lifecycle.
  *
+ * <p>A newly accepted deletion request may temporarily carry the controlled
+ * {@link #PENDING_ARTIFACT_CHECKSUM} marker until the artifact store can be
+ * read. Metadata must remain intact while that marker is present. Once an
+ * exact SHA-256 digest (or the explicit absent-artifact digest) is captured,
+ * the digest becomes immutable for the remainder of the lifecycle.</p>
+ *
  * @param requestId idempotency identifier supplied for the deletion request
  * @param tenantId tenant that owned the deleted conversion job
  * @param jobId permanently reserved conversion-job identifier
- * @param artifactChecksum lowercase SHA-256 digest binding cleanup to one artifact generation
+ * @param artifactChecksum lowercase SHA-256 digest binding cleanup to one artifact generation,
+ *                         or the controlled pending marker before the first successful snapshot
  * @param auditCorrelationId privacy-safe identifier joining lifecycle audit evidence
  * @param requestedAt instant when the deletion request became durable
  * @param stateChangedAt instant when the current state became durable
@@ -36,6 +43,12 @@ public record ArtifactDeletionReceipt(
         String failureCode
 ) {
 
+    /**
+     * Controlled non-digest marker meaning that an authorized request is durable
+     * but the artifact generation has not yet been snapshotted successfully.
+     */
+    static final String PENDING_ARTIFACT_CHECKSUM = "pending";
+
     private static final int MAX_IDENTIFIER_LENGTH = 256;
     private static final Pattern SHA_256_PATTERN = Pattern.compile("[0-9a-f]{64}");
     private static final Pattern FAILURE_CODE_PATTERN = Pattern.compile("[a-z0-9_]{1,64}");
@@ -47,11 +60,12 @@ public record ArtifactDeletionReceipt(
         requestId = Objects.requireNonNull(requestId, "requestId");
         tenantId = requireText(tenantId, "tenantId");
         jobId = Objects.requireNonNull(jobId, "jobId");
-        artifactChecksum = requireChecksum(artifactChecksum);
+        artifactChecksum = requireText(artifactChecksum, "artifactChecksum");
         auditCorrelationId = requireText(auditCorrelationId, "auditCorrelationId");
         requestedAt = Objects.requireNonNull(requestedAt, "requestedAt");
         stateChangedAt = Objects.requireNonNull(stateChangedAt, "stateChangedAt");
         state = Objects.requireNonNull(state, "state");
+        validateChecksumForState(artifactChecksum, state);
         if (stateChangedAt.isBefore(requestedAt)) {
             throw new IllegalArgumentException("stateChangedAt must not precede requestedAt");
         }
@@ -80,23 +94,60 @@ public record ArtifactDeletionReceipt(
     }
 
     /**
-     * Returns whether this receipt represents the same immutable request.
+     * Returns whether this receipt represents the same immutable lifecycle snapshot.
+     *
+     * <p>The artifact checksum is included because, after capture, changing it
+     * would rebind cleanup to different bytes. The ledger handles the one legal
+     * pending-marker-to-digest transition explicitly.</p>
      *
      * @param other candidate receipt identity
      * @return true when all immutable identity fields match
      */
     public boolean hasSameIdentity(ArtifactDeletionReceipt other) {
+        return hasSameRequestIdentity(other)
+                && artifactChecksum.equals(other.artifactChecksum);
+    }
+
+    boolean hasSameRequestIdentity(ArtifactDeletionReceipt other) {
         return other != null
                 && requestId.equals(other.requestId)
                 && tenantId.equals(other.tenantId)
                 && jobId.equals(other.jobId)
-                && artifactChecksum.equals(other.artifactChecksum)
                 && auditCorrelationId.equals(other.auditCorrelationId)
                 && requestedAt.equals(other.requestedAt);
     }
 
+    boolean isArtifactChecksumPending() {
+        return PENDING_ARTIFACT_CHECKSUM.equals(artifactChecksum);
+    }
+
+    ArtifactDeletionReceipt captureArtifactChecksum(String checksum, Instant capturedAt) {
+        requireState(ArtifactDeletionState.DELETION_REQUESTED);
+        if (!isArtifactChecksumPending()) {
+            throw invalidTransition();
+        }
+        String requiredChecksum = requireDigest(checksum);
+        return new ArtifactDeletionReceipt(
+                requestId,
+                tenantId,
+                jobId,
+                requiredChecksum,
+                auditCorrelationId,
+                requestedAt,
+                requireForwardTime(capturedAt),
+                ArtifactDeletionState.DELETION_REQUESTED,
+                attemptCount,
+                lastAttemptAt,
+                null,
+                null
+        );
+    }
+
     ArtifactDeletionReceipt markMetadataTombstoned(Instant transitionedAt) {
         requireState(ArtifactDeletionState.DELETION_REQUESTED);
+        if (isArtifactChecksumPending()) {
+            throw invalidTransition();
+        }
         return snapshot(
                 ArtifactDeletionState.METADATA_TOMBSTONED,
                 requireForwardTime(transitionedAt),
@@ -205,10 +256,8 @@ public record ArtifactDeletionReceipt(
         if (hasAttempts != (currentLastAttemptAt != null)) {
             throw new IllegalArgumentException("cleanup attempt evidence is inconsistent");
         }
-        if (currentState == ArtifactDeletionState.DELETION_REQUESTED) {
-            if (!currentStateChangedAt.equals(currentRequestedAt) || hasAttempts) {
-                throw new IllegalArgumentException("requested receipt fields are inconsistent");
-            }
+        if (currentState == ArtifactDeletionState.DELETION_REQUESTED && hasAttempts) {
+            throw new IllegalArgumentException("requested receipt fields are inconsistent");
         }
         if (currentState == ArtifactDeletionState.METADATA_TOMBSTONED && hasAttempts) {
             throw new IllegalArgumentException("tombstoned receipt fields are inconsistent");
@@ -235,7 +284,17 @@ public record ArtifactDeletionReceipt(
         }
     }
 
-    private static String requireChecksum(String value) {
+    private static void validateChecksumForState(String value, ArtifactDeletionState currentState) {
+        if (PENDING_ARTIFACT_CHECKSUM.equals(value)) {
+            if (currentState != ArtifactDeletionState.DELETION_REQUESTED) {
+                throw new IllegalArgumentException("pending artifact checksum is only valid before metadata tombstoning");
+            }
+            return;
+        }
+        requireDigest(value);
+    }
+
+    private static String requireDigest(String value) {
         String normalized = requireText(value, "artifactChecksum");
         if (!SHA_256_PATTERN.matcher(normalized).matches()) {
             throw new IllegalArgumentException("artifactChecksum must be a lowercase SHA-256 digest");

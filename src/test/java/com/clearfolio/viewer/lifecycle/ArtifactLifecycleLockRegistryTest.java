@@ -26,6 +26,7 @@ class ArtifactLifecycleLockRegistryTest {
         UUID jobId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
         CountDownLatch firstEntered = new CountDownLatch(1);
         CountDownLatch releaseFirst = new CountDownLatch(1);
+        CountDownLatch secondStarted = new CountDownLatch(1);
         CountDownLatch secondEntered = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
@@ -36,11 +37,15 @@ class ArtifactLifecycleLockRegistryTest {
             }));
             assertTrue(firstEntered.await(5, TimeUnit.SECONDS));
 
-            Future<String> second = executor.submit(() -> registry.withJobLock(jobId, () -> {
-                secondEntered.countDown();
-                return "second";
-            }));
+            Future<String> second = executor.submit(() -> {
+                secondStarted.countDown();
+                return registry.withJobLock(jobId, () -> {
+                    secondEntered.countDown();
+                    return "second";
+                });
+            });
 
+            assertTrue(secondStarted.await(5, TimeUnit.SECONDS));
             assertFalse(secondEntered.await(200, TimeUnit.MILLISECONDS));
             releaseFirst.countDown();
 
@@ -74,8 +79,10 @@ class ArtifactLifecycleLockRegistryTest {
     @Test
     void invalidConstructionAndNullInputsFailFast() {
         assertThrows(IllegalArgumentException.class, () -> new ArtifactLifecycleLockRegistry(0));
+        ArtifactLifecycleLockRegistry defaultRegistry = new ArtifactLifecycleLockRegistry();
         ArtifactLifecycleLockRegistry registry = new ArtifactLifecycleLockRegistry(2);
 
+        assertEquals("default", defaultRegistry.withJobLock(UUID.randomUUID(), () -> "default"));
         assertThrows(NullPointerException.class, () -> registry.withJobLock(null, () -> "unused"));
         assertThrows(NullPointerException.class, () -> registry.withJobLock(UUID.randomUUID(), null));
         assertSame(ArtifactLifecycleLockRegistry.shared(), ArtifactLifecycleLockRegistry.shared());

@@ -6,10 +6,18 @@ This runbook covers the durable cleanup worker introduced for issue #263. It is
 for operators of the standalone Spring service and for teams implementing a
 compatible database, queue, or object-store adapter.
 
-The authenticated administrator DELETE request may return after metadata has
-been tombstoned while physical byte deletion remains retryable. Until the API
+The authenticated administrator DELETE request may return while the receipt is
+still waiting for an exact artifact snapshot, after metadata has been
+tombstoned, or while physical byte deletion remains retryable. Until the API
 status slice is integrated, the authoritative physical-cleanup state is the
 `ArtifactDeletionReceiptStore`, not the HTTP response alone.
+
+A `DELETION_REQUESTED` receipt can contain the controlled non-digest checksum
+marker `pending`. That marker means the request itself is durable but the first
+artifact read has not succeeded yet. Metadata must still exist in this state.
+The worker replaces the marker with an exact SHA-256 digest, or the explicit
+confirmed-absence digest, before metadata tombstoning. An artifact-store read
+exception never becomes the absence digest.
 
 ## Safe operational signals
 
@@ -17,7 +25,7 @@ status slice is integrated, the authoritative physical-cleanup state is the
 
 - `completedAttempts()` — cleanup attempts that reached a durable completed
   receipt;
-- `failedAttempts()` — controlled failures retained for retry;
+- `failedAttempts()` — pre-snapshot or cleanup failures retained for retry;
 - `pendingReceipts()` — all nonterminal durable receipts;
 - `recoveryBatchRuns()` — measured bounded recovery invocations;
 - `recoveryBatchTotalDuration()` — cumulative elapsed recovery time;
@@ -40,11 +48,13 @@ retry intervals:
 
 1. `pendingReceipts()` is greater than zero and does not decrease.
 2. `failedAttempts()` increases while `completedAttempts()` does not.
-3. `recoveryBatchMaximumDuration()` approaches the scheduler interval or the
+3. A `DELETION_REQUESTED` receipt remains bound to the `pending` marker, which
+   indicates that the artifact generation still cannot be read safely.
+4. `recoveryBatchMaximumDuration()` approaches the scheduler interval or the
    artifact-store client timeout.
-4. The receipt ledger cannot be loaded, contains an unterminated final record,
-   or rejects an illegal transition.
-5. Disk capacity for the ledger or artifact root approaches the deployment's
+5. The receipt ledger cannot be loaded, contains an unterminated final record,
+   or rejects an illegal transition or checksum rebinding.
+6. Disk capacity for the ledger or artifact root approaches the deployment's
    reserved minimum.
 
 A transient failed-attempt increment followed by completed growth and a falling
@@ -56,17 +66,25 @@ pending count is expected recovery evidence, not data loss.
    evidence. Do not edit or truncate it.
 2. Confirm the service exact build provenance, receipt format version, artifact
    store configuration, and scheduler settings.
-3. Determine whether pending receipts are in `DELETION_REQUESTED`,
-   `METADATA_TOMBSTONED`, `ARTIFACT_CLEANUP_PENDING`, or
-   `ARTIFACT_CLEANUP_FAILED`.
+3. Determine whether pending receipts are:
+   - `DELETION_REQUESTED` with checksum marker `pending` — metadata must remain
+     intact while the worker retries the artifact snapshot;
+   - `DELETION_REQUESTED` with an exact digest — metadata tombstoning may resume;
+   - `METADATA_TOMBSTONED`;
+   - `ARTIFACT_CLEANUP_PENDING`; or
+   - `ARTIFACT_CLEANUP_FAILED`.
 4. Validate storage reachability, credentials, filesystem permissions, quota,
    object-version preconditions, and timeout behavior without printing a raw
    document path or identifier.
-5. Correct the infrastructure cause and allow startup or scheduled replay to
-   resume the receipt. Do not fabricate a completed transition.
-6. Confirm that pending count falls, completed count increases, and no new
+5. For a pending pre-snapshot receipt, verify that no operator or adapter has
+   substituted the empty digest to force progress. The empty digest is valid
+   only after the store successfully reports absence.
+6. Correct the infrastructure cause and allow startup or scheduled replay to
+   resume the receipt. Do not fabricate a checksum, tombstone, or completed
+   transition.
+7. Confirm that pending count falls, completed count increases, and no new
    controlled failure is recorded.
-7. Retain only privacy-safe aggregate evidence in a buyer-shareable report.
+8. Retain only privacy-safe aggregate evidence in a buyer-shareable report.
    Keep the raw ledger, infrastructure logs, and document identifiers in the
    restricted operational boundary.
 
@@ -77,9 +95,15 @@ ledger fails closed; replacing it with an empty file is not a valid recovery.
 Restore the exact last known durable ledger from protected operational backup or
 repair the storage fault that prevented reading it.
 
+A restart may legitimately encounter `DELETION_REQUESTED` with `pending`. The
+worker must retry the artifact read under the same lifecycle fence, durably bind
+the exact digest, and only then tombstone metadata. This is the expected recovery
+path for an outage during the very first artifact read.
+
 Application rollback is safe only to a build that understands every receipt
-format already present. A build that does not recognize `RECEIPT_V1`, the current
-state machine, or the generation fence must not start against the ledger. Preserve
+format already present, including the controlled pending-marker checksum
+contract. A build that does not recognize `RECEIPT_V1`, the current state
+machine, or the generation fence must not start against the ledger. Preserve
 artifacts and receipts until the compatible build has resumed all pending work.
 
 ## Multi-instance requirements
@@ -95,7 +119,9 @@ one of the following at the adapter boundary:
   expired lock holder.
 
 A plain distributed mutex without a fencing token is not sufficient evidence
-that a stale worker cannot publish bytes after deletion.
+that a stale worker cannot publish bytes after deletion. The remote adapter must
+also preserve the one-way transition from pending snapshot evidence to an exact
+artifact generation before any metadata tombstone becomes visible.
 
 ## Acceptance evidence
 

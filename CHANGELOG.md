@@ -29,7 +29,7 @@
 ### Security
 
 - `GET /api/v1/convert/jobs/{jobId}/download`가 리소스 조회 전에 전용 `artifact:read` 권한을 검증하고, PDF 저장소 접근 전에 작업의 tenant 소유권을 확인하도록 강화했습니다. `job:read`만으로는 문서 바이트를 읽을 수 없으며, 인증 누락·권한 누락·교차 tenant UUID 접근은 각각 fail closed 처리되고 교차 tenant 요청은 리소스 존재를 숨기는 `404`를 반환합니다.
-- Deletion receipt ledger는 각 transition snapshot을 16 KiB 이하 strict UTF-8 `RECEIPT_V1` record로 검증하고 append 후 `FileChannel.force(true)`를 완료하기 전 durable 상태를 반환하지 않습니다. Record terminator는 host-independent fixed LF로 고정하고 commit delimiter로 취급하므로 non-empty unterminated final tail은 crash 또는 torn append의 미확정 증거로 간주해 startup에서 fail closed 처리하고 replay하지 않습니다. Replay는 attempt evidence, 시각 순서, immutable identity, legal successor를 검증합니다. Cleanup coordinator는 receipt를 먼저 영속화하고 metadata를 tombstone한 뒤 exact artifact digest를 재검증하며, read/delete/mismatch 실패를 controlled retry state로 보존합니다.
+- Deletion receipt ledger는 각 transition snapshot을 16 KiB 이하 strict UTF-8 `RECEIPT_V1` record로 검증하고 append 후 `FileChannel.force(true)`를 완료하기 전 durable 상태를 반환하지 않습니다. Record terminator는 host-independent fixed LF로 고정하고 commit delimiter로 취급하므로 non-empty unterminated final tail은 crash 또는 torn append의 미확정 증거로 간주해 startup에서 fail closed 처리하고 replay하지 않습니다. Replay는 attempt evidence, 시각 순서, immutable request identity, pending-marker-to-exact-digest의 단방향 binding, legal successor를 검증합니다. Cleanup coordinator는 첫 artifact read 전에 `DELETION_REQUESTED` receipt를 `pending` marker로 영속화하고, successful read 후 exact digest 또는 confirmed-absence digest를 force한 뒤에만 metadata tombstone을 허용합니다. Initial read failure는 absence로 오인하지 않고 metadata를 유지한 채 restart-safe retry evidence와 low-cardinality failure metric을 남깁니다.
 - Conversion과 deletion은 동일 per-job lifecycle lock을 공유합니다. Artifact boundary는 receipt가 생긴 job ID의 이후 `putPdf`를 거부하므로 deletion 완료 뒤 late worker가 confidential bytes를 재생성할 수 없습니다. Multi-instance adapter는 동일한 distributed generation fence 또는 object-version precondition을 구현해야 합니다.
 - Maven XML 테스트 보고서 검증기는 각 `testsuite`의 `tests`, `skipped`, `failures`, `errors` 속성을 모두 필수 증거로 요구합니다. 누락된 결과 수를 암묵적으로 0으로 간주하지 않고 fail closed 처리하며, 각 속성 누락 회귀 테스트를 추가했습니다.
 - Maven XML 테스트 보고서 검증기는 UTF-8만 허용하고 UTF-8 BOM은 수용하며, NUL 바이트·DTD·엔터티 선언을 파싱 전에 거부합니다. UTF-16 같은 대체 인코딩으로 위험 선언을 바이트 검사에서 숨기는 우회와 외부 엔터티 읽기·엔터티 확장형 서비스 거부를 회귀 테스트로 차단했습니다.
@@ -54,6 +54,7 @@
 ### Fixed
 
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정했습니다.
+- 관리자 삭제의 첫 artifact snapshot read가 실패하면 receipt조차 생성되지 않아 restart/scheduled recovery가 불가능하던 경로를 수정했습니다. 이제 read 전에 `pending` marker가 포함된 durable receipt를 force하고, exact digest가 성공적으로 bound될 때까지 metadata를 유지합니다. 회귀 테스트는 최초 read 실패 → process restart → exact digest binding → metadata tombstone → artifact cleanup 완료를 결정적으로 검증합니다.
 - 관리자 삭제에서 metadata 제거 뒤 artifact-store 실패가 로그로만 소실되던 CWE-459 경로를 durable receipt와 bounded recovery로 수정했습니다. 같은 tenant의 반복 DELETE는 기존 receipt를 resume/no-op하며, 다른 tenant receipt는 숨깁니다.
 - Legacy global DELETE가 metadata tombstone 뒤 실패한 receipt를 다시 호출했을 때 cleanup을 재개하지 않던 상태 전이 오류를 수정했습니다.
 
@@ -88,4 +89,3 @@
 - 과거 QA 증거 SBOM의 Jackson purl/ref도 `2.21.5`로 갱신해 Scorecard/OSV가 저장소 내 stale SBOM을 취약 의존성으로 재탐지하지 않게 했습니다.
 - 루트 `LICENSE`와 Maven license metadata를 추가해 Scorecard License alert가 표준 Apache-2.0 파일을 확인할 수 있게 했습니다.
 - logback-core 신규 권고(GHSA-jhq6-gfmj-v8fx) 대응을 위해 Logback 관리 버전을 `1.5.35`로 고정했습니다.
-- 저장소 보안 정책, Maven/GitHub Actions Dependabot 설정, 기본 CodeQL/중앙 SAST 운영 지침, 다운로드 파일명 정규화 Jazzer fuzz target을 추가해 Scorecard 보안 거버넌스 신호를 보강했습니다.

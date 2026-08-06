@@ -63,15 +63,15 @@ class ConversionDownloadAuthorizationTest {
     }
 
     @Test
-    void downloadRejectsMissingReadPermissionBeforeResourceLookup() {
+    void downloadRejectsJobReadWithoutArtifactReadBeforeResourceLookup() {
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}/download", UUID.randomUUID())
-                .headers(headers -> addAuth(headers, TenantPermissions.VIEWER_READ))
+                .headers(headers -> addAuth(headers, TenantPermissions.JOB_READ))
                 .exchange()
                 .expectStatus().isForbidden()
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("FORBIDDEN")
-                .jsonPath("$.message").isEqualTo("missing permission: " + TenantPermissions.JOB_READ);
+                .jsonPath("$.message").isEqualTo("missing permission: " + TenantPermissions.ARTIFACT_READ);
 
         verifyNoInteractions(conversionService, artifactStore);
     }
@@ -94,7 +94,7 @@ class ConversionDownloadAuthorizationTest {
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
-                .headers(headers -> addAuth(headers, TenantPermissions.JOB_READ))
+                .headers(headers -> addAuth(headers, TenantPermissions.ARTIFACT_READ))
                 .exchange()
                 .expectStatus().isNotFound()
                 .expectBody()
@@ -105,7 +105,7 @@ class ConversionDownloadAuthorizationTest {
     }
 
     @Test
-    void downloadReturnsOwnedSucceededArtifactWithReadPermission() {
+    void downloadReturnsOwnedSucceededArtifactWithArtifactReadPermission() {
         UUID jobId = UUID.randomUUID();
         byte[] pdfBytes = "%PDF-1.7\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
         ConversionJob ownedJob = new ConversionJob(
@@ -121,7 +121,7 @@ class ConversionDownloadAuthorizationTest {
 
         webTestClient.get()
                 .uri("/api/v1/convert/jobs/{jobId}/download", jobId)
-                .headers(headers -> addAuth(headers, TenantPermissions.JOB_READ))
+                .headers(headers -> addAuth(headers, TenantPermissions.ARTIFACT_READ))
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_PDF)

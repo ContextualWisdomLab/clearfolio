@@ -14,28 +14,67 @@ import org.junit.jupiter.api.Test;
  */
 class ArtifactDeletionReceiptBranchCoverageTest {
 
+    private static final Instant REQUESTED_AT = Instant.parse("2026-08-06T12:00:00Z");
+
     @Test
     void failedReceiptWithoutAnyAttemptEvidenceIsRejected() {
-        Instant requestedAt = Instant.parse("2026-08-06T12:00:00Z");
-
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> new ArtifactDeletionReceipt(
-                        UUID.fromString("11111111-2222-3333-4444-555555555555"),
-                        "tenant-edge",
-                        UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
-                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-                        "audit-v1:0123456789abcdef0123456789abcdef",
-                        requestedAt,
-                        requestedAt.plusSeconds(1),
-                        ArtifactDeletionState.ARTIFACT_CLEANUP_FAILED,
-                        0,
-                        null,
-                        null,
+                () -> failedReceipt(0, null, REQUESTED_AT.plusSeconds(1), "artifact_store_delete_failed")
+        );
+
+        assertEquals("failed receipt fields are inconsistent", exception.getMessage());
+    }
+
+    @Test
+    void failedReceiptRequiresAttemptTimeToEqualItsStateTime() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> failedReceipt(
+                        1,
+                        REQUESTED_AT.plusSeconds(1),
+                        REQUESTED_AT.plusSeconds(2),
                         "artifact_store_delete_failed"
                 )
         );
 
         assertEquals("failed receipt fields are inconsistent", exception.getMessage());
+    }
+
+    @Test
+    void failedReceiptAcceptsCompleteMatchingAttemptEvidence() {
+        Instant failedAt = REQUESTED_AT.plusSeconds(2);
+
+        ArtifactDeletionReceipt receipt = failedReceipt(
+                1,
+                failedAt,
+                failedAt,
+                "artifact_store_delete_failed"
+        );
+
+        assertEquals(ArtifactDeletionState.ARTIFACT_CLEANUP_FAILED, receipt.state());
+        assertEquals(failedAt, receipt.lastAttemptAt());
+    }
+
+    private static ArtifactDeletionReceipt failedReceipt(
+            int attemptCount,
+            Instant lastAttemptAt,
+            Instant stateChangedAt,
+            String failureCode
+    ) {
+        return new ArtifactDeletionReceipt(
+                UUID.fromString("11111111-2222-3333-4444-555555555555"),
+                "tenant-edge",
+                UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                "audit-v1:0123456789abcdef0123456789abcdef",
+                REQUESTED_AT,
+                stateChangedAt,
+                ArtifactDeletionState.ARTIFACT_CLEANUP_FAILED,
+                attemptCount,
+                lastAttemptAt,
+                null,
+                failureCode
+        );
     }
 }

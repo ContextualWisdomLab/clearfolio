@@ -5,6 +5,7 @@
 ### Added
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
+- `RECEIPT_V1` append-only artifact-deletion receipt foundation을 추가했습니다. 영구 `job_id`, tenant, artifact SHA-256, idempotency request, privacy-safe audit correlation, 단조 상태와 시각, controlled failure code를 하나의 불변 증거로 묶고 standalone in-memory 및 restart-replay file adapter를 같은 `ArtifactDeletionReceiptStore` 계약으로 제공합니다. HTTP 삭제·metadata tombstone·cleanup worker의 원자적 통합은 issue #263의 후속 slice로 유지합니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.
   - 실패(dead-lettered) 상태인 작업을 관리자가 재시도 큐에 등록할 수 있는 `POST /api/v1/admin/convert/jobs/{jobId}/retry` 엔드포인트를 추가했습니다.
@@ -25,6 +26,7 @@
 ### Security
 
 - `GET /api/v1/convert/jobs/{jobId}/download`가 리소스 조회 전에 전용 `artifact:read` 권한을 검증하고, PDF 저장소 접근 전에 작업의 tenant 소유권을 확인하도록 강화했습니다. `job:read`만으로는 문서 바이트를 읽을 수 없으며, 인증 누락·권한 누락·교차 tenant UUID 접근은 각각 fail closed 처리되고 교차 tenant 요청은 리소스 존재를 숨기는 `404`를 반환합니다.
+- Deletion receipt ledger는 각 transition snapshot을 16 KiB 이하 strict UTF-8 `RECEIPT_V1` record로 검증하고 append 후 `FileChannel.force(true)`를 완료하기 전 durable 상태를 반환하지 않습니다. Record terminator는 host-independent fixed LF로 고정하고 commit delimiter로 취급하므로 non-empty unterminated final tail은 crash 또는 torn append의 미확정 증거로 간주해 startup에서 fail closed 처리하고 replay하지 않습니다. Replay는 `attempt_count`와 `last_attempt_at`의 동시 존재, 시각 순서, requested/tombstoned 상태의 zero-attempt 계약, retry/completion의 이전 attempt evidence 보존을 검증하며 pending-to-failed 전이만 count 증가를 허용합니다. malformed Base64URL, invalid timestamp/state/count, immutable identity conflict, non-monotonic time, unsafe failure detail, oversized line도 거부합니다. 이 증거는 아직 cleanup 완료를 의미하지 않으며 issue #263의 transactional outbox와 exact-generation worker가 통합될 때까지 incomplete cleanup finding을 유지합니다.
 - Maven XML 테스트 보고서 검증기는 각 `testsuite`의 `tests`, `skipped`, `failures`, `errors` 속성을 모두 필수 증거로 요구합니다. 누락된 결과 수를 암묵적으로 0으로 간주하지 않고 fail closed 처리하며, 각 속성 누락 회귀 테스트를 추가했습니다.
 - Maven XML 테스트 보고서 검증기는 UTF-8만 허용하고 UTF-8 BOM은 수용하며, NUL 바이트·DTD·엔터티 선언을 파싱 전에 거부합니다. UTF-16 같은 대체 인코딩으로 위험 선언을 바이트 검사에서 숨기는 우회와 외부 엔터티 읽기·엔터티 확장형 서비스 거부를 회귀 테스트로 차단했습니다.
 - Maven XML 테스트 보고서 검증기는 파일당 16 MiB 상한을 적용하고 한 번의 제한된 읽기로 실제 입력 크기를 검증합니다. 테스트 코드가 보고서 파일을 교체하거나 확장해도 크기 사전검사와 파싱 사이의 경쟁 조건을 이용할 수 없습니다.

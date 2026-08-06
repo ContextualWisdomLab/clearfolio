@@ -18,27 +18,32 @@ import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.config.ConversionProperties;
+import com.clearfolio.viewer.lifecycle.ArtifactDeletionCoordinator;
+import com.clearfolio.viewer.lifecycle.ArtifactDeletionLedger;
+import com.clearfolio.viewer.lifecycle.ArtifactDeletionMetrics;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
 import com.clearfolio.viewer.repository.ConversionJobStateStore.TenantRetryOutcome;
 import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
 /**
  * Default implementation that validates uploads, deduplicates by content hash,
- * and enqueues newly created conversion jobs.
+ * enqueues newly created conversion jobs, and delegates deletion to the durable
+ * artifact-cleanup lifecycle.
  *
  * <p>When the uploaded source is already a PDF (declared by extension or
  * content type and confirmed by the {@code %PDF-} magic header), the original
  * bytes are seeded into the artifact store so the worker serves the uploaded
- * document as-is instead of generating a placeholder.
+ * document as-is instead of generating a placeholder.</p>
  */
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
 
+    private static final int DEFAULT_STANDALONE_CLEANUP_BATCH_SIZE = 100;
     private static final HexFormat HEX_FORMAT = HexFormat.of();
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(
-            DefaultDocumentConversionService.class);
     private static final String PDF_CONTENT_TYPE = "application/pdf";
     private static final String PDF_EXTENSION_SUFFIX = ".pdf";
     private static final byte[] PDF_MAGIC_HEADER = {'%', 'P', 'D', 'F', '-'};
@@ -47,12 +52,12 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
     private final DocumentValidationService validationService;
     private final ConversionWorker conversionWorker;
     private final ArtifactStore artifactStore;
+    private final ArtifactDeletionCoordinator artifactDeletionCoordinator;
     private final int maxRetryAttempts;
     private final long maxUploadSizeBytes;
 
     /**
-     * Creates the conversion service with repository, validation, worker, and
-     * artifact store dependencies.
+     * Creates the Spring-managed conversion service with shared durable cleanup.
      *
      * @param repository conversion job repository
      * @param stateStore conversion job lifecycle state store
@@ -60,6 +65,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * @param conversionWorker conversion worker
      * @param artifactStore generated artifact store used for PDF passthrough seeding
      * @param conversionProperties conversion configuration values
+     * @param artifactDeletionCoordinator durable deletion and cleanup coordinator
      */
     @Autowired
     public DefaultDocumentConversionService(
@@ -68,19 +74,53 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             DocumentValidationService validationService,
             ConversionWorker conversionWorker,
             ArtifactStore artifactStore,
-            ConversionProperties conversionProperties) {
+            ConversionProperties conversionProperties,
+            ArtifactDeletionCoordinator artifactDeletionCoordinator) {
         this.repository = repository;
         this.stateStore = stateStore;
         this.validationService = validationService;
         this.conversionWorker = conversionWorker;
         this.artifactStore = artifactStore;
+        this.artifactDeletionCoordinator = artifactDeletionCoordinator;
         this.maxRetryAttempts = conversionProperties.getMaxRetryAttempts();
         this.maxUploadSizeBytes = conversionProperties.getMaxUploadSizeBytes();
     }
 
     /**
+     * Creates the conversion service with repository, validation, worker,
+     * artifact store, and an isolated in-memory cleanup receipt ledger.
+     *
+     * <p>This constructor preserves standalone and test wiring. Spring runtime
+     * uses the seven-argument constructor so cleanup receipts survive restart.</p>
+     *
+     * @param repository conversion job repository
+     * @param stateStore conversion job lifecycle state store
+     * @param validationService document validation service
+     * @param conversionWorker conversion worker
+     * @param artifactStore generated artifact store used for PDF passthrough seeding
+     * @param conversionProperties conversion configuration values
+     */
+    public DefaultDocumentConversionService(
+            ConversionJobRepository repository,
+            ConversionJobStateStore stateStore,
+            DocumentValidationService validationService,
+            ConversionWorker conversionWorker,
+            ArtifactStore artifactStore,
+            ConversionProperties conversionProperties) {
+        this(
+                repository,
+                stateStore,
+                validationService,
+                conversionWorker,
+                artifactStore,
+                conversionProperties,
+                standaloneDeletionCoordinator(repository, artifactStore)
+        );
+    }
+
+    /**
      * Creates the conversion service with an isolated in-memory artifact store
-     * for PDF passthrough seeding; intended for tests and legacy wiring.
+     * for PDF passthrough seeding and cleanup; intended for tests and legacy wiring.
      *
      * @param repository conversion job repository
      * @param stateStore conversion job lifecycle state store
@@ -226,14 +266,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         if (tenantContext == null) {
             return false;
         }
-
-        boolean deleted = repository.deleteByTenantAndId(tenantContext.tenantId(), jobId);
-        if (!deleted) {
-            return false;
-        }
-
-        deleteArtifact(jobId);
-        return true;
+        return artifactDeletionCoordinator.deleteForTenant(jobId, tenantContext.tenantId());
     }
 
     /**
@@ -241,8 +274,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      */
     @Override
     public void deleteJob(UUID jobId) {
-        deleteArtifact(jobId);
-        repository.deleteById(jobId);
+        artifactDeletionCoordinator.deleteGlobally(jobId);
     }
 
     /**
@@ -325,14 +357,6 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
     @Override
     public Iterable<ConversionJob> getAllJobs() {
         return repository.findAll();
-    }
-
-    private void deleteArtifact(UUID jobId) {
-        try {
-            artifactStore.deletePdf(jobId);
-        } catch (Exception exception) {
-            log.warn("Artifact deletion failed after an authorized job deletion.");
-        }
     }
 
     private void seedPdfPassthroughArtifact(ConversionJob job, MultipartFile file) {
@@ -429,5 +453,20 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         }
 
         return new RepositoryBackedConversionJobStateStore(repository);
+    }
+
+    private static ArtifactDeletionCoordinator standaloneDeletionCoordinator(
+            ConversionJobRepository repository,
+            ArtifactStore artifactStore
+    ) {
+        ArtifactDeletionLedger receiptStore = new ArtifactDeletionLedger();
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        return new ArtifactDeletionCoordinator(
+                repository,
+                artifactStore,
+                receiptStore,
+                new ArtifactDeletionMetrics(meterRegistry, receiptStore),
+                DEFAULT_STANDALONE_CLEANUP_BATCH_SIZE
+        );
     }
 }

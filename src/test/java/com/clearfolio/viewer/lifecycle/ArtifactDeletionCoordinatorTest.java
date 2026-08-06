@@ -94,26 +94,27 @@ class ArtifactDeletionCoordinatorTest {
     }
 
     @Test
-    void artifactSnapshotFailurePrecedesReceiptAndMetadataMutation() {
+    void artifactSnapshotFailureRetainsDurableReceiptBeforeMetadataMutation() {
         InMemoryConversionJobRepository repository = repositoryWithJob();
         ArtifactStore artifactStore = throwingStore(true, false);
         ArtifactDeletionLedger ledger = new ArtifactDeletionLedger();
+        ArtifactDeletionMetrics metrics = new ArtifactDeletionMetrics(ledger);
         ArtifactDeletionCoordinator coordinator = coordinator(
                 repository,
                 artifactStore,
                 ledger,
-                new ArtifactDeletionMetrics(ledger),
+                metrics,
                 100
         );
 
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
-                () -> coordinator.deleteForTenant(JOB_ID, TENANT_ID)
-        );
+        assertTrue(coordinator.deleteForTenant(JOB_ID, TENANT_ID));
 
-        assertEquals("artifact read failed", exception.getMessage());
+        ArtifactDeletionReceipt retained = ledger.findByJobId(JOB_ID).orElseThrow();
+        assertEquals(ArtifactDeletionState.DELETION_REQUESTED, retained.state());
+        assertEquals(ArtifactDeletionReceipt.PENDING_ARTIFACT_CHECKSUM, retained.artifactChecksum());
         assertTrue(repository.findById(JOB_ID).isPresent());
-        assertTrue(ledger.findByJobId(JOB_ID).isEmpty());
+        assertEquals(1L, metrics.failedAttempts());
+        assertEquals(1, metrics.pendingReceipts());
     }
 
     @Test

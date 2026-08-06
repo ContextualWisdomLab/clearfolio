@@ -20,11 +20,11 @@ tombstones metadata, attempts byte cleanup, records controlled failure evidence,
 and recovers incomplete work after startup and on a bounded fixed-delay
 schedule. A storage exception is no longer reduced to a log line and lost.
 
-The reference implementation closes the process-local and restart-loss gap that
-caused CWE-459 orphaned document bytes. A future database deployment should
-still replace the file ledger and metadata repository with one transactional
-outbox transaction. The current receipt-first ordering is crash recoverable but
-does not claim cross-resource ACID atomicity.
+The reference implementation closes the same-process orphaning and restart-loss
+gap that caused CWE-459 orphaned document bytes. A future database deployment
+should still replace the file ledger and metadata repository with one
+transactional outbox transaction. The current receipt-first ordering is crash
+recoverable but does not claim cross-resource ACID atomicity.
 
 ## Authorization and immutable identity
 
@@ -93,6 +93,28 @@ proves that those bytes still belong to the tombstoned lifecycle, so the
 coordinator removes them. A non-empty mismatched digest is retained and flagged
 instead of deleting bytes that cannot be proven to match the receipt.
 
+## In-flight conversion fence
+
+`DefaultConversionWorker` and `ArtifactDeletionCoordinator` execute the full
+artifact lifecycle for one job under the same `ArtifactLifecycleLockRegistry`
+stripe. The worker holds the stripe from processing claim through conversion,
+artifact write, and success or failure transition. Deletion holds the stripe
+from tenant authorization through receipt creation, metadata tombstone, byte
+removal, and final receipt transition. Deletion therefore cannot report durable
+completion while an earlier same-process worker is still able to recreate the
+artifact.
+
+The registry contains a fixed 256 `ReentrantLock` stripes, so memory remains
+bounded independently of job volume and unrelated stripes remain concurrent.
+Hash collisions reduce concurrency but do not weaken correctness. The lock is
+always released when the action returns or throws.
+
+This fence is deliberately documented as JVM-local. A multi-instance adapter
+must enforce the same lifecycle boundary with a distributed generation fence,
+object-version deletion precondition, compare-and-set tombstone, or single
+consumer transactional outbox. The process-local lock is not represented as a
+cluster-wide guarantee.
+
 ## Persistence and crash recovery
 
 Each complete `RECEIPT_V1` snapshot is encoded as bounded strict UTF-8,
@@ -147,6 +169,7 @@ remote-service adapters must preserve:
 - controlled privacy-safe failure evidence;
 - restart-safe pending-work replay;
 - bounded consumer backpressure;
+- conversion-versus-deletion serialization across every service instance;
 - terminal completion retention;
 - fail-closed conflict behavior.
 
@@ -174,9 +197,10 @@ The deterministic suite covers tenant concealment, successful completion,
 read-before-mutation failure, durable delete failure, controlled failure codes,
 restart replay, already-tombstoned recovery, pending-at-crash recovery, digest
 mismatch, absence-sentinel late writes, bounded batches, fixed metric tags,
-invalid configuration, idempotent duplicates, conflicting identities, every
-legal and illegal ledger transition, strict UTF-8, oversized input,
-unterminated-tail rejection, and completed-receipt retention.
+invalid configuration, idempotent duplicates, conflicting identities,
+fixed-memory lock release, deterministic in-flight conversion-versus-deletion
+ordering, every legal and illegal ledger transition, strict UTF-8, oversized
+input, unterminated-tail rejection, and completed-receipt retention.
 
 ## References
 

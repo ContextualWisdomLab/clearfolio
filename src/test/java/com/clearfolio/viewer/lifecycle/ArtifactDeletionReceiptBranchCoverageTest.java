@@ -56,6 +56,31 @@ class ArtifactDeletionReceiptBranchCoverageTest {
         assertEquals(failedAt, receipt.lastAttemptAt());
     }
 
+    @Test
+    void completedReceiptRejectsFailureEvidence() {
+        Instant completedAt = REQUESTED_AT.plusSeconds(2);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> new ArtifactDeletionReceipt(
+                        UUID.fromString("11111111-2222-3333-4444-555555555555"),
+                        "tenant-edge",
+                        UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "audit-v1:0123456789abcdef0123456789abcdef",
+                        REQUESTED_AT,
+                        completedAt,
+                        ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED,
+                        0,
+                        null,
+                        completedAt,
+                        "artifact_store_delete_failed"
+                )
+        );
+
+        assertEquals("completed receipt fields are inconsistent", exception.getMessage());
+    }
+
     private static ArtifactDeletionReceipt failedReceipt(
             int attemptCount,
             Instant lastAttemptAt,

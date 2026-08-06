@@ -206,6 +206,9 @@ public class ConversionController {
     /**
      * Downloads the converted PDF artifact for a tenant-owned conversion job.
      *
+     * <p>The caller must have the dedicated artifact-read permission. Job-status
+     * read access alone does not authorize access to document bytes.</p>
+     *
      * @param jobId conversion job identifier
      * @param headers request headers carrying tenant claims
      * @return PDF bytes with attachment disposition and checksum header
@@ -214,7 +217,7 @@ public class ConversionController {
     public Mono<ResponseEntity<byte[]>> downloadArtifact(
             @PathVariable UUID jobId,
             @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_READ);
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ARTIFACT_READ);
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
         tenantAccessService.requireSameTenant(tenantContext, job);

@@ -2,6 +2,7 @@ package com.clearfolio.viewer.config;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -13,33 +14,64 @@ import org.junit.jupiter.api.io.TempDir;
 import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.artifact.FileSystemArtifactStore;
 import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
+import com.clearfolio.viewer.artifact.LifecycleFencedArtifactStore;
+import com.clearfolio.viewer.lifecycle.ArtifactDeletionLedger;
+import com.clearfolio.viewer.lifecycle.ArtifactLifecycleLockRegistry;
 
+/**
+ * Verifies artifact-store mode selection and standalone factory compatibility.
+ */
 class ArtifactStoreConfigTest {
 
     @TempDir
     Path tempDir;
 
     @Test
-    void filesystemModeCreatesDiskBackedStore() {
+    void filesystemModeCreatesRestartDurableFencedStore() {
         ArtifactStoreProperties properties = new ArtifactStoreProperties();
         properties.setRootDir(tempDir.resolve("artifacts").toString());
-
-        ArtifactStore store = new ArtifactStoreConfig().artifactStore(properties);
-
-        assertInstanceOf(FileSystemArtifactStore.class, store);
         UUID docId = UUID.randomUUID();
         byte[] bytes = "%PDF-1.7".getBytes(StandardCharsets.UTF_8);
-        store.putPdf(docId, bytes);
-        assertArrayEquals(bytes, store.getPdf(docId).orElseThrow());
+        ArtifactStore firstStore = configuredStore(properties);
+
+        assertInstanceOf(LifecycleFencedArtifactStore.class, firstStore);
+        firstStore.putPdf(docId, bytes);
+
+        ArtifactStore restartedStore = configuredStore(properties);
+        assertArrayEquals(bytes, restartedStore.getPdf(docId).orElseThrow());
     }
 
     @Test
-    void inMemoryModeCreatesVolatileStore() {
+    void inMemoryModeCreatesVolatileFencedStore() {
         ArtifactStoreProperties properties = new ArtifactStoreProperties();
         properties.setMode(ArtifactStoreProperties.MODE_IN_MEMORY);
+        UUID docId = UUID.randomUUID();
+        ArtifactStore firstStore = configuredStore(properties);
+        firstStore.putPdf(docId, new byte[] {1});
 
-        ArtifactStore store = new ArtifactStoreConfig().artifactStore(properties);
+        ArtifactStore restartedStore = configuredStore(properties);
 
-        assertInstanceOf(InMemoryArtifactStore.class, store);
+        assertInstanceOf(LifecycleFencedArtifactStore.class, restartedStore);
+        assertTrue(restartedStore.getPdf(docId).isEmpty());
+    }
+
+    @Test
+    void historicalStandaloneFactoryPreservesBothDelegateModes() {
+        ArtifactStoreConfig config = new ArtifactStoreConfig();
+        ArtifactStoreProperties filesystem = new ArtifactStoreProperties();
+        filesystem.setRootDir(tempDir.resolve("legacy-artifacts").toString());
+        ArtifactStoreProperties inMemory = new ArtifactStoreProperties();
+        inMemory.setMode(ArtifactStoreProperties.MODE_IN_MEMORY);
+
+        assertInstanceOf(FileSystemArtifactStore.class, config.artifactStore(filesystem));
+        assertInstanceOf(InMemoryArtifactStore.class, config.artifactStore(inMemory));
+    }
+
+    private static ArtifactStore configuredStore(ArtifactStoreProperties properties) {
+        return new ArtifactStoreConfig().artifactStore(
+                properties,
+                new ArtifactDeletionLedger(),
+                new ArtifactLifecycleLockRegistry()
+        );
     }
 }

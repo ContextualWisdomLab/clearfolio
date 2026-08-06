@@ -306,6 +306,50 @@ class ArtifactDeletionLedgerReplayValidationTest {
         assertInvalidLedger(ledgerPath);
     }
 
+    @Test
+    void firstPendingStateMustNotInventAttemptEvidence() throws IOException {
+        Path ledgerPath = ledgerPath();
+        Instant tombstonedAt = REQUESTED_AT.plusSeconds(1);
+        Instant pendingAt = REQUESTED_AT.plusSeconds(2);
+        Files.writeString(
+                ledgerPath,
+                line(TENANT_ID, ArtifactDeletionState.DELETION_REQUESTED, REQUESTED_AT,
+                        0, null, null, null)
+                        + line(TENANT_ID, ArtifactDeletionState.METADATA_TOMBSTONED, tombstonedAt,
+                                0, null, null, null)
+                        + line(TENANT_ID, ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, pendingAt,
+                                1, tombstonedAt, null, null),
+                StandardCharsets.UTF_8
+        );
+
+        assertInvalidLedger(ledgerPath);
+    }
+
+    @Test
+    void completedReceiptCannotTransitionAgainDuringReplay() throws IOException {
+        Path ledgerPath = ledgerPath();
+        Instant tombstonedAt = REQUESTED_AT.plusSeconds(1);
+        Instant pendingAt = REQUESTED_AT.plusSeconds(2);
+        Instant completedAt = REQUESTED_AT.plusSeconds(3);
+        Instant duplicateCompletedAt = REQUESTED_AT.plusSeconds(4);
+        Files.writeString(
+                ledgerPath,
+                line(TENANT_ID, ArtifactDeletionState.DELETION_REQUESTED, REQUESTED_AT,
+                        0, null, null, null)
+                        + line(TENANT_ID, ArtifactDeletionState.METADATA_TOMBSTONED, tombstonedAt,
+                                0, null, null, null)
+                        + line(TENANT_ID, ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, pendingAt,
+                                0, null, null, null)
+                        + line(TENANT_ID, ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED, completedAt,
+                                0, null, completedAt, null)
+                        + line(TENANT_ID, ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED, duplicateCompletedAt,
+                                0, null, duplicateCompletedAt, null),
+                StandardCharsets.UTF_8
+        );
+
+        assertInvalidLedger(ledgerPath);
+    }
+
     private Path ledgerPath() {
         return tempDirectory.resolve("artifact_deletion_receipt.log");
     }

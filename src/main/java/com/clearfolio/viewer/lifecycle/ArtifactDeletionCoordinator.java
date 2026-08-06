@@ -2,6 +2,7 @@ package com.clearfolio.viewer.lifecycle;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
@@ -151,25 +152,33 @@ public class ArtifactDeletionCoordinator {
      * Replays one bounded deterministic batch of incomplete deletion receipts.
      *
      * <p>A failure in one receipt is isolated so later receipts in the same
-     * batch remain eligible. The receipt remains authoritative recovery evidence.</p>
+     * batch remain eligible. The receipt remains authoritative recovery evidence.
+     * The elapsed time is retained only as aggregate low-cardinality evidence.</p>
      *
      * @return number of receipts selected for this recovery pass
      */
     public int retryPendingWork() {
-        List<ArtifactDeletionReceipt> pending = receiptStore.pendingReceipts();
-        int selected = Math.min(maxReceiptsPerRun, pending.size());
-        for (int index = 0; index < selected; index++) {
-            try {
-                resumeReceipt(pending.get(index));
-            } catch (RuntimeException exception) {
-                metrics.recordFailed();
-                log.warn(
-                        "Artifact deletion recovery retained an incomplete receipt. cause={}",
-                        exception.getClass().getName()
-                );
+        long startedAtNanos = System.nanoTime();
+        try {
+            List<ArtifactDeletionReceipt> pending = receiptStore.pendingReceipts();
+            int selected = Math.min(maxReceiptsPerRun, pending.size());
+            for (int index = 0; index < selected; index++) {
+                try {
+                    resumeReceipt(pending.get(index));
+                } catch (RuntimeException exception) {
+                    metrics.recordFailed();
+                    log.warn(
+                            "Artifact deletion recovery retained an incomplete receipt. cause={}",
+                            exception.getClass().getName()
+                    );
+                }
             }
+            return selected;
+        } finally {
+            metrics.recordRecoveryBatchDuration(
+                    Duration.ofNanos(System.nanoTime() - startedAtNanos)
+            );
         }
-        return selected;
     }
 
     /** Replays incomplete receipts when the application becomes ready. */

@@ -24,6 +24,7 @@
 - Jazzer fuzzing도 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하도록 강화했습니다.
 - CycloneDX Maven Plugin 2.9.1의 정확한 `outputFormat`/`outputName` 사용자 속성으로 생성한 61개 구성요소 SBOM과 제3자 고지문을 buyer evidence에 반영했습니다. 생성 source head, UTC 시각, artifact/archive/SBOM/attribution 해시, 17개 Netty 구성요소의 purl·bom-ref·dependency-edge 정합성, 로컬 생성 증거와 공유 가능한 데이터룸 증거의 경계를 ADR 및 실행 가능한 drift test로 고정했습니다.
 - Spring scheduling을 활성화하고 artifact deletion recovery를 30초 fixed delay, 실행당 최대 100개 receipt로 제한했습니다. Cleanup 완료·실패 누적값과 pending receipt 수는 dependency-free aggregate evidence로 제공하며 tenant/job/checksum/예외/경로 차원을 저장하지 않습니다.
+- Durable artifact deletion은 프로세스 전체 모니터 대신 공유 per-job lifecycle lock만 사용해 서로 다른 문서의 삭제와 복구를 병렬화합니다. WebFlux 관리자 DELETE는 blocking artifact I/O를 Reactor bounded-elastic worker로 격리합니다.
 
 ### Security
 
@@ -54,6 +55,7 @@
 
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정했습니다.
 - 관리자 삭제에서 metadata 제거 뒤 artifact-store 실패가 로그로만 소실되던 CWE-459 경로를 durable receipt와 bounded recovery로 수정했습니다. 같은 tenant의 반복 DELETE는 기존 receipt를 resume/no-op하며, 다른 tenant receipt는 숨깁니다.
+- Legacy global DELETE가 metadata tombstone 뒤 실패한 receipt를 다시 호출했을 때 cleanup을 재개하지 않던 상태 전이 오류를 수정했습니다.
 
 ## [0.1.0] - 2026-06-25
 
@@ -68,10 +70,10 @@
   - 변환 성공한 작업에 대한 PDF 바이너리 다운로드 엔드포인트를 구현했습니다.
   - 파일 다운로드 시 원본 파일명 기반의 `.pdf` 확장자 처리와 파일 무결성을 위한 체크섬(`X-Checksum-Sha256`) 헤더를 응답에 포함하도록 지원합니다.
 
-- **관리자용 전체 작업 조회 API 추가 (`GET /api/v1/admin/convert/jobs`)**
-  - 시스템 내 전체 작업 내역을 조회할 수 있는 Admin 엔드포인트를 구현했습니다.
+- **관리자용 tenant 범위 작업 조회 API 추가 (`GET /api/v1/admin/convert/jobs`)**
+  - 검증된 요청 tenant 범위 내 작업 내역을 조회할 수 있는 Admin 엔드포인트를 구현했습니다.
   - `deadLettered` 필터 조건을 쿼리 파라미터로 제공하여 실패한 작업들만 조회할 수 있습니다.
-  - 관련 `AdminJobListResponse` DTO 모델과 이를 처리하는 Repository 및 Service 계층의 `findAll`/`getAllJobs` 메서드를 추가했습니다.
+  - 관련 `AdminJobListResponse` DTO 모델과 이를 처리하는 Repository 및 Service 계층의 tenant-scoped 조회 메서드를 추가했습니다.
 
 ### 테스트 커버리지 (Tests)
 

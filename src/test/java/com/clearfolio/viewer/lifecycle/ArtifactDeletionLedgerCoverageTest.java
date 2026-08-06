@@ -235,9 +235,10 @@ class ArtifactDeletionLedgerCoverageTest {
                 ).getMessage()
         );
 
-        Path parentFile = tempDirectory.resolve("parent_file");
-        Files.writeString(parentFile, "not a directory", StandardCharsets.UTF_8);
-        ArtifactDeletionLedger unwritable = new ArtifactDeletionLedger(parentFile.resolve("ledger.log"));
+        Path parentPath = tempDirectory.resolve("write_parent");
+        Path ledgerPath = parentPath.resolve("ledger.log");
+        ArtifactDeletionLedger unwritable = new ArtifactDeletionLedger(ledgerPath);
+        Files.writeString(parentPath, "not a directory", StandardCharsets.UTF_8);
         assertEquals(
                 "artifact deletion ledger cannot be written",
                 assertThrows(

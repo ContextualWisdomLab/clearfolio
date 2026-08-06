@@ -20,7 +20,7 @@ import com.clearfolio.viewer.model.ConversionJob;
 class DocumentConversionServiceCoverageTest {
 
     @Test
-    void tenantScopedDeleteRejectsMissingContextAndMissingJobBeforeMutation() {
+    void tenantScopedDeleteRejectsEveryContextBeforeReadingOrMutating() {
         UUID jobId = UUID.randomUUID();
         AtomicInteger lookupCount = new AtomicInteger();
         AtomicInteger deleteCount = new AtomicInteger();
@@ -60,7 +60,7 @@ class DocumentConversionServiceCoverageTest {
                 jobId,
                 new TenantContext("tenant-a", "subject-a", Set.of())
         ));
-        assertEquals(1, lookupCount.get());
+        assertEquals(0, lookupCount.get());
         assertEquals(0, deleteCount.get());
     }
 }

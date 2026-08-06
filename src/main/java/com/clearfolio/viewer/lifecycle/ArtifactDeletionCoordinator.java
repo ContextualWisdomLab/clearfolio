@@ -25,13 +25,12 @@ import com.clearfolio.viewer.repository.ConversionJobRepository;
 /**
  * Coordinates receipt-first metadata tombstoning and restart-safe artifact cleanup.
  *
- * <p>Administrative deletion is intentionally serialized because it is a
- * low-frequency control-plane operation and each receipt transition must be
- * observed in order. The same per-job lifecycle lock is shared with conversion
- * so a worker cannot publish bytes after cleanup completes in the reference
- * process. Replaceable durable adapters may use transactions, object-generation
- * preconditions, compare-and-set state, or a single-consumer outbox while
- * preserving the same contract.</p>
+ * <p>Each document lifecycle is serialized by a fixed-memory per-job lock shared
+ * with conversion. Different document identifiers may progress concurrently,
+ * so a slow artifact store cannot serialize every deletion and recovery task in
+ * the process. Replaceable durable adapters may use transactions,
+ * object-generation preconditions, compare-and-set state, or a single-consumer
+ * outbox while preserving the same per-generation contract.</p>
  */
 @Component
 public class ArtifactDeletionCoordinator {
@@ -124,7 +123,7 @@ public class ArtifactDeletionCoordinator {
      *         deletion lifecycle; false for missing or cross-tenant identifiers
      * @throws NullPointerException when either identifier is absent
      */
-    public synchronized boolean deleteForTenant(UUID jobId, String tenantId) {
+    public boolean deleteForTenant(UUID jobId, String tenantId) {
         UUID requiredJobId = Objects.requireNonNull(jobId, "jobId");
         String requiredTenantId = Objects.requireNonNull(tenantId, "tenantId").strip();
         return lifecycleLocks.withJobLock(
@@ -140,7 +139,7 @@ public class ArtifactDeletionCoordinator {
      * @param jobId permanently reserved conversion-job identifier
      * @throws NullPointerException when the identifier is absent
      */
-    public synchronized void deleteGlobally(UUID jobId) {
+    public void deleteGlobally(UUID jobId) {
         UUID requiredJobId = Objects.requireNonNull(jobId, "jobId");
         lifecycleLocks.withJobLock(requiredJobId, () -> {
             deleteGloballyLocked(requiredJobId);
@@ -156,7 +155,7 @@ public class ArtifactDeletionCoordinator {
      *
      * @return number of receipts selected for this recovery pass
      */
-    public synchronized int retryPendingWork() {
+    public int retryPendingWork() {
         List<ArtifactDeletionReceipt> pending = receiptStore.pendingReceipts();
         int selected = Math.min(maxReceiptsPerRun, pending.size());
         for (int index = 0; index < selected; index++) {
@@ -164,7 +163,10 @@ public class ArtifactDeletionCoordinator {
                 resumeReceipt(pending.get(index));
             } catch (RuntimeException exception) {
                 metrics.recordFailed();
-                log.warn("Artifact deletion recovery retained an incomplete receipt.");
+                log.warn(
+                        "Artifact deletion recovery retained an incomplete receipt. cause={}",
+                        exception.getClass().getName()
+                );
             }
         }
         return selected;
@@ -205,6 +207,11 @@ public class ArtifactDeletionCoordinator {
     }
 
     private void deleteGloballyLocked(UUID jobId) {
+        Optional<ArtifactDeletionReceipt> existingReceipt = receiptStore.findByJobId(jobId);
+        if (existingReceipt.isPresent()) {
+            resumeReceiptLocked(existingReceipt.get());
+            return;
+        }
         Optional<ConversionJob> existing = repository.findById(jobId);
         if (existing.isEmpty()) {
             repository.deleteById(jobId);
@@ -216,12 +223,7 @@ public class ArtifactDeletionCoordinator {
                 jobId,
                 snapshotChecksum(jobId)
         );
-        repository.deleteById(jobId);
-        ArtifactDeletionReceipt tombstoned = receiptStore.markMetadataTombstoned(
-                jobId,
-                Instant.now()
-        );
-        queueAndAttempt(tombstoned);
+        resumeReceiptLocked(receipt);
     }
 
     private boolean resumeExistingReceiptForTenantLocked(UUID jobId, String tenantId) {

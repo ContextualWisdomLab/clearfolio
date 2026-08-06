@@ -25,12 +25,12 @@ import com.clearfolio.viewer.repository.ConversionJobRepository;
 /**
  * Coordinates receipt-first metadata tombstoning and restart-safe artifact cleanup.
  *
- * <p>Administrative deletion is intentionally serialized because it is a
- * low-frequency control-plane operation and each receipt transition must be
- * observed in order. Replaceable durable adapters may use database transactions,
- * compare-and-set state, or a single-consumer outbox while preserving this
- * interface's tenant, permanent-job-identity, digest, retry, and fail-closed
- * semantics.</p>
+ * <p>Every metadata and artifact mutation for one permanently reserved job
+ * identifier is serialized with the conversion worker through a bounded
+ * process-local lock registry. Replaceable durable adapters may use database
+ * transactions, compare-and-set state, object-generation preconditions, or a
+ * single-consumer outbox while preserving this interface's tenant, immutable
+ * job identity, digest, retry, and fail-closed semantics.</p>
  */
 @Component
 public class ArtifactDeletionCoordinator {
@@ -48,6 +48,7 @@ public class ArtifactDeletionCoordinator {
     private final ArtifactStore artifactStore;
     private final ArtifactDeletionReceiptStore receiptStore;
     private final ArtifactDeletionMetrics metrics;
+    private final ArtifactLifecycleLockRegistry lifecycleLocks;
     private final int maxReceiptsPerRun;
 
     /**
@@ -73,6 +74,7 @@ public class ArtifactDeletionCoordinator {
         this.artifactStore = Objects.requireNonNull(artifactStore, "artifactStore");
         this.receiptStore = Objects.requireNonNull(receiptStore, "receiptStore");
         this.metrics = Objects.requireNonNull(metrics, "metrics");
+        this.lifecycleLocks = ArtifactLifecycleLockRegistry.shared();
         if (maxReceiptsPerRun <= 0) {
             throw new IllegalArgumentException("maxReceiptsPerRun must be positive");
         }
@@ -90,21 +92,13 @@ public class ArtifactDeletionCoordinator {
      * @param tenantId authenticated tenant identifier
      * @return true when an owned job entered the durable deletion lifecycle
      */
-    public synchronized boolean deleteForTenant(UUID jobId, String tenantId) {
+    public boolean deleteForTenant(UUID jobId, String tenantId) {
         UUID requiredJobId = Objects.requireNonNull(jobId, "jobId");
         String requiredTenantId = Objects.requireNonNull(tenantId, "tenantId").strip();
-        Optional<ConversionJob> existing = repository.findByTenantAndId(requiredTenantId, requiredJobId);
-        if (existing.isEmpty()) {
-            return false;
-        }
-
-        ArtifactDeletionReceipt receipt = requestReceipt(
-                requiredTenantId,
+        return lifecycleLocks.withJobLock(
                 requiredJobId,
-                snapshotChecksum(requiredJobId)
+                () -> deleteForTenantLocked(requiredJobId, requiredTenantId)
         );
-        resumeReceipt(receipt);
-        return true;
     }
 
     /**
@@ -113,26 +107,12 @@ public class ArtifactDeletionCoordinator {
      *
      * @param jobId permanently reserved conversion-job identifier
      */
-    public synchronized void deleteGlobally(UUID jobId) {
+    public void deleteGlobally(UUID jobId) {
         UUID requiredJobId = Objects.requireNonNull(jobId, "jobId");
-        Optional<ConversionJob> existing = repository.findById(requiredJobId);
-        if (existing.isEmpty()) {
-            repository.deleteById(requiredJobId);
-            return;
-        }
-
-        ConversionJob job = existing.get();
-        ArtifactDeletionReceipt receipt = requestReceipt(
-                job.getTenantId(),
-                requiredJobId,
-                snapshotChecksum(requiredJobId)
-        );
-        repository.deleteById(requiredJobId);
-        ArtifactDeletionReceipt tombstoned = receiptStore.markMetadataTombstoned(
-                requiredJobId,
-                Instant.now()
-        );
-        queueAndAttempt(tombstoned);
+        lifecycleLocks.withJobLock(requiredJobId, () -> {
+            deleteGloballyLocked(requiredJobId);
+            return null;
+        });
     }
 
     /**
@@ -144,7 +124,7 @@ public class ArtifactDeletionCoordinator {
      *
      * @return number of receipts selected for this recovery pass
      */
-    public synchronized int retryPendingWork() {
+    public int retryPendingWork() {
         List<ArtifactDeletionReceipt> pending = receiptStore.pendingReceipts();
         int selected = Math.min(maxReceiptsPerRun, pending.size());
         for (int index = 0; index < selected; index++) {
@@ -175,9 +155,52 @@ public class ArtifactDeletionCoordinator {
     }
 
     void resumeReceipt(ArtifactDeletionReceipt candidate) {
-        ArtifactDeletionReceipt receipt = receiptStore.findByJobId(
-                Objects.requireNonNull(candidate, "candidate").jobId()
-        ).orElseThrow(() -> new IllegalStateException("artifact deletion receipt not found"));
+        ArtifactDeletionReceipt requiredCandidate = Objects.requireNonNull(candidate, "candidate");
+        lifecycleLocks.withJobLock(requiredCandidate.jobId(), () -> {
+            resumeReceiptLocked(requiredCandidate.jobId());
+            return null;
+        });
+    }
+
+    private boolean deleteForTenantLocked(UUID jobId, String tenantId) {
+        Optional<ConversionJob> existing = repository.findByTenantAndId(tenantId, jobId);
+        if (existing.isEmpty()) {
+            return false;
+        }
+
+        ArtifactDeletionReceipt receipt = requestReceipt(
+                tenantId,
+                jobId,
+                snapshotChecksum(jobId)
+        );
+        resumeReceiptLocked(receipt.jobId());
+        return true;
+    }
+
+    private void deleteGloballyLocked(UUID jobId) {
+        Optional<ConversionJob> existing = repository.findById(jobId);
+        if (existing.isEmpty()) {
+            repository.deleteById(jobId);
+            return;
+        }
+
+        ConversionJob job = existing.get();
+        ArtifactDeletionReceipt receipt = requestReceipt(
+                job.getTenantId(),
+                jobId,
+                snapshotChecksum(jobId)
+        );
+        repository.deleteById(jobId);
+        ArtifactDeletionReceipt tombstoned = receiptStore.markMetadataTombstoned(
+                jobId,
+                Instant.now()
+        );
+        queueAndAttempt(tombstoned);
+    }
+
+    private void resumeReceiptLocked(UUID jobId) {
+        ArtifactDeletionReceipt receipt = receiptStore.findByJobId(jobId)
+                .orElseThrow(() -> new IllegalStateException("artifact deletion receipt not found"));
         switch (receipt.state()) {
             case DELETION_REQUESTED -> resumeRequested(receipt);
             case METADATA_TOMBSTONED -> queueAndAttempt(receipt);
@@ -271,12 +294,16 @@ public class ArtifactDeletionCoordinator {
     }
 
     private String snapshotChecksum(UUID jobId) {
-        Optional<byte[]> artifact = Objects.requireNonNull(
-                artifactStore.getPdf(jobId),
-                "artifactStore.getPdf"
-        );
-        return artifact.map(ArtifactDeletionCoordinator::sha256)
-                .orElse(ABSENT_ARTIFACT_CHECKSUM);
+        try {
+            Optional<byte[]> artifact = Objects.requireNonNull(
+                    artifactStore.getPdf(jobId),
+                    "artifactStore.getPdf"
+            );
+            return artifact.map(ArtifactDeletionCoordinator::sha256)
+                    .orElse(ABSENT_ARTIFACT_CHECKSUM);
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException("artifact snapshot unavailable");
+        }
     }
 
     private static String sha256(byte[] bytes) {

@@ -1,12 +1,15 @@
-"""Protect artifact-token parser evidence from unsupported performance claims."""
+"""Protect bounded artifact-token evidence from unsupported performance claims."""
 
 from pathlib import Path
 
 ARTIFACT_LINK_SERVICE = Path(
     "src/main/java/com/clearfolio/viewer/artifact/ArtifactLinkService.java"
 )
+ARTIFACT_TOKEN_CLAIMS = Path(
+    "src/main/java/com/clearfolio/viewer/artifact/ArtifactTokenClaims.java"
+)
 BOUNDARY_TEST = Path(
-    "src/test/java/com/clearfolio/viewer/artifact/ArtifactTokenManualParserBoundaryTest.java"
+    "src/test/java/com/clearfolio/viewer/artifact/ArtifactTokenBoundaryTest.java"
 )
 CHANGELOG = Path("CHANGELOG.md")
 
@@ -19,22 +22,23 @@ UNSUPPORTED_PERFORMANCE_CLAIMS = (
 )
 
 
-def test_manual_parser_has_no_unbenchmarked_performance_claim() -> None:
+def test_bounded_token_contract_has_no_unbenchmarked_performance_claim() -> None:
     """Reject unsupported performance claims in production and release evidence."""
     evidence_sources = {
         ARTIFACT_LINK_SERVICE: ARTIFACT_LINK_SERVICE.read_text(encoding="utf-8"),
+        ARTIFACT_TOKEN_CLAIMS: ARTIFACT_TOKEN_CLAIMS.read_text(encoding="utf-8"),
         CHANGELOG: CHANGELOG.read_text(encoding="utf-8"),
     }
 
     for path, source in evidence_sources.items():
         for claim in UNSUPPORTED_PERFORMANCE_CLAIMS:
             assert claim not in source, (
-                "unsupported artifact-token parser performance claim remains "
+                "unsupported artifact-token performance claim remains "
                 f"in {path}: {claim!r}"
             )
 
 
-def test_manual_parser_keeps_signed_boundary_regressions() -> None:
+def test_bounded_token_contract_keeps_signed_boundary_regressions() -> None:
     """Require deterministic tests for every malformed signed-payload boundary."""
     source = BOUNDARY_TEST.read_text(encoding="utf-8")
     required_tests = (

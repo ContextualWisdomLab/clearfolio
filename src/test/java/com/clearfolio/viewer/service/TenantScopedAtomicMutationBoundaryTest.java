@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -41,16 +40,29 @@ class TenantScopedAtomicMutationBoundaryTest {
     );
 
     @Test
-    void tenantAwareDeleteUsesScopedRepositoryDeletionBeforeArtifactCleanup() throws Exception {
+    void tenantAwareDeleteAuthorizesBeforeReceiptAndUsesScopedTombstone() {
         ConversionJobRepository repository = mock(ConversionJobRepository.class);
         ConversionJobStateStore stateStore = mock(ConversionJobStateStore.class);
         ArtifactStore artifactStore = mock(ArtifactStore.class);
         UUID missingId = UUID.randomUUID();
         UUID ownedId = UUID.randomUUID();
-        when(repository.deleteByTenantAndId(TENANT_CONTEXT.tenantId(), missingId))
-                .thenReturn(false);
+        ConversionJob ownedJob = new ConversionJob(
+                ownedId,
+                TENANT_CONTEXT.tenantId(),
+                TENANT_CONTEXT.subjectId(),
+                "owned.pdf",
+                "application/pdf",
+                "owned-delete-hash",
+                42L,
+                3
+        );
+        when(repository.findByTenantAndId(TENANT_CONTEXT.tenantId(), missingId))
+                .thenReturn(Optional.empty());
+        when(repository.findByTenantAndId(TENANT_CONTEXT.tenantId(), ownedId))
+                .thenReturn(Optional.of(ownedJob));
         when(repository.deleteByTenantAndId(TENANT_CONTEXT.tenantId(), ownedId))
                 .thenReturn(true);
+        when(artifactStore.getPdf(ownedId)).thenReturn(Optional.empty());
         DefaultDocumentConversionService service = service(
                 repository,
                 stateStore,
@@ -61,11 +73,14 @@ class TenantScopedAtomicMutationBoundaryTest {
         assertFalse(service.deleteJob(missingId, TENANT_CONTEXT));
         assertTrue(service.deleteJob(ownedId, TENANT_CONTEXT));
 
-        verify(repository).deleteByTenantAndId(TENANT_CONTEXT.tenantId(), missingId);
+        verify(repository).findByTenantAndId(TENANT_CONTEXT.tenantId(), missingId);
+        verify(repository).findByTenantAndId(TENANT_CONTEXT.tenantId(), ownedId);
+        verify(repository, never()).deleteByTenantAndId(TENANT_CONTEXT.tenantId(), missingId);
         verify(repository).deleteByTenantAndId(TENANT_CONTEXT.tenantId(), ownedId);
-        verify(repository, never()).findByTenantAndId(anyString(), any(UUID.class));
         verify(repository, never()).deleteById(any(UUID.class));
+        verify(artifactStore, never()).getPdf(missingId);
         verify(artifactStore, never()).deletePdf(missingId);
+        verify(artifactStore).getPdf(ownedId);
         verify(artifactStore).deletePdf(ownedId);
     }
 

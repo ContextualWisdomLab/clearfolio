@@ -5,6 +5,7 @@
 ### Added
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
+- 반복되는 `Details`, `Status JSON`, `Open viewer` 동작에 문서별 accessible name을 부여하고, 비동기 처리 중에는 동작별 pending label을 보조기술에 제공합니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.
   - 실패(dead-lettered) 상태인 작업을 관리자가 재시도 큐에 등록할 수 있는 `POST /api/v1/admin/convert/jobs/{jobId}/retry` 엔드포인트를 추가했습니다.
@@ -15,6 +16,8 @@
 ### Changed
 
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
+- 비동기 버튼 상태를 WeakMap 기반 중첩-safe 계약으로 통합했습니다. 최초 진입 시 원래 child node identity, disabled 상태, `aria-busy`, `aria-label`을 한 번만 보존하고 최종 restore에서만 정확히 복원하며, 중복 restore는 무해합니다.
+- Node.js 24 DOM 회귀 테스트를 Maven `verify`와 합성 merge 검증에 포함하고 production `dom-utils.js`의 line, branch, function coverage를 각각 100%로 강제합니다.
 - CI가 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하며, 합성 merge revision은 별도 호환성 작업에서 검증하도록 분리했습니다.
 - Maven `verify` 단계에서 JaCoCo production line 및 branch missed count가 각각 0인지 강제하고, 실패 시 누락 위치 진단을 출력하도록 했습니다.
 - Maven `verify` 이후 Surefire 보고서가 존재하고 실행 테스트 수가 1개 이상이며 skipped·failure·error 수가 모두 0인지 검증합니다. Failsafe 보고서가 생성된 경우 동일한 규칙을 적용하며, 보고서 누락·손상·음수 카운트·전체 skip·실패 결과는 exact-head CI와 merge-compatibility 모두에서 fail closed 처리합니다.
@@ -25,6 +28,7 @@
 ### Security
 
 - `GET /api/v1/convert/jobs/{jobId}/download`가 리소스 조회 전에 전용 `artifact:read` 권한을 검증하고, PDF 저장소 접근 전에 작업의 tenant 소유권을 확인하도록 강화했습니다. `job:read`만으로는 문서 바이트를 읽을 수 없으며, 인증 누락·권한 누락·교차 tenant UUID 접근은 각각 fail closed 처리되고 교차 tenant 요청은 리소스 존재를 숨기는 `404`를 반환합니다.
+- 문서명과 같은 외부 문자열은 `textContent`와 DOM node 보존 API로만 표시하며 `innerHTML` 백업·복원을 사용하지 않습니다. 마크업처럼 보이는 파일명도 실행 가능한 HTML로 해석되지 않습니다.
 - Maven XML 테스트 보고서 검증기는 각 `testsuite`의 `tests`, `skipped`, `failures`, `errors` 속성을 모두 필수 증거로 요구합니다. 누락된 결과 수를 암묵적으로 0으로 간주하지 않고 fail closed 처리하며, 각 속성 누락 회귀 테스트를 추가했습니다.
 - Maven XML 테스트 보고서 검증기는 UTF-8만 허용하고 UTF-8 BOM은 수용하며, NUL 바이트·DTD·엔터티 선언을 파싱 전에 거부합니다. UTF-16 같은 대체 인코딩으로 위험 선언을 바이트 검사에서 숨기는 우회와 외부 엔터티 읽기·엔터티 확장형 서비스 거부를 회귀 테스트로 차단했습니다.
 - Maven XML 테스트 보고서 검증기는 파일당 16 MiB 상한을 적용하고 한 번의 제한된 읽기로 실제 입력 크기를 검증합니다. 테스트 코드가 보고서 파일을 교체하거나 확장해도 크기 사전검사와 파싱 사이의 경쟁 조건을 이용할 수 없습니다.
@@ -37,6 +41,7 @@
 ### Fixed
 
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정했습니다.
+- `Details`와 `Status JSON`의 중첩 또는 반복 비동기 호출이 원래 DOM·ARIA·disabled 상태를 조기에 복원하거나 중복 요청을 발생시키지 않도록 수정했습니다.
 
 ## [0.1.0] - 2026-06-25
 

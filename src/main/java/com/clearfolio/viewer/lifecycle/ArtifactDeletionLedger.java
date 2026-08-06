@@ -258,8 +258,7 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
         ArtifactDeletionReceipt replayed = parse(line);
         ArtifactDeletionReceipt current = receiptsByJobId.get(replayed.jobId());
         if (current == null) {
-            if (replayed.state() != ArtifactDeletionState.DELETION_REQUESTED
-                    || replayed.attemptCount() != 0) {
+            if (replayed.state() != ArtifactDeletionState.DELETION_REQUESTED) {
                 throw invalidLine();
             }
             receiptsByJobId.put(replayed.jobId(), replayed);

@@ -1,144 +1,170 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with
+this repository.
 
 ## Read AGENTS.md first
 
-`AGENTS.md` at the repo root is the canonical agent operating guide. It defines the
-mandatory quality and security merge gates (compile with zero warnings, tests,
-100% JaCoCo coverage, JavaDoc, markdown lint, license/attribution/diligence drift
-checks) and the change-management rule that any new gate must be added to
-`AGENTS.md` in the same PR. Follow those gates before claiming any change complete.
-This file complements `AGENTS.md` with commands and architecture context; when in
-doubt, `AGENTS.md` wins.
+`AGENTS.md` at the repository root is the canonical agent operating guide. It
+defines mandatory quality, security, supply-chain, diligence, and merge gates.
+This file complements it with commands and architecture context. When the two
+files differ, `AGENTS.md` wins.
 
-Related canonical docs:
+Related canonical documents:
 
-- `ARCHITECTURE.md` — root architecture map (components, state model, gate list).
-- `docs/architecture.md` — detailed runtime flows and component boundaries.
-- `docs/engineering/acceptance-criteria.md` — canonical acceptance policy with exact repro commands and evidence pointers.
+- `ARCHITECTURE.md` — root component and state map.
+- `docs/architecture.md` — detailed runtime flows and boundaries.
+- `docs/engineering/acceptance-criteria.md` — exact-head acceptance policy.
+- `docs/operations/2026-08-05-availability-probes.md` — liveness/readiness ADR.
 - `README.md` — API scope, tenant-header contract, and compatibility notes.
 
 ## Common commands
 
-Toolchain: Java 21, Maven (Spring Boot parent 3.5.x). Python 3 for `scripts/`.
+Toolchain: Java 21, Maven, Spring Boot 3.5.x, and Python 3 for `scripts/`.
 
 ```bash
-# Compile (gate: warning/deprecated budget = 0; -Xlint:all -Werror is enforced)
-mvn -DskipTests compile
+# Canonical local acceptance command. It compiles with -Xlint:all -Werror,
+# runs all tests, enforces zero missed JaCoCo lines/branches, and generates
+# warning-free public Javadocs.
+mvn -B --no-transfer-progress verify
 
-# Full test suite (gate)
-mvn test
+# Focused test selection during the red-green loop.
+mvn -B --no-transfer-progress test -Dtest=ConversionControllerTest
+mvn -B --no-transfer-progress test -Dtest=ConversionControllerTest#methodName
 
-# Single test class / single test method (standard Surefire selection)
-mvn test -Dtest=ConversionControllerTest
-mvn test -Dtest=ConversionControllerTest#methodName
+# Buyer-readiness helper tests, matching the repository CI job.
+python -m pytest -q scripts
 
-# Coverage gate: JaCoCo line/branch missed must be 0 for com.clearfolio.viewer.*
-mvn -q -Djacoco.includes=com.clearfolio.viewer.* \
-  org.jacoco:jacoco-maven-plugin:0.8.13:prepare-agent test \
-  org.jacoco:jacoco-maven-plugin:0.8.13:report
-# Report lands in target/site/jacoco/jacoco.csv
-
-# JavaDoc gate (must produce no warnings/errors)
-mvn -q -DskipTests javadoc:javadoc
-
-# Run the app locally, then probe readiness
+# Run the service and inspect the two distinct availability signals.
 mvn spring-boot:run
-curl -sS http://localhost:8080/healthz
-
-# Python helper-script unit tests (unittest, no pytest dependency)
-python3 -m unittest discover -s scripts
+curl -i http://localhost:8080/healthz
+curl -i http://localhost:8080/readyz
 ```
 
-The license-policy, third-party-attribution, buyer data-room manifest, buyer
-readiness scorecard, and Figma deck payload drift checks are Python scripts under
-`scripts/`; the exact invocations (with the current evidence/policy file paths)
-are listed in `AGENTS.md` and must pass for doc/dependency changes that touch them.
+Do not present `mvn test`, a manually generated coverage report, or an earlier
+head as complete merge evidence. The authoritative command is `mvn verify`, and
+protected GitHub Checks must be successful for the exact current head.
 
-There are no repo-local CI workflows in `.github/workflows`; gates are reproduced
-locally and evidence is committed under `docs/qa/evidence/`. CodeQL runs through
-GitHub default setup (do not add a repo-local advanced CodeQL workflow), and
-Dependabot config lives in `.github/dependabot.yml`.
+The license-policy, third-party-attribution, buyer data-room manifest, buyer
+readiness scorecard, and Figma payload drift checks are Python scripts under
+`scripts/`. Their exact invocations and current evidence paths are listed in
+`AGENTS.md`.
+
+## GitHub workflow model
+
+Repository workflows under `.github/workflows/` run CI, Security Scan, SAST
+Semgrep, and fuzzing. Organization-central workflows may add review, coverage,
+security, and merge-policy evidence. CodeQL uses GitHub default setup; do not add
+a duplicate repository-local advanced CodeQL workflow while default setup is
+enabled.
+
+A queued, pending, cancelled, skipped-required, or stale-head run is not passing.
+Do not bypass branch protection or counted independent approval. Automated
+reviews are advisory unless GitHub recognizes the reviewer identity as having
+the permission required by the protected-branch rule.
 
 ## What this repository is
 
-Clearfolio Viewer (`com.clearfolio` / `clearfolio-viewer`) is the MVP backend for
-an integrated document viewer platform: non-blocking upload submit, async
-conversion with retry/dead-letter, job status polling, and a PDF.js viewer served
-from the same app. The runtime is Spring WebFlux (Servlet/MVC is explicitly not
-the selected stack), logging is Log4j2 (the default Logback starter is excluded),
-and the default job/artifact stores are in-memory (a SQL repository profile is
-planned but not implemented).
+Clearfolio Viewer (`com.clearfolio` / `clearfolio-viewer`) is the backend for an
+integrated document-viewing platform. It provides non-blocking upload submission,
+asynchronous conversion with retry and dead-letter behavior, status polling,
+signed artifact access, and a same-application PDF.js viewer.
 
-Entry point: `src/main/java/com/clearfolio/viewer/ClearfolioViewerApplication.java`.
-Configuration: `src/main/resources/application.yml` (`conversion.*` queue/retry/
-upload limits, `viewer.security.frame-ancestors`) plus the `buyer-demo` Spring
-profile (`application-buyer-demo.yml`) for buyer sandbox deployments.
+The runtime is Spring WebFlux. Logging is Log4j2; the default Logback starter is
+excluded. Conversion jobs currently use an in-memory repository and process-local
+lifecycle evidence. Generated artifacts use the filesystem store by default,
+with an in-memory implementation available for tests and explicitly configured
+local runs. A durable SQL job repository remains a planned production slice.
+
+Entry point:
+`src/main/java/com/clearfolio/viewer/ClearfolioViewerApplication.java`.
+
+Configuration:
+
+- `src/main/resources/application.yml` — queue, retry, upload, artifact-store,
+  availability, viewer, tenant-claim, and secret-mount settings.
+- `src/main/resources/application-buyer-demo.yml` — buyer sandbox profile.
 
 ## High-level architecture
 
-All production code lives in `src/main/java/com/clearfolio/viewer/`:
+All production code lives under `src/main/java/com/clearfolio/viewer/`.
 
-- `controller/` — HTTP endpoints and exception mapping. `ConversionController`
-  (submit `POST /api/v1/convert/jobs`, status polling, operator retry, viewer
-  bootstrap JSON), `ViewerUiController` (`GET /viewer/{docId}` HTML shell),
-  `ArtifactController` (`GET /artifacts/{docId}.pdf` with token verification and
-  single-range support), `AdminController`, `AnalyticsController` (KPI snapshot),
-  `HealthController` (`/healthz`), `ApiExceptionHandler` (shared error shape:
-  `errorCode`, optional `code`, `message`, `traceId`, `details`).
-- `service/` — `DefaultDocumentValidationService` (extension blocklist — HWP/HWPX
-  blocked by default — size limits, HMAC-verified policy-override lane),
-  `DefaultDocumentConversionService` (validation, content-hash dedupe, persist,
-  enqueue), `DefaultConversionWorker` (bounded executor, retry backoff,
-  dead-letter fallback, startup recovery sweep for stale leases).
-- `repository/` — `ConversionJobRepository` (read/dedupe boundary, in-memory
-  implementation) and `ConversionJobStateStore` (explicit lifecycle-transition
-  boundary with a process-local event trail; designed as the seam for the future
-  SQL implementation).
-- `model/` — `ConversionJob` lifecycle (`SUBMITTED`, `PROCESSING`, `SUCCEEDED`,
-  `FAILED`; retry-exhausted jobs stay `FAILED` with `deadLettered=true`).
-- `artifact/` — `ArtifactStore` (in-memory PDF bytes), `PdfBoxArtifactGenerator`
-  (PDFBox conversion stub), `ArtifactLinkService`/`ArtifactLinkLedger`
-  (short-lived signed artifact tokens, revocation, read-audit ledger).
-- `auth/` — tenant enforcement scaffold: protected JSON APIs require
-  `X-Clearfolio-Tenant-Id`, `X-Clearfolio-Subject-Id`, `X-Clearfolio-Permissions`
-  headers (optionally gateway-HMAC-signed); cross-tenant jobs are hidden as 404.
-  This is not production OIDC/JWT validation.
-- `analytics/` — KPI snapshot counters and export ledger.
-- `api/` — response/request DTOs; `config/` — `ConversionProperties`, executor,
-  security-headers WebFilter; `exception/` — domain exceptions.
+- `controller/`
+  - `ConversionController`: submit, status, retry, delete, viewer bootstrap, and
+    downloadable PDF endpoints.
+  - `ViewerUiController`: `GET /viewer/{docId}` HTML viewer shell.
+  - `ArtifactController`: signed artifact reads with single-range support.
+  - `AdminController`: tenant-scoped privileged job operations.
+  - `AnalyticsController`: KPI snapshots and evidence exports.
+  - `HealthController`: `GET /healthz` liveness and `GET /readyz` readiness,
+    both sourced from Spring Boot `ApplicationAvailability` and marked
+    `Cache-Control: no-store`.
+  - `ApiExceptionHandler`: shared error shape with privacy-safe trace evidence.
+- `service/`
+  - `DefaultDocumentValidationService`: upload constraints, extension policy,
+    and HMAC-verified exception lane.
+  - `DefaultDocumentConversionService`: validation, tenant-scoped content-hash
+    dedupe, persistence, PDF passthrough, and worker enqueue.
+  - `DefaultConversionWorker`: bounded execution, retry backoff, dead-lettering,
+    and startup recovery for due jobs and stale leases.
+- `repository/`
+  - `ConversionJobRepository`: read, dedupe, and recoverable-job boundary.
+  - `ConversionJobStateStore`: lifecycle-transition boundary and event trail.
+- `model/`
+  - `ConversionJob`: `SUBMITTED`, `PROCESSING`, `SUCCEEDED`, and `FAILED`.
+    Retry-exhausted jobs remain `FAILED` with `deadLettered=true`.
+- `artifact/`
+  - `FileSystemArtifactStore`: default restart-surviving PDF store.
+  - `InMemoryArtifactStore`: test and explicitly selected local store.
+  - `PdfBoxArtifactGenerator`: placeholder PDF generation for non-PDF sources;
+    deterministic real Office conversion remains a separate product slice.
+  - `ArtifactLinkService` and ledgers: short-lived signed links, revocation, and
+    read-audit evidence.
+- `auth/`
+  - Tenant and permission enforcement for protected JSON APIs. Gateway-signed
+    header claims are supported; this is not a complete production OIDC/JWT
+    implementation.
+- `analytics/`
+  - KPI snapshot counters and export evidence.
+- `api/`, `config/`, and `exception/`
+  - DTOs, configuration, WebFlux filters, and domain exceptions.
 
-Request flow: controller validates and enqueues (returns `202` fast; the request
-path must never run conversion inline), the worker converts and stores the PDF,
-clients poll status, then fetch viewer bootstrap JSON and the artifact via a
-signed link. Static viewer assets (PDF.js shell, demo fixtures) live under
-`src/main/resources/static/assets/viewer/`.
+The request path must never perform conversion inline. Controllers validate and
+submit bounded work, clients poll status, and the viewer retrieves a signed
+artifact only after a successful terminal state.
 
-Tests mirror the package tree under `src/test/java/`, including
-`config/DependencyPolicyTest` (blocks reintroducing `tika-parsers-standard-package`,
-the default Logback starter, or the excluded Jakarta annotation dependency) and
-the Jazzer fuzz target `controller/FuzzDownloadFilename` (ClusterFuzzLite marker
-in `.clusterfuzzlite/`).
+## Availability semantics
 
-## Key conventions
+- `/healthz` answers whether the process is irrecoverably broken and should be
+  restarted. Never add shared database, object-store, gateway, or model-provider
+  dependencies to liveness.
+- `/readyz` answers whether this instance should receive traffic. Future
+  instance-local readiness contributors must publish Spring availability events
+  and include deterministic failure-and-recovery tests.
+- Do not configure both Kubernetes probes against `/healthz`.
 
-- Coverage is absolute: JaCoCo line/branch missed must stay 0 for
-  `com.clearfolio.viewer.*`, so every production change ships with tests covering
-  all new lines and branches.
-- Every public type/member needs JavaDoc; the JavaDoc gate fails on any warning.
-- The compiler runs with `-Xlint:all -Werror` (`showWarnings`/`showDeprecation`
-  on), so any warning or deprecated usage breaks the build.
-- `checkstyle-suppressions.xml` at the repo root relaxes strict style checks
-  (Javadoc, magic numbers, line length, etc.) for `src/test/java` only; production
-  sources get no suppressions.
-- Markdown lint applies to changed docs; rule overrides are in
-  `.markdownlint.yaml`.
-- Dependency changes are policy-sensitive: security pins and exclusions in
-  `pom.xml` carry CVE-annotated comments, `osv-scanner.toml` holds narrowly
-  scoped, time-boxed ignores, and license/SBOM/attribution evidence under `docs/`
-  must be updated together (see `AGENTS.md` and `DependencyPolicyTest`).
-- Gate evidence is committed under `docs/qa/evidence/`; plans and design docs
-  under `docs/` use dated filenames (`YYYY-MM-DD-...`).
-- `.jules/` holds accumulated lessons (performance, XSS, HMAC canonicalization);
-  worth scanning before touching validation, viewer JS, or token signing code.
+## Tests and gates
+
+Tests mirror the production package tree under `src/test/java/`. Security-sensitive
+parsers and filename paths also have Jazzer targets.
+
+Key rules:
+
+- `mvn verify` enforces zero missed production lines and branches using JaCoCo
+  0.8.15.
+- Maven Javadoc Plugin 3.12.0 runs during `verify` with doclint and fails on any
+  public API documentation warning or error.
+- The compiler uses `-Xlint:all -Werror`; warnings and deprecated production API
+  usage fail the build.
+- Every public production type and member requires useful Javadoc.
+- Tests must exercise real behavior, including failure, security, concurrency,
+  and recovery paths; coverage-only assertions must still represent a valid
+  contract.
+- Markdown lint applies to changed documentation.
+- Dependency changes must update security, license, SBOM, attribution, and buyer
+  diligence evidence together when affected.
+- Generated evidence containing local paths, credentials, private runtime
+  details, or customer data remains local until disclosure review approves it.
+- Dated plans and decisions use `YYYY-MM-DD-...` filenames.
+- `.jules/` contains accumulated lessons for validation, HMAC canonicalization,
+  viewer security, and performance; inspect it before modifying those areas.

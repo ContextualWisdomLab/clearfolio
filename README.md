@@ -12,8 +12,10 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
    - `mvn test`
 3. Start the app locally:
    - `mvn spring-boot:run`
-4. Check readiness:
+4. Check process liveness:
    - `curl -sS http://localhost:8080/healthz`
+5. Check traffic readiness:
+   - `curl -sS http://localhost:8080/readyz`
 
 ## Scope
 
@@ -31,7 +33,8 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
 - `GET /api/v1/analytics/kpi-snapshot-exports`: tenant-scoped exported KPI snapshot evidence.
 - `GET /artifacts/{docId}.pdf`: serves converted PDF bytes (SUCCEEDED jobs only) with single-range support after artifact token verification.
 - Errors follow shared shape (`errorCode`, optional `code`, `message`, `traceId`, `details`) for 404/409/400/500 paths.
-- `GET /healthz`: readiness probe.
+- `GET /healthz`: process liveness probe driven by Spring Boot `LivenessState`.
+- `GET /readyz`: traffic readiness probe driven by Spring Boot `ReadinessState`.
 - HWP/HWPX are blocked by configuration.
 
 Protected JSON APIs require Clearfolio tenant headers in the current buyer-demo
@@ -52,6 +55,9 @@ profile and follow
 - `GET /viewer/{docId}` remains the canonical entry route, but now serves HTML (PDF.js viewer).
 - Alias endpoints remain stable, with signed artifact link fields added to
   viewer bootstrap responses.
+- `GET /healthz` preserves the successful `{"status":"ok"}` payload while now
+  reporting liveness; traffic routing must use the separate `GET /readyz`
+  readiness probe. Both probe responses use `Cache-Control: no-store`.
 - Dead-letter terminal cases keep `status=FAILED` in API payloads and set
   `deadLettered=true` when retries are exhausted.
 - Dead-lettered jobs can be re-queued by an operator with
@@ -128,6 +134,7 @@ Current release claim boundary:
 - `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`
 - `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`
 - `docs/deployment/clearfolio-buyer-connector.openapi.yaml`
+- `docs/operations/2026-08-05-availability-probes.md`
 - `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`
 - `docs/diligence/2026-07-02-buyer-diligence-index.md`
 - `docs/security/2026-07-02-threat-model-data-handling.md`

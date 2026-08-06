@@ -33,6 +33,11 @@ clearfolio:
     # restarts. in-memory: volatile store for tests and ephemeral demos.
     mode: filesystem
     root-dir: data/artifacts
+  artifact-deletion-ledger:
+    # Versioned append-only receipt snapshots are forced to storage before a
+    # lifecycle transition is reported as durable. Standalone tests can use the
+    # no-argument in-memory adapter; production keeps restart-replay evidence.
+    path: data/artifact-deletion-receipts.log
 
 viewer:
   security:

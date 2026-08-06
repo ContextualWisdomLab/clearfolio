@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  # Run exact-head, synthetic-merge, and buyer-readiness gates for every pull
+  # request target so stacked PRs receive the same evidence as main-bound PRs.
+  pull_request: {}
 
 permissions:
   contents: read

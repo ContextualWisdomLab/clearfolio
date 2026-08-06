@@ -112,9 +112,9 @@ matching permission without matching `tenantId` is insufficient.
 
 | Resource | Tenant binding | Access rule |
 | --- | --- | --- |
-| Conversion job | `job.tenantId` | Caller `tenantId` must match before status, viewer bootstrap, retry, or analytics drill-down. |
+| Conversion job | `job.tenantId` | Caller `tenantId` must match before status, direct download, viewer bootstrap, retry, or analytics drill-down. |
 | Source document metadata | `document.tenantId` | Exposed only through job/viewer APIs after permission check. |
-| Preview artifact | `artifact.tenantId` and `artifactChecksum` | Read only through short-lived signed artifact token. |
+| Preview artifact | `artifact.tenantId` and `artifactChecksum` | Read through short-lived signed artifact token; the direct job-download route additionally requires `job:read` and matching job tenant before artifact-store access. |
 | Artifact link | `artifactLink.tenantId` and `tokenId` | Revocable by operator or tenant admin in the same tenant. |
 | Metrics event | `event.tenantId` | Aggregate views must filter tenant unless explicitly buyer-demo scoped. |
 | Audit event | `audit.tenantId` | Read by operator, tenant admin, or buyer reviewer for scoped evidence. |
@@ -129,6 +129,7 @@ unauthorized action, depending on route semantics.
 | --- | --- | --- |
 | `POST /api/v1/convert/jobs` | `job:create` | Assign job to caller `tenantId`. |
 | `GET /api/v1/convert/jobs/{jobId}` | `job:read` | `job.tenantId == token.tenantId`. |
+| `GET /api/v1/convert/jobs/{jobId}/download` | `job:read` | Verify permission before job lookup; require `job.tenantId == token.tenantId` before artifact-store access; conceal mismatch as `404`. |
 | `POST /api/v1/convert/jobs/{jobId}/retry` | `job:retry` | Same tenant plus operator role. |
 | `GET /api/v1/viewer/{docId}` | `viewer:read` | `job.tenantId == token.tenantId`; artifact tokens are enforced in the signed-link slice. |
 | `GET /viewer/{docId}` | none for HTML shell | Shell does not inspect job existence; protected JSON APIs decide state. |
@@ -140,11 +141,14 @@ Current implementation status:
 
 - Implemented: `job:create`, `job:read`, `job:retry`, `viewer:read`, and
   `analytics:read` permission checks on JSON APIs.
+- Implemented: direct conversion-job downloads validate `job:read` before
+  resource lookup, enforce same-tenant ownership before artifact-store access,
+  and return `404` for cross-tenant UUID access.
 - Implemented: `ConversionJob.tenantId` and `ConversionJob.subjectId`.
 - Implemented: tenant-aware content-hash dedupe so two tenants do not collapse
   onto one canonical job for the same upload bytes.
-- Implemented: cross-tenant status, retry, and viewer-bootstrap lookup returns
-  `404` without revealing the other tenant's job.
+- Implemented: cross-tenant status, direct download, retry, and viewer-bootstrap
+  lookup returns `404` without revealing the other tenant's job.
 - Implemented: KPI snapshots filter to the request tenant.
 - Implemented: optional HMAC validation for gateway-signed tenant headers when
   `clearfolio.tenant-claims.hmac-secret` is configured.
@@ -200,6 +204,8 @@ Store token fingerprints, not raw tokens.
   tenant boundary.
 - Every write or sensitive read has a server-side permission check.
 - Artifact reads use signed artifact tokens, not bare `docId` capability URLs.
+- Direct conversion-job downloads require authenticated `job:read` permission
+  and same-tenant ownership before artifact bytes are touched.
 - Operator retry requires an operator permission and is auditable.
 - KPI snapshots can be shown for one tenant without leaking another tenant's
   volume, latency, or failure rate.
@@ -221,8 +227,9 @@ Store token fingerprints, not raw tokens.
    secret is absent.
 7. Next: replace demo headers with validated gateway/OIDC JWT claims.
 8. Done: add signed artifact link creation and token verification.
-9. Next: add durable revocation, persisted audit events, and CI/contract tests
-   for production token rejection paths.
+9. Done: enforce tenant-scoped authorization on direct conversion-job downloads.
+10. Next: add durable revocation, persisted audit events, and CI/contract tests
+    for production token rejection paths.
 
 No library split is justified until a second Clearfolio service or external SDK
 needs to reuse this authorization contract.

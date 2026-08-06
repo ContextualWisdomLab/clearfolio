@@ -1,6 +1,6 @@
 # Conversion Service Architecture
 
-Last updated: 2026-02-23
+Last updated: 2026-08-05
 
 This repository currently ships an MVP backend for integrated document conversion/viewer entry with a non-blocking web stack.
 
@@ -22,7 +22,23 @@ This repository currently ships an MVP backend for integrated document conversio
 - Viewer UI flow (`GET /viewer/{docId}`): return HTML shell with mobile-safe loading/failed/ready states; when ready, embed PDF.js.
 - Bootstrap flow (`GET /api/v1/viewer/{docId}` and `GET /api/v1/convert/viewer/{docId}`): return bootstrap JSON on `SUCCEEDED` with deterministic `sourceExtension`/`rendererAdapter`; return `409` for not-ready/failed states; return `404` when missing.
 - Artifact flow (`GET /artifacts/{docId}.pdf`): serve converted PDF bytes for `SUCCEEDED` jobs only (single-range support).
-- Health flow (`GET /healthz`): readiness probe.
+- Liveness flow (`GET /healthz`): report Spring Boot `LivenessState`; return `503` when the process is `BROKEN`.
+- Readiness flow (`GET /readyz`): report Spring Boot `ReadinessState`; return `503` while the instance refuses traffic.
+
+## Availability contract
+
+Clearfolio separates process restart eligibility from traffic routing. Both
+probes run on the application port, expose only controlled state labels, and
+return `Cache-Control: no-store`.
+
+- Liveness must not depend on shared external services. A database, gateway, or
+  object-store outage must not create a restart cascade.
+- Readiness represents whether this instance can accept traffic. Future
+  instance-local readiness contributors, such as completed startup recovery or
+  bounded-queue overload, must publish Spring availability events and add
+  deterministic failure-and-recovery tests.
+- The accepted decision and deployment example are documented in
+  `docs/operations/2026-08-05-availability-probes.md`.
 
 ## S2S delivery chain (documented target)
 
@@ -48,7 +64,7 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 
 ## Component boundaries
 
-- `controller`: HTTP endpoints and exception mapping.
+- `controller`: HTTP endpoints, availability probes, and exception mapping.
 - `service`: validation, policy-override exception lane handling, conversion orchestration, worker execution.
 - `repository`: job persistence abstraction.
 - `model`: lifecycle state and retry/dead-letter metadata.
@@ -89,6 +105,8 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 | --- | --- |
 | WebFlux dependency | `pom.xml` |
 | Submit non-blocking controller path | `src/main/java/com/clearfolio/viewer/controller/ConversionController.java` |
+| Liveness/readiness probes | `src/main/java/com/clearfolio/viewer/controller/HealthController.java` |
+| Availability probe tests | `src/test/java/com/clearfolio/viewer/controller/HealthControllerTest.java` |
 | Blocked-format override lane + audit signal | `src/main/java/com/clearfolio/viewer/service/DefaultDocumentValidationService.java` |
 | Override header contract | `src/main/java/com/clearfolio/viewer/service/PolicyOverrideRequest.java` |
 | Conversion enqueue orchestration | `src/main/java/com/clearfolio/viewer/service/DefaultDocumentConversionService.java` |
@@ -110,4 +128,5 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 - `docs/diagrams/preview-flow.md`
 - `docs/diagrams/submit-policy-adapter-flow.md`
 - `docs/diagrams/retry-deadletter-flow.md`
+- `docs/operations/2026-08-05-availability-probes.md`
 - `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`

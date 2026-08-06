@@ -31,11 +31,32 @@ a coordinated update to `AGENTS.md`, `CLAUDE.md`, and both architecture maps.
   and expose status, retry, viewer, and artifact workflows rather than waiting
   for conversion completion.
 
+## Availability contract
+
+- `GET /healthz` is process liveness, sourced from Spring Boot
+  `LivenessState`. It returns `200 {"status":"ok"}` only while the process is
+  `CORRECT`; `BROKEN` returns `503 {"status":"broken"}`.
+- `GET /readyz` is traffic readiness, sourced from Spring Boot
+  `ReadinessState`. It returns `200 {"status":"ready"}` only while the
+  instance is `ACCEPTING_TRAFFIC`; otherwise it returns
+  `503 {"status":"not_ready"}`.
+- Both responses use `Cache-Control: no-store` and expose only controlled state
+  labels.
+- Liveness must not depend on a shared database, object store, gateway, model
+  provider, or another external service. A shared-service outage is not by
+  itself evidence that this process requires restart.
+- Future readiness contributors must be instance-local routing conditions,
+  publish Spring availability events, and include deterministic failure and
+  recovery tests.
+- The accepted decision, rollback rule, Kubernetes example, and authoritative
+  references are recorded in
+  `docs/operations/2026-08-05-availability-probes.md`.
+
 ## Delivery context chain
 
 - `Clearfolio Viewer <-> internal WAS -> Azure On-premise Gateway -> Power Platform -> mobile/tablet`
 - This repository owns the Clearfolio Viewer side of the contract and its state,
-  authorization, document, artifact, and operational gates.
+  authorization, document, artifact, availability, and operational gates.
 
 ## Required local acceptance commands
 
@@ -69,7 +90,7 @@ code can write report files.
 | --- | --- | --- |
 | coverage | JaCoCo 0.8.15 applies bundle-level `LINE` and `BRANCH` `MISSEDCOUNT` limits with a maximum of `0` | `mvn -B --no-transfer-progress verify`; inspect `target/site/jacoco/jacoco.csv` and the exact-head CI job |
 | docstring | Maven Javadoc Plugin 3.12.0 runs Java 21 doclint for public production APIs and fails on warnings or errors | `mvn -B --no-transfer-progress verify`; inspect `target/reports/apidocs` and the exact-head CI job |
-| non-blocking web | Request paths do not execute document conversion inline | `ConversionController`, `DefaultDocumentConversionService`, and their concurrency/integration tests |
+| non-blocking web | Request paths do not execute document conversion inline; liveness and readiness remain separate non-blocking probes | `ConversionController`, `DefaultDocumentConversionService`, `HealthController`, and their concurrency/integration tests |
 | lightweight queue | Capacity, rejection, retry, processing lease, and dead-letter behavior are executable contracts | `ConversionExecutorConfig`, `DefaultConversionWorker`, repository/state-store tests, and exact-head fuzzing |
 | warning 0 | Java compilation uses `-Xlint:all -Werror`; Maven report acceptance rejects skipped and zero-test evidence | `mvn -B --no-transfer-progress verify`, `python3 scripts/verify_maven_test_reports.py`, and exact-head CI |
 | deprecated 0 | Deprecated API warnings are build failures | `mvn -B --no-transfer-progress verify` |
@@ -109,6 +130,7 @@ code can write report files.
 
 - Root architecture map: `ARCHITECTURE.md`.
 - Detailed architecture: `docs/architecture.md`.
+- Availability decision: `docs/operations/2026-08-05-availability-probes.md`.
 
 ## References
 
@@ -120,5 +142,13 @@ Apache Software Foundation. (2026). *Surefire reports*. Maven Surefire Plugin.
 Retrieved August 6, 2026, from
 https://maven.apache.org/surefire/maven-surefire-plugin/examples/reporting.html
 
+Broadcom, Inc. (n.d.). *SpringApplication: Application availability (Spring Boot
+3.5.16)*. Spring. Retrieved August 5, 2026, from
+https://docs.spring.io/spring-boot/3.5/reference/features/spring-application.html#features.spring-application.application-availability
+
 JaCoCo. (2026). *JaCoCo Maven plug-in: `jacoco:check`*. Retrieved August 5,
 2026, from https://www.jacoco.org/jacoco/trunk/doc/check-mojo.html
+
+The Kubernetes Authors. (2026, April 17). *Liveness, readiness, and startup
+probes*. Kubernetes.
+https://kubernetes.io/docs/concepts/workloads/pods/probes/

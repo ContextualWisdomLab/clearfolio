@@ -110,10 +110,22 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
         }
 
         LinkedHashSet<String> parsed = new LinkedHashSet<>();
-        Arrays.stream(normalized.split(","))
-                .map(TenantContext::sanitize)
-                .filter(value -> value != null)
-                .forEach(parsed::add);
+        int start = 0;
+        int len = normalized.length();
+        while (start <= len) {
+            int commaIndex = normalized.indexOf(',', start);
+            String token = commaIndex < 0 ? normalized.substring(start) : normalized.substring(start, commaIndex);
+
+            String sanitizedToken = sanitize(token);
+            if (sanitizedToken != null) {
+                parsed.add(sanitizedToken);
+            }
+
+            if (commaIndex < 0) {
+                break;
+            }
+            start = commaIndex + 1;
+        }
         return parsed;
     }
 

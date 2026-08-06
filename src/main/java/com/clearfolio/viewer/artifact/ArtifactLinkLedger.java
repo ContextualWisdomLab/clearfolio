@@ -147,19 +147,42 @@ public class ArtifactLinkLedger {
     }
 
     private void replayLine(String line) {
-        String[] fields = line.split("\t", -1);
-        switch (fields[0]) {
-            case ISSUED -> replayIssued(fields);
-            case REVOKED -> replayRevoked(fields);
-            case READ -> replayRead(fields);
+        int firstTab = line.indexOf('\t');
+        String type = firstTab < 0 ? line : line.substring(0, firstTab);
+
+        switch (type) {
+            case ISSUED -> replayIssued(line, 14);
+            case REVOKED -> replayRevoked(line, 5);
+            case READ -> replayRead(line, 9);
             default -> throw invalidLine();
         }
     }
 
-    private void replayIssued(String[] fields) {
-        if (fields.length != 14) {
+    private String[] parseFields(String line, int expectedCount) {
+        String[] fields = new String[expectedCount];
+        int start = 0;
+        int fieldIndex = 0;
+        int len = line.length();
+        while (start <= len) {
+            if (fieldIndex >= expectedCount) {
+                throw invalidLine();
+            }
+            int tabIndex = line.indexOf('\t', start);
+            if (tabIndex < 0) {
+                fields[fieldIndex++] = line.substring(start);
+                break;
+            }
+            fields[fieldIndex++] = line.substring(start, tabIndex);
+            start = tabIndex + 1;
+        }
+        if (fieldIndex != expectedCount) {
             throw invalidLine();
         }
+        return fields;
+    }
+
+    private void replayIssued(String line, int expectedCount) {
+        String[] fields = parseFields(line, expectedCount);
         ArtifactLinkRecord record = new ArtifactLinkRecord(
                 requiredValue(fields[1]),
                 requiredValue(fields[2]),
@@ -178,10 +201,8 @@ public class ArtifactLinkLedger {
         issuedLinks.put(record.tokenId(), record);
     }
 
-    private void replayRevoked(String[] fields) {
-        if (fields.length != 5) {
-            throw invalidLine();
-        }
+    private void replayRevoked(String line, int expectedCount) {
+        String[] fields = parseFields(line, expectedCount);
         String tokenId = requiredValue(fields[1]);
         ArtifactLinkRecord current = issuedLinks.get(tokenId);
         if (current == null) {
@@ -194,10 +215,8 @@ public class ArtifactLinkLedger {
         ));
     }
 
-    private void replayRead(String[] fields) {
-        if (fields.length != 9) {
-            throw invalidLine();
-        }
+    private void replayRead(String line, int expectedCount) {
+        String[] fields = parseFields(line, expectedCount);
         readEvents.add(new ArtifactReadEvent(
                 requiredValue(fields[1]),
                 requiredValue(fields[2]),

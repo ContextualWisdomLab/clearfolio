@@ -332,16 +332,34 @@ public class ArtifactLinkService {
     }
 
     private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.");
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+        int lastDot = token.lastIndexOf('.');
+        if (lastDot < 0 || lastDot == token.length() - 1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        String payload = token.substring(0, lastDot);
         String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+                token.substring(lastDot + 1).getBytes(StandardCharsets.US_ASCII))) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
+        String[] parts = new String[TOKEN_FIELD_COUNT];
+        int start = 0;
+        int fieldIndex = 0;
+        for (int i = 0; i < lastDot; i++) {
+            if (token.charAt(i) == '.') {
+                if (fieldIndex >= TOKEN_FIELD_COUNT - 1) {
+                    throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                }
+                parts[fieldIndex++] = token.substring(start, i);
+                start = i + 1;
+            }
+        }
+        parts[fieldIndex++] = token.substring(start, lastDot);
+
+        if (fieldIndex != TOKEN_FIELD_COUNT) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 

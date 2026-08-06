@@ -80,7 +80,7 @@ class TenantScopedAtomicMutationBoundaryTest {
         verify(repository, never()).deleteById(any(UUID.class));
         verify(artifactStore, never()).getPdf(missingId);
         verify(artifactStore, never()).deletePdf(missingId);
-        verify(artifactStore).getPdf(ownedId);
+        verify(artifactStore, org.mockito.Mockito.times(2)).getPdf(ownedId);
         verify(artifactStore).deletePdf(ownedId);
     }
 

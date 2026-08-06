@@ -44,6 +44,18 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     private final Object jobIndexLock = new Object();
 
     /**
+     * Creates an empty process-local repository.
+     *
+     * <p>All primary records, tenant-scoped indexes, permanently reserved job
+     * identifiers, and append-only lifecycle events start empty and are owned
+     * exclusively by this repository instance. The repository does not persist
+     * data across process restarts.</p>
+     */
+    public InMemoryConversionJobRepository() {
+        // Field initializers establish the complete empty repository state.
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override

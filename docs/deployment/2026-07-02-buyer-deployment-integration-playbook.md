@@ -1,6 +1,7 @@
 # Buyer Deployment and Integration Playbook
 
-Date: 2026-07-02
+Date: 2026-07-02  
+Last updated: 2026-08-06
 
 This playbook turns the current Clearfolio Viewer sale-readiness slice into a
 repeatable buyer sandbox deployment. It is intentionally scoped to the current
@@ -19,28 +20,45 @@ The deployment can prove:
 - tenant-scoped JSON APIs can require gateway-signed Clearfolio headers when a
   shared HMAC secret is configured;
 - preview artifacts require signed artifact tokens, not bare document ids;
+- tenant-claim and artifact-token signing keys are read from a mounted Spring
+  config tree rather than secret-valued runtime environment placeholders;
 - issued links, revocations, artifact reads, and KPI exports can survive a
   single-process restart through local append-only evidence ledgers;
 - the same Maven, JavaDoc, coverage, Markdown, SAST, SBOM, and license-policy
-  gates remain attached to PR #74.
+  gates remain attached to the exact current PR head.
 
 The deployment cannot yet prove:
 
 - production OIDC/JWT issuer, audience, expiry, `kid`, and role validation;
-- centralized durable job, artifact, revocation, audit, or analytics storage;
+- centralized durable job, artifact, revocation, audit, analytics, or failed
+  artifact-cleanup storage;
+- restart-safe deletion receipts, transactional cleanup outbox processing,
+  bounded retry, or deterministic orphan-artifact recovery evidence;
 - final legal review of the attribution and redistribution package;
 - a packaged Power Platform connector.
 
 ## Runtime Profile
 
-Use the `buyer-demo` Spring profile for a buyer sandbox:
+Use the `buyer-demo` Spring profile for a buyer sandbox. Runtime key material is
+loaded from a Spring Boot config-tree mount. `CLEARFOLIO_SECRET_CONFIG_DIR`
+selects that mount and is not itself secret. The mounted files
+`clearfolio.tenant-claims.hmac-secret` and
+`clearfolio.artifact-token.secret` must be provisioned independently through the
+deployment platform's secret manager in shared environments. The tenant-claims
+key must contain at least 32 UTF-8 bytes for privileged administrative APIs.
+
+For a local sandbox, create owner-readable config-tree files before startup:
 
 ```bash
-mkdir -p .clearfolio/buyer-demo
+umask 077
+mkdir -p .clearfolio/buyer-demo/secrets
+openssl rand -base64 48 \
+  > .clearfolio/buyer-demo/secrets/clearfolio.tenant-claims.hmac-secret
+openssl rand -base64 48 \
+  > .clearfolio/buyer-demo/secrets/clearfolio.artifact-token.secret
 
 export SPRING_PROFILES_ACTIVE=buyer-demo
-export CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET="replace-with-gateway-shared-secret"
-export CLEARFOLIO_ARTIFACT_TOKEN_SECRET="replace-with-artifact-token-secret"
+export CLEARFOLIO_SECRET_CONFIG_DIR="$PWD/.clearfolio/buyer-demo/secrets/"
 export CLEARFOLIO_ARTIFACT_LINK_LEDGER_PATH="$PWD/.clearfolio/buyer-demo/artifact-link-ledger.log"
 export CLEARFOLIO_ANALYTICS_SNAPSHOT_LEDGER_PATH="$PWD/.clearfolio/buyer-demo/kpi-snapshot-ledger.log"
 export CLEARFOLIO_FRAME_ANCESTORS="self"
@@ -49,8 +67,19 @@ mvn spring-boot:run
 ```
 
 The profile file is
-`src/main/resources/application-buyer-demo.yml`. It uses environment variables
-only; no secret value is committed.
+`src/main/resources/application-buyer-demo.yml`. Non-secret operational settings
+may use environment variables. Neither HMAC key is bound from a secret-valued
+runtime environment variable. Both are read from the shared config-tree import
+in `application.yml`; the environment selects only the bootstrap directory.
+`CLEARFOLIO_TENANT_CLAIMS_MAX_SKEW_SECONDS` remains a non-secret runtime setting.
+
+An owned repository deletion precedes the current best-effort artifact removal.
+If the artifact store rejects that removal, the job remains deleted and orphaned
+artifact bytes can remain. This slice does not configure `ArtifactCleanupQueue`,
+a retry cadence, deletion receipts, a cleanup outbox, or aggregate cleanup
+metrics. Issue #263 owns the restart-safe cleanup subsystem and its deterministic
+recovery evidence; production cutover remains blocked until that work is
+integrated.
 
 For a Power Platform embedding test, replace `CLEARFOLIO_FRAME_ANCESTORS` with
 the exact buyer allowlist after the gateway hostname is known. Keep it narrow;
@@ -58,8 +87,8 @@ do not use a wildcard until a security owner explicitly accepts that risk.
 
 ## Gateway Claim Contract
 
-When `CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET` is set, every protected JSON API
-call must include:
+When the mounted `clearfolio.tenant-claims.hmac-secret` property is present,
+every protected JSON API call must include:
 
 - `X-Clearfolio-Tenant-Id`
 - `X-Clearfolio-Subject-Id`
@@ -96,6 +125,11 @@ gateway must send **and sign** already-canonical values: e.g.
 `viewer:read,job:read`. Sign what the verifier will re-derive, not the raw
 string.
 
+The authenticated gateway must remove all untrusted inbound
+`X-Clearfolio-*` claim headers before it maps the authenticated principal,
+constructs canonical claims, signs them, and forwards the replacement header
+set. Browsers and external API clients are not trusted claim issuers.
+
 Buyer-demo permission set:
 
 ```text
@@ -106,17 +140,23 @@ Production role mapping should later replace this scaffold with validated
 gateway or OIDC claims. Do not hand-roll JWT parsing in this service.
 
 For any environment that sets `SPRING_PROFILES_ACTIVE=production`, the service
-fails startup unless `CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET` is present. The
-buyer-demo profile can still run unsigned for local screenshots, but production
-cannot accidentally inherit that unsigned mode.
+fails startup unless the config-tree mount supplies a sufficiently strong
+`clearfolio.tenant-claims.hmac-secret`. Setting only
+`CLEARFOLIO_SECRET_CONFIG_DIR` without the required secret file does not enable
+signed claims. The buyer-demo profile can still run unsigned for local
+screenshots, but production cannot accidentally inherit that unsigned mode.
+Artifact-link issuance likewise reads `clearfolio.artifact-token.secret` from
+the same mount; production operators must provision a distinct strong key and
+must not restore the retired `CLEARFOLIO_ARTIFACT_TOKEN_SECRET` runtime binding.
 
 ## Integration Flow
 
 1. Buyer browser, Power Platform, or internal workflow authenticates at the
    buyer-controlled gateway.
-2. Gateway maps the principal to Clearfolio tenant id, subject id, and
-   permissions.
-3. Gateway signs the Clearfolio headers and forwards requests to
+2. Gateway strips untrusted inbound Clearfolio claim headers, maps the principal
+   to Clearfolio tenant id, subject id, and permissions, and canonicalizes the
+   mapped values.
+3. Gateway signs the canonical Clearfolio headers and forwards requests to
    `POST /api/v1/convert/jobs`, status, viewer bootstrap, retry, artifact-link,
    and analytics APIs.
 4. Clearfolio verifies the signed headers, enforces permissions, and hides
@@ -127,6 +167,9 @@ cannot accidentally inherit that unsigned mode.
 7. PDF.js reads `/artifacts/{docId}.pdf` only with a valid artifact token.
 8. Optional local ledgers capture issued links, revocations, artifact reads,
    and KPI snapshot exports for buyer evidence.
+9. An owned job deletion attempts artifact removal only after tenant-scoped
+   repository deletion. A removal failure is currently best effort, can leave
+   orphaned bytes, and is not a durable retry or operational-evidence record.
 
 ## API Surface for a Connector
 
@@ -162,12 +205,11 @@ Then complete one browser flow:
 7. Restart the app with the same ledger paths and confirm exported evidence
    records are replayed.
 
-For PR evidence refresh, use the existing evidence folder:
+For exact-head engineering evidence, use the same fail-closed lifecycle as CI:
 
 ```bash
-mvn -DskipTests compile
-mvn test
-mvn -q -DskipTests javadoc:javadoc
+mvn -B --no-transfer-progress verify
+python3 scripts/verify_maven_test_reports.py
 python3 scripts/check_sbom_license_policy.py \
   --sbom docs/qa/evidence/2026-07-02-krw2b-sale-readiness/sbom-cyclonedx.json \
   --policy docs/security/2026-07-02-license-policy.json \
@@ -180,7 +222,8 @@ python3 scripts/check_buyer_dataroom_manifest.py \
   --manifest docs/diligence/2026-07-03-buyer-data-room-manifest.json
 ```
 
-Buyer-release mode must keep `--require-no-review` enabled so any future
+Do not substitute `mvn test`, a standalone Javadoc invocation, or a predecessor
+head. Buyer-release mode must keep `--require-no-review` enabled so any future
 review-required component fails before buyer handoff. The attribution `--check`
 must also pass so the buyer data-room notice matches the current SBOM.
 
@@ -188,7 +231,7 @@ must also pass so the buyer data-room notice matches the current SBOM.
 
 Before a buyer sandbox is shown, attach:
 
-- PR #74 URL and latest head SHA;
+- the authoritative PR URL and exact current head SHA;
 - `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/README.md`;
 - `docs/diligence/2026-07-03-buyer-data-room-manifest.json`;
 - this playbook;
@@ -240,13 +283,16 @@ The buyer sandbox should not be promoted to production until these gates close:
 - buyer-release license-policy evidence remains green with
   `--require-no-review`, attribution drift check remains green, and final legal
   release review is obtained;
-- `SPRING_PROFILES_ACTIVE=production` starts only with configured signed tenant
-  claims and later replaces the scaffold with validated OIDC/JWT claims;
+- `SPRING_PROFILES_ACTIVE=production` starts only when the config-tree mount
+  contains distinct strong `clearfolio.tenant-claims.hmac-secret` and
+  `clearfolio.artifact-token.secret` files, and later replaces the claim scaffold
+  with validated OIDC/JWT claims;
 - validated gateway or OIDC JWT issuer, audience, expiry, key rotation, and role
   mapping;
-- durable conversion job repository with persisted state transitions;
-- durable object store metadata, token revocation, and artifact read audit
-  persistence;
+- durable conversion job repository with persisted state transitions and
+  permanent UUID tombstone or lifecycle-generation uniqueness;
+- durable object store metadata, token revocation, artifact read audit, and
+  restart-safe artifact-cleanup queue or transactional outbox;
 - durable metrics event stream and daily KPI projections;
 - buyer-specific `frame-ancestors` allowlist and security owner approval;
 - connector seed imported and tested against the buyer's actual gateway and

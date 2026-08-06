@@ -96,15 +96,25 @@ Codex, Cursor, opencode, …) working in this repo.
 - Reference implementation: xtrmLLMBatchPython's pgcrypto-encrypted Postgres
   credential registry (`get_credential(name)`). Reuse that pattern (a DB-backed
   KV is fine) unless a dedicated KV is adopted.
-- **This repo applies** — it is a Spring Boot service with real runtime secrets
-  (artifact-token HMAC secret, tenant-claims HMAC secret). **Known deviation to
-  migrate:** those secrets are currently injected straight from env via Spring
-  placeholders in `application-buyer-demo.yml`
-  (`clearfolio.artifact-token.secret: ${CLEARFOLIO_ARTIFACT_TOKEN_SECRET:}`,
-  `clearfolio.tenant-claims.hmac-secret: ${CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET:}`,
-  consumed by `ArtifactLinkService` / `TenantAccessService`). Move these to a
-  KV-backed lookup so env is only the bootstrap transport into the KV. New
-  secrets/credentials must go through the KV from the start, not new env reads.
+- **This repo applies** — it is a Spring Boot service with real runtime secrets.
+  Tenant-claim and artifact-token HMAC secrets are loaded respectively as
+  `clearfolio.tenant-claims.hmac-secret` and
+  `clearfolio.artifact-token.secret` from the Spring config-tree credential
+  mount selected by the non-secret `CLEARFOLIO_SECRET_CONFIG_DIR` bootstrap
+  setting. Do not restore direct runtime environment binding for either key.
+  New secrets and credentials must enter through the mounted credential source,
+  not new process-environment reads.
+
+### Durable cleanup boundary
+
+- This administrative-authorization slice does not implement a failed-artifact
+  cleanup queue, deletion receipt, outbox, or retry worker. Tenant-owned job
+  deletion is authoritative before the current best-effort artifact removal;
+  a removal failure can therefore leave orphaned artifact bytes.
+- Issue #263 owns the restart-safe deletion-receipt, transactional-outbox, and
+  cleanup-worker boundary. Do not claim that subsystem or its operational
+  evidence exists until its production implementation and deterministic
+  recovery tests are integrated.
 
 ### Code exploration
 

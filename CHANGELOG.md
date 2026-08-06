@@ -33,6 +33,16 @@
 - 정책 재정의 서명 키를 활성화하면서 전용 감사 가명화 키를 누락하면 Spring 시작과 `DefaultDocumentValidationService`의 독립·모듈식 직접 생성을 모두 거부하도록 강화했습니다. 관리자 예외를 승인하면서 승인자별 상관 가능한 감사 증거를 남기지 못하는 구성을 모든 실행 모드에서 fail closed로 차단하고, 두 키의 최소 강도와 용도 분리를 유지합니다.
 - 감사 가명화 키의 소유권, 회전, 보존, 사고 대응 및 GDPR상 가명정보의 개인정보 지위를 문서화하고, 원문 승인자 식별자와 승인 토큰이 로그에 남지 않는 회귀 테스트를 추가했습니다.
 - 경로·쿼리 파라미터 타입 변환 실패 응답에서 사용자가 제출한 거부 값을 고정된 `[redacted]` 표식으로 대체해 오류 응답을 통한 개인정보·비밀값 반사를 차단했습니다. 값이 실제로 없었던 경우에만 `null` 진단을 유지합니다.
+- 관리자 API에 서명된 tenant claim 검증, `admin:read`/`admin:write` 최소 권한, tenant 소유권 검사를 적용했습니다. 누락 및 cross-tenant 객체는 동일한 not-found 응답으로 은폐합니다.
+- 관리자 목록 조회는 repository 경계에서 tenant predicate를 적용한 뒤 선택적 dead-letter 필터를 처리하도록 변경했습니다.
+- 관리자 delete/retry가 검증된 `TenantContext`를 tenant-aware service mutation boundary에 전달하도록 변경해 controller 우회 호출에서도 소유권 검사가 적용되도록 했습니다.
+- tenant-aware service 기본 구현은 global lookup 또는 legacy mutation을 호출하지 않고 `false`/`NOT_FOUND`로 실패 종료합니다. 모듈형 대체 adapter는 원자적 tenant-scoped mutation을 명시적으로 구현해야 관리자 작업을 성공시킬 수 있습니다.
+- 관리자 delete/retry는 `deleteByTenantAndId`와 `retryDeadLetteredForTenant` 원자적 tenant-scoped persistence contract를 사용합니다. artifact cleanup은 소유권이 확인된 repository 삭제가 성공한 뒤에만 실행되며, worker enqueue는 소유권 확인과 dead-letter 상태 전이가 원자적으로 성공한 뒤에만 실행됩니다.
+- tenant-scoped lookup/delete/retry는 누락된 job UUID를 예외로 노출하지 않고 empty/`false`/`NOT_FOUND`로 실패 종료하며 기존 저장 상태를 변경하지 않습니다.
+- tenant-and-content-hash 보조 인덱스가 현재 UUID 레코드의 tenant/hash와 일치하는지 재검증합니다. conversion-job UUID는 불변 lifecycle identity로 예약하며, 동일한 live 객체의 idempotent save만 허용하고 distinct live 객체 또는 삭제 후 tombstoned UUID의 재바인딩은 보조 인덱스 작업 전에 fail closed 처리합니다.
+- tenant-scoped 삭제와 동일 UUID 저장이 동시에 발생해도 primary job map, 영구 UUID reservation, tenant-content secondary index를 하나의 임계 구역에서 갱신합니다. 삭제는 live 레코드와 인덱스를 제거하지만 UUID reservation은 해제하지 않으므로 대기 중인 교체 저장은 실패하며, durable adapter도 동일 트랜잭션의 uniqueness와 tombstone 또는 lifecycle-generation reservation을 구현해야 합니다.
+- 관리자 허용·거부·미존재·재시도 불가·실패 결정을 actor·tenant·conversion-job별 도메인 분리 HMAC 지문으로 기록하고, raw subject·tenant·job UUID·claim signature·문서 메타데이터가 감사 로그와 retry provenance에 남지 않도록 했습니다.
+- buyer-demo profile의 tenant-claims HMAC secret 환경변수 직접 바인딩을 제거하고 공통 Spring config-tree secret mount에서 읽도록 변경했습니다.
 
 ### Fixed
 

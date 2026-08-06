@@ -113,6 +113,14 @@ deletion wins first, the later write fails closed. Multi-instance and remote
 object-store adapters must provide an equivalent distributed generation fence or
 object-version precondition.
 
+## Reactive request boundary
+
+The administrator delete endpoint validates the tenant claim and dedicated
+permission before it constructs blocking work. It then wraps durable receipt,
+repository, and artifact I/O in `Mono.fromCallable` on Reactor's bounded elastic
+scheduler, so file force and storage deletion do not block a WebFlux event-loop
+thread.
+
 ## Persistence and crash recovery
 
 Each complete `RECEIPT_V1` snapshot is encoded as bounded strict UTF-8,
@@ -134,12 +142,14 @@ startup.
 - `ARTIFACT_CLEANUP_FAILED`: return to pending and retry;
 - `ARTIFACT_CLEANUP_COMPLETED`: perform no work.
 
-Recovery is serialized in the reference process and bounded by
+Recovery is per-job serialized and bounded by
 `clearfolio.artifact-deletion-cleanup.max-receipts-per-run`, default `100`.
 Scheduled retry uses
 `clearfolio.artifact-deletion-cleanup.retry-delay-ms`, default `30000`.
-Confidential-byte cleanup has no terminal retry count; operators must alert on
-persistent pending or failed counts rather than discard the receipt.
+Spring's scheduling pool is configured with two threads so one blocking cleanup
+batch does not starve every scheduled task. Confidential-byte cleanup has no
+terminal retry count; operators must alert on persistent pending or failed
+counts rather than discard the receipt.
 
 ## Aggregate operational evidence and privacy
 
@@ -147,8 +157,13 @@ persistent pending or failed counts rather than discard the receipt.
 
 - `completedAttempts()`;
 - `failedAttempts()`;
-- `pendingReceipts()`.
+- `pendingReceipts()`;
+- `recoveryBatchRuns()`;
+- `recoveryBatchTotalDuration()`;
+- `recoveryBatchMaximumDuration()`.
 
+Each bounded recovery invocation records elapsed time in a `finally` block, so
+empty batches and batches that fail before selecting a receipt remain visible.
 The component stores no tag map and accepts no tenant, job, checksum, exception,
 filename, token, or path dimension. A host application may export these fixed
 aggregate values through its existing OpenTelemetry, JMX, analytics, or metrics
@@ -198,10 +213,10 @@ The deterministic suite covers tenant concealment, successful completion,
 read-before-mutation failure, durable delete failure, controlled failure codes,
 restart replay, already-tombstoned recovery, pending-at-crash recovery, digest
 mismatch, repeated DELETE idempotency, write-after-receipt rejection,
-in-flight publication serialization, bounded batches, aggregate evidence,
-invalid configuration, conflicting identities, every legal and illegal ledger
-transition, strict UTF-8, oversized input, unterminated-tail rejection, and
-completed-receipt retention.
+in-flight publication serialization, bounded batches, aggregate counts and
+durations, invalid configuration, conflicting identities, WebFlux event-loop
+offloading, every legal and illegal ledger transition, strict UTF-8, oversized
+input, unterminated-tail rejection, and completed-receipt retention.
 
 ## References
 

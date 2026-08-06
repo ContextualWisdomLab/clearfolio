@@ -25,6 +25,7 @@
 ### Security
 
 - `GET /api/v1/convert/jobs/{jobId}/download`가 리소스 조회 전에 전용 `artifact:read` 권한을 검증하고, PDF 저장소 접근 전에 작업의 tenant 소유권을 확인하도록 강화했습니다. `job:read`만으로는 문서 바이트를 읽을 수 없으며, 인증 누락·권한 누락·교차 tenant UUID 접근은 각각 fail closed 처리되고 교차 tenant 요청은 리소스 존재를 숨기는 `404`를 반환합니다.
+- 아티팩트 토큰은 정확히 10개 payload 필드와 1개 서명을 요구하고 HMAC 확인 뒤 claim을 생성합니다. 서명은 유효하지만 텍스트 claim이 비어 있는 payload는 `ArtifactTokenClaims` 생성 단계에서 거부되어 token-ledger 조회 전에 `401 Unauthorized`로 실패하며, claim 값을 정규화하지 않아 검증된 서명 의미를 보존합니다.
 - Maven XML 테스트 보고서 검증기는 각 `testsuite`의 `tests`, `skipped`, `failures`, `errors` 속성을 모두 필수 증거로 요구합니다. 누락된 결과 수를 암묵적으로 0으로 간주하지 않고 fail closed 처리하며, 각 속성 누락 회귀 테스트를 추가했습니다.
 - Maven XML 테스트 보고서 검증기는 UTF-8만 허용하고 UTF-8 BOM은 수용하며, NUL 바이트·DTD·엔터티 선언을 파싱 전에 거부합니다. UTF-16 같은 대체 인코딩으로 위험 선언을 바이트 검사에서 숨기는 우회와 외부 엔터티 읽기·엔터티 확장형 서비스 거부를 회귀 테스트로 차단했습니다.
 - Maven XML 테스트 보고서 검증기는 파일당 16 MiB 상한을 적용하고 한 번의 제한된 읽기로 실제 입력 크기를 검증합니다. 테스트 코드가 보고서 파일을 교체하거나 확장해도 크기 사전검사와 파싱 사이의 경쟁 조건을 이용할 수 없습니다.

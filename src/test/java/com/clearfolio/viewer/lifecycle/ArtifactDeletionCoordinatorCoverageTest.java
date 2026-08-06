@@ -188,7 +188,7 @@ class ArtifactDeletionCoordinatorCoverageTest {
     }
 
     @Test
-    void sha256ProviderFailureDoesNotCreateDeletionEvidence() {
+    void sha256ProviderFailureIsRedactedAndDoesNotCreateDeletionEvidence() {
         ConversionJobRepository repository = mock(ConversionJobRepository.class);
         ArtifactStore artifactStore = mock(ArtifactStore.class);
         when(repository.findByTenantAndId(TENANT_ID, JOB_ID)).thenReturn(Optional.of(job()));
@@ -211,7 +211,8 @@ class ArtifactDeletionCoordinatorCoverageTest {
                     IllegalStateException.class,
                     () -> coordinator.deleteForTenant(JOB_ID, TENANT_ID)
             );
-            assertEquals("SHA-256 digest unavailable", exception.getMessage());
+            assertEquals("artifact snapshot unavailable", exception.getMessage());
+            assertEquals(null, exception.getCause());
         } finally {
             for (int index = 0; index < providers.length; index++) {
                 Security.insertProviderAt(providers[index], index + 1);

@@ -238,10 +238,17 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     /**
      * Returns lifecycle events for a tenant.
      *
+     * <p>Missing or blank scoped tenant identifiers fail closed and never infer
+     * the explicit legacy demo tenant.</p>
+     *
      * @param tenantId tenant identifier
-     * @return append-only lifecycle events for the tenant
+     * @return append-only lifecycle events for the tenant, or an empty list when
+     *         scoped tenant context is absent
      */
     public List<ConversionJobLifecycleEvent> findLifecycleEventsByTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return List.of();
+        }
         String normalizedTenantId = normalizeTenantId(tenantId);
         return lifecycleEvents.stream()
                 .filter(event -> event.tenantId().equals(normalizedTenantId))
@@ -379,7 +386,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     }
 
     private String normalizeTenantId(String tenantId) {
-        return tenantId == null || tenantId.isBlank() ? "buyer-demo" : tenantId.strip();
+        return Objects.requireNonNull(tenantId, "tenantId").strip();
     }
 
     private boolean matchesContentIndex(ConversionJob job, String expectedContentKey) {

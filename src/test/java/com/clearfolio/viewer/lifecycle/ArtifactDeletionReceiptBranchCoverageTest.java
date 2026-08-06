@@ -42,6 +42,18 @@ class ArtifactDeletionReceiptBranchCoverageTest {
     }
 
     @Test
+    void failedReceiptRequiresAStableFailureCode() {
+        Instant failedAt = REQUESTED_AT.plusSeconds(2);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> failedReceipt(1, failedAt, failedAt, null)
+        );
+
+        assertEquals("failed receipt fields are inconsistent", exception.getMessage());
+    }
+
+    @Test
     void failedReceiptAcceptsCompleteMatchingAttemptEvidence() {
         Instant failedAt = REQUESTED_AT.plusSeconds(2);
 

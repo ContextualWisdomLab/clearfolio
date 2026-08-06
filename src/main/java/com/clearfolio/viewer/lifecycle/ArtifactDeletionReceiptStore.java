@@ -18,10 +18,15 @@ public interface ArtifactDeletionReceiptStore {
     /**
      * Durably accepts one idempotent artifact-deletion request.
      *
+     * <p>The checksum may be the controlled pending marker while the first
+     * artifact snapshot has not yet succeeded. Metadata must not be tombstoned
+     * until {@link #recordArtifactChecksum(UUID, String, Instant)} has replaced
+     * that marker with an exact SHA-256 digest.</p>
+     *
      * @param requestId deletion idempotency identifier
      * @param tenantId tenant that owns the conversion job
      * @param jobId permanently reserved conversion-job identifier
-     * @param artifactChecksum lowercase SHA-256 artifact digest
+     * @param artifactChecksum lowercase SHA-256 artifact digest or controlled pending marker
      * @param auditCorrelationId privacy-safe audit correlation identifier
      * @param requestedAt instant when the request became durable
      * @return new or previously accepted identical receipt
@@ -33,6 +38,22 @@ public interface ArtifactDeletionReceiptStore {
             String artifactChecksum,
             String auditCorrelationId,
             Instant requestedAt
+    );
+
+    /**
+     * Durably binds a previously accepted pre-snapshot request to the exact
+     * artifact generation observed under the lifecycle lock.
+     *
+     * @param jobId permanently reserved conversion-job identifier
+     * @param artifactChecksum lowercase SHA-256 artifact digest, including the
+     *                         explicit absent-artifact digest when no bytes exist
+     * @param capturedAt instant when the exact digest became durable
+     * @return updated receipt with an immutable exact artifact digest
+     */
+    ArtifactDeletionReceipt recordArtifactChecksum(
+            UUID jobId,
+            String artifactChecksum,
+            Instant capturedAt
     );
 
     /**

@@ -43,9 +43,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     private final ConcurrentLinkedQueue<ConversionJobLifecycleEvent> lifecycleEvents = new ConcurrentLinkedQueue<>();
     private final Object jobIndexLock = new Object();
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public ConversionJob save(ConversionJob job) {
         Objects.requireNonNull(job, "job");
@@ -70,9 +68,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
         Objects.requireNonNull(candidate, "candidate");
@@ -117,17 +113,13 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Optional<ConversionJob> findById(UUID jobId) {
         return Optional.ofNullable(jobs.get(jobId));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Optional<ConversionJob> findByTenantAndId(String tenantId, UUID jobId) {
         if (tenantId == null || tenantId.isBlank() || jobId == null) {
@@ -141,17 +133,13 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Optional<ConversionJob> findByContentHash(String contentHash) {
         return findByTenantAndContentHash("buyer-demo", contentHash);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Optional<ConversionJob> findByTenantAndContentHash(String tenantId, String contentHash) {
         if (tenantId == null || tenantId.isBlank() || contentHash == null || contentHash.isBlank()) {
@@ -169,17 +157,13 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public List<ConversionJob> findAll() {
         return List.copyOf(jobs.values());
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public List<ConversionJob> findAllByTenantId(String tenantId) {
         if (tenantId == null || tenantId.isBlank()) {
@@ -191,9 +175,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
                 .toList();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public boolean deleteByTenantAndId(String tenantId, UUID jobId) {
         if (tenantId == null || tenantId.isBlank() || jobId == null) {
@@ -213,9 +195,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void deleteById(UUID jobId) {
         synchronized (jobIndexLock) {
@@ -238,19 +218,24 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     /**
      * Returns lifecycle events for a tenant.
      *
+     * <p>Missing or blank scoped tenant identifiers fail closed and never infer
+     * the explicit legacy demo tenant.</p>
+     *
      * @param tenantId tenant identifier
-     * @return append-only lifecycle events for the tenant
+     * @return append-only lifecycle events for the tenant, or an empty list when
+     *         scoped tenant context is absent
      */
     public List<ConversionJobLifecycleEvent> findLifecycleEventsByTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return List.of();
+        }
         String normalizedTenantId = normalizeTenantId(tenantId);
         return lifecycleEvents.stream()
                 .filter(event -> event.tenantId().equals(normalizedTenantId))
                 .toList();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Optional<ConversionJob> claimForProcessing(UUID jobId, Instant now) {
         Optional<ConversionJob> job = findById(jobId);
@@ -267,9 +252,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         return job;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void scheduleRetry(UUID jobId, String message, Instant retryAt) {
         findById(jobId).ifPresent(job -> {
@@ -279,9 +262,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         });
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void markSucceeded(UUID jobId, String resourcePath, String message) {
         findById(jobId).ifPresent(job -> {
@@ -291,9 +272,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         });
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void markDeadLettered(UUID jobId, String message) {
         findById(jobId).ifPresent(job -> {
@@ -306,9 +285,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         });
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public boolean retryDeadLettered(UUID jobId, String operatorId) {
         Optional<ConversionJob> job = findById(jobId);
@@ -325,9 +302,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         return true;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public TenantRetryOutcome retryDeadLetteredForTenant(
             String tenantId,
@@ -379,7 +354,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     }
 
     private String normalizeTenantId(String tenantId) {
-        return tenantId == null || tenantId.isBlank() ? "buyer-demo" : tenantId.strip();
+        return Objects.requireNonNull(tenantId, "tenantId").strip();
     }
 
     private boolean matchesContentIndex(ConversionJob job, String expectedContentKey) {

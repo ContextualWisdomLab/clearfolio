@@ -154,7 +154,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
      */
     @Override
     public Optional<ConversionJob> findByTenantAndContentHash(String tenantId, String contentHash) {
-        if (contentHash == null || contentHash.isBlank()) {
+        if (tenantId == null || tenantId.isBlank() || contentHash == null || contentHash.isBlank()) {
             return Optional.empty();
         }
 

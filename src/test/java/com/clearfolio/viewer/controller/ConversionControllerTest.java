@@ -72,7 +72,7 @@ class ConversionControllerTest {
                             org.springframework.web.reactive.function.client.ClientRequest.from(request)
                                     .header(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID)
                                     .header(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID)
-                                    .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_READ)
+                                    .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.ARTIFACT_READ)
                                     .build();
                     return next.exchange(authenticatedRequest);
                 })

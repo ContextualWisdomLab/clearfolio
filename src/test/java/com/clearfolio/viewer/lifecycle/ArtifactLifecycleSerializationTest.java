@@ -60,6 +60,7 @@ class ArtifactLifecycleSerializationTest {
                     locks,
                     100
             );
+            CountDownLatch deletionStarted = new CountDownLatch(1);
             ExecutorService executor = Executors.newFixedThreadPool(2);
             try {
                 Future<?> publication = executor.submit(
@@ -67,9 +68,11 @@ class ArtifactLifecycleSerializationTest {
                 );
                 assertTrue(delegate.putEntered.await(2, TimeUnit.SECONDS));
 
-                Future<Boolean> deletion = executor.submit(
-                        () -> coordinator.deleteForTenant(jobId, "tenant-a")
-                );
+                Future<Boolean> deletion = executor.submit(() -> {
+                    deletionStarted.countDown();
+                    return coordinator.deleteForTenant(jobId, "tenant-a");
+                });
+                assertTrue(deletionStarted.await(2, TimeUnit.SECONDS));
                 assertFalse(deletion.isDone());
 
                 delegate.releasePut.countDown();

@@ -5,6 +5,8 @@
 ### Added
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
+- `RECEIPT_V1` append-only artifact-deletion receipt foundation을 추가했습니다. 영구 `job_id`, tenant, artifact SHA-256, idempotency request, privacy-safe audit correlation, 단조 상태와 시각, controlled failure code를 하나의 불변 증거로 묶고 standalone in-memory 및 restart-replay file adapter를 같은 `ArtifactDeletionReceiptStore` 계약으로 제공합니다.
+- `ArtifactDeletionCoordinator`, primary `DurableDocumentDeletionService`, fixed-memory `ArtifactLifecycleLockRegistry`, `LifecycleFencedArtifactStore`를 추가했습니다. Receipt-first metadata tombstone, exact-digest cleanup, repeated DELETE idempotency, startup/fixed-delay recovery, bounded batch, write-after-receipt rejection을 독립 Slice C 계약으로 제공합니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.
   - 실패(dead-lettered) 상태인 작업을 관리자가 재시도 큐에 등록할 수 있는 `POST /api/v1/admin/convert/jobs/{jobId}/retry` 엔드포인트를 추가했습니다.
@@ -21,10 +23,14 @@
 - Maven `verify` 단계에서 Java 21 public Javadocs를 `doclint=all`로 생성하고 warning 또는 error가 하나라도 발생하면 실패하도록 했습니다. 공개 record 구성요소, 생성자, enum 값, 필드와 매개변수 문서를 초보자도 코드 분석 없이 이해할 수 있는 수준으로 보완했습니다.
 - Jazzer fuzzing도 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하도록 강화했습니다.
 - CycloneDX Maven Plugin 2.9.1의 정확한 `outputFormat`/`outputName` 사용자 속성으로 생성한 61개 구성요소 SBOM과 제3자 고지문을 buyer evidence에 반영했습니다. 생성 source head, UTC 시각, artifact/archive/SBOM/attribution 해시, 17개 Netty 구성요소의 purl·bom-ref·dependency-edge 정합성, 로컬 생성 증거와 공유 가능한 데이터룸 증거의 경계를 ADR 및 실행 가능한 drift test로 고정했습니다.
+- Spring scheduling을 활성화하고 artifact deletion recovery를 30초 fixed delay, 실행당 최대 100개 receipt로 제한했습니다. Cleanup 완료·실패 누적값과 pending receipt 수는 dependency-free aggregate evidence로 제공하며 tenant/job/checksum/예외/경로 차원을 저장하지 않습니다.
+- Durable artifact deletion은 프로세스 전체 모니터 대신 공유 per-job lifecycle lock만 사용해 서로 다른 문서의 삭제와 복구를 병렬화합니다. WebFlux 관리자 DELETE는 blocking artifact I/O를 Reactor bounded-elastic worker로 격리합니다.
 
 ### Security
 
 - `GET /api/v1/convert/jobs/{jobId}/download`가 리소스 조회 전에 전용 `artifact:read` 권한을 검증하고, PDF 저장소 접근 전에 작업의 tenant 소유권을 확인하도록 강화했습니다. `job:read`만으로는 문서 바이트를 읽을 수 없으며, 인증 누락·권한 누락·교차 tenant UUID 접근은 각각 fail closed 처리되고 교차 tenant 요청은 리소스 존재를 숨기는 `404`를 반환합니다.
+- Deletion receipt ledger는 각 transition snapshot을 16 KiB 이하 strict UTF-8 `RECEIPT_V1` record로 검증하고 append 후 `FileChannel.force(true)`를 완료하기 전 durable 상태를 반환하지 않습니다. Record terminator는 host-independent fixed LF로 고정하고 commit delimiter로 취급하므로 non-empty unterminated final tail은 crash 또는 torn append의 미확정 증거로 간주해 startup에서 fail closed 처리하고 replay하지 않습니다. Replay는 attempt evidence, 시각 순서, immutable identity, legal successor를 검증합니다. Cleanup coordinator는 receipt를 먼저 영속화하고 metadata를 tombstone한 뒤 exact artifact digest를 재검증하며, read/delete/mismatch 실패를 controlled retry state로 보존합니다.
+- Conversion과 deletion은 동일 per-job lifecycle lock을 공유합니다. Artifact boundary는 receipt가 생긴 job ID의 이후 `putPdf`를 거부하므로 deletion 완료 뒤 late worker가 confidential bytes를 재생성할 수 없습니다. Multi-instance adapter는 동일한 distributed generation fence 또는 object-version precondition을 구현해야 합니다.
 - Maven XML 테스트 보고서 검증기는 각 `testsuite`의 `tests`, `skipped`, `failures`, `errors` 속성을 모두 필수 증거로 요구합니다. 누락된 결과 수를 암묵적으로 0으로 간주하지 않고 fail closed 처리하며, 각 속성 누락 회귀 테스트를 추가했습니다.
 - Maven XML 테스트 보고서 검증기는 UTF-8만 허용하고 UTF-8 BOM은 수용하며, NUL 바이트·DTD·엔터티 선언을 파싱 전에 거부합니다. UTF-16 같은 대체 인코딩으로 위험 선언을 바이트 검사에서 숨기는 우회와 외부 엔터티 읽기·엔터티 확장형 서비스 거부를 회귀 테스트로 차단했습니다.
 - Maven XML 테스트 보고서 검증기는 파일당 16 MiB 상한을 적용하고 한 번의 제한된 읽기로 실제 입력 크기를 검증합니다. 테스트 코드가 보고서 파일을 교체하거나 확장해도 크기 사전검사와 파싱 사이의 경쟁 조건을 이용할 수 없습니다.
@@ -48,6 +54,8 @@
 ### Fixed
 
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정했습니다.
+- 관리자 삭제에서 metadata 제거 뒤 artifact-store 실패가 로그로만 소실되던 CWE-459 경로를 durable receipt와 bounded recovery로 수정했습니다. 같은 tenant의 반복 DELETE는 기존 receipt를 resume/no-op하며, 다른 tenant receipt는 숨깁니다.
+- Legacy global DELETE가 metadata tombstone 뒤 실패한 receipt를 다시 호출했을 때 cleanup을 재개하지 않던 상태 전이 오류를 수정했습니다.
 
 ## [0.1.0] - 2026-06-25
 
@@ -62,10 +70,10 @@
   - 변환 성공한 작업에 대한 PDF 바이너리 다운로드 엔드포인트를 구현했습니다.
   - 파일 다운로드 시 원본 파일명 기반의 `.pdf` 확장자 처리와 파일 무결성을 위한 체크섬(`X-Checksum-Sha256`) 헤더를 응답에 포함하도록 지원합니다.
 
-- **관리자용 전체 작업 조회 API 추가 (`GET /api/v1/admin/convert/jobs`)**
-  - 시스템 내 전체 변환 작업 내역을 조회할 수 있는 Admin 엔드포인트를 구현했습니다.
+- **관리자용 tenant 범위 작업 조회 API 추가 (`GET /api/v1/admin/convert/jobs`)**
+  - 검증된 요청 tenant 범위 내 작업 내역을 조회할 수 있는 Admin 엔드포인트를 구현했습니다.
   - `deadLettered` 필터 조건을 쿼리 파라미터로 제공하여 실패한 작업들만 조회할 수 있습니다.
-  - 관련 `AdminJobListResponse` DTO 모델과 이를 처리하는 Repository 및 Service 계층의 `findAll`/`getAllJobs` 메서드를 추가했습니다.
+  - 관련 `AdminJobListResponse` DTO 모델과 이를 처리하는 Repository 및 Service 계층의 tenant-scoped 조회 메서드를 추가했습니다.
 
 ### 테스트 커버리지 (Tests)
 

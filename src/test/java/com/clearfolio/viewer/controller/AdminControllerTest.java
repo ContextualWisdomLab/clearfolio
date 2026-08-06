@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.controller;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -14,6 +15,7 @@ import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -215,6 +217,22 @@ class AdminControllerTest {
         );
         verify(conversionService, never()).getJob(any(UUID.class));
         verify(conversionService, never()).deleteJob(any(UUID.class));
+    }
+
+    @Test
+    void deleteRunsBlockingLifecycleOnBoundedElasticWorker() {
+        UUID jobId = UUID.randomUUID();
+        AtomicReference<String> workerThreadName = new AtomicReference<>();
+        when(conversionService.deleteJob(eq(jobId), any(TenantContext.class)))
+                .thenAnswer(invocation -> {
+                    workerThreadName.set(Thread.currentThread().getName());
+                    return true;
+                });
+
+        deleteJob(jobId, signedHeaders(TENANT_ID, SUBJECT_ID, TenantPermissions.ADMIN_WRITE))
+                .expectStatus().isNoContent();
+
+        assertTrue(workerThreadName.get().startsWith("boundedElastic-"));
     }
 
     @Test

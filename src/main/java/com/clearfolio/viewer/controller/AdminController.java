@@ -27,6 +27,9 @@ import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
 
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 /**
  * Exposes tenant-scoped administrative conversion-job operations.
  *
@@ -113,12 +116,16 @@ public class AdminController {
     /**
      * Deletes one conversion job owned by the authenticated tenant.
      *
+     * <p>The durable deletion boundary performs filesystem or object-store I/O.
+     * It is therefore subscribed on Reactor's bounded-elastic scheduler rather
+     * than executed on a WebFlux event-loop thread.</p>
+     *
      * @param jobId conversion job identifier
      * @param headers signed gateway claim headers
-     * @return no content on success
+     * @return reactive no-content response on success
      */
     @DeleteMapping("/api/v1/admin/convert/jobs/{jobId}")
-    public ResponseEntity<Void> deleteJob(
+    public Mono<ResponseEntity<Void>> deleteJob(
             @PathVariable UUID jobId,
             @RequestHeader HttpHeaders headers
     ) {
@@ -129,42 +136,43 @@ public class AdminController {
                 jobId
         );
 
-        boolean deleted;
-        try {
-            deleted = conversionService.deleteJob(jobId, context);
-        } catch (RuntimeException ex) {
+        return Mono.fromCallable(() -> {
+            try {
+                return conversionService.deleteJob(jobId, context);
+            } catch (RuntimeException ex) {
+                auditLogger.record(
+                        context,
+                        Action.DELETE_JOB,
+                        Outcome.FAILED,
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        jobId,
+                        null
+                );
+                throw ex;
+            }
+        }).subscribeOn(Schedulers.boundedElastic()).map(deleted -> {
+            if (!deleted) {
+                auditLogger.record(
+                        context,
+                        Action.DELETE_JOB,
+                        Outcome.NOT_FOUND,
+                        HttpStatus.NOT_FOUND,
+                        jobId,
+                        null
+                );
+                throw notFound();
+            }
+
             auditLogger.record(
                     context,
                     Action.DELETE_JOB,
-                    Outcome.FAILED,
-                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    Outcome.ALLOWED,
+                    HttpStatus.NO_CONTENT,
                     jobId,
                     null
             );
-            throw ex;
-        }
-
-        if (!deleted) {
-            auditLogger.record(
-                    context,
-                    Action.DELETE_JOB,
-                    Outcome.NOT_FOUND,
-                    HttpStatus.NOT_FOUND,
-                    jobId,
-                    null
-            );
-            throw notFound();
-        }
-
-        auditLogger.record(
-                context,
-                Action.DELETE_JOB,
-                Outcome.ALLOWED,
-                HttpStatus.NO_CONTENT,
-                jobId,
-                null
-        );
-        return ResponseEntity.noContent().build();
+            return ResponseEntity.noContent().build();
+        });
     }
 
     /**

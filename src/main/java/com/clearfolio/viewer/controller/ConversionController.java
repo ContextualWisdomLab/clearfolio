@@ -204,15 +204,20 @@ public class ConversionController {
     }
 
     /**
-     * Downloads the converted PDF artifact.
+     * Downloads the converted PDF artifact for a tenant-owned conversion job.
      *
      * @param jobId conversion job identifier
+     * @param headers request headers carrying tenant claims
      * @return PDF bytes with attachment disposition and checksum header
      */
     @GetMapping("/api/v1/convert/jobs/{jobId}/download")
-    public Mono<ResponseEntity<byte[]>> downloadArtifact(@PathVariable UUID jobId) {
+    public Mono<ResponseEntity<byte[]>> downloadArtifact(
+            @PathVariable UUID jobId,
+            @RequestHeader HttpHeaders headers) {
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_READ);
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
+        tenantAccessService.requireSameTenant(tenantContext, job);
 
         if (job.getStatus() != ConversionJobStatus.SUCCEEDED) {
             throw new ResponseStatusException(

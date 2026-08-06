@@ -109,7 +109,7 @@ class ArtifactDeletionLedgerReplayCoverageTest {
                 )
         );
 
-        assertEquals("Failed receipt has inconsistent failure evidence.", exception.getMessage());
+        assertEquals("failed receipt fields are inconsistent", exception.getMessage());
     }
 
     @Test
@@ -143,7 +143,7 @@ class ArtifactDeletionLedgerReplayCoverageTest {
         );
 
         assertEquals(
-                "Artifact deletion receipt transition changed immutable identity.",
+                "artifact deletion receipt conflicts with an existing lifecycle",
                 invocation.getCause().getMessage()
         );
         assertEquals(TENANT_ID, ledger.findByJobId(JOB_ID).orElseThrow().tenantId());

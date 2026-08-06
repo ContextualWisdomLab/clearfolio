@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -36,15 +35,17 @@ class LifecycleFencedArtifactStoreTest {
                 NullPointerException.class,
                 () -> new LifecycleFencedArtifactStore(delegate, ledger, null)
         );
+        assertThrows(
+                NullPointerException.class,
+                () -> new LifecycleFencedArtifactStore(null, ledger)
+        );
     }
 
     @Test
-    void normalPutReadAndDeleteDelegateUnderTheLifecycleFence() {
-        InMemoryArtifactStore delegate = new InMemoryArtifactStore();
+    void sharedLockConstructorDelegatesNormalPutReadAndDelete() {
         LifecycleFencedArtifactStore store = new LifecycleFencedArtifactStore(
-                delegate,
-                new ArtifactDeletionLedger(),
-                new ArtifactLifecycleLockRegistry()
+                new InMemoryArtifactStore(),
+                new ArtifactDeletionLedger()
         );
         UUID jobId = UUID.randomUUID();
         byte[] bytes = new byte[] {1, 2, 3};

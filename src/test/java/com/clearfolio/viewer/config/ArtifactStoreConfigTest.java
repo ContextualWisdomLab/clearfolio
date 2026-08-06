@@ -12,12 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.clearfolio.viewer.artifact.ArtifactStore;
+import com.clearfolio.viewer.artifact.FileSystemArtifactStore;
+import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
 import com.clearfolio.viewer.artifact.LifecycleFencedArtifactStore;
 import com.clearfolio.viewer.lifecycle.ArtifactDeletionLedger;
 import com.clearfolio.viewer.lifecycle.ArtifactLifecycleLockRegistry;
 
 /**
- * Verifies artifact-store mode selection behind the deletion lifecycle fence.
+ * Verifies artifact-store mode selection and standalone factory compatibility.
  */
 class ArtifactStoreConfigTest {
 
@@ -51,6 +53,18 @@ class ArtifactStoreConfigTest {
 
         assertInstanceOf(LifecycleFencedArtifactStore.class, restartedStore);
         assertTrue(restartedStore.getPdf(docId).isEmpty());
+    }
+
+    @Test
+    void historicalStandaloneFactoryPreservesBothDelegateModes() {
+        ArtifactStoreConfig config = new ArtifactStoreConfig();
+        ArtifactStoreProperties filesystem = new ArtifactStoreProperties();
+        filesystem.setRootDir(tempDir.resolve("legacy-artifacts").toString());
+        ArtifactStoreProperties inMemory = new ArtifactStoreProperties();
+        inMemory.setMode(ArtifactStoreProperties.MODE_IN_MEMORY);
+
+        assertInstanceOf(FileSystemArtifactStore.class, config.artifactStore(filesystem));
+        assertInstanceOf(InMemoryArtifactStore.class, config.artifactStore(inMemory));
     }
 
     private static ArtifactStore configuredStore(ArtifactStoreProperties properties) {

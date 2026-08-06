@@ -26,6 +26,21 @@ public final class LifecycleFencedArtifactStore implements ArtifactStore {
     private final ArtifactLifecycleLockRegistry lifecycleLocks;
 
     /**
+     * Creates a standalone deletion-aware artifact boundary using the shared
+     * process-local lifecycle locks.
+     *
+     * @param delegate underlying artifact store
+     * @param receiptStore durable deletion receipt store
+     * @throws NullPointerException when a required collaborator is absent
+     */
+    public LifecycleFencedArtifactStore(
+            ArtifactStore delegate,
+            ArtifactDeletionReceiptStore receiptStore
+    ) {
+        this(delegate, receiptStore, ArtifactLifecycleLockRegistry.shared());
+    }
+
+    /**
      * Creates a deletion-aware artifact-store boundary.
      *
      * @param delegate underlying artifact store

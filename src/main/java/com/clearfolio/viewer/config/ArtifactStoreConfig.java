@@ -43,12 +43,33 @@ public class ArtifactStoreConfig {
             ArtifactDeletionReceiptStore receiptStore,
             ArtifactLifecycleLockRegistry lifecycleLocks
     ) {
-        ArtifactStore delegate;
+        return new LifecycleFencedArtifactStore(
+                createDelegate(artifactStoreProperties),
+                receiptStore,
+                lifecycleLocks
+        );
+    }
+
+    /**
+     * Creates the historical standalone artifact-store selection without
+     * deletion integration.
+     *
+     * <p>This overload preserves source compatibility for callers that construct
+     * the configuration directly. Standalone applications that enable durable
+     * deletion should call the three-argument factory so the artifact store and
+     * deletion coordinator share one receipt store and lifecycle-lock registry.</p>
+     *
+     * @param artifactStoreProperties artifact store configuration values
+     * @return selected filesystem or in-memory artifact store
+     */
+    public ArtifactStore artifactStore(ArtifactStoreProperties artifactStoreProperties) {
+        return createDelegate(artifactStoreProperties);
+    }
+
+    private ArtifactStore createDelegate(ArtifactStoreProperties artifactStoreProperties) {
         if (artifactStoreProperties.isInMemoryMode()) {
-            delegate = new InMemoryArtifactStore();
-        } else {
-            delegate = new FileSystemArtifactStore(Path.of(artifactStoreProperties.getRootDir()));
+            return new InMemoryArtifactStore();
         }
-        return new LifecycleFencedArtifactStore(delegate, receiptStore, lifecycleLocks);
+        return new FileSystemArtifactStore(Path.of(artifactStoreProperties.getRootDir()));
     }
 }

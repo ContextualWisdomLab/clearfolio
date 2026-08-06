@@ -81,13 +81,16 @@ function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
   }
 }
 
-function createLink(href, label) {
+function createLink(href, label, ariaLabel) {
   const link = document.createElement("a");
   link.href = href;
   link.textContent = label;
   link.className = "table-link";
   link.target = "_blank";
   link.rel = "noopener noreferrer";
+  if (ariaLabel) {
+    link.setAttribute("aria-label", ariaLabel);
+  }
   return link;
 }
 
@@ -110,11 +113,14 @@ async function openJsonDocument(url, title) {
     : "Unable to load JSON evidence with the current tenant claim.";
 }
 
-function createActionButton(label, onClick) {
+function createActionButton(label, onClick, ariaLabel) {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
   button.className = "btn btn-secondary btn-compact";
+  if (ariaLabel) {
+    button.setAttribute("aria-label", ariaLabel);
+  }
   button.addEventListener("click", onClick);
   return button;
 }
@@ -138,7 +144,8 @@ function renderHistory(history = loadHistory()) {
     const submittedCell = document.createElement("td");
     const actionsCell = document.createElement("td");
 
-    fileCell.textContent = job.fileName || "Document";
+    const fileName = job.fileName || "Document";
+    fileCell.textContent = fileName;
     statusCell.textContent = job.status || "SUBMITTED";
     submittedCell.textContent = job.submittedAt || "";
     actionsCell.className = "table-actions";
@@ -149,17 +156,19 @@ function renderHistory(history = loadHistory()) {
         const initialChildren = Array.from(btn.childNodes);
         btn.disabled = true;
         btn.textContent = "Loading...";
+        btn.setAttribute("aria-busy", "true");
         openJobDetail(job).finally(() => {
           btn.replaceChildren(...initialChildren);
           btn.disabled = false;
+          btn.removeAttribute("aria-busy");
         });
-      }));
+      }, `View details for ${fileName}`));
       actionsCell.appendChild(createActionButton("Status JSON", () => {
         void openJsonDocument(job.statusUrl, "Clearfolio status JSON");
-      }));
+      }, `Open status JSON for ${fileName}`));
     }
     if (job.jobId) {
-      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer"));
+      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer", `Open viewer for ${fileName}`));
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
@@ -300,6 +309,7 @@ async function retryActiveJob() {
   const initialChildren = Array.from(el.retryJobBtn.childNodes);
   el.retryJobBtn.disabled = true;
   el.retryJobBtn.textContent = "Retrying...";
+  el.retryJobBtn.setAttribute("aria-busy", "true");
   setStatus("Requesting operator retry...");
 
   try {
@@ -340,6 +350,7 @@ async function retryActiveJob() {
   } finally {
     el.retryJobBtn.replaceChildren(...initialChildren);
     el.retryJobBtn.disabled = false;
+    el.retryJobBtn.removeAttribute("aria-busy");
   }
 }
 
@@ -415,6 +426,7 @@ async function refreshKpiEvidence() {
   const initialChildren = Array.from(el.refreshEvidenceBtn.childNodes);
   el.refreshEvidenceBtn.disabled = true;
   el.refreshEvidenceBtn.textContent = "Refreshing...";
+  el.refreshEvidenceBtn.setAttribute("aria-busy", "true");
 
   try {
     const { res, data } = await fetchJson(KPI_EXPORTS_ENDPOINT);
@@ -429,6 +441,7 @@ async function refreshKpiEvidence() {
   } finally {
     el.refreshEvidenceBtn.replaceChildren(...initialChildren);
     el.refreshEvidenceBtn.disabled = false;
+    el.refreshEvidenceBtn.removeAttribute("aria-busy");
   }
 }
 
@@ -436,6 +449,7 @@ async function loadDemoData() {
   const initialChildren = Array.from(el.loadDemoDataBtn.childNodes);
   el.loadDemoDataBtn.disabled = true;
   el.loadDemoDataBtn.textContent = "Loading...";
+  el.loadDemoDataBtn.setAttribute("aria-busy", "true");
   setStatus("Loading seeded buyer-demo story...");
 
   try {
@@ -460,6 +474,7 @@ async function loadDemoData() {
   } finally {
     el.loadDemoDataBtn.replaceChildren(...initialChildren);
     el.loadDemoDataBtn.disabled = false;
+    el.loadDemoDataBtn.removeAttribute("aria-busy");
   }
 }
 
@@ -508,6 +523,7 @@ async function submitDocument(event) {
   const initialChildren = Array.from(el.submitBtn.childNodes);
   el.submitBtn.disabled = true;
   el.submitBtn.textContent = "Submitting...";
+  el.submitBtn.setAttribute("aria-busy", "true");
   setStatus("Submitting document...");
 
   try {
@@ -552,6 +568,7 @@ async function submitDocument(event) {
   } finally {
     el.submitBtn.replaceChildren(...initialChildren);
     el.submitBtn.disabled = false;
+    el.submitBtn.removeAttribute("aria-busy");
   }
 }
 

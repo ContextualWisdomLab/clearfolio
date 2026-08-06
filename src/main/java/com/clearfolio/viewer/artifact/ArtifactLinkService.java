@@ -332,18 +332,36 @@ public class ArtifactLinkService {
     }
 
     private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.");
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+        // Performance optimization: Extract payload and signature using lastIndexOf
+        // to avoid String.split() array allocations before signature validation.
+        int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1 || lastDotIndex == token.length() - 1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        String payload = token.substring(0, lastDotIndex);
+        String signature = token.substring(lastDotIndex + 1);
+
+        // Fail-fast validation: Ensure expected field count without allocating arrays
+        int dotCount = 0;
+        for (int i = 0; i < payload.length(); i++) {
+            if (payload.charAt(i) == '.') {
+                dotCount++;
+            }
+        }
+        if (dotCount != TOKEN_FIELD_COUNT - 1) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
         String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+                signature.getBytes(StandardCharsets.US_ASCII))) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
+
+        // Defer array allocation until *after* the HMAC signature has been verified
+        String[] parts = payload.split("\\.", -1);
 
         try {
             String version = decode(parts[0]);

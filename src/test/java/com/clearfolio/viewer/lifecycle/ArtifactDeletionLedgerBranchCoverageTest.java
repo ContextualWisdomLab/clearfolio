@@ -34,6 +34,11 @@ class ArtifactDeletionLedgerBranchCoverageTest {
         assertInvalidTransition(
                 validator,
                 receipt(ArtifactDeletionState.DELETION_REQUESTED, START, 0, null),
+                receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START.plusSeconds(1), 0, null)
+        );
+        assertInvalidTransition(
+                validator,
+                receipt(ArtifactDeletionState.DELETION_REQUESTED, START, 0, null),
                 receipt(ArtifactDeletionState.METADATA_TOMBSTONED, START.plusSeconds(1), 1, START)
         );
         assertInvalidTransition(
@@ -66,16 +71,31 @@ class ArtifactDeletionLedgerBranchCoverageTest {
                 receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_FAILED, START, 1, START),
                 receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED, START.plusSeconds(1), 1, START)
         );
+        assertInvalidTransition(
+                validator,
+                receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED, START, 0, null),
+                receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START.plusSeconds(1), 0, null)
+        );
     }
 
     @Test
-    void replayTransitionAcceptsBothPendingOutcomesAndFailedRetry() throws Exception {
+    void replayTransitionAcceptsRequestedPendingOutcomesAndFailedRetry() throws Exception {
         Method validator = privateMethod(
                 "validateReplayTransition",
                 ArtifactDeletionReceipt.class,
                 ArtifactDeletionReceipt.class
         );
 
+        validator.invoke(
+                null,
+                receipt(ArtifactDeletionState.DELETION_REQUESTED, START, 0, null),
+                receipt(ArtifactDeletionState.METADATA_TOMBSTONED, START.plusSeconds(1), 0, null)
+        );
+        validator.invoke(
+                null,
+                receipt(ArtifactDeletionState.METADATA_TOMBSTONED, START, 0, null),
+                receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START.plusSeconds(1), 0, null)
+        );
         validator.invoke(
                 null,
                 receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START, 0, null),

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.artifact.PdfArtifactGenerator;
+import com.clearfolio.viewer.lifecycle.ArtifactLifecycleLockRegistry;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
@@ -30,7 +31,12 @@ import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
  * <p>PDF uploads are served passthrough: the original bytes seeded into the
  * artifact store at submit time become the artifact unchanged. Non-PDF sources
  * still produce a placeholder preview PDF because real document conversion
- * (docx, hwp, and similar formats) remains future work.
+ * (docx, hwp, and similar formats) remains future work.</p>
+ *
+ * <p>Claim, conversion, artifact write, and success or failure transition are
+ * serialized with deletion for the same permanently reserved job identifier.
+ * This prevents an in-flight worker from recreating document bytes after the
+ * deletion coordinator has completed cleanup in the same process.</p>
  */
 @Component
 public class DefaultConversionWorker implements ConversionWorker {
@@ -42,6 +48,7 @@ public class DefaultConversionWorker implements ConversionWorker {
     private final Executor conversionExecutor;
     private final ArtifactStore artifactStore;
     private final PdfArtifactGenerator pdfArtifactGenerator;
+    private final ArtifactLifecycleLockRegistry lifecycleLocks;
     private final long retryInitialDelayMs;
     private final long retryMaxDelayMs;
     private final double retryBackoffMultiplier;
@@ -107,6 +114,7 @@ public class DefaultConversionWorker implements ConversionWorker {
         this.conversionExecutor = conversionExecutor;
         this.artifactStore = artifactStore;
         this.pdfArtifactGenerator = pdfArtifactGenerator;
+        this.lifecycleLocks = ArtifactLifecycleLockRegistry.shared();
         this.retryInitialDelayMs = Math.max(
                 MIN_INITIAL_RETRY_DELAY_MS,
                 conversionProperties.getRetryInitialDelayMs()
@@ -192,6 +200,14 @@ public class DefaultConversionWorker implements ConversionWorker {
     }
 
     private void process(UUID jobId) {
+        UUID requiredJobId = Objects.requireNonNull(jobId, "jobId");
+        lifecycleLocks.withJobLock(requiredJobId, () -> {
+            processLocked(requiredJobId);
+            return null;
+        });
+    }
+
+    private void processLocked(UUID jobId) {
         Instant now = Instant.now();
         repository.findById(jobId).ifPresent(job -> {
             if (!job.isReadyForProcessing(now)) {

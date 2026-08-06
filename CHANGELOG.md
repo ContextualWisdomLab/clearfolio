@@ -39,6 +39,7 @@
 - tenant-aware service 기본 구현은 global lookup 또는 legacy mutation을 호출하지 않고 `false`/`NOT_FOUND`로 실패 종료합니다. 모듈형 대체 adapter는 원자적 tenant-scoped mutation을 명시적으로 구현해야 관리자 작업을 성공시킬 수 있습니다.
 - 관리자 delete/retry는 `deleteByTenantAndId`와 `retryDeadLetteredForTenant` 원자적 tenant-scoped persistence contract를 사용합니다. artifact cleanup은 소유권이 확인된 repository 삭제가 성공한 뒤에만 실행되며, worker enqueue는 소유권 확인과 dead-letter 상태 전이가 원자적으로 성공한 뒤에만 실행됩니다.
 - tenant-scoped lookup/delete/retry는 누락된 job UUID를 예외로 노출하지 않고 empty/`false`/`NOT_FOUND`로 실패 종료하며 기존 저장 상태를 변경하지 않습니다.
+- tenant-scoped content-hash lookup은 tenant 식별자가 `null` 또는 공백이면 demo tenant로 폴백하지 않고 빈 결과로 fail closed 처리합니다. 명시적인 legacy `findByContentHash` 호출만 `buyer-demo` 범위를 선택할 수 있으며, 회귀 테스트가 누락된 tenant로 demo 보조 인덱스를 조회할 수 없음을 고정합니다.
 - tenant-and-content-hash 보조 인덱스가 현재 UUID 레코드의 tenant/hash와 일치하는지 재검증합니다. conversion-job UUID는 불변 lifecycle identity로 예약하며, 동일한 live 객체의 idempotent save만 허용하고 distinct live 객체 또는 삭제 후 tombstoned UUID의 재바인딩은 보조 인덱스 작업 전에 fail closed 처리합니다.
 - tenant-scoped 삭제와 동일 UUID 저장이 동시에 발생해도 primary job map, 영구 UUID reservation, tenant-content secondary index를 하나의 임계 구역에서 갱신합니다. 삭제는 live 레코드와 인덱스를 제거하지만 UUID reservation은 해제하지 않으므로 대기 중인 교체 저장은 실패하며, durable adapter도 동일 트랜잭션의 uniqueness와 tombstone 또는 lifecycle-generation reservation을 구현해야 합니다.
 - 관리자 허용·거부·미존재·재시도 불가·실패 결정을 actor·tenant·conversion-job별 도메인 분리 HMAC 지문으로 기록하고, raw subject·tenant·job UUID·claim signature·문서 메타데이터가 감사 로그와 retry provenance에 남지 않도록 했습니다.

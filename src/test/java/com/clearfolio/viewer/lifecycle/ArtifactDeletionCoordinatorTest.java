@@ -134,7 +134,8 @@ class ArtifactDeletionCoordinatorTest {
                 () -> coordinator.deleteForTenant(JOB_ID, TENANT_ID)
         );
 
-        assertEquals("storage path must not escape", exception.getMessage());
+        assertEquals("artifact snapshot unavailable", exception.getMessage());
+        assertTrue(!exception.getMessage().contains("storage path"));
         assertTrue(repository.findById(JOB_ID).isPresent());
         assertTrue(ledger.findByJobId(JOB_ID).isEmpty());
     }

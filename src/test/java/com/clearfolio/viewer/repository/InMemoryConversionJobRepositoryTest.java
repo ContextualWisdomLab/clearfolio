@@ -35,21 +35,23 @@ class InMemoryConversionJobRepositoryTest {
     }
 
     @Test
-    void findByTenantAndContentHashFallsBackToDemoTenantWhenTenantIsNull() {
+    void scopedContentLookupRejectsNullTenantWhileExplicitLegacyLookupUsesDemoTenant() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
         ConversionJob job = newJob("hash-default-tenant");
         repository.save(job);
 
-        assertSame(job, repository.findByTenantAndContentHash(null, "hash-default-tenant").orElseThrow());
+        assertTrue(repository.findByTenantAndContentHash(null, "hash-default-tenant").isEmpty());
+        assertSame(job, repository.findByContentHash("hash-default-tenant").orElseThrow());
     }
 
     @Test
-    void findByTenantAndContentHashFallsBackToDemoTenantWhenTenantIsBlank() {
+    void scopedContentLookupRejectsBlankTenantWhileExplicitLegacyLookupUsesDemoTenant() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
         ConversionJob job = newJob("hash-blank-tenant");
         repository.save(job);
 
-        assertSame(job, repository.findByTenantAndContentHash(" ", "hash-blank-tenant").orElseThrow());
+        assertTrue(repository.findByTenantAndContentHash(" ", "hash-blank-tenant").isEmpty());
+        assertSame(job, repository.findByContentHash("hash-blank-tenant").orElseThrow());
     }
 
     @Test

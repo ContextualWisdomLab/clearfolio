@@ -178,6 +178,7 @@ def test_publisher_rechecks_inventory_and_base_after_write_token_is_minted() -> 
     final_gate = publisher[final_gate_index:creation_index]
 
     assert token_index < final_gate_index < creation_index
+    assert "if: steps.publish_gate.outputs.publish == 'true'" in final_gate
     assert "state=open&per_page=100" in final_gate
     assert "--paginate" in final_gate
     assert 'gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main"' in final_gate

@@ -100,17 +100,20 @@ class ArtifactDeletionLedgerCoverageTest {
     }
 
     @Test
-    void receiptConstructorRejectsInconsistentStateEvidence() {
+    void receiptConstructorAcceptsChecksumCaptureAndRejectsInconsistentStateEvidence() {
         assertThrows(IllegalArgumentException.class, () -> receipt(
                 REQUEST_ID, TENANT_ID, JOB_ID, CHECKSUM, AUDIT_ID,
                 REQUESTED_AT, REQUESTED_AT.minusSeconds(1),
                 ArtifactDeletionState.DELETION_REQUESTED, 0, null, null, null
         ));
-        assertThrows(IllegalArgumentException.class, () -> receipt(
-                REQUEST_ID, TENANT_ID, JOB_ID, CHECKSUM, AUDIT_ID,
-                REQUESTED_AT, REQUESTED_AT.plusSeconds(1),
-                ArtifactDeletionState.DELETION_REQUESTED, 0, null, null, null
-        ));
+        assertEquals(
+                REQUESTED_AT.plusSeconds(1),
+                receipt(
+                        REQUEST_ID, TENANT_ID, JOB_ID, CHECKSUM, AUDIT_ID,
+                        REQUESTED_AT, REQUESTED_AT.plusSeconds(1),
+                        ArtifactDeletionState.DELETION_REQUESTED, 0, null, null, null
+                ).stateChangedAt()
+        );
         assertThrows(IllegalArgumentException.class, () -> receipt(
                 REQUEST_ID, TENANT_ID, JOB_ID, CHECKSUM, AUDIT_ID,
                 REQUESTED_AT, REQUESTED_AT,

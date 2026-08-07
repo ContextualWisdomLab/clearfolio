@@ -456,6 +456,7 @@ jobs:
           permission-pull-requests: write
 
       - name: Recheck immediately before Draft publication
+        if: steps.publish_gate.outputs.publish == 'true'
         id: final_publish_gate
         env:
           GH_TOKEN: ${{ steps.maintainer_app.outputs.token }}

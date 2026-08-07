@@ -27,17 +27,32 @@ DEPLOYMENT_PLAYBOOK = (
 )
 
 
+def normalized_text(path: Path) -> str:
+    """Read UTF-8 Markdown and collapse formatting whitespace for claims.
+
+    Markdown paragraphs are wrapped for readability, so a stable semantic
+    contract must not depend on whether a phrase crosses a source line break.
+
+    Args:
+        path: Repository document whose claims are being verified.
+
+    Returns:
+        Text with every whitespace run represented by one ASCII space.
+    """
+    return " ".join(path.read_text(encoding="utf-8").split())
+
+
 class DurableCleanupDocumentationContractTest(unittest.TestCase):
     """Keeps buyer and operator claims aligned with the integrated runtime."""
 
     def test_agent_guide_describes_integrated_worker_and_remaining_limits(self) -> None:
         """The agent source of truth must not describe cleanup as absent."""
-        content = AGENT_GUIDE.read_text(encoding="utf-8")
+        content = normalized_text(AGENT_GUIDE)
 
         self.assertIn("receipt-first cleanup worker", content)
         self.assertIn("cross-resource transactional outbox", content)
         self.assertNotIn(
-            "does not implement a failed-artifact\n  cleanup queue, deletion receipt, outbox, or retry worker",
+            "does not implement a failed-artifact cleanup queue, deletion receipt, outbox, or retry worker",
             content,
         )
 
@@ -45,7 +60,7 @@ class DurableCleanupDocumentationContractTest(unittest.TestCase):
         self,
     ) -> None:
         """The security decision must state both implemented and residual risk."""
-        content = AUTHORIZATION_DECISION.read_text(encoding="utf-8")
+        content = normalized_text(AUTHORIZATION_DECISION)
 
         self.assertIn("durable deletion receipt", content)
         self.assertIn("bounded scheduled recovery", content)
@@ -57,7 +72,7 @@ class DurableCleanupDocumentationContractTest(unittest.TestCase):
         self,
     ) -> None:
         """Buyer operations must configure the worker without overstating it."""
-        content = DEPLOYMENT_PLAYBOOK.read_text(encoding="utf-8")
+        content = normalized_text(DEPLOYMENT_PLAYBOOK)
 
         self.assertIn("artifact-deletion-receipts.log", content)
         self.assertIn("bounded scheduled recovery", content)

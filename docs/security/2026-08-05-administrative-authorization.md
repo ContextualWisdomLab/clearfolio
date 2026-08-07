@@ -2,48 +2,63 @@
 
 ## Decision
 
-Clearfolio's administrative job endpoints are not global superuser APIs. They are tenant-scoped operations that evaluate signed subject claims, an explicit administrative permission, the requested operation, and the target job's tenant ownership on every request.
+Clearfolio's administrative conversion-job endpoints are tenant-scoped control-plane APIs, not global superuser APIs. Every request evaluates signed subject claims, an explicit administrative permission, the requested operation, and the target job's tenant ownership. Listing requires `admin:read`; deletion and dead-letter retry require `admin:write`. Possessing an opaque UUID is never authorization. Missing and cross-tenant jobs intentionally produce the same not-found outcome so an identifier cannot enumerate another tenant's documents or operational state.
 
-The implementation follows deny-by-default and least-privilege principles. Listing requires `admin:read`; deletion and dead-letter retry require `admin:write`. Possessing an opaque UUID is never sufficient authorization. Missing and cross-tenant jobs intentionally return the same not-found response so an object identifier cannot be used to enumerate another tenant's documents or operational state.
-
-Administrative endpoints never fall back to unsigned demo-header mode. If the tenant-claims HMAC verifier is absent or its configured key contains fewer than 32 UTF-8 bytes, the endpoints return `503 Service Unavailable` before repository access. This makes a missing or weak trust anchor an observable deployment failure rather than an authorization bypass.
+The implementation follows deny by default and least privilege. Administrative endpoints never fall back to unsigned demo headers. If the tenant-claims HMAC verifier is absent or its key contains fewer than 32 UTF-8 bytes, the endpoints return `503 Service Unavailable` before repository access. A missing or weak trust anchor is therefore an observable deployment failure rather than an authorization bypass.
 
 ## Trust boundary
 
-The `X-Clearfolio-*` claim headers are an internal adapter contract between Clearfolio and an authenticated gateway or host such as naruon. They are not public client credentials. The upstream gateway must authenticate the caller, construct canonical tenant, subject, permission, and issue-time claims, and sign them with the tenant-claims HMAC key.
+The `X-Clearfolio-*` headers are an internal adapter contract between Clearfolio and an authenticated gateway or host such as naruon. They are not public client credentials. The upstream gateway must authenticate the caller, remove untrusted inbound copies, construct canonical tenant, subject, permission, and issue-time claims, sign them with the tenant-claims HMAC key, and forward only the verified replacement set.
 
-Clearfolio verifies the signature and freshness before evaluating permissions. Deployments must strip untrusted inbound copies of these headers before adding verified claims. The service remains standalone because the claim verifier is an injectable component, but production must not expose the internal header adapter directly to arbitrary clients.
+Clearfolio verifies signature and freshness before permission evaluation. The service remains independently deployable because the verifier is injectable, but production must not expose this internal header adapter directly to arbitrary clients.
 
-The tenant-claims and artifact-token HMAC secrets are read from the shared Spring config-tree secret mount as `clearfolio.tenant-claims.hmac-secret` and `clearfolio.artifact-token.secret`. The buyer-demo profile no longer maps either secret-bearing environment variable directly into runtime configuration. Environment variables may select non-secret operational values or bootstrap a mounted credential store, but runtime authentication and artifact-link signing read the mounted properties. Each mounted signing key must be provisioned independently through the deployment platform's secret manager; the tenant-claims key must contain at least 32 UTF-8 bytes for privileged administrative endpoints.
+Tenant-claims and artifact-token HMAC secrets are read from the shared Spring config-tree mount as `clearfolio.tenant-claims.hmac-secret` and `clearfolio.artifact-token.secret`. The buyer-demo profile does not map either secret-bearing environment variable into runtime configuration. Environment variables may select non-secret operational values or bootstrap a mounted credential source; runtime authentication and artifact-link signing read mounted properties. Each signing key must be provisioned independently through the deployment platform's secret manager.
 
 ## Authorization sequence
 
-Every endpoint applies the same fail-closed sequence:
+Every administrative endpoint applies the same fail-closed sequence:
 
 1. Confirm that a strong signed-claim verifier is configured; otherwise return `503` before service access.
-2. Parse the tenant, subject, permissions, issue time, and claim signature.
-3. Verify signed claims and their freshness.
+2. Parse tenant, subject, permissions, issue time, and signature.
+3. Verify canonical claims, signature, and freshness.
 4. Require the action-specific permission.
-5. Pass the verified `TenantContext` into the object-specific service mutation.
-6. Select and mutate the target through one tenant-scoped persistence operation.
-7. Return a non-enumerating not-found response for absent or cross-tenant objects.
-8. Emit privacy-safe authorization evidence for the resulting outcome.
+5. Pass the verified `TenantContext` into the object-specific service operation.
+6. Select and mutate through one tenant-scoped persistence boundary.
+7. Conceal absent and cross-tenant objects with the same not-found result.
+8. Emit privacy-safe authorization and lifecycle evidence.
 
-List responses apply the tenant predicate before job objects cross the repository boundary and then apply the optional dead-letter status filter. Delete and retry do not perform controller-level or service-level read-then-write authorization. Their service contracts pass the authenticated tenant to atomic repository or state-store operations, so non-HTTP callers cannot reach an unscoped administrative mutation by bypassing the controller.
+List responses apply the tenant predicate before job objects cross the repository boundary and then apply the optional dead-letter filter. Delete and retry do not perform controller-level read-then-write authorization. Their service contracts pass the authenticated tenant to atomic repository or state-store operations, so a non-HTTP caller cannot bypass the controller and reach an unscoped administrative mutation.
 
-Deletion first performs the tenant-predicate repository deletion. Artifact removal is attempted only after that owned deletion succeeds, so a missing or cross-tenant identifier cannot delete another tenant's artifact. The current removal is best effort: an artifact-store exception is logged and does not restore the already deleted job. This slice does not persist a deletion receipt, enqueue cleanup work, retry a failed removal, or expose aggregate cleanup evidence. A failure can therefore leave orphaned artifact bytes. Issue #263 owns the restart-safe deletion-receipt, transactional-outbox, idempotent cleanup-worker, privacy-safe evidence, bounded retry, and deterministic recovery boundary required for production deployment.
+## Immutable job and retry handoff boundary
 
-Retry receives one atomic state-store outcome: `ACCEPTED`, concealed `NOT_FOUND`, or `NOT_ELIGIBLE`. The worker is enqueued only after the state store has atomically verified ownership and moved the owned dead-lettered job back to submitted state.
+A missing job identifier is treated as an absent object at every tenant-scoped lookup, delete, and retry boundary. Repository adapters return an empty lookup, `false`, or `NOT_FOUND` without invoking a global lookup, changing stored state, deleting an artifact, or enqueueing work.
 
-A missing job identifier is treated as an absent object at every tenant-scoped lookup, delete, and retry boundary. Repository adapters return an empty lookup, `false`, or `NOT_FOUND` without invoking a global lookup, mutating stored state, deleting an artifact, or enqueueing work. This keeps internal and modular callers on the same non-enumerating contract even when a malformed or incomplete adapter call bypasses HTTP path binding.
+Compatibility-only unscoped delete and two-argument retry methods remain available for non-administrative adapters. Their tenant-aware service, repository, and state-store defaults fail closed without reading a job or invoking legacy mutation. A production adapter must explicitly implement tenant selection and mutation in one persistence boundary. The in-memory reference adapter supplies those scoped atomic overrides.
 
-The historical unscoped delete method and two-argument retry method remain compatibility contracts for non-administrative adapters only. Their tenant-aware service, repository, and state-store defaults fail closed without reading a job or invoking either legacy mutation. A production adapter must explicitly override the tenant-aware methods and perform tenant selection and mutation within one persistence boundary before an administrative request can succeed. Clearfolio's in-memory reference implementation supplies those scoped atomic overrides.
+The content-hash secondary index is tenant-bound, and each conversion-job UUID is an immutable lifecycle identity. The in-memory adapter permanently reserves a UUID when first accepted. Saving the exact same live object may be idempotent; a distinct live object or any later object using a tombstoned UUID is rejected before secondary-index work. Deletion removes the live record and tenant-plus-content-hash index while retaining the reservation. Indexed lookup also verifies that the current UUID record matches the requested tenant and hash.
 
-The content-hash secondary index is tenant-bound, and each conversion-job UUID is an immutable lifecycle identity. The in-memory adapter reserves a UUID when it first accepts a job. Saving the exact same live object may be idempotent, but any distinct live object or any later object using a deleted UUID is rejected before secondary-index work. Deletion removes the live record and its tenant-and-content-hash index while retaining the UUID reservation. Lookup also validates that the current UUID record matches the requested tenant-and-hash key. These rules prevent a queued UUID, stale index, or stale preliminary observation from being rebound to another tenant's job.
+Primary UUID state, permanent reservation, and the tenant-content index are updated under one shared critical section. A concurrent same-UUID save waits for the active mutation and then fails closed; deletion never releases the identifier for reuse. Durable adapters must provide the equivalent invariant with a database uniqueness constraint and durable tombstone or lifecycle-generation reservation in the same transaction.
 
-The in-memory adapter updates the primary UUID map, the permanent identifier reservation, and the tenant-content secondary index under one shared critical section for save, find-or-store, indexed lookup, tenant-scoped deletion, and compatibility deletion. A concurrent same-UUID save therefore waits for the active operation and then fails closed; deletion never releases the identifier for reuse. Durable adapters must provide the equivalent invariant with a database uniqueness constraint plus a durable tombstone or lifecycle-generation reservation in the same transaction. Process-local locking is a reference-adapter mechanism, not an interoperability contract.
+This invariant closes the retry-to-worker handoff race in the reference adapter even though the worker queue carries a UUID. After an authorized tenant retry transitions the original object, another tenant cannot replace that UUID before enqueue or worker lookup. Distributed adapters must additionally bind queued work to tenant and immutable generation, then revalidate both at execution time.
 
-This identifier rule closes the retry-to-worker handoff race even though the current in-memory worker queue carries a UUID: after an authorized tenant retry transitions the original object, another tenant cannot replace that UUID before enqueue or worker lookup. The durable lifecycle work tracked in issue #263 will strengthen this boundary further with tenant-and-generation deletion receipts and outbox records, but it must not be used to justify a tenant-crossing retry path in the current slice.
+## Durable artifact-deletion boundary
+
+Authorized deletion is routed through `DurableDocumentDeletionService` and `ArtifactDeletionCoordinator`. The reference runtime now implements a durable deletion receipt and bounded cleanup lifecycle rather than best-effort-only removal.
+
+The lifecycle is receipt first:
+
+1. Under the per-job lifecycle lock, persist `DELETION_REQUESTED` with a controlled non-digest `pending` checksum marker before the first artifact-store read.
+2. If the first read fails, preserve metadata, retain the durable receipt, record only a controlled low-cardinality failure, and allow startup or scheduled recovery to resume.
+3. After a successful read, bind the same receipt identity exactly once to the artifact SHA-256 or the explicit confirmed-absence digest. Replay rejects reverse or conflicting binding.
+4. Only after exact checksum binding may the tenant-scoped metadata tombstone be applied.
+5. Mark cleanup pending, compare the exact generation, delete the artifact idempotently, and record completion or a controlled retryable failure.
+6. Replay incomplete receipts at application startup and on a bounded fixed-delay schedule.
+
+`LifecycleFencedArtifactStore` shares the per-job lifecycle lock and rejects publication after a deletion receipt exists. An in-flight publication that completes before receipt acceptance becomes the captured generation and is deleted; a later publication fails closed. Aggregate metrics expose only completed, failed, pending, and bounded execution evidence. They do not use tenant, job, digest, path, filename, exception message, or other high-cardinality dimensions.
+
+The append-only file adapter forces each accepted receipt snapshot before reporting it durable. It supports restart replay and preserves incomplete cleanup evidence. The in-memory adapter remains available for standalone tests and ephemeral use.
+
+This reference boundary is intentionally narrower than a distributed transaction. It has no cross-resource transactional outbox spanning an external database and object store, no distributed generation fence shared by multiple service instances, and no remote-object-store atomicity guarantee. A multi-instance production adapter must add durable uniqueness, object-version preconditions or compare-and-set semantics, an idempotent outbox/consumer boundary, bounded retry and dead-letter operations, and operator recovery evidence. Issue #263 remains the umbrella for those distributed adapters and later truthful API/UI deletion-state semantics.
 
 ## Audit evidence
 
@@ -52,12 +67,29 @@ Administrative evidence contains only:
 - a controlled action code;
 - a controlled outcome code;
 - HTTP status;
-- tenant, actor, and conversion-job HMAC fingerprints in three separate domains;
-- a numeric result count for list operations.
+- tenant, actor, and conversion-job HMAC fingerprints in separate domains;
+- a numeric result count for list operations;
+- low-cardinality deletion lifecycle counts and controlled failure codes.
 
-It does not contain raw tenant identifiers, raw subject identifiers, raw job UUIDs, claim signatures, permission headers, filenames, job messages, document text, or artifact bytes. Job correlation uses a dedicated keyed HMAC domain so resource references cannot be joined directly with API paths, databases, support exports, or external telemetry. The retry provenance stored with a job uses the actor-domain fingerprint rather than the source subject identifier. Pseudonymized values remain personal data and inherit the retention, access, rotation, and incident-response requirements in `2026-08-04-audit-pseudonymization.md`.
+It excludes raw tenant identifiers, raw subject identifiers, raw job UUIDs, claim signatures, permission headers, filenames, job messages, document text, storage paths, exception-controlled text, and artifact bytes. Job correlation uses a dedicated keyed HMAC domain so resource references cannot be joined directly with API paths, databases, support exports, or external telemetry. Retry provenance stores the actor-domain fingerprint rather than the source subject. Pseudonymized values remain personal data and inherit the retention, access, rotation, and incident-response requirements in `2026-08-04-audit-pseudonymization.md`.
 
-No durable artifact-cleanup evidence exists in this slice. Operators must not interpret an application log entry as a persisted deletion receipt or retry record. Buyer-facing and production-readiness materials must keep issue #263 open until a durable cleanup adapter and recovery evidence are integrated.
+Operators must distinguish the persisted receipt ledger from ordinary application logs. The ledger and aggregate metrics provide durable single-process cleanup evidence; logs are diagnostic only and never substitute for receipt state.
+
+## Standalone and modular deployment
+
+`ArtifactDeletionReceiptStore`, `ArtifactStore`, `ConversionJobRepository`, and the tenant-aware service contracts are replaceable boundaries. The reference filesystem ledger and artifact store permit standalone operation. naruon or another CWL host may replace them with shared durable adapters without changing the authorization, immutable identity, receipt state machine, or privacy-safe evidence contracts.
+
+A modular deployment must preserve:
+
+- signed tenant context before service access;
+- tenant-scoped atomic mutation;
+- permanent UUID or immutable generation identity;
+- receipt-before-read ordering;
+- one-way exact-digest binding before metadata tombstone;
+- conversion/deletion generation fencing;
+- idempotent retry and recovery;
+- low-cardinality, privacy-safe evidence;
+- fail-closed behavior when a required adapter cannot prove those invariants.
 
 ## Verification requirements
 
@@ -66,25 +98,24 @@ Automated tests must exercise the real signed-claim verifier and prove:
 - absent and weak verifier keys make privileged endpoints unavailable before service access;
 - missing, malformed, expired, and incorrectly signed claims fail before service access;
 - missing `admin:read` or `admin:write` permissions fail before service access;
-- list results contain only tenant-owned jobs for all dead-letter filter states;
+- list results contain only tenant-owned jobs for every dead-letter filter state;
 - missing and cross-tenant delete/retry targets produce indistinguishable not-found responses;
-- a missing job identifier fails closed across tenant-scoped lookup, delete, and retry while leaving existing stored state unchanged;
-- delete and retry cross tenant-aware persistence boundaries without a separate lookup or unscoped mutation call;
-- failed tenant-scoped deletion never touches the artifact store, while successful owned deletion attempts artifact removal only after repository authorization;
-- an artifact-removal failure does not roll back the authorized job deletion and is not represented as durable cleanup evidence in this slice;
-- compatibility-only service, repository, and state-store adapters cannot reach global lookup, delete, or retry methods through tenant-aware defaults;
-- saving the exact same live object is idempotent, while a distinct object with a live UUID is rejected without changing tenant, hash-index, or lifecycle ownership;
-- deletion removes the live job and secondary index but leaves the UUID reserved, so both direct save and atomic find-or-store reject later reuse;
+- missing job identifiers fail closed without global lookup or mutation;
+- delete and retry cross tenant-aware persistence boundaries without a separate unscoped lookup;
+- compatibility adapters cannot reach global lookup, delete, or retry through tenant-aware defaults;
+- exact same-object save is idempotent while distinct live or tombstoned UUID reuse is rejected;
+- deletion removes the live job and secondary index but preserves UUID reservation;
 - a colliding find-or-store candidate fails before index ownership changes;
-- a concurrent tenant-scoped delete cannot release or transfer UUID ownership, and a waiting same-UUID save fails before replacement index work;
-- an accepted tenant retry cannot be followed by a same-UUID cross-tenant replacement before enqueue or worker lookup;
-- stale observations cannot delete or retry a job owned by another tenant;
-- the durable retry state store rejects invalid, missing, cross-tenant, and ineligible targets without an unauthorized transition or worker enqueue;
-- accepted retry provenance is a domain-separated keyed fingerprint, never a raw or unkeyed subject value;
-- not-found, not-eligible, repository failure, artifact-removal failure, and retry failure paths return stable non-leaking responses;
-- both artifact-token and tenant-claims signing keys are sourced from the shared config-tree mount rather than secret-valued profile environment placeholders;
-- audit output contains no raw tenant, subject, job UUID, signature, filename, or document data;
-- JaCoCo reports 100% line and branch coverage for the `com.clearfolio.viewer.*` production package.
+- concurrent delete/save and retry/replacement interleavings preserve tenant and generation ownership;
+- accepted retry provenance is a domain-separated keyed fingerprint;
+- the durable deletion receipt is accepted before the first artifact read;
+- first-read failure preserves metadata and restart-safe pending evidence rather than claiming confirmed absence;
+- exact digest binding is one-way, durable, replay-validated, and required before metadata tombstone;
+- successful cleanup, read failure, digest mismatch, delete failure, retry, restart, and bounded-batch recovery are deterministic;
+- write-after-receipt and in-flight publication races cannot recreate deleted confidential bytes;
+- cleanup evidence contains no raw UUID, tenant, path, digest dimension, exception text, or attached throwable;
+- both signing keys are sourced from the shared config-tree mount;
+- JaCoCo reports zero missed production lines and branches and public Javadocs pass with no warnings.
 
 ## References
 

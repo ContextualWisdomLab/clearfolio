@@ -118,7 +118,7 @@ class ArtifactDeletionReceiptBranchCoverageTest {
                 () -> captured.captureArtifactChecksum(CHECKSUM, REQUESTED_AT.plusSeconds(2))
         );
 
-        assertEquals("invalid artifact deletion transition", exception.getMessage());
+        assertEquals("artifact deletion receipt transition is invalid", exception.getMessage());
     }
 
     @Test
@@ -133,7 +133,7 @@ class ArtifactDeletionReceiptBranchCoverageTest {
                 () -> pending.markMetadataTombstoned(REQUESTED_AT.plusSeconds(1))
         );
 
-        assertEquals("invalid artifact deletion transition", exception.getMessage());
+        assertEquals("artifact deletion receipt transition is invalid", exception.getMessage());
     }
 
     @Test

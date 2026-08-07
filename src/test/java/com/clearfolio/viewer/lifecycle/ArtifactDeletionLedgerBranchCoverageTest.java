@@ -217,7 +217,7 @@ class ArtifactDeletionLedgerBranchCoverageTest {
                 IllegalStateException.class,
                 () -> ledger.recordArtifactChecksum(conflictingJobId, CHECKSUM, START)
         );
-        assertEquals("artifact deletion receipt conflicts with the active lifecycle", conflict.getMessage());
+        assertEquals("artifact deletion receipt conflicts with an existing lifecycle", conflict.getMessage());
     }
 
     @Test

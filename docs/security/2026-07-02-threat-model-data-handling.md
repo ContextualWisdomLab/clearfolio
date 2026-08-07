@@ -33,7 +33,8 @@ Primary runtime surfaces:
   snapshot ledger.
 - `GET /api/v1/analytics/kpi-snapshot-exports`: tenant-scoped exported KPI
   snapshot evidence without raw document content.
-- `GET /healthz`: readiness probe.
+- `GET /healthz`: process liveness probe driven by Spring Boot `LivenessState`.
+- `GET /readyz`: traffic readiness probe driven by Spring Boot `ReadinessState`.
 
 The current security posture is MVP-grade and evidence-oriented. It has
 bounded upload size, blocked HWP/HWPX defaults, policy override audit

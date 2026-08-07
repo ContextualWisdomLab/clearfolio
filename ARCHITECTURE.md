@@ -1,6 +1,6 @@
 # Architecture Map
 
-Last updated: 2026-02-23
+Last updated: 2026-08-05
 
 ## System Purpose
 
@@ -22,6 +22,10 @@ Current state: viewer/state API is implemented in this repository; downstream S2
   - `GET /viewer/{docId}`: HTML viewer UI entrypoint (loading/failed/ready) that embeds PDF.js.
 - `ArtifactController` (`src/main/java/com/clearfolio/viewer/controller/ArtifactController.java`)
   - `GET /artifacts/{docId}.pdf`: serves PDF bytes for SUCCEEDED jobs with basic HTTP Range support.
+- `HealthController` (`src/main/java/com/clearfolio/viewer/controller/HealthController.java`)
+  - `GET /healthz`: process liveness from Spring Boot `LivenessState`.
+  - `GET /readyz`: traffic readiness from Spring Boot `ReadinessState`.
+  - Probe payloads disclose only a controlled state label and use `Cache-Control: no-store`.
 - `DefaultDocumentConversionService` (`src/main/java/com/clearfolio/viewer/service/DefaultDocumentConversionService.java`)
   - Validation, content hash generation, dedupe lookup, repository persistence, worker enqueue.
   - PDF passthrough: uploads that declare PDF (extension/content type) and carry the `%PDF-` magic header are seeded into the artifact store as-is, so the original bytes are served instead of a generated placeholder.
@@ -46,6 +50,13 @@ Current state: viewer/state API is implemented in this repository; downstream S2
 - `ViewerBootstrapResponse` (`src/main/java/com/clearfolio/viewer/api/ViewerBootstrapResponse.java`)
   - Includes deterministic `sourceExtension` and `rendererAdapter` metadata for viewer adapter bootstrap.
 
+## Availability Model
+
+- Liveness and readiness are separate operational contracts.
+- Liveness determines restart eligibility and must not depend on shared external services.
+- Readiness determines whether this instance receives traffic and may later include instance-local startup-recovery or overload signals through Spring availability events.
+- The accepted ADR and Kubernetes example are in `docs/operations/2026-08-05-availability-probes.md`.
+
 ## State Model
 
 - Status values: `SUBMITTED`, `PROCESSING`, `SUCCEEDED`, `FAILED`.
@@ -54,11 +65,10 @@ Current state: viewer/state API is implemented in this repository; downstream S2
 ## Operational Gates
 
 - Build and test gates are defined in `AGENTS.md` and include:
-  - `mvn -DskipTests compile`
-  - `mvn test`
-  - JaCoCo line/branch 100% for `com.clearfolio.viewer.*`
-  - JavaDoc gate: `mvn -q -DskipTests javadoc:javadoc`
-  - Markdown lint for changed docs
+  - `mvn -B --no-transfer-progress verify` as the single complete merge-evidence command.
+  - JaCoCo 100% production line and branch coverage for `com.clearfolio.viewer.*` within the `verify` lifecycle.
+  - Warning-free public Javadoc validation within the same `verify` lifecycle.
+  - Markdown lint for changed documentation.
 
 Mandatory AC list (exact):
 
@@ -85,5 +95,6 @@ Optional tracks:
 - `docs/diagrams/status-flow.md`
 - `docs/diagrams/preview-flow.md`
 - `docs/diagrams/retry-deadletter-flow.md`
+- `docs/operations/2026-08-05-availability-probes.md`
 - `docs/engineering/acceptance-criteria.md`
 - `docs/workflow/one-day-delivery-plan.md`

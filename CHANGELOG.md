@@ -5,6 +5,7 @@
 ### Added
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
+- `GET /readyz` traffic-readiness probe를 추가하고 기존 `GET /healthz`를 Spring Boot `LivenessState` 기반 process-liveness probe로 명확히 분리했습니다. 두 경로는 `ApplicationAvailability` 상태를 사용하고 성공·실패 상태 코드와 제한된 응답 payload를 결정적 테스트로 고정합니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.
   - 실패(dead-lettered) 상태인 작업을 관리자가 재시도 큐에 등록할 수 있는 `POST /api/v1/admin/convert/jobs/{jobId}/retry` 엔드포인트를 추가했습니다.
@@ -25,6 +26,7 @@
 ### Security
 
 - `GET /api/v1/convert/jobs/{jobId}/download`가 리소스 조회 전에 전용 `artifact:read` 권한을 검증하고, PDF 저장소 접근 전에 작업의 tenant 소유권을 확인하도록 강화했습니다. `job:read`만으로는 문서 바이트를 읽을 수 없으며, 인증 누락·권한 누락·교차 tenant UUID 접근은 각각 fail closed 처리되고 교차 tenant 요청은 리소스 존재를 숨기는 `404`를 반환합니다.
+- `/healthz`와 `/readyz`는 tenant, document, queue, dependency, credential, build 또는 exception 세부정보를 노출하지 않고 `Cache-Control: no-store`를 사용합니다. Liveness에는 shared external service 의존성을 추가하지 않아 외부 장애가 restart cascade로 증폭되는 것을 방지합니다.
 - Maven XML 테스트 보고서 검증기는 각 `testsuite`의 `tests`, `skipped`, `failures`, `errors` 속성을 모두 필수 증거로 요구합니다. 누락된 결과 수를 암묵적으로 0으로 간주하지 않고 fail closed 처리하며, 각 속성 누락 회귀 테스트를 추가했습니다.
 - Maven XML 테스트 보고서 검증기는 UTF-8만 허용하고 UTF-8 BOM은 수용하며, NUL 바이트·DTD·엔터티 선언을 파싱 전에 거부합니다. UTF-16 같은 대체 인코딩으로 위험 선언을 바이트 검사에서 숨기는 우회와 외부 엔터티 읽기·엔터티 확장형 서비스 거부를 회귀 테스트로 차단했습니다.
 - Maven XML 테스트 보고서 검증기는 파일당 16 MiB 상한을 적용하고 한 번의 제한된 읽기로 실제 입력 크기를 검증합니다. 테스트 코드가 보고서 파일을 교체하거나 확장해도 크기 사전검사와 파싱 사이의 경쟁 조건을 이용할 수 없습니다.

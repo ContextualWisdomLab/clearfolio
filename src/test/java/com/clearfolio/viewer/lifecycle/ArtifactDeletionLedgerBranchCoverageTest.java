@@ -28,7 +28,8 @@ class ArtifactDeletionLedgerBranchCoverageTest {
         Method validator = privateMethod(
                 "validateReplayTransition",
                 ArtifactDeletionReceipt.class,
-                ArtifactDeletionReceipt.class
+                ArtifactDeletionReceipt.class,
+                boolean.class
         );
 
         assertInvalidTransition(
@@ -40,6 +41,11 @@ class ArtifactDeletionLedgerBranchCoverageTest {
                 validator,
                 receipt(ArtifactDeletionState.DELETION_REQUESTED, START, 0, null),
                 receipt(ArtifactDeletionState.METADATA_TOMBSTONED, START.plusSeconds(1), 1, START)
+        );
+        assertInvalidTransition(
+                validator,
+                receipt(ArtifactDeletionState.DELETION_REQUESTED, START, 0, null),
+                receipt(ArtifactDeletionState.DELETION_REQUESTED, START.plusSeconds(1), 0, null)
         );
         assertInvalidTransition(
                 validator,
@@ -79,27 +85,37 @@ class ArtifactDeletionLedgerBranchCoverageTest {
     }
 
     @Test
-    void replayTransitionAcceptsRequestedPendingOutcomesAndFailedRetry() throws Exception {
+    void replayTransitionAcceptsChecksumCaptureAndMonotonicLifecycleOutcomes() throws Exception {
         Method validator = privateMethod(
                 "validateReplayTransition",
                 ArtifactDeletionReceipt.class,
-                ArtifactDeletionReceipt.class
+                ArtifactDeletionReceipt.class,
+                boolean.class
         );
 
         validator.invoke(
                 null,
                 receipt(ArtifactDeletionState.DELETION_REQUESTED, START, 0, null),
-                receipt(ArtifactDeletionState.METADATA_TOMBSTONED, START.plusSeconds(1), 0, null)
+                receipt(ArtifactDeletionState.DELETION_REQUESTED, START.plusSeconds(1), 0, null),
+                true
+        );
+        validator.invoke(
+                null,
+                receipt(ArtifactDeletionState.DELETION_REQUESTED, START, 0, null),
+                receipt(ArtifactDeletionState.METADATA_TOMBSTONED, START.plusSeconds(1), 0, null),
+                false
         );
         validator.invoke(
                 null,
                 receipt(ArtifactDeletionState.METADATA_TOMBSTONED, START, 0, null),
-                receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START.plusSeconds(1), 0, null)
+                receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START.plusSeconds(1), 0, null),
+                false
         );
         validator.invoke(
                 null,
                 receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START, 0, null),
-                receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED, START.plusSeconds(1), 0, null)
+                receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED, START.plusSeconds(1), 0, null),
+                false
         );
         validator.invoke(
                 null,
@@ -109,12 +125,14 @@ class ArtifactDeletionLedgerBranchCoverageTest {
                         START.plusSeconds(1),
                         1,
                         START.plusSeconds(1)
-                )
+                ),
+                false
         );
         validator.invoke(
                 null,
                 receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_FAILED, START, 1, START),
-                receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START.plusSeconds(1), 1, START)
+                receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START.plusSeconds(1), 1, START),
+                false
         );
     }
 
@@ -153,7 +171,10 @@ class ArtifactDeletionLedgerBranchCoverageTest {
             ArtifactDeletionReceipt current,
             ArtifactDeletionReceipt replayed
     ) {
-        assertThrows(InvocationTargetException.class, () -> validator.invoke(null, current, replayed));
+        assertThrows(
+                InvocationTargetException.class,
+                () -> validator.invoke(null, current, replayed, false)
+        );
     }
 
     private static ArtifactDeletionReceipt receipt(

@@ -1,4 +1,4 @@
-"""Executable contracts for the hourly PR and product-development schedulers."""
+"""Executable contracts for central PR maintenance and product development."""
 
 from __future__ import annotations
 
@@ -9,11 +9,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 PRODUCT_WORKFLOW = (
     REPOSITORY_ROOT / ".github" / "workflows" / "hourly-product-development.yml"
 )
-PR_WORKFLOW = REPOSITORY_ROOT / ".github" / "workflows" / "hourly-pr-maintenance.yml"
+LEGACY_PR_WORKFLOW = (
+    REPOSITORY_ROOT / ".github" / "workflows" / "hourly-pr-maintenance.yml"
+)
 OPERATOR_GUIDE = REPOSITORY_ROOT / "docs" / "operations" / "hourly-development.md"
 OPENCODE_VERSION = "1.18.13"
 OPENCODE_SHA256 = "8d500b20fed2d26e537e221895b1a575476571b4f0089bb29fb13eeb8eb9e937"
-CENTRAL_WORKFLOW_COMMIT = "74e54255ec903e3ba5f920859b656fe2defcb057"
 
 
 def _read(path: Path) -> str:
@@ -161,22 +162,15 @@ def test_publisher_uses_dedicated_app_and_creates_draft_only() -> None:
     assert "enable-auto-merge" not in publisher
 
 
-def test_pr_scheduler_preserves_central_review_agent_credentials() -> None:
-    """Reuse the reviewed central PR loops without remapping reviewer secrets."""
-    workflow = _read(PR_WORKFLOW)
+def test_pr_maintenance_is_owned_by_central_github_scheduler() -> None:
+    """Avoid duplicate product callers for the organization PR-maintenance plane."""
+    guide = _read(OPERATOR_GUIDE)
 
-    assert re.search(r'cron:\s*["\']7 \* \* \* \*["\']', workflow)
-    assert (
-        "ContextualWisdomLab/.github/.github/workflows/"
-        f"pr-review-fix-scheduler.yml@{CENTRAL_WORKFLOW_COMMIT}"
-    ) in workflow
-    assert (
-        "ContextualWisdomLab/.github/.github/workflows/"
-        f"pr-review-merge-scheduler.yml@{CENTRAL_WORKFLOW_COMMIT}"
-    ) in workflow
-    assert workflow.count("secrets: inherit") == 2
-    assert "NVIDIA_NIM_API_KEY" not in workflow
-    assert "COPILOT_GITHUB_TOKEN" not in workflow
+    assert not LEGACY_PR_WORKFLOW.exists()
+    assert "ContextualWisdomLab/.github" in guide
+    assert "clearfolio-hourly-review-repair.yml" in guide
+    assert "one central PR-maintenance caller" in guide
+    assert "COPILOT_GITHUB_TOKEN" not in guide
 
 
 def test_operator_guide_records_identity_boundaries_and_prerequisites() -> None:

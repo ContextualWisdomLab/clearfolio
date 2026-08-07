@@ -57,6 +57,26 @@ public interface ArtifactDeletionReceiptStore {
     );
 
     /**
+     * Records one failed attempt to snapshot artifact bytes before metadata is
+     * tombstoned.
+     *
+     * <p>The receipt remains in {@code DELETION_REQUESTED} with the controlled
+     * pending checksum marker, but its durable attempt time and failure code move
+     * it behind older eligible work. This prevents a permanently unavailable
+     * artifact from starving later receipts even after process restart.</p>
+     *
+     * @param jobId permanently reserved conversion-job identifier
+     * @param failureCode controlled non-sensitive failure code
+     * @param attemptedAt failed snapshot instant
+     * @return updated retryable receipt
+     */
+    ArtifactDeletionReceipt recordSnapshotFailure(
+            UUID jobId,
+            String failureCode,
+            Instant attemptedAt
+    );
+
+    /**
      * Records that tenant-owned job metadata has been tombstoned.
      *
      * @param jobId permanently reserved conversion-job identifier
@@ -106,9 +126,9 @@ public interface ArtifactDeletionReceiptStore {
     Optional<ArtifactDeletionReceipt> findByJobId(UUID jobId);
 
     /**
-     * Returns all incomplete receipts in deterministic request order.
+     * Returns all incomplete receipts in deterministic next-eligible order.
      *
-     * @return pending and failed receipts
+     * @return pending and failed receipts, with recently failed work deferred
      */
     List<ArtifactDeletionReceipt> pendingReceipts();
 

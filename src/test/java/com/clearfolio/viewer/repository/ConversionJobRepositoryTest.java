@@ -1,7 +1,7 @@
 package com.clearfolio.viewer.repository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
@@ -18,17 +19,11 @@ import com.clearfolio.viewer.model.ConversionJobStatus;
 class ConversionJobRepositoryTest {
 
     @Test
-    void defaultFindByTenantAndContentHashFiltersLegacyContentHashLookup() {
-        ConversionJob job = new ConversionJob(
-                UUID.randomUUID(),
-                "tenant-a",
-                "subject-a",
-                "report.docx",
-                "application/octet-stream",
-                "hash",
-                10L,
-                1
-        );
+    void defaultTenantScopedOperationsFailClosedWithoutGlobalPaths() {
+        AtomicInteger globalIdentifierLookupCalls = new AtomicInteger();
+        AtomicInteger globalContentLookupCalls = new AtomicInteger();
+        AtomicInteger globalListCalls = new AtomicInteger();
+        AtomicInteger globalDeleteCalls = new AtomicInteger();
         ConversionJobRepository repository = new ConversionJobRepository() {
             @Override
             public ConversionJob save(ConversionJob job) {
@@ -37,12 +32,14 @@ class ConversionJobRepositoryTest {
 
             @Override
             public Optional<ConversionJob> findById(UUID jobId) {
-                return job.getJobId().equals(jobId) ? Optional.of(job) : Optional.empty();
+                globalIdentifierLookupCalls.incrementAndGet();
+                throw new AssertionError("tenant-scoped lookup used the global identifier path");
             }
 
             @Override
             public Optional<ConversionJob> findByContentHash(String contentHash) {
-                return Optional.of(job);
+                globalContentLookupCalls.incrementAndGet();
+                throw new AssertionError("tenant-scoped lookup used the global content-hash path");
             }
 
             @Override
@@ -52,18 +49,34 @@ class ConversionJobRepositoryTest {
 
             @Override
             public List<ConversionJob> findAll() {
-                return List.of(job);
+                globalListCalls.incrementAndGet();
+                throw new AssertionError("tenant-scoped listing used the global list path");
             }
 
             @Override
             public void deleteById(UUID jobId) {
+                globalDeleteCalls.incrementAndGet();
+                throw new AssertionError("tenant-scoped deletion used the global delete path");
             }
         };
 
-        assertSame(job, repository.findByTenantAndContentHash("tenant-a", "hash").orElseThrow());
-        assertTrue(repository.findByTenantAndContentHash("tenant-b", "hash").isEmpty());
-        assertSame(job, repository.findByTenantAndId("tenant-a", job.getJobId()).orElseThrow());
-        assertTrue(repository.findByTenantAndId("tenant-b", job.getJobId()).isEmpty());
+        UUID jobId = UUID.randomUUID();
+        assertTrue(repository.findByTenantAndId("tenant-a", jobId).isEmpty());
+        assertTrue(repository.findByTenantAndId(null, jobId).isEmpty());
+        assertTrue(repository.findByTenantAndId(" ", jobId).isEmpty());
+        assertTrue(repository.findByTenantAndId("tenant-a", null).isEmpty());
+        assertTrue(repository.findByTenantAndContentHash("tenant-a", "hash").isEmpty());
+        assertTrue(repository.findByTenantAndContentHash(null, "hash").isEmpty());
+        assertTrue(repository.findByTenantAndContentHash(" ", "hash").isEmpty());
+        assertTrue(repository.findByTenantAndContentHash("tenant-a", null).isEmpty());
+        assertTrue(repository.findAllByTenantId("tenant-a").isEmpty());
+        assertTrue(repository.findAllByTenantId(null).isEmpty());
+        assertFalse(repository.deleteByTenantAndId("tenant-a", jobId));
+        assertFalse(repository.deleteByTenantAndId(null, jobId));
+        assertEquals(0, globalIdentifierLookupCalls.get());
+        assertEquals(0, globalContentLookupCalls.get());
+        assertEquals(0, globalListCalls.get());
+        assertEquals(0, globalDeleteCalls.get());
     }
 
     @Test

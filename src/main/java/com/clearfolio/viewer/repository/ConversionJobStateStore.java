@@ -12,6 +12,18 @@ import com.clearfolio.viewer.model.ConversionJob;
 public interface ConversionJobStateStore {
 
     /**
+     * Outcomes from one atomic tenant-scoped dead-letter retry attempt.
+     */
+    enum TenantRetryOutcome {
+        /** An owned dead-lettered job moved back to submitted state. */
+        ACCEPTED,
+        /** The job was absent or was owned by a different tenant. */
+        NOT_FOUND,
+        /** The owned job existed but was not eligible for retry. */
+        NOT_ELIGIBLE
+    }
+
+    /**
      * Claims a ready job for processing.
      *
      * @param jobId conversion job identifier
@@ -54,4 +66,24 @@ public interface ConversionJobStateStore {
      * @return true when the retry transition succeeds
      */
     boolean retryDeadLettered(UUID jobId, String operatorId);
+
+    /**
+     * Retries one dead-lettered job only when it belongs to the supplied tenant.
+     *
+     * <p>The default fails closed without invoking the legacy unscoped retry.
+     * Durable state-store adapters must override this method with one atomic
+     * tenant selection and state transition.</p>
+     *
+     * @param tenantId authenticated tenant identifier
+     * @param jobId conversion job identifier
+     * @param operatorId privacy-safe operator fingerprint
+     * @return accepted, concealed not-found, or not-eligible outcome
+     */
+    default TenantRetryOutcome retryDeadLetteredForTenant(
+            String tenantId,
+            UUID jobId,
+            String operatorId
+    ) {
+        return TenantRetryOutcome.NOT_FOUND;
+    }
 }

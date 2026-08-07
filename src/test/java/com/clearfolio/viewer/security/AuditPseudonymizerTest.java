@@ -115,6 +115,10 @@ class AuditPseudonymizerTest {
         );
         assertThrows(
                 IllegalArgumentException.class,
+                () -> new AuditPseudonymizer(AUDIT_KEY_ONE, " v1 ")
+        );
+        assertThrows(
+                IllegalArgumentException.class,
                 () -> new AuditPseudonymizer(AUDIT_KEY_ONE, "bad/version")
         );
         assertThrows(

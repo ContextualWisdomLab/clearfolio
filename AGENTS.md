@@ -96,15 +96,32 @@ Codex, Cursor, opencode, …) working in this repo.
 - Reference implementation: xtrmLLMBatchPython's pgcrypto-encrypted Postgres
   credential registry (`get_credential(name)`). Reuse that pattern (a DB-backed
   KV is fine) unless a dedicated KV is adopted.
-- **This repo applies** — it is a Spring Boot service with real runtime secrets
-  (artifact-token HMAC secret, tenant-claims HMAC secret). **Known deviation to
-  migrate:** those secrets are currently injected straight from env via Spring
-  placeholders in `application-buyer-demo.yml`
-  (`clearfolio.artifact-token.secret: ${CLEARFOLIO_ARTIFACT_TOKEN_SECRET:}`,
-  `clearfolio.tenant-claims.hmac-secret: ${CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET:}`,
-  consumed by `ArtifactLinkService` / `TenantAccessService`). Move these to a
-  KV-backed lookup so env is only the bootstrap transport into the KV. New
-  secrets/credentials must go through the KV from the start, not new env reads.
+- **This repo applies** — it is a Spring Boot service with real runtime secrets.
+  Tenant-claim and artifact-token HMAC secrets are loaded respectively as
+  `clearfolio.tenant-claims.hmac-secret` and
+  `clearfolio.artifact-token.secret` from the Spring config-tree credential
+  mount selected by the non-secret `CLEARFOLIO_SECRET_CONFIG_DIR` bootstrap
+  setting. Do not restore direct runtime environment binding for either key.
+  New secrets and credentials must enter through the mounted credential source,
+  not new process-environment reads.
+
+### Durable cleanup boundary
+
+- This slice integrates a single-process, receipt-first cleanup worker. It
+  forces deletion intent before the first artifact read, binds an exact digest
+  before metadata tombstoning, retries incomplete cleanup after startup and on
+  a bounded fixed-delay schedule, and exposes only low-cardinality aggregate
+  evidence. The filesystem-backed receipt ledger is restart-replayable; the
+  in-memory adapter remains available for standalone tests and ephemeral use.
+- Do not overstate that reference boundary. It does not provide a cross-resource
+  transactional outbox, a distributed generation fence, or remote-object-store
+  atomicity across multiple service instances. Production adapters must provide
+  equivalent durable uniqueness, object-version preconditions, idempotent
+  retries, and operator recovery evidence before distributed cutover.
+- Issue #263 remains the umbrella for the distributed adapter and later truthful
+  API/UI lifecycle work. Do not describe durable cleanup as absent, and do not
+  describe the current single-process implementation as a distributed deletion
+  transaction.
 
 ### Code exploration
 

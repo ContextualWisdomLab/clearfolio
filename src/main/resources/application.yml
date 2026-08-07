@@ -6,11 +6,20 @@ spring:
     # carried in process environment variables. The environment variable below
     # selects only the bootstrap directory. Mount files named
     # `conversion.policy-override-secret`,
-    # `conversion.audit-pseudonym-secret`, and
-    # `conversion.audit-pseudonym-key-version` in this directory.
+    # `conversion.audit-pseudonym-secret`,
+    # `conversion.audit-pseudonym-key-version`,
+    # `clearfolio.artifact-token.secret`, and
+    # `clearfolio.tenant-claims.hmac-secret` in this directory.
     import: "optional:configtree:${CLEARFOLIO_SECRET_CONFIG_DIR:/run/secrets/clearfolio/}"
   codec:
     max-in-memory-size: ${conversion.max-upload-size-bytes}
+  task:
+    scheduling:
+      # Keep bounded artifact cleanup from monopolizing Spring's default
+      # single scheduler thread. Per-job lifecycle locks still serialize the
+      # same document generation while unrelated scheduled work can progress.
+      pool:
+        size: 2
 
 conversion:
   blocked-extensions:
@@ -31,6 +40,16 @@ clearfolio:
     # restarts. in-memory: volatile store for tests and ephemeral demos.
     mode: filesystem
     root-dir: data/artifacts
+  artifact-deletion-ledger:
+    # Versioned append-only receipt snapshots are forced to storage before a
+    # lifecycle transition is reported as durable. Standalone tests can use the
+    # no-argument in-memory adapter; production keeps restart-replay evidence.
+    path: data/artifact-deletion-receipts.log
+  artifact-deletion-cleanup:
+    # Recovery processes a bounded deterministic batch and retries without
+    # dropping confidential-byte cleanup evidence after a storage failure.
+    retry-delay-ms: 30000
+    max-receipts-per-run: 100
 
 viewer:
   security:

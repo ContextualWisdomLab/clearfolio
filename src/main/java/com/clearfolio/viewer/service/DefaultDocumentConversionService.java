@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
+import com.clearfolio.viewer.repository.ConversionJobStateStore.TenantRetryOutcome;
 import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
 
 /**
@@ -103,12 +105,15 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
     }
 
     /**
-     * Creates the conversion service with repository-backed lifecycle transitions
-     * and an isolated in-memory artifact store for legacy or test wiring.
+     * Creates the conversion service with repository-backed lifecycle state and
+     * an isolated in-memory artifact store.
      *
-     * @param repository conversion job repository and optional lifecycle-state source
+     * <p>This convenience constructor is intended for tests and legacy wiring
+     * that do not provide lifecycle and artifact-store collaborators directly.</p>
+     *
+     * @param repository conversion job repository
      * @param validationService document validation service
-     * @param conversionWorker asynchronous conversion worker
+     * @param conversionWorker conversion worker
      * @param conversionProperties conversion configuration values
      */
     public DefaultDocumentConversionService(
@@ -120,19 +125,19 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
                 repository,
                 validationService,
                 conversionWorker,
-                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
+                new InMemoryArtifactStore(),
                 conversionProperties
         );
     }
 
     /**
-     * Creates the conversion service with repository-backed lifecycle transitions
-     * and the supplied artifact store.
+     * Creates the conversion service with repository-backed lifecycle state and
+     * the supplied artifact store.
      *
-     * @param repository conversion job repository and optional lifecycle-state source
+     * @param repository conversion job repository
      * @param validationService document validation service
-     * @param conversionWorker asynchronous conversion worker
-     * @param artifactStore artifact store used for PDF passthrough and deletion
+     * @param conversionWorker conversion worker
+     * @param artifactStore generated artifact store used for PDF passthrough seeding
      * @param conversionProperties conversion configuration values
      */
     public DefaultDocumentConversionService(
@@ -222,12 +227,12 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             return false;
         }
 
-        Optional<ConversionJob> job = repository.findByTenantAndId(tenantContext.tenantId(), jobId);
-        if (job.isEmpty()) {
+        boolean deleted = repository.deleteByTenantAndId(tenantContext.tenantId(), jobId);
+        if (!deleted) {
             return false;
         }
 
-        deleteJob(job.get().getJobId());
+        deleteArtifact(jobId);
         return true;
     }
 
@@ -236,11 +241,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      */
     @Override
     public void deleteJob(UUID jobId) {
-        try {
-            artifactStore.deletePdf(jobId);
-        } catch (Exception ex) {
-            log.warn("Failed to delete artifact for job {}", jobId, ex);
-        }
+        deleteArtifact(jobId);
         repository.deleteById(jobId);
     }
 
@@ -248,8 +249,52 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * {@inheritDoc}
      */
     @Override
+    public RetryDeadLetterResult retryDeadLettered(
+            UUID jobId,
+            TenantContext tenantContext,
+            String operatorId
+    ) {
+        if (tenantContext == null) {
+            return RetryDeadLetterResult.NOT_FOUND;
+        }
+
+        TenantRetryOutcome outcome = stateStore.retryDeadLetteredForTenant(
+                tenantContext.tenantId(),
+                jobId,
+                operatorId
+        );
+        return switch (outcome) {
+            case ACCEPTED -> {
+                conversionWorker.enqueue(jobId);
+                yield RetryDeadLetterResult.ACCEPTED;
+            }
+            case NOT_FOUND -> RetryDeadLetterResult.NOT_FOUND;
+            case NOT_ELIGIBLE -> RetryDeadLetterResult.NOT_ELIGIBLE;
+        };
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId) {
-        Optional<ConversionJob> existing = repository.findById(jobId);
+        return retryExistingJob(repository.findById(jobId), operatorId);
+    }
+
+    /**
+     * Applies the legacy unscoped retry transition to a selected job.
+     *
+     * <p>Administrative callers do not use this compatibility path. They use
+     * the atomic tenant-aware state-store operation instead.</p>
+     *
+     * @param existing selected conversion job, or empty when no job exists
+     * @param operatorId operator identifier recorded by the state store
+     * @return accepted, not-found, or not-eligible retry result
+     */
+    private RetryDeadLetterResult retryExistingJob(
+            Optional<ConversionJob> existing,
+            String operatorId
+    ) {
         if (existing.isEmpty()) {
             return RetryDeadLetterResult.NOT_FOUND;
         }
@@ -267,8 +312,27 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * {@inheritDoc}
      */
     @Override
+    public Iterable<ConversionJob> getJobsForTenant(TenantContext tenantContext) {
+        if (tenantContext == null) {
+            return List.of();
+        }
+        return repository.findAllByTenantId(tenantContext.tenantId());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Iterable<ConversionJob> getAllJobs() {
         return repository.findAll();
+    }
+
+    private void deleteArtifact(UUID jobId) {
+        try {
+            artifactStore.deletePdf(jobId);
+        } catch (Exception exception) {
+            log.warn("Artifact deletion failed after an authorized job deletion.");
+        }
     }
 
     private void seedPdfPassthroughArtifact(ConversionJob job, MultipartFile file) {
@@ -351,7 +415,6 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            // Reused HexFormat for performance
             return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);

@@ -12,6 +12,13 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 public class ClearfolioViewerApplication {
 
     /**
+     * Creates the Spring configuration instance used during application startup.
+     */
+    public ClearfolioViewerApplication() {
+        // Spring instantiates the application configuration class while building the context.
+    }
+
+    /**
      * Boots the application with the provided command line arguments.
      *
      * @param args command line arguments passed at startup

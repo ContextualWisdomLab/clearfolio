@@ -62,7 +62,21 @@ class ConversionControllerTest {
         );
         webTestClient = WebTestClient.bindToController(
                 controller
-        ).controllerAdvice(new ApiExceptionHandler()).build();
+        ).controllerAdvice(new ApiExceptionHandler())
+                .configureClient()
+                .filter((request, next) -> {
+                    if (!request.url().getPath().endsWith("/download")) {
+                        return next.exchange(request);
+                    }
+                    org.springframework.web.reactive.function.client.ClientRequest authenticatedRequest =
+                            org.springframework.web.reactive.function.client.ClientRequest.from(request)
+                                    .header(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID)
+                                    .header(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID)
+                                    .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.ARTIFACT_READ)
+                                    .build();
+                    return next.exchange(authenticatedRequest);
+                })
+                .build();
     }
 
     @Test

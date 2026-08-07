@@ -54,6 +54,8 @@ public class DefaultConversionWorker implements ConversionWorker {
      * @param repository conversion job repository
      * @param stateStore conversion job lifecycle state store
      * @param conversionExecutor asynchronous conversion executor
+     * @param artifactStore generated and passthrough PDF artifact store
+     * @param pdfArtifactGenerator generator used when a source requires a preview PDF
      * @param conversionProperties conversion configuration values
      */
     @Autowired

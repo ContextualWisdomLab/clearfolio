@@ -2,8 +2,8 @@ package com.clearfolio.viewer.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -26,27 +26,31 @@ import com.clearfolio.viewer.exception.UnsupportedDocumentFormatException;
 
 class DefaultDocumentValidationServiceTest {
 
+    private static final String POLICY_OVERRIDE_KEY =
+            "0123456789abcdef0123456789abcdef";
+    private static final String AUDIT_PSEUDONYM_KEY =
+            "fedcba9876543210fedcba9876543210";
+    private static final Object SECURITY_PROVIDERS_LOCK = new Object();
+
     @Test
     void sanitizeFilenameReturnsNullWhenFilenameIsNull() throws Exception {
         ConversionProperties conversionProperties = new ConversionProperties();
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
-        java.lang.reflect.Method method = DefaultDocumentValidationService.class.getDeclaredMethod("sanitizeFilename", String.class);
+        Method method = DefaultDocumentValidationService.class.getDeclaredMethod("sanitizeFilename", String.class);
         method.setAccessible(true);
         String sanitized = (String) method.invoke(validationService, new Object[] {null});
         assertNull(sanitized);
     }
 
-
     @Test
     void sanitizeFilenameReturnsCleanPathWhenNoSlashIsPresent() throws Exception {
         ConversionProperties conversionProperties = new ConversionProperties();
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
-        java.lang.reflect.Method method = DefaultDocumentValidationService.class.getDeclaredMethod("sanitizeFilename", String.class);
+        Method method = DefaultDocumentValidationService.class.getDeclaredMethod("sanitizeFilename", String.class);
         method.setAccessible(true);
         String sanitized = (String) method.invoke(validationService, "simple-file.txt");
         assertEquals("simple-file.txt", sanitized);
     }
-
 
     @Test
     void stripsDirectoryTraversalFromFilename() {
@@ -57,15 +61,17 @@ class DefaultDocumentValidationServiceTest {
         UnsupportedDocumentFormatException ex = assertThrows(
                 UnsupportedDocumentFormatException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "../../../etc/passwd.hwp", "application/octet-stream", new byte[] {1})
+                        new MockMultipartFile(
+                                "file",
+                                "../../../etc/passwd.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        )
                 )
         );
 
         assertEquals("hwp", ex.getExtension());
     }
-
-
-    private static final Object SECURITY_PROVIDERS_LOCK = new Object();
 
     @Test
     void rejectsHwpAndHwpxByDefault() {
@@ -76,7 +82,12 @@ class DefaultDocumentValidationServiceTest {
         UnsupportedDocumentFormatException ex = assertThrows(
                 UnsupportedDocumentFormatException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1})
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        )
                 )
         );
 
@@ -99,12 +110,17 @@ class DefaultDocumentValidationServiceTest {
     void allowsBlockedExtensionWhenOverrideHeadersAreValid() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
-        conversionProperties.setPolicyOverrideSecret("test-secret");
+        configureOverrideKeys(conversionProperties);
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
-        String validSignature = generateSignature("approver-1", "hwp", "test-secret");
+        String validSignature = generateSignature("approver-1", "hwp", POLICY_OVERRIDE_KEY);
         assertDoesNotThrow(() -> validationService.validateOrThrow(
-                new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                new MockMultipartFile(
+                        "file",
+                        "contract.hwp",
+                        "application/octet-stream",
+                        new byte[] {1}
+                ),
                 PolicyOverrideRequest.of("true", validSignature, "approver-1")
         ));
     }
@@ -113,13 +129,18 @@ class DefaultDocumentValidationServiceTest {
     void rejectsBlockedExtensionWhenOverrideSignatureIsInvalid() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
-        conversionProperties.setPolicyOverrideSecret("test-secret");
+        configureOverrideKeys(conversionProperties);
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        ),
                         PolicyOverrideRequest.of("true", "invalid-token", "approver-1")
                 )
         );
@@ -131,7 +152,7 @@ class DefaultDocumentValidationServiceTest {
     void rejectsBlockedExtensionWhenSignatureIsWellFormedButDoesNotMatch() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
-        conversionProperties.setPolicyOverrideSecret("test-secret");
+        configureOverrideKeys(conversionProperties);
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         // Valid hex of the correct length, but computed with the wrong secret, so the
@@ -141,7 +162,12 @@ class DefaultDocumentValidationServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        ),
                         PolicyOverrideRequest.of("true", wrongSignature, "approver-1")
                 )
         );
@@ -159,7 +185,12 @@ class DefaultDocumentValidationServiceTest {
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        ),
                         PolicyOverrideRequest.of("true", "any-token", "approver-1")
                 )
         );
@@ -176,7 +207,12 @@ class DefaultDocumentValidationServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        ),
                         PolicyOverrideRequest.of("not-boolean", "token-123", "approver-1")
                 )
         );
@@ -193,12 +229,20 @@ class DefaultDocumentValidationServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        ),
                         PolicyOverrideRequest.of("true", " ", "approver-1")
                 )
         );
 
-        assertEquals("X-Clearfolio-Approval-Token is required when policy override is true.", ex.getMessage());
+        assertEquals(
+                "X-Clearfolio-Approval-Token is required when policy override is true.",
+                ex.getMessage()
+        );
     }
 
     @Test
@@ -210,12 +254,20 @@ class DefaultDocumentValidationServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        ),
                         PolicyOverrideRequest.of("true", null, "approver-1")
                 )
         );
 
-        assertEquals("X-Clearfolio-Approval-Token is required when policy override is true.", ex.getMessage());
+        assertEquals(
+                "X-Clearfolio-Approval-Token is required when policy override is true.",
+                ex.getMessage()
+        );
     }
 
     @Test
@@ -227,12 +279,20 @@ class DefaultDocumentValidationServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        ),
                         PolicyOverrideRequest.of("true", "token-123", " ")
                 )
         );
 
-        assertEquals("X-Clearfolio-Approver-Id is required when policy override is true.", ex.getMessage());
+        assertEquals(
+                "X-Clearfolio-Approver-Id is required when policy override is true.",
+                ex.getMessage()
+        );
     }
 
     @Test
@@ -244,7 +304,12 @@ class DefaultDocumentValidationServiceTest {
         UnsupportedDocumentFormatException ex = assertThrows(
                 UnsupportedDocumentFormatException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        ),
                         PolicyOverrideRequest.of("false", "token-123", "approver-1")
                 )
         );
@@ -261,7 +326,12 @@ class DefaultDocumentValidationServiceTest {
         UnsupportedDocumentFormatException ex = assertThrows(
                 UnsupportedDocumentFormatException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        ),
                         PolicyOverrideRequest.of(" ", "token-123", "approver-1")
                 )
         );
@@ -276,7 +346,12 @@ class DefaultDocumentValidationServiceTest {
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         assertDoesNotThrow(() -> validationService.validateOrThrow(
-                new MockMultipartFile("file", "contract.docx", "application/octet-stream", new byte[] {1}),
+                new MockMultipartFile(
+                        "file",
+                        "contract.docx",
+                        "application/octet-stream",
+                        new byte[] {1}
+                ),
                 PolicyOverrideRequest.of("invalid", null, null)
         ));
     }
@@ -288,7 +363,12 @@ class DefaultDocumentValidationServiceTest {
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
         assertDoesNotThrow(() -> validationService.validateOrThrow(
-                new MockMultipartFile("file", "contract.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", new byte[] {1})
+                new MockMultipartFile(
+                        "file",
+                        "contract.docx",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        new byte[] {1}
+                )
         ));
     }
 
@@ -301,7 +381,12 @@ class DefaultDocumentValidationServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract", "application/octet-stream", new byte[] {1})
+                        new MockMultipartFile(
+                                "file",
+                                "contract",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        )
                 )
         );
 
@@ -352,7 +437,12 @@ class DefaultDocumentValidationServiceTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", (String) null, "application/octet-stream", new byte[] {1})
+                        new MockMultipartFile(
+                                "file",
+                                (String) null,
+                                "application/octet-stream",
+                                new byte[] {1}
+                        )
                 )
         );
     }
@@ -367,7 +457,12 @@ class DefaultDocumentValidationServiceTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", new byte[] {1, 2, 3})
+                        new MockMultipartFile(
+                                "file",
+                                "contract.docx",
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                new byte[] {1, 2, 3}
+                        )
                 )
         );
     }
@@ -395,7 +490,12 @@ class DefaultDocumentValidationServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.docx", "application/octet-stream", new byte[0])
+                        new MockMultipartFile(
+                                "file",
+                                "contract.docx",
+                                "application/octet-stream",
+                                new byte[0]
+                        )
                 )
         );
 
@@ -430,7 +530,12 @@ class DefaultDocumentValidationServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.", "application/octet-stream", new byte[] {1})
+                        new MockMultipartFile(
+                                "file",
+                                "contract.",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        )
                 )
         );
 
@@ -446,7 +551,12 @@ class DefaultDocumentValidationServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", ".hwp", "application/octet-stream", new byte[] {1})
+                        new MockMultipartFile(
+                                "file",
+                                ".hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        )
                 )
         );
 
@@ -462,7 +572,12 @@ class DefaultDocumentValidationServiceTest {
         UnsupportedDocumentFormatException ex = assertThrows(
                 UnsupportedDocumentFormatException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "  contract.hwp  ", "application/octet-stream", new byte[] {1})
+                        new MockMultipartFile(
+                                "file",
+                                "  contract.hwp  ",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        )
                 )
         );
 
@@ -478,7 +593,12 @@ class DefaultDocumentValidationServiceTest {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract\u0000.hwp", "application/octet-stream", new byte[] {1})
+                        new MockMultipartFile(
+                                "file",
+                                "contract\u0000.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        )
                 )
         );
         assertEquals("File name contains null byte.", ex.getMessage());
@@ -493,7 +613,12 @@ class DefaultDocumentValidationServiceTest {
         UnsupportedDocumentFormatException ex = assertThrows(
                 UnsupportedDocumentFormatException.class,
                 () -> validationService.validateOrThrow(
-                        new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                        new MockMultipartFile(
+                                "file",
+                                "contract.hwp",
+                                "application/octet-stream",
+                                new byte[] {1}
+                        ),
                         null
                 )
         );
@@ -529,11 +654,11 @@ class DefaultDocumentValidationServiceTest {
     void throwsWhenSha256DigestIsUnavailableForOverrideAuditFingerprint() {
         ConversionProperties conversionProperties = new ConversionProperties();
         conversionProperties.setBlockedExtensions(Set.of("hwp", "hwpx"));
-        conversionProperties.setPolicyOverrideSecret("test-secret");
+        configureOverrideKeys(conversionProperties);
         DefaultDocumentValidationService validationService = new DefaultDocumentValidationService(conversionProperties);
 
-        // Generate the signature BEFORE removing security providers
-        String validSignature = generateSignature("approver-1", "hwp", "test-secret");
+        // Generate the signature BEFORE removing security providers.
+        String validSignature = generateSignature("approver-1", "hwp", POLICY_OVERRIDE_KEY);
 
         synchronized (SECURITY_PROVIDERS_LOCK) {
             Provider[] providers = Security.getProviders();
@@ -545,7 +670,12 @@ class DefaultDocumentValidationServiceTest {
                 IllegalStateException ex = assertThrows(
                         IllegalStateException.class,
                         () -> validationService.validateOrThrow(
-                                new MockMultipartFile("file", "contract.hwp", "application/octet-stream", new byte[] {1}),
+                                new MockMultipartFile(
+                                        "file",
+                                        "contract.hwp",
+                                        "application/octet-stream",
+                                        new byte[] {1}
+                                ),
                                 PolicyOverrideRequest.of("true", validSignature, "approver-1")
                         )
                 );
@@ -557,5 +687,10 @@ class DefaultDocumentValidationServiceTest {
                 }
             }
         }
+    }
+
+    private static void configureOverrideKeys(ConversionProperties properties) {
+        properties.setPolicyOverrideSecret(POLICY_OVERRIDE_KEY);
+        properties.setAuditPseudonymSecret(AUDIT_PSEUDONYM_KEY);
     }
 }

@@ -204,15 +204,23 @@ public class ConversionController {
     }
 
     /**
-     * Downloads the converted PDF artifact.
+     * Downloads the converted PDF artifact for a tenant-owned conversion job.
+     *
+     * <p>The caller must have the dedicated artifact-read permission. Job-status
+     * read access alone does not authorize access to document bytes.</p>
      *
      * @param jobId conversion job identifier
+     * @param headers request headers carrying tenant claims
      * @return PDF bytes with attachment disposition and checksum header
      */
     @GetMapping("/api/v1/convert/jobs/{jobId}/download")
-    public Mono<ResponseEntity<byte[]>> downloadArtifact(@PathVariable UUID jobId) {
+    public Mono<ResponseEntity<byte[]>> downloadArtifact(
+            @PathVariable UUID jobId,
+            @RequestHeader HttpHeaders headers) {
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ARTIFACT_READ);
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
+        tenantAccessService.requireSameTenant(tenantContext, job);
 
         if (job.getStatus() != ConversionJobStatus.SUCCEEDED) {
             throw new ResponseStatusException(
@@ -251,7 +259,7 @@ public class ConversionController {
         }
 
         String sanitized = sanitizeFilenameBase(baseName);
-        if (sanitized.isBlank() || sanitized.chars().allMatch(character -> character == '.' || character == '_')) {
+        if (sanitized.chars().allMatch(character -> character == '.' || character == '_')) {
             sanitized = "document";
         }
         return sanitized + ".pdf";

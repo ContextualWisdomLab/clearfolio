@@ -6,7 +6,13 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * API payload used for error responses.
+ * Stable API error envelope that gives clients a machine-readable code, a safe
+ * explanation, and a trace identifier without exposing internal stack details.
+ *
+ * @param errorCode canonical machine-readable error code
+ * @param message operator- and client-safe explanation of the failure
+ * @param traceId correlation identifier for privacy-controlled diagnostics
+ * @param details immutable structured context that is safe to disclose
  */
 public record ApiErrorResponse(
         String errorCode,

@@ -170,12 +170,9 @@ public class ArtifactDeletionCoordinator {
         for (int index = 0; index < selected; index++) {
             try {
                 resumeReceipt(pending.get(index));
-            } catch (RuntimeException exception) {
+            } catch (RuntimeException ignored) {
                 metrics.recordFailed();
-                log.warn(
-                        "Artifact deletion recovery retained an incomplete receipt. cause={}",
-                        exception.getClass().getName()
-                );
+                log.warn("Artifact deletion recovery retained an incomplete receipt.");
             }
         }
         return selected;
@@ -283,13 +280,10 @@ public class ArtifactDeletionCoordinator {
                     artifactStore.getPdf(jobId),
                     "artifactStore.getPdf"
             );
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException ignored) {
             receiptStore.recordSnapshotFailure(jobId, FAILURE_READ, Instant.now());
             metrics.recordFailed();
-            log.warn(
-                    "Artifact deletion retained a pre-snapshot receipt. cause={}",
-                    exception.getClass().getName()
-            );
+            log.warn("Artifact deletion retained a pre-snapshot receipt.");
             return Optional.empty();
         }
         return Optional.of(artifact.map(ArtifactDeletionCoordinator::sha256)

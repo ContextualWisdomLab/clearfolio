@@ -157,9 +157,15 @@ class ArtifactDeletionLedgerReplayValidationTest {
     void stateSnapshotsRejectImpossibleAttemptEvidence() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> receipt(
-                        ArtifactDeletionState.DELETION_REQUESTED,
+                () -> new ArtifactDeletionReceipt(
+                        REQUEST_ID,
+                        TENANT_ID,
+                        JOB_ID,
+                        ArtifactDeletionReceipt.PENDING_ARTIFACT_CHECKSUM,
+                        AUDIT_ID,
                         REQUESTED_AT,
+                        REQUESTED_AT,
+                        ArtifactDeletionState.DELETION_REQUESTED,
                         1,
                         REQUESTED_AT,
                         null,
@@ -172,7 +178,7 @@ class ArtifactDeletionLedgerReplayValidationTest {
                         ArtifactDeletionState.METADATA_TOMBSTONED,
                         REQUESTED_AT.plusSeconds(1),
                         1,
-                        REQUESTED_AT,
+                        null,
                         null,
                         null
                 )

@@ -72,7 +72,7 @@ def test_product_scheduler_is_single_flight_bounded_and_exact_base_safe() -> Non
         "--paginate --slurp --jq 'map(length) | add // 0'"
     )
 
-    assert workflow.count(paginated_query) >= 3
+    assert workflow.count(paginated_query) >= 4
     assert "MAX_CHANGED_FILES: \"20\"" in workflow
     assert "MAX_DIFF_BYTES: \"200000\"" in workflow
     assert "git diff --check" in workflow
@@ -144,7 +144,7 @@ def test_publisher_uses_dedicated_app_and_creates_draft_only() -> None:
     publisher = workflow.split("\n  publish:\n", 1)[1]
     token_step = publisher.split(
         "- name: Mint dedicated maintainer App token only for publication", 1
-    )[1].split("- name: Create a draft pull request without auto-merge", 1)[0]
+    )[1].split("- name: Recheck immediately before Draft publication", 1)[0]
 
     assert "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1" in publisher
     assert "CLEARFOLIO_MAINTAINER_APP_CLIENT_ID" in publisher
@@ -160,6 +160,30 @@ def test_publisher_uses_dedicated_app_and_creates_draft_only() -> None:
     assert "--draft" in publisher
     assert "gh pr merge" not in publisher
     assert "enable-auto-merge" not in publisher
+
+
+def test_publisher_rechecks_inventory_and_base_after_write_token_is_minted() -> None:
+    """Narrow the final publication TOCTOU window before any branch is written."""
+    workflow = _read(PRODUCT_WORKFLOW)
+    publisher = workflow.split("\n  publish:\n", 1)[1]
+    token_index = publisher.index(
+        "- name: Mint dedicated maintainer App token only for publication"
+    )
+    final_gate_index = publisher.index(
+        "- name: Recheck immediately before Draft publication"
+    )
+    creation_index = publisher.index(
+        "- name: Create a draft pull request without auto-merge"
+    )
+    final_gate = publisher[final_gate_index:creation_index]
+
+    assert token_index < final_gate_index < creation_index
+    assert "state=open&per_page=100" in final_gate
+    assert "--paginate" in final_gate
+    assert 'git rev-parse HEAD' in final_gate
+    assert "EXPECTED_BASE_SHA" in final_gate
+    assert "publish=false" in final_gate
+    assert "steps.final_publish_gate.outputs.publish == 'true'" in publisher
 
 
 def test_pr_maintenance_is_owned_by_central_github_scheduler() -> None:

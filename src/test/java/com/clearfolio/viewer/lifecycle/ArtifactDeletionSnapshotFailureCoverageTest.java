@@ -25,6 +25,10 @@ class ArtifactDeletionSnapshotFailureCoverageTest {
             UUID.fromString("31000000-0000-0000-0000-000000000001");
     private static final UUID JOB_ID =
             UUID.fromString("32000000-0000-0000-0000-000000000001");
+    private static final String TENANT_ID = "tenant-snapshot";
+    private static final String AUDIT_CORRELATION_ID = "cleanup-v1:snapshot";
+    private static final String ARTIFACT_CHECKSUM =
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
     @Test
     void ledgerRejectsUnknownFailureCodesAndPersistsRetryEvidence() {
@@ -45,10 +49,10 @@ class ArtifactDeletionSnapshotFailureCoverageTest {
 
         ledger.request(
                 REQUEST_ID,
-                "tenant-snapshot",
+                TENANT_ID,
                 JOB_ID,
                 ArtifactDeletionReceipt.PENDING_ARTIFACT_CHECKSUM,
-                "cleanup-v1:snapshot",
+                AUDIT_CORRELATION_ID,
                 START
         );
 
@@ -64,6 +68,115 @@ class ArtifactDeletionSnapshotFailureCoverageTest {
         assertEquals(START.plusSeconds(1), failed.stateChangedAt());
         assertEquals(ArtifactDeletionReceipt.SNAPSHOT_READ_FAILURE_CODE, failed.failureCode());
         assertNotNull(ledger.findByJobId(JOB_ID).orElseThrow());
+    }
+
+    @Test
+    void receiptRejectsSnapshotFailuresAfterBindingAndInconsistentPendingEvidence() {
+        ArtifactDeletionReceipt exactDigest = receipt(
+                ARTIFACT_CHECKSUM,
+                START,
+                0,
+                null,
+                null
+        );
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> exactDigest.recordArtifactSnapshotFailure(START.plusSeconds(1))
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> receipt(
+                        ArtifactDeletionReceipt.PENDING_ARTIFACT_CHECKSUM,
+                        START.plusSeconds(2),
+                        1,
+                        START.plusSeconds(1),
+                        ArtifactDeletionReceipt.SNAPSHOT_READ_FAILURE_CODE
+                )
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> receipt(
+                        ArtifactDeletionReceipt.PENDING_ARTIFACT_CHECKSUM,
+                        START,
+                        0,
+                        null,
+                        ArtifactDeletionReceipt.SNAPSHOT_READ_FAILURE_CODE
+                )
+        );
+    }
+
+    @Test
+    void initialRequestDetectorCoversEveryFailClosedCondition() throws Exception {
+        Method detector = ArtifactDeletionLedger.class.getDeclaredMethod(
+                "isInitialRequest",
+                ArtifactDeletionReceipt.class
+        );
+        detector.setAccessible(true);
+
+        assertFalse(isInitialRequest(detector, initialCandidate(
+                ArtifactDeletionState.METADATA_TOMBSTONED,
+                0,
+                null,
+                null,
+                null,
+                START,
+                START
+        )));
+        assertFalse(isInitialRequest(detector, initialCandidate(
+                ArtifactDeletionState.DELETION_REQUESTED,
+                1,
+                null,
+                null,
+                null,
+                START,
+                START
+        )));
+        assertFalse(isInitialRequest(detector, initialCandidate(
+                ArtifactDeletionState.DELETION_REQUESTED,
+                0,
+                START,
+                null,
+                null,
+                START,
+                START
+        )));
+        assertFalse(isInitialRequest(detector, initialCandidate(
+                ArtifactDeletionState.DELETION_REQUESTED,
+                0,
+                null,
+                START,
+                null,
+                START,
+                START
+        )));
+        assertFalse(isInitialRequest(detector, initialCandidate(
+                ArtifactDeletionState.DELETION_REQUESTED,
+                0,
+                null,
+                null,
+                ArtifactDeletionReceipt.SNAPSHOT_READ_FAILURE_CODE,
+                START,
+                START
+        )));
+        assertFalse(isInitialRequest(detector, initialCandidate(
+                ArtifactDeletionState.DELETION_REQUESTED,
+                0,
+                null,
+                null,
+                null,
+                START.plusSeconds(1),
+                START
+        )));
+        assertTrue(isInitialRequest(detector, initialCandidate(
+                ArtifactDeletionState.DELETION_REQUESTED,
+                0,
+                null,
+                null,
+                null,
+                START,
+                START
+        )));
     }
 
     @Test
@@ -195,6 +308,54 @@ class ArtifactDeletionSnapshotFailureCoverageTest {
                 START.plusSeconds(2),
                 ArtifactDeletionReceipt.SNAPSHOT_READ_FAILURE_CODE
         )));
+    }
+
+    private static ArtifactDeletionReceipt receipt(
+            String checksum,
+            Instant stateChangedAt,
+            int attemptCount,
+            Instant lastAttemptAt,
+            String failureCode
+    ) {
+        return new ArtifactDeletionReceipt(
+                REQUEST_ID,
+                TENANT_ID,
+                JOB_ID,
+                checksum,
+                AUDIT_CORRELATION_ID,
+                START,
+                stateChangedAt,
+                ArtifactDeletionState.DELETION_REQUESTED,
+                attemptCount,
+                lastAttemptAt,
+                null,
+                failureCode
+        );
+    }
+
+    private static ArtifactDeletionReceipt initialCandidate(
+            ArtifactDeletionState state,
+            int attemptCount,
+            Instant lastAttemptAt,
+            Instant completedAt,
+            String failureCode,
+            Instant stateChangedAt,
+            Instant requestedAt
+    ) {
+        ArtifactDeletionReceipt receipt = mock(ArtifactDeletionReceipt.class);
+        when(receipt.state()).thenReturn(state);
+        when(receipt.attemptCount()).thenReturn(attemptCount);
+        when(receipt.lastAttemptAt()).thenReturn(lastAttemptAt);
+        when(receipt.completedAt()).thenReturn(completedAt);
+        when(receipt.failureCode()).thenReturn(failureCode);
+        when(receipt.stateChangedAt()).thenReturn(stateChangedAt);
+        when(receipt.requestedAt()).thenReturn(requestedAt);
+        return receipt;
+    }
+
+    private static boolean isInitialRequest(Method detector, ArtifactDeletionReceipt receipt)
+            throws Exception {
+        return (boolean) detector.invoke(null, receipt);
     }
 
     private static SnapshotCandidate candidate(

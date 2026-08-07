@@ -332,17 +332,40 @@ public class ArtifactLinkService {
     }
 
     private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.");
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+        int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1 || lastDotIndex == token.length() - 1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        // Performance Optimization: Defer parsing fields and array allocation until after signature is verified.
+        // Also avoid using String.split() and String.join() as they cause GC overhead.
+        String payload = token.substring(0, lastDotIndex);
+        String signature = token.substring(lastDotIndex + 1);
+
         String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+                signature.getBytes(StandardCharsets.US_ASCII))) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
+        String[] parts = new String[TOKEN_FIELD_COUNT];
+        int start = 0;
+        int fieldIndex = 0;
+        while (true) {
+            int dotIndex = payload.indexOf('.', start);
+            if (dotIndex == -1) {
+                if (fieldIndex != TOKEN_FIELD_COUNT - 1) {
+                    throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                }
+                parts[fieldIndex] = payload.substring(start);
+                break;
+            }
+            if (fieldIndex == TOKEN_FIELD_COUNT - 1) {
+                throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            }
+            parts[fieldIndex++] = payload.substring(start, dotIndex);
+            start = dotIndex + 1;
         }
 
         try {

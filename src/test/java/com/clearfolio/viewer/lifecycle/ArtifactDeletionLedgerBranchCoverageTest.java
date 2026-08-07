@@ -32,12 +32,7 @@ class ArtifactDeletionLedgerBranchCoverageTest {
 
     @Test
     void replayTransitionRejectsEveryShortCircuitMismatch() throws Exception {
-        Method validator = privateMethod(
-                "validateReplayTransition",
-                ArtifactDeletionReceipt.class,
-                ArtifactDeletionReceipt.class,
-                boolean.class
-        );
+        Method validator = replayTransitionValidator();
 
         assertInvalidTransition(
                 validator,
@@ -92,36 +87,42 @@ class ArtifactDeletionLedgerBranchCoverageTest {
     }
 
     @Test
-    void replayTransitionAcceptsChecksumCaptureAndMonotonicLifecycleOutcomes() throws Exception {
-        Method validator = privateMethod(
-                "validateReplayTransition",
-                ArtifactDeletionReceipt.class,
-                ArtifactDeletionReceipt.class,
-                boolean.class
-        );
+    void replayTransitionAcceptsSnapshotFailureChecksumCaptureAndMonotonicOutcomes() throws Exception {
+        Method validator = replayTransitionValidator();
 
         validator.invoke(
                 null,
                 receipt(ArtifactDeletionState.DELETION_REQUESTED, START, 0, null),
-                receipt(ArtifactDeletionState.DELETION_REQUESTED, START.plusSeconds(1), 0, null),
+                receipt(ArtifactDeletionState.DELETION_REQUESTED, START.plusSeconds(1), 1, START.plusSeconds(1)),
+                false,
                 true
         );
         validator.invoke(
                 null,
                 receipt(ArtifactDeletionState.DELETION_REQUESTED, START, 0, null),
+                receipt(ArtifactDeletionState.DELETION_REQUESTED, START.plusSeconds(1), 0, null),
+                true,
+                false
+        );
+        validator.invoke(
+                null,
+                receipt(ArtifactDeletionState.DELETION_REQUESTED, START, 0, null),
                 receipt(ArtifactDeletionState.METADATA_TOMBSTONED, START.plusSeconds(1), 0, null),
+                false,
                 false
         );
         validator.invoke(
                 null,
                 receipt(ArtifactDeletionState.METADATA_TOMBSTONED, START, 0, null),
                 receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START.plusSeconds(1), 0, null),
+                false,
                 false
         );
         validator.invoke(
                 null,
                 receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START, 0, null),
                 receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED, START.plusSeconds(1), 0, null),
+                false,
                 false
         );
         validator.invoke(
@@ -133,12 +134,14 @@ class ArtifactDeletionLedgerBranchCoverageTest {
                         1,
                         START.plusSeconds(1)
                 ),
+                false,
                 false
         );
         validator.invoke(
                 null,
                 receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_FAILED, START, 1, START),
                 receipt(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING, START.plusSeconds(1), 1, START),
+                false,
                 false
         );
     }
@@ -244,6 +247,16 @@ class ArtifactDeletionLedgerBranchCoverageTest {
         assertEquals(Path.of("ledger.log"), pathOf.invoke(null, " ledger.log "));
     }
 
+    private static Method replayTransitionValidator() throws NoSuchMethodException {
+        return privateMethod(
+                "validateReplayTransition",
+                ArtifactDeletionReceipt.class,
+                ArtifactDeletionReceipt.class,
+                boolean.class,
+                boolean.class
+        );
+    }
+
     private static Method privateMethod(String name, Class<?>... parameterTypes) throws NoSuchMethodException {
         Method method = ArtifactDeletionLedger.class.getDeclaredMethod(name, parameterTypes);
         method.setAccessible(true);
@@ -257,7 +270,7 @@ class ArtifactDeletionLedgerBranchCoverageTest {
     ) {
         assertThrows(
                 InvocationTargetException.class,
-                () -> validator.invoke(null, current, replayed, false)
+                () -> validator.invoke(null, current, replayed, false, false)
         );
     }
 

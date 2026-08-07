@@ -455,8 +455,33 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
+      - name: Recheck immediately before Draft publication
+        id: final_publish_gate
+        env:
+          GH_TOKEN: ${{ steps.maintainer_app.outputs.token }}
+          EXPECTED_BASE_SHA: ${{ needs.verify.outputs.base_sha }}
+          EXPECTED_PATCH_SHA256: ${{ needs.verify.outputs.patch_sha256 }}
+        run: |
+          set -euo pipefail
+          echo "publish=false" >>"$GITHUB_OUTPUT"
+          open_prs="$(
+            gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+              --paginate \
+              --slurp \
+              --jq 'map(length) | add // 0'
+          )"
+          current_sha="$(git rev-parse HEAD)"
+          patch_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/clearfolio.patch"
+          observed_patch_sha256="$(sha256sum "$patch_file" | cut -d' ' -f1)"
+          if [ "$open_prs" -ne 0 ] || [ "$current_sha" != "$EXPECTED_BASE_SHA" ] \
+            || [ "$observed_patch_sha256" != "$EXPECTED_PATCH_SHA256" ]; then
+            echo "::notice::Discarding verified proposal because repository state changed after write-token minting."
+            exit 0
+          fi
+          echo "publish=true" >>"$GITHUB_OUTPUT"
+
       - name: Create a draft pull request without auto-merge
-        if: steps.publish_gate.outputs.publish == 'true'
+        if: steps.final_publish_gate.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ steps.maintainer_app.outputs.token }}
           BASE_SHA: ${{ needs.verify.outputs.base_sha }}

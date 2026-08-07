@@ -1,24 +1,30 @@
-# Hourly autonomous development and pull-request maintenance
+# Hourly autonomous product development
 
 ## Purpose
 
-Clearfolio uses two independent hourly workflows so review latency never stops productive work while product-development automation never competes with an open pull request.
+Clearfolio separates organization PR maintenance from repository-local product development.
 
-- `.github/workflows/hourly-pr-maintenance.yml` runs at minute 7. It inventories every open pull request, dispatches the existing organization review/fix loop, rechecks exact-head review and Check evidence, updates eligible branches, and permits merge or guarded auto-merge only through the centrally governed workflow.
-- `.github/workflows/hourly-product-development.yml` runs at minute 23. It proposes exactly one bounded buyer-visible increment only when the paginated open-pull-request count is zero and protected `main` remains unchanged throughout proposal, verification, and publication.
+- `ContextualWisdomLab/.github` owns **one central PR-maintenance caller**, `clearfolio-hourly-review-repair.yml`. The central caller inventories open Clearfolio pull requests, invokes the shared review-repair engine, preserves the existing reviewer identities and credentials, and leaves approval and merge decisions to repository protection.
+- `.github/workflows/hourly-product-development.yml` is the only repository-local hourly caller in this change. It runs at minute 23 and may propose one bounded buyer-visible increment only when the complete paginated open-pull-request count is zero and protected `main` remains unchanged through proposal, verification, and publication.
 
-The schedules are offset to avoid unnecessary runner contention. Both workflows use non-cancelling concurrency groups, so a slower prior run cannot be silently replaced by a newer run.
+Keeping PR maintenance central prevents duplicate scheduled sweeps, conflicting branch updates, repeated review dispatches, and avoidable GitHub Actions consumption. The local product loop remains independently usable by Clearfolio while its published Draft PRs re-enter the same organization review and merge plane as every other change.
 
-## Review-agent credential boundary
+The central maintenance schedule becomes active only after its independently reviewed implementation is present on the protected default branch of the organization `.github` repository. The product schedule likewise becomes active only after this workflow reaches Clearfolio's protected default branch. A workflow file present only on a pull-request branch is not represented as operational automation.
 
-The PR-maintenance workflow calls these immutable central sources at commit `74e54255ec903e3ba5f920859b656fe2defcb057`:
+## PR-maintenance trust boundary
 
-- `pr-review-fix-scheduler.yml`;
-- `pr-review-merge-scheduler.yml`.
+The central caller and reusable engine own:
 
-Both calls use `secrets: inherit`. Clearfolio does not rename, remap, replace, or expose the centrally managed reviewer credentials. The workflow does not reference `NVIDIA_NIM_API_KEY`; its purpose is to preserve the existing review-agent identity and repository-protection model.
+1. current open-PR inventory;
+2. exact-head review and repair dispatch;
+3. same-head retry throttling;
+4. branch-update eligibility;
+5. exact-head Check revalidation;
+6. guarded direct or automatic merge eligibility.
 
-The central merge scheduler remains responsible for evaluating current-head review evidence, required Checks, branch updates, and merge eligibility. The local hourly caller does not approve its own work or bypass independent approval, security gates, expected-head checks, or branch protection.
+Clearfolio does not copy that privileged implementation into the product repository. It does not rename or remap central reviewer credentials, synthesize approval, or add a second scheduler. The central plane cannot treat a comment, status, queued job, predecessor review, or stale approval as passing evidence. A qualifying independent approval, required current-head Checks, unresolved-thread policy, expected-head safety, and branch protection remain mandatory.
+
+The product-development workflow does not call the review agents, approve itself, merge its own Draft, change branch protection, publish a release, or deploy. Its only write-capable outcome is a new bounded Draft pull request through a separately scoped publication identity.
 
 ## Product-maintainer identity and prerequisites
 
@@ -30,25 +36,43 @@ Repository administrators must configure these values before a non-dry run can p
 - repository variable `CLEARFOLIO_MAINTAINER_APP_CLIENT_ID`;
 - repository secret `CLEARFOLIO_MAINTAINER_APP_PRIVATE_KEY`.
 
-The workflow maps `NVIDIA_NIM_API_KEY` into the process-local `NVIDIA_API_KEY` variable expected by the pinned OpenCode NVIDIA provider. The value is masked, never written to source, and scanned against model output and every model-writable path. Missing credentials fail closed by skipping autonomous development with a notice. They never cause fallback to another provider, an unauthenticated model, GitHub Copilot, or a broader workflow token.
+The workflow maps `NVIDIA_NIM_API_KEY` into the process-local `NVIDIA_API_KEY` variable expected by the pinned OpenCode NVIDIA provider. The value is masked, never written to source, and scanned against model output and every model-writable path. Missing credentials cause the workflow to fail or skip proposal creation safely. They never select an unreviewed provider, an unauthenticated model, or a broader repository token as model authentication.
 
-The Maintainer App must be installed only for `ContextualWisdomLab/clearfolio` and should receive the minimum repository permissions needed to create a branch and draft pull request. The token-minting action further downscopes every publication token to the two GitHub permission categories required by those operations: `contents: write` and `pull-requests: write`. GitHub groups branch pushes and release APIs under `contents`, and draft-PR creation and merge APIs under `pull-requests`; it does not offer narrower branch-only or draft-only token permissions. Clearfolio therefore combines the narrowest available token categories with immutable patch identity, a publication-only job, explicit draft-only commands, regression tests prohibiting merge/release behavior, and branch protection. The App must not receive administration, ruleset, secret, environment, security-event, deployment, workflow, or branch-protection bypass authority.
+The Maintainer App must be installed only for `ContextualWisdomLab/clearfolio` and should receive the minimum repository permissions needed to create a branch and Draft pull request. The token-minting action downscopes each publication token to `contents: write` and `pull-requests: write`. GitHub groups branch pushes and release APIs under `contents`, and PR creation and merge APIs under `pull-requests`; it does not offer a branch-only or Draft-only token category. Clearfolio therefore combines the narrowest available categories with immutable patch identity, a publication-only job, Draft-only commands, regression tests that prohibit merge and release commands, and protected-branch rules. The App must not receive administration, ruleset, secret, environment, security-event, deployment, workflow, or bypass authority.
 
 ## Three-stage trust separation
 
 ### 1. Credentialed proposal
 
-The model runner has repository read access and a narrowly enumerated edit boundary: `src/main/**`, `src/test/**`, `docs/**`, `README.md`, and `CHANGELOG.md`. `.github/**`, `scripts/**`, `pom.xml`, lockfiles, environment files, `.git/**`, external directories, web search, web fetch, nested tasks, interactive questions, skills, and unapproved shell commands are denied. Protecting `pom.xml` prevents model output from changing dependencies, Maven plugins, versions, or other executable build inputs before the credential-free verifier runs Maven.
+The model runner has repository read access and a narrowly enumerated edit boundary:
 
-OpenCode is deliberately invoked without `--auto`. In its non-interactive `run` command, an unmatched permission request is rejected rather than automatically approved. Explicitly allowed read, edit, search, and inspection operations still run, while a new tool, an unexpected resource pattern, or any other permission that falls back to `ask` fails closed.
+- `src/main/**`;
+- `src/test/**`;
+- `docs/**`;
+- `README.md`;
+- `CHANGELOG.md`.
 
-The credentialed step does not execute model-modified repository code. In particular, it cannot run Maven, pytest, project modules, code generation, language servers, commits, pushes, or GitHub CLI publication. It may inspect only `git status --short`, `git diff --stat`, and `git diff --check`. This prevents untrusted proposed code from reading the NVIDIA credential or runner tokens.
+Workflow files, scripts, `pom.xml`, dependency locks, environment files, `.git/**`, external directories, web search, web fetch, nested tasks, interactive questions, skills, and unapproved shell commands are denied. Protecting build and dependency inputs prevents model output from changing executable supply-chain configuration before the next stage runs the proposed source.
 
-The proposal must be test-first, one bounded vertical slice, no more than 20 changed files and 200,000 patch bytes, without deletion, rename, symlink, binary, mode, workflow, script, lockfile, dependency, build-metadata, version, release, deployment, approval, or merge changes. Newly created files inside the allowed text-source, test, and documentation boundary are first represented with Git intent-to-add so they are included in the same immutable patch and counted against the file budget. Git `numstat` then rejects any tracked or newly created binary payload before evidence is packaged. The workflow packages an immutable Git patch, base SHA, patch SHA-256, stat summary, and OpenCode result for three days.
+OpenCode is invoked without `--auto`. An unmatched permission request in non-interactive execution is rejected instead of being silently granted. Explicitly allowed inspection and edit operations still work, while a new tool, an unexpected path, or a pattern mismatch fails closed.
+
+The credentialed step does not execute model-modified repository code. It cannot run Maven, pytest, project modules, code generation, language servers, commits, pushes, or GitHub publication. It may inspect only bounded Git status and diff evidence. This prevents proposed code from reading the NVIDIA credential or runner credentials.
+
+A proposal must be one test-first vertical slice with no more than 20 changed files and 200,000 patch bytes. Deletions, renames, symlinks, binaries, mode changes, workflow changes, script changes, dependency changes, build metadata, versions, releases, deployments, approvals, and merges are rejected. New text files inside the allowed source, test, and documentation boundary are represented with Git intent-to-add so the immutable patch and file budget include them. Git `numstat` rejects opaque binary payloads before any artifact is uploaded.
+
+The proposal stage seals:
+
+- protected base SHA;
+- Git patch;
+- patch SHA-256;
+- changed-file and stat summaries;
+- bounded OpenCode result.
+
+No credential is stored in the proposal artifact.
 
 ### 2. Credential-free verifier
 
-A fresh runner checks out protected `main`, downloads the immutable proposal, and discards it when any pull request exists, `main` moved, or the patch hash differs. It applies the patch with `git apply --check`, runs `git diff --check`, then executes:
+A fresh runner checks out protected `main`, downloads the immutable proposal, and rejects it when any pull request exists, `main` moved, the patch hash changed, or the patch no longer applies. It runs `git apply --check` and `git diff --check`, then executes the repository acceptance commands:
 
 ```bash
 mvn -B --no-transfer-progress verify
@@ -56,34 +80,61 @@ python -m pip install --disable-pip-version-check --no-cache-dir --require-hashe
 python -m pytest -q scripts
 ```
 
-This job receives neither the NVIDIA key nor the Maintainer App private key. It is therefore the credential-free verifier for production tests, zero-missed line and branch coverage, warning-free public Javadocs, packaging, deterministic buyer evidence, and workflow contract tests.
+This job receives neither the NVIDIA key nor the Maintainer App private key. It is the credential-free verifier for production tests, zero missed lines and branches, warning-free public Javadocs, packaging, deterministic buyer evidence, and workflow contracts.
 
-Credential-free does not mean trusted-code-only: the verifier executes the proposed test and production patch. Its Harden Runner policy therefore uses fail-closed `egress-policy: block`, not observation-only audit mode. The allowlist is limited to GitHub API, checkout and artifact transport endpoints, Maven Central, and the PyPI hosts needed for the hash-locked `requirements-test.txt` installation. A generated test cannot contact an arbitrary external destination, while every permitted package remains constrained by immutable action pins or committed dependency hashes. Any newly required endpoint must be reviewed as a security-sensitive workflow-source change and added narrowly rather than switching the verifier back to audit mode.
+The verifier still executes untrusted proposed tests and production code. Its Harden Runner policy therefore uses fail-closed blocked egress. The allowlist is limited to reviewed GitHub transport, Maven Central, and the PyPI hosts needed by the committed hash-locked test requirements. Proposed code cannot contact an arbitrary destination. Any new endpoint is a security-sensitive workflow-source change and must be reviewed narrowly rather than switching to observation-only network policy.
 
 ### 3. Publication-only identity
 
-A third fresh runner rechecks the complete paginated PR inventory, protected base SHA, and patch SHA-256. Only then does it mint a short-lived repository-scoped Maintainer App token limited to the narrowest available GitHub categories, `contents: write` and `pull-requests: write`, apply the already verified patch, push a unique automation branch, and open a draft pull request.
+A third fresh runner rechecks the complete paginated PR inventory, protected-base SHA, and patch SHA-256. Only then does it mint a short-lived repository-scoped Maintainer App token, apply the already verified patch, push a unique automation branch, and open a Draft pull request.
 
-Because the publisher handles the App private key and a short-lived write token, its Harden Runner policy also uses fail-closed `egress-policy: block`. Its allowlist contains only the GitHub API, checkout, release-asset, and Actions artifact-transport endpoints required to download the verified proposal, mint the scoped token, push the branch, and create the draft pull request. NVIDIA, Maven Central, PyPI, and arbitrary external destinations are deliberately absent. A compromised action or publication command therefore cannot export the App credential to an unrelated host.
+The publisher's egress policy is also fail-closed. Its allowlist contains only the GitHub endpoints required to download verified evidence, mint the scoped token, push the branch, and create the Draft. NVIDIA, Maven Central, PyPI, and arbitrary destinations are absent.
 
-The publication workflow source does not execute proposed code or invoke approval, auto-merge, merge, release, package publication, or deployment operations. The resulting draft enters the same exact-head CI, Security Scan, SAST, fuzzing, CodeRabbit, OpenCode/Noema/Strix, unresolved-thread, independent-approval, repository-policy, and branch-protection loop as a human-authored change.
+The publication job does not execute proposed code and has no approval, automatic merge, merge, release, package publication, or deployment command. The resulting Draft enters ordinary exact-head CI, Security Scan, SAST, fuzzing, CodeRabbit, OpenCode/Noema/Strix, unresolved-thread, independent approval, repository-policy, and branch-protection processing.
 
-## Backpressure, idempotency, and failure recovery
+## Backpressure and idempotency
 
-The product scheduler counts every page of open pull requests at proposal, verification, and publication. A single open PR transfers ownership to the PR-maintenance loop and prevents another autonomous product branch. A protected-base movement or patch-identity mismatch discards the proposal rather than rebasing unreviewed output.
+The product scheduler counts every page of open pull requests during proposal, verification, and publication. A single open PR transfers ownership to the central PR-maintenance plane and prevents another autonomous product branch.
 
-Unique branch names include the workflow run and attempt identifiers. Non-cancelling concurrency prevents two product runs from overlapping. Artifacts expire after three days and contain no credential. A failed or discarded run leaves no branch, pull request, release, deployment, or partial repository mutation. Operators correct the prerequisite or underlying gate and use the next scheduled run or `workflow_dispatch`; they do not bypass the gate.
+The workflow also rejects publication when:
+
+- protected `main` moves;
+- the patch digest differs;
+- a proposal contains a prohibited change class;
+- the verifier no longer reproduces the proposal;
+- another open PR appears;
+- required credentials are absent.
+
+Unique branch names include workflow run and attempt identifiers. Non-cancelling single-flight concurrency prevents product runs from overlapping. Evidence expires after three days. A failed or discarded run leaves no branch, PR, release, deployment, or partial repository mutation. Operators fix the underlying prerequisite and use a later schedule or manual dispatch; they do not bypass the failed gate.
+
+## Standalone and MSA behavior
+
+Clearfolio remains independently operable: the product workflow targets this repository and produces an ordinary Clearfolio Draft. It also remains compatible with the wider ContextualWisdomLab control plane because PR maintenance, review identities, and merge policy are consumed from the organization `.github` service rather than copied locally.
+
+No naruon runtime dependency is introduced. A future naruon module may observe Clearfolio's public API and released artifacts, but autonomous repository maintenance remains an organization control-plane concern and product proposal generation remains a Clearfolio concern.
 
 ## Operator verification
 
-1. Confirm both workflows are enabled in the Actions UI and their scheduled events are not disabled by repository inactivity.
-2. Run the product workflow with `dry_run=true`. It should report either `open_pull_request` ownership or readiness without invoking OpenCode.
-3. Confirm the three product prerequisites are configured without displaying their values.
-4. Inspect the first credentialed run for the pinned OpenCode version and archive checksum, blocked egress policy, explicit permission map, absence of `--auto`, and credential-disclosure scan.
-5. Confirm the proposal boundary includes allowed newly created text files, counts them against the 20-file limit, and rejects binary, deletion, rename, symlink, mode, workflow, script, dependency, and build-metadata changes before upload.
-6. Confirm the verifier has no model or App credential, uses `egress-policy: block` with only reviewed GitHub, Maven Central, and PyPI endpoints, and runs both authoritative acceptance commands.
-7. Confirm the publisher uses `egress-policy: block` with GitHub-only endpoints, requests only `contents: write` and `pull-requests: write`, invokes only branch push and draft-PR creation, and leaves normal exact-head Checks and independent approval mandatory.
-8. Inspect every scheduler-source or endpoint-allowlist update as a security-sensitive workflow change; never replace immutable commit pins with tags or branches and never broaden verifier or publisher egress to audit mode.
+1. Confirm `ContextualWisdomLab/.github` has exactly one enabled Clearfolio PR-maintenance caller on its protected default branch.
+2. Confirm Clearfolio has no repository-local `hourly-pr-maintenance.yml` duplicate.
+3. Confirm the central caller targets `ContextualWisdomLab/clearfolio`, preserves reviewer identities, throttles same-head retries, and cannot approve or bypass protection.
+4. Run the product workflow with `dry_run=true`; it should report open-PR ownership or readiness without invoking OpenCode.
+5. Confirm all three product prerequisites are configured without displaying their values.
+6. Inspect the proposal job for the pinned OpenCode version and archive checksum, blocked egress, explicit permission map, absence of automatic permission granting, and credential-disclosure scan.
+7. Confirm newly created allowed text files are included and that binary, deletion, rename, symlink, mode, workflow, script, dependency, and build-metadata changes are rejected.
+8. Confirm the verifier has no model or App credential, uses blocked egress with only reviewed GitHub, Maven Central, and PyPI destinations, and runs both authoritative acceptance command families.
+9. Confirm the publisher uses GitHub-only blocked egress, requests only `contents: write` and `pull-requests: write`, and performs only branch push and Draft-PR creation.
+10. Confirm the Draft receives normal exact-head review and a qualifying independent approval before any merge.
+
+## Failure and rollback
+
+If the central PR-maintenance caller fails, leave existing PRs unchanged, retain exact-head evidence, repair the central workflow in `.github`, and rerun it. Do not restore a repository-local duplicate as a shortcut.
+
+If product proposal generation fails, delete no evidence or protected branch state. Correct the model credential, App installation, egress allowlist, immutable tool pin, or source defect and invoke a later run.
+
+If publication occurs but a later Check fails, the Draft remains open for normal review and repair. The product workflow cannot mark the Check successful, approve the PR, or merge it.
+
+Rollback of this local feature consists of disabling or removing only `hourly-product-development.yml`; PR maintenance continues from the independently versioned central control plane.
 
 ## References
 

@@ -180,7 +180,10 @@ def test_publisher_rechecks_inventory_and_base_after_write_token_is_minted() -> 
     assert token_index < final_gate_index < creation_index
     assert "state=open&per_page=100" in final_gate
     assert "--paginate" in final_gate
-    assert 'git rev-parse HEAD' in final_gate
+    assert 'gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main"' in final_gate
+    assert "--jq '.object.sha'" in final_gate
+    assert "git rev-parse HEAD" not in final_gate
+    assert "GH_TOKEN: ${{ steps.maintainer_app.outputs.token }}" in final_gate
     assert "EXPECTED_BASE_SHA" in final_gate
     assert "publish=false" in final_gate
     assert "steps.final_publish_gate.outputs.publish == 'true'" in publisher

@@ -1,19 +1,22 @@
 package com.clearfolio.viewer.lifecycle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import com.clearfolio.viewer.artifact.ArtifactStore;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 
 /**
  * Proves that one permanently failing oldest receipt cannot starve newer
- * deletion work behind a bounded recovery batch.
+ * deletion work behind a bounded recovery batch, including across restart.
  */
 class ArtifactDeletionRecoveryFairnessTest {
 
@@ -22,11 +25,15 @@ class ArtifactDeletionRecoveryFairnessTest {
     private static final UUID READY_JOB_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000002");
 
+    @TempDir
+    Path tempDirectory;
+
     @Test
-    void failedOldestSnapshotIsDeferredSoNewerCleanupRunsOnTheNextPass() {
+    void failedOldestSnapshotIsDeferredDurablySoNewerCleanupRunsAfterRestart() {
         Instant requestedAt = Instant.parse("2026-08-07T00:00:00Z");
-        ArtifactDeletionLedger ledger = new ArtifactDeletionLedger();
-        ledger.request(
+        Path ledgerPath = tempDirectory.resolve("artifact-deletion-receipts.log");
+        ArtifactDeletionLedger firstLedger = new ArtifactDeletionLedger(ledgerPath);
+        firstLedger.request(
                 UUID.fromString("10000000-0000-0000-0000-000000000001"),
                 "tenant-north",
                 BLOCKED_JOB_ID,
@@ -34,7 +41,7 @@ class ArtifactDeletionRecoveryFairnessTest {
                 "cleanup-v1:blocked",
                 requestedAt
         );
-        ledger.request(
+        firstLedger.request(
                 UUID.fromString("10000000-0000-0000-0000-000000000002"),
                 "tenant-north",
                 READY_JOB_ID,
@@ -42,30 +49,55 @@ class ArtifactDeletionRecoveryFairnessTest {
                 "cleanup-v1:ready",
                 requestedAt.plusSeconds(1)
         );
-        ledger.markMetadataTombstoned(READY_JOB_ID, requestedAt.plusSeconds(1));
-        ledger.markCleanupPending(READY_JOB_ID, requestedAt.plusSeconds(1));
+        firstLedger.markMetadataTombstoned(READY_JOB_ID, requestedAt.plusSeconds(1));
+        firstLedger.markCleanupPending(READY_JOB_ID, requestedAt.plusSeconds(1));
 
-        ArtifactDeletionMetrics metrics = new ArtifactDeletionMetrics(ledger);
-        ArtifactDeletionCoordinator coordinator = new ArtifactDeletionCoordinator(
+        ArtifactStore artifactStore = new BlockingOldestArtifactStore();
+        ArtifactDeletionMetrics firstMetrics = new ArtifactDeletionMetrics(firstLedger);
+        ArtifactDeletionCoordinator firstProcess = coordinator(
+                artifactStore,
+                firstLedger,
+                firstMetrics
+        );
+
+        assertEquals(1, firstProcess.retryPendingWork());
+        ArtifactDeletionReceipt deferred = firstLedger.findByJobId(BLOCKED_JOB_ID).orElseThrow();
+        assertEquals(ArtifactDeletionState.DELETION_REQUESTED, deferred.state());
+        assertEquals(1, deferred.attemptCount());
+        assertNotNull(deferred.lastAttemptAt());
+        assertEquals("artifact_store_read_failed", deferred.failureCode());
+        assertEquals(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING,
+                firstLedger.findByJobId(READY_JOB_ID).orElseThrow().state());
+        assertEquals(1L, firstMetrics.failedAttempts());
+
+        ArtifactDeletionLedger restartedLedger = new ArtifactDeletionLedger(ledgerPath);
+        ArtifactDeletionMetrics restartedMetrics = new ArtifactDeletionMetrics(restartedLedger);
+        ArtifactDeletionCoordinator restartedProcess = coordinator(
+                artifactStore,
+                restartedLedger,
+                restartedMetrics
+        );
+
+        assertEquals(1, restartedProcess.retryPendingWork());
+        assertEquals(ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED,
+                restartedLedger.findByJobId(READY_JOB_ID).orElseThrow().state());
+        assertEquals(0L, restartedMetrics.failedAttempts());
+        assertEquals(1L, restartedMetrics.completedAttempts());
+    }
+
+    private static ArtifactDeletionCoordinator coordinator(
+            ArtifactStore artifactStore,
+            ArtifactDeletionReceiptStore receiptStore,
+            ArtifactDeletionMetrics metrics
+    ) {
+        return new ArtifactDeletionCoordinator(
                 org.mockito.Mockito.mock(ConversionJobRepository.class),
-                new BlockingOldestArtifactStore(),
-                ledger,
+                artifactStore,
+                receiptStore,
                 metrics,
                 new ArtifactLifecycleLockRegistry(8),
                 1
         );
-
-        assertEquals(1, coordinator.retryPendingWork());
-        assertEquals(ArtifactDeletionState.DELETION_REQUESTED,
-                ledger.findByJobId(BLOCKED_JOB_ID).orElseThrow().state());
-        assertEquals(ArtifactDeletionState.ARTIFACT_CLEANUP_PENDING,
-                ledger.findByJobId(READY_JOB_ID).orElseThrow().state());
-
-        assertEquals(1, coordinator.retryPendingWork());
-        assertEquals(ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED,
-                ledger.findByJobId(READY_JOB_ID).orElseThrow().state());
-        assertEquals(1L, metrics.failedAttempts());
-        assertEquals(1L, metrics.completedAttempts());
     }
 
     /**

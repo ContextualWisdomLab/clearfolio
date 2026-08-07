@@ -35,8 +35,9 @@ import org.springframework.stereotype.Repository;
  * <p>The file-backed mode writes a complete immutable receipt snapshot for each
  * legal transition and forces the file channel before returning. Startup replay
  * uses bounded strict UTF-8 lines and validates immutable request identity,
- * exact artifact-digest capture, timestamps, and monotonic transitions before
- * exposing pending work. An empty path selects the standalone in-memory adapter.</p>
+ * exact artifact-digest capture, timestamps, retry evidence, and monotonic
+ * transitions before exposing pending work. An empty path selects the standalone
+ * in-memory adapter.</p>
  */
 @Repository
 public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
@@ -49,7 +50,8 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
     private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
     private static final Comparator<ArtifactDeletionReceipt> RECEIPT_ORDER = Comparator
-            .comparing(ArtifactDeletionReceipt::requestedAt)
+            .comparing(ArtifactDeletionReceipt::stateChangedAt)
+            .thenComparing(ArtifactDeletionReceipt::requestedAt)
             .thenComparing(receipt -> receipt.jobId().toString());
 
     private final ConcurrentMap<UUID, ArtifactDeletionReceipt> receiptsByJobId = new ConcurrentHashMap<>();
@@ -134,6 +136,19 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
         append(updated);
         receiptsByJobId.put(requiredJobId, updated);
         return updated;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public ArtifactDeletionReceipt recordSnapshotFailure(
+            UUID jobId,
+            String failureCode,
+            Instant attemptedAt
+    ) {
+        if (!ArtifactDeletionReceipt.SNAPSHOT_READ_FAILURE_CODE.equals(failureCode)) {
+            throw new IllegalArgumentException("failureCode must identify an artifact snapshot read failure");
+        }
+        return transition(jobId, current -> current.recordArtifactSnapshotFailure(attemptedAt));
     }
 
     /** {@inheritDoc} */
@@ -258,17 +273,18 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
         ArtifactDeletionReceipt replayed = parse(line);
         ArtifactDeletionReceipt current = receiptsByJobId.get(replayed.jobId());
         if (current == null) {
-            if (replayed.state() != ArtifactDeletionState.DELETION_REQUESTED) {
+            if (!isInitialRequest(replayed)) {
                 throw invalidLine();
             }
             receiptsByJobId.put(replayed.jobId(), replayed);
             return;
         }
         boolean checksumCapture = isChecksumCaptureTransition(current, replayed);
+        boolean snapshotFailure = isSnapshotFailureTransition(current, replayed);
         if (!current.hasSameIdentity(replayed) && !checksumCapture) {
             throw invalidLine();
         }
-        validateReplayTransition(current, replayed, checksumCapture);
+        validateReplayTransition(current, replayed, checksumCapture, snapshotFailure);
         receiptsByJobId.put(replayed.jobId(), replayed);
     }
 
@@ -342,6 +358,15 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
         );
     }
 
+    private static boolean isInitialRequest(ArtifactDeletionReceipt receipt) {
+        return receipt.state() == ArtifactDeletionState.DELETION_REQUESTED
+                && receipt.attemptCount() == 0
+                && receipt.lastAttemptAt() == null
+                && receipt.completedAt() == null
+                && receipt.failureCode() == null
+                && receipt.stateChangedAt().equals(receipt.requestedAt());
+    }
+
     private static boolean isChecksumCaptureTransition(
             ArtifactDeletionReceipt current,
             ArtifactDeletionReceipt replayed
@@ -354,16 +379,32 @@ public class ArtifactDeletionLedger implements ArtifactDeletionReceiptStore {
                 && hasSameAttemptEvidence(current, replayed);
     }
 
+    private static boolean isSnapshotFailureTransition(
+            ArtifactDeletionReceipt current,
+            ArtifactDeletionReceipt replayed
+    ) {
+        return current.state() == ArtifactDeletionState.DELETION_REQUESTED
+                && replayed.state() == ArtifactDeletionState.DELETION_REQUESTED
+                && current.isArtifactChecksumPending()
+                && replayed.isArtifactChecksumPending()
+                && current.hasSameRequestIdentity(replayed)
+                && replayed.attemptCount() == current.attemptCount() + 1
+                && replayed.lastAttemptAt() != null
+                && replayed.lastAttemptAt().equals(replayed.stateChangedAt())
+                && ArtifactDeletionReceipt.SNAPSHOT_READ_FAILURE_CODE.equals(replayed.failureCode());
+    }
+
     private static void validateReplayTransition(
             ArtifactDeletionReceipt current,
             ArtifactDeletionReceipt replayed,
-            boolean checksumCapture
+            boolean checksumCapture,
+            boolean snapshotFailure
     ) {
         if (replayed.stateChangedAt().isBefore(current.stateChangedAt())) {
             throw invalidLine();
         }
         boolean valid = switch (current.state()) {
-            case DELETION_REQUESTED -> checksumCapture || (
+            case DELETION_REQUESTED -> snapshotFailure || checksumCapture || (
                     replayed.state() == ArtifactDeletionState.METADATA_TOMBSTONED
                             && hasSameAttemptEvidence(current, replayed)
             );

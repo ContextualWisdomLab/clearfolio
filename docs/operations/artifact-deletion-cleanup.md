@@ -19,6 +19,14 @@ The worker replaces the marker with an exact SHA-256 digest, or the explicit
 confirmed-absence digest, before metadata tombstoning. An artifact-store read
 exception never becomes the absence digest.
 
+Every failed pre-snapshot read is appended as another validated
+`DELETION_REQUESTED` snapshot with a larger attempt count, a durable
+`lastAttemptAt`, and the controlled `artifact_store_read_failed` code. Incomplete
+work is ordered by its latest durable state or failed-attempt time. A repeatedly
+unavailable artifact therefore moves behind older eligible receipts instead of
+starving the bounded batch, and the same ordering is reconstructed from the
+ledger after process restart without an in-memory cursor.
+
 ## Safe operational signals
 
 `ArtifactDeletionMetrics` exposes only aggregate, dimension-free values:
@@ -73,18 +81,21 @@ pending count is expected recovery evidence, not data loss.
    - `METADATA_TOMBSTONED`;
    - `ARTIFACT_CLEANUP_PENDING`; or
    - `ARTIFACT_CLEANUP_FAILED`.
-4. Validate storage reachability, credentials, filesystem permissions, quota,
+4. For pending pre-snapshot work, compare the durable `attemptCount`,
+   `lastAttemptAt`, and controlled failure code with later eligible receipts.
+   Do not infer scheduler fairness from process uptime or a memory-only cursor.
+5. Validate storage reachability, credentials, filesystem permissions, quota,
    object-version preconditions, and timeout behavior without printing a raw
    document path or identifier.
-5. For a pending pre-snapshot receipt, verify that no operator or adapter has
+6. For a pending pre-snapshot receipt, verify that no operator or adapter has
    substituted the empty digest to force progress. The empty digest is valid
    only after the store successfully reports absence.
-6. Correct the infrastructure cause and allow startup or scheduled replay to
+7. Correct the infrastructure cause and allow startup or scheduled replay to
    resume the receipt. Do not fabricate a checksum, tombstone, or completed
    transition.
-7. Confirm that pending count falls, completed count increases, and no new
+8. Confirm that pending count falls, completed count increases, and no new
    controlled failure is recorded.
-8. Retain only privacy-safe aggregate evidence in a buyer-shareable report.
+9. Retain only privacy-safe aggregate evidence in a buyer-shareable report.
    Keep the raw ledger, infrastructure logs, and document identifiers in the
    restricted operational boundary.
 
@@ -100,11 +111,18 @@ worker must retry the artifact read under the same lifecycle fence, durably bind
 the exact digest, and only then tombstone metadata. This is the expected recovery
 path for an outage during the very first artifact read.
 
+A durable failed snapshot retains the same request identity and pending marker,
+but its new attempt timestamp becomes the receipt's ordering time. The next
+bounded pass may therefore select another older eligible receipt. Restart replay
+uses those persisted snapshots and must produce the same next-eligible order; a
+rollback must not restore the retired process-local rotation behavior.
+
 Application rollback is safe only to a build that understands every receipt
-format already present, including the controlled pending-marker checksum
-contract. A build that does not recognize `RECEIPT_V1`, the current state
-machine, or the generation fence must not start against the ledger. Preserve
-artifacts and receipts until the compatible build has resumed all pending work.
+format already present, including the controlled pending-marker checksum and
+pre-snapshot failure-evidence contracts. A build that does not recognize
+`RECEIPT_V1`, the current state machine, or the generation fence must not start
+against the ledger. Preserve artifacts and receipts until the compatible build
+has resumed all pending work.
 
 ## Multi-instance requirements
 
@@ -121,7 +139,10 @@ one of the following at the adapter boundary:
 A plain distributed mutex without a fencing token is not sufficient evidence
 that a stale worker cannot publish bytes after deletion. The remote adapter must
 also preserve the one-way transition from pending snapshot evidence to an exact
-artifact generation before any metadata tombstone becomes visible.
+artifact generation before any metadata tombstone becomes visible. It must
+persist failed pre-snapshot attempt evidence atomically with the ordering field
+used to select the next bounded batch; a process-local cursor is not a compatible
+MSA implementation.
 
 ## Acceptance evidence
 

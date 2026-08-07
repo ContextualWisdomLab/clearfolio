@@ -5,6 +5,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.StandardOpenOption;
 import java.time.Clock;
 import java.time.DateTimeException;
@@ -96,11 +97,13 @@ public class KpiSnapshotLedger {
     }
 
     private void load() {
-        if (ledgerPath == null || !Files.exists(ledgerPath)) {
+        if (ledgerPath == null) {
             return;
         }
         try (Stream<String> lines = Files.lines(ledgerPath, StandardCharsets.UTF_8)) {
             lines.forEach(this::replayLine);
+        } catch (NoSuchFileException ex) {
+            return;
         } catch (IOException | UncheckedIOException ex) {
             throw new IllegalStateException("kpi snapshot ledger cannot be loaded", ex);
         }

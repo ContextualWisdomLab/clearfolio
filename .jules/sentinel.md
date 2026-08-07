@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-07 - 파일 존재 확인 시 TOCTOU(Time-Of-Check to Time-Of-Use) 취약점 방지
+**Vulnerability:** 파일 읽기 전에 `Files.exists()`를 사용하여 파일의 존재 유무를 확인하고 있었습니다. 이 방식은 검사하는 시점(Time-Of-Check)과 실제 사용하는 시점(Time-Of-Use) 사이에 파일 상태가 변경될 수 있는 TOCTOU 경쟁 조건(Race Condition)에 취약합니다.
+**Learning:** 파일 존재 여부를 먼저 확인한 뒤 파일을 읽거나 쓰는 것은 원자적(atomic)이지 않습니다. 공격자가 검사 시점과 사용 시점 사이에 파일을 삭제, 교체 또는 권한을 변경하면 어플리케이션이 예기치 않은 상태에 빠지거나 권한 상승 등의 보안 문제가 발생할 수 있습니다. 특히 로컬 파일 시스템을 다룰 때는 I/O 성능 측면에서도 두 번 디스크에 접근하는 것은 비효율적입니다.
+**Prevention:** `Files.exists()`를 통한 사전 검사를 피하고, 대신 파일을 직접 읽거나(예: `Files.readAllBytes()`, `Files.lines()`) 여는 작업을 시도한 뒤 `java.nio.file.NoSuchFileException`을 포착(catch)하여 파일이 없는 경우를 안전하게 처리해야 합니다.

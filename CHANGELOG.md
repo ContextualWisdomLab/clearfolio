@@ -24,6 +24,7 @@
 - Jazzer fuzzing도 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하도록 강화했습니다.
 - CycloneDX Maven Plugin 2.9.1의 정확한 `outputFormat`/`outputName` 사용자 속성으로 생성한 61개 구성요소 SBOM과 제3자 고지문을 buyer evidence에 반영했습니다. 생성 source head, UTC 시각, artifact/archive/SBOM/attribution 해시, 17개 Netty 구성요소의 purl·bom-ref·dependency-edge 정합성, 로컬 생성 증거와 공유 가능한 데이터룸 증거의 경계를 ADR 및 실행 가능한 drift test로 고정했습니다.
 - Spring scheduling을 활성화하고 artifact deletion recovery를 30초 fixed delay, 실행당 최대 100개 receipt로 제한했습니다. Cleanup 완료·실패 누적값과 pending receipt 수는 dependency-free aggregate evidence로 제공하며 tenant/job/checksum/예외/경로 차원을 저장하지 않습니다.
+- Bounded artifact-deletion recovery는 결정적 pending 순서를 실행마다 회전해 영구적으로 실패하는 가장 오래된 receipt 하나가 제한된 batch 뒤의 최신 cleanup을 기아 상태로 만들지 않도록 했습니다. Receipt와 상태 전이는 계속 durable source of truth로 유지하며, process restart는 안전하게 결정적 요청 순서에서 다시 시작합니다.
 - Durable artifact deletion은 프로세스 전체 모니터 대신 공유 per-job lifecycle lock만 사용해 서로 다른 문서의 삭제와 복구를 병렬화합니다. WebFlux 관리자 DELETE는 blocking artifact I/O를 Reactor bounded-elastic worker로 격리합니다.
 
 ### Security

@@ -54,6 +54,8 @@ The lifecycle is receipt first:
 5. Mark cleanup pending, compare the exact generation, delete the artifact idempotently, and record completion or a controlled retryable failure.
 6. Replay incomplete receipts at application startup and on a bounded fixed-delay schedule.
 
+Within one running process, bounded recovery rotates its starting position through the deterministic pending-receipt order. A permanently failing oldest receipt therefore remains durable and retryable without starving newer work behind a smaller batch limit. The fairness cursor is process-local coordination state, not receipt evidence: after restart the coordinator safely begins again from deterministic request order. A high-churn multi-instance adapter that requires fairness across process loss must persist an equivalent lease, cursor, or next-attempt ordering without weakening receipt identity, generation fencing, or idempotency.
+
 `LifecycleFencedArtifactStore` shares the per-job lifecycle lock and rejects publication after a deletion receipt exists. An in-flight publication that completes before receipt acceptance becomes the captured generation and is deleted; a later publication fails closed. Aggregate metrics expose only completed, failed, pending, and bounded execution evidence. They do not use tenant, job, digest, path, filename, exception message, or other high-cardinality dimensions.
 
 The append-only file adapter forces each accepted receipt snapshot before reporting it durable. It supports restart replay and preserves incomplete cleanup evidence. The in-memory adapter remains available for standalone tests and ephemeral use.
@@ -112,6 +114,7 @@ Automated tests must exercise the real signed-claim verifier and prove:
 - first-read failure preserves metadata and restart-safe pending evidence rather than claiming confirmed absence;
 - exact digest binding is one-way, durable, replay-validated, and required before metadata tombstone;
 - successful cleanup, read failure, digest mismatch, delete failure, retry, restart, and bounded-batch recovery are deterministic;
+- a permanently failing oldest receipt cannot starve newer cleanup across repeated bounded passes in one process;
 - write-after-receipt and in-flight publication races cannot recreate deleted confidential bytes;
 - cleanup evidence contains no raw UUID, tenant, path, digest dimension, exception text, or attached throwable;
 - both signing keys are sourced from the shared config-tree mount;

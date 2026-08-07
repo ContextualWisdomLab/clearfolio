@@ -23,10 +23,10 @@ import java.util.regex.Pattern;
  * @param requestedAt instant when the deletion request became durable
  * @param stateChangedAt instant when the current state became durable
  * @param state current monotonic lifecycle state
- * @param attemptCount number of failed cleanup attempts
- * @param lastAttemptAt instant of the latest failed cleanup attempt, when any
+ * @param attemptCount number of failed lifecycle attempts
+ * @param lastAttemptAt instant of the latest failed lifecycle attempt, when any
  * @param completedAt instant when cleanup became terminally complete, when any
- * @param failureCode controlled non-sensitive failure code, when cleanup failed
+ * @param failureCode controlled non-sensitive failure code for the current failed attempt, when any
  */
 public record ArtifactDeletionReceipt(
         UUID requestId,
@@ -48,6 +48,11 @@ public record ArtifactDeletionReceipt(
      * but the artifact generation has not yet been snapshotted successfully.
      */
     static final String PENDING_ARTIFACT_CHECKSUM = "pending";
+
+    /**
+     * Controlled failure code for an unavailable pre-tombstone artifact snapshot.
+     */
+    static final String SNAPSHOT_READ_FAILURE_CODE = "artifact_store_read_failed";
 
     private static final int MAX_IDENTIFIER_LENGTH = 256;
     private static final Pattern SHA_256_PATTERN = Pattern.compile("[0-9a-f]{64}");
@@ -74,6 +79,7 @@ public record ArtifactDeletionReceipt(
         }
         failureCode = normalizeOptional(failureCode);
         validateStateFields(
+                artifactChecksum,
                 requestedAt,
                 stateChangedAt,
                 state,
@@ -119,6 +125,22 @@ public record ArtifactDeletionReceipt(
 
     boolean isArtifactChecksumPending() {
         return PENDING_ARTIFACT_CHECKSUM.equals(artifactChecksum);
+    }
+
+    ArtifactDeletionReceipt recordArtifactSnapshotFailure(Instant attemptedAt) {
+        requireState(ArtifactDeletionState.DELETION_REQUESTED);
+        if (!isArtifactChecksumPending()) {
+            throw invalidTransition();
+        }
+        Instant requiredAttemptedAt = requireForwardTime(attemptedAt);
+        return snapshot(
+                ArtifactDeletionState.DELETION_REQUESTED,
+                requiredAttemptedAt,
+                Math.addExact(attemptCount, 1),
+                requiredAttemptedAt,
+                null,
+                SNAPSHOT_READ_FAILURE_CODE
+        );
     }
 
     ArtifactDeletionReceipt captureArtifactChecksum(String checksum, Instant capturedAt) {
@@ -238,6 +260,7 @@ public record ArtifactDeletionReceipt(
     }
 
     private static void validateStateFields(
+            String currentArtifactChecksum,
             Instant currentRequestedAt,
             Instant currentStateChangedAt,
             ArtifactDeletionState currentState,
@@ -254,13 +277,7 @@ public record ArtifactDeletionReceipt(
         }
         boolean hasAttempts = currentAttemptCount > 0;
         if (hasAttempts != (currentLastAttemptAt != null)) {
-            throw new IllegalArgumentException("cleanup attempt evidence is inconsistent");
-        }
-        if (currentState == ArtifactDeletionState.DELETION_REQUESTED && hasAttempts) {
-            throw new IllegalArgumentException("requested receipt fields are inconsistent");
-        }
-        if (currentState == ArtifactDeletionState.METADATA_TOMBSTONED && hasAttempts) {
-            throw new IllegalArgumentException("tombstoned receipt fields are inconsistent");
+            throw new IllegalArgumentException("lifecycle attempt evidence is inconsistent");
         }
         if (currentState == ArtifactDeletionState.ARTIFACT_CLEANUP_COMPLETED) {
             if (currentCompletedAt == null
@@ -272,6 +289,18 @@ public record ArtifactDeletionReceipt(
         }
         if (currentCompletedAt != null) {
             throw new IllegalArgumentException("only completed receipts may have completedAt");
+        }
+        if (currentState == ArtifactDeletionState.DELETION_REQUESTED
+                && PENDING_ARTIFACT_CHECKSUM.equals(currentArtifactChecksum)) {
+            if (hasAttempts) {
+                if (!currentLastAttemptAt.equals(currentStateChangedAt)
+                        || !SNAPSHOT_READ_FAILURE_CODE.equals(currentFailureCode)) {
+                    throw new IllegalArgumentException("requested receipt fields are inconsistent");
+                }
+            } else if (currentFailureCode != null) {
+                throw new IllegalArgumentException("requested receipt fields are inconsistent");
+            }
+            return;
         }
         if (currentState == ArtifactDeletionState.ARTIFACT_CLEANUP_FAILED) {
             if (!hasAttempts

@@ -1,6 +1,6 @@
 # Post-token publication gate for autonomous Draft PRs
 
-Date: 2026-08-07  
+Date: 2026-08-07
 Status: Accepted
 
 ## Context

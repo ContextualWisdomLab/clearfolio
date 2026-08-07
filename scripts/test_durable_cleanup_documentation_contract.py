@@ -63,7 +63,8 @@ class DurableCleanupDocumentationContractTest(unittest.TestCase):
         content = normalized_text(AUTHORIZATION_DECISION)
 
         self.assertIn("durable deletion receipt", content)
-        self.assertIn("bounded scheduled recovery", content)
+        self.assertIn("scheduled recovery", content)
+        self.assertIn("bounded fixed-delay schedule", content)
         self.assertIn("distributed generation fence", content)
         self.assertNotIn("This slice does not persist a deletion receipt", content)
         self.assertNotIn("No durable artifact-cleanup evidence exists in this slice", content)

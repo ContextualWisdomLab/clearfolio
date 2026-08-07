@@ -28,8 +28,9 @@ import com.clearfolio.viewer.repository.ConversionJobRepository;
  * <p>Each document lifecycle is serialized by a fixed-memory per-job lock shared
  * with conversion. An authorized request is persisted before the first artifact
  * read. If that read is temporarily unavailable, metadata remains intact and the
- * pending receipt is recoverable after restart; metadata tombstoning begins only
- * after the exact artifact digest (or explicit absence digest) is durable.</p>
+ * failed snapshot attempt is durably recorded so later work remains eligible
+ * after restart. Metadata tombstoning begins only after the exact artifact digest
+ * (or explicit absence digest) is durable.</p>
  *
  * <p>Different document identifiers may progress concurrently, so a slow
  * artifact store cannot serialize every deletion and recovery task in the
@@ -55,7 +56,6 @@ public class ArtifactDeletionCoordinator {
     private final ArtifactDeletionMetrics metrics;
     private final ArtifactLifecycleLockRegistry lifecycleLocks;
     private final int maxReceiptsPerRun;
-    private int recoveryCursor;
 
     /**
      * Creates the Spring-managed coordinator and validates the recovery bound.
@@ -157,26 +157,19 @@ public class ArtifactDeletionCoordinator {
      * Replays one bounded deterministic batch of incomplete deletion receipts.
      *
      * <p>A failure in one receipt is isolated so later receipts in the same
-     * batch remain eligible. Selection rotates between passes, preventing one
-     * permanently failing early receipt from starving newer work when the
-     * configured batch is smaller than the pending backlog. The durable receipt
-     * remains authoritative; a process restart safely begins again from the
-     * deterministic request order.</p>
+     * batch remain eligible. The receipt store orders incomplete work by its
+     * durable last transition or failed-attempt time, so a failed item moves
+     * behind older eligible work without relying on process-local cursor state.
+     * The same order is reconstructed after restart.</p>
      *
      * @return number of receipts selected for this recovery pass
      */
     public synchronized int retryPendingWork() {
         List<ArtifactDeletionReceipt> pending = receiptStore.pendingReceipts();
         int selected = Math.min(maxReceiptsPerRun, pending.size());
-        if (selected == 0) {
-            recoveryCursor = 0;
-            return 0;
-        }
-        int start = Math.floorMod(recoveryCursor, pending.size());
-        for (int offset = 0; offset < selected; offset++) {
-            int candidateIndex = (int) ((start + (long) offset) % pending.size());
+        for (int index = 0; index < selected; index++) {
             try {
-                resumeReceipt(pending.get(candidateIndex));
+                resumeReceipt(pending.get(index));
             } catch (RuntimeException exception) {
                 metrics.recordFailed();
                 log.warn(
@@ -185,7 +178,6 @@ public class ArtifactDeletionCoordinator {
                 );
             }
         }
-        recoveryCursor = (int) ((start + (long) selected) % pending.size());
         return selected;
     }
 
@@ -292,6 +284,7 @@ public class ArtifactDeletionCoordinator {
                     "artifactStore.getPdf"
             );
         } catch (RuntimeException exception) {
+            receiptStore.recordSnapshotFailure(jobId, FAILURE_READ, Instant.now());
             metrics.recordFailed();
             log.warn(
                     "Artifact deletion retained a pre-snapshot receipt. cause={}",

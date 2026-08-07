@@ -5,7 +5,7 @@
 ### Added
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
-- 매시간 열린 PR을 중앙 검토·수정·정확 헤드 검증·보호된 병합 순서로 처리하는 PR 유지보수 루프와, PR이 0개일 때만 NVIDIA NIM 기반 OpenCode가 한 개의 제한된 상용화 개선안을 제안하고 자격 증명 없는 검증 후 전용 GitHub App으로 Draft PR만 생성하는 제품 개발 루프를 추가했습니다.
+- PR이 0개일 때만 NVIDIA NIM 기반 OpenCode가 한 개의 제한된 상용화 개선안을 제안하고, 자격 증명 없는 검증 후 전용 GitHub App으로 Draft PR만 생성하는 시간별 제품 개발 루프를 추가했습니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.
   - 실패(dead-lettered) 상태인 작업을 관리자가 재시도 큐에 등록할 수 있는 `POST /api/v1/admin/convert/jobs/{jobId}/retry` 엔드포인트를 추가했습니다.
@@ -15,6 +15,7 @@
 
 ### Changed
 
+- Clearfolio 저장소에 중복으로 있던 시간별 PR 유지보수 호출자를 제거하고, 리뷰 확인·수정·정확 헤드 재검증·보호된 병합은 조직 중앙 `ContextualWisdomLab/.github`의 단일 Clearfolio 스케줄러가 담당하도록 경계를 정리했습니다. 제품 저장소는 buyer-visible Gap을 제안하는 제품 개발 루프만 소유합니다.
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
 - CI가 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하며, 합성 merge revision은 별도 호환성 작업에서 검증하도록 분리했습니다.
 - Maven `verify` 단계에서 JaCoCo production line 및 branch missed count가 각각 0인지 강제하고, 실패 시 누락 위치 진단을 출력하도록 했습니다.

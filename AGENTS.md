@@ -107,14 +107,21 @@ Codex, Cursor, opencode, …) working in this repo.
 
 ### Durable cleanup boundary
 
-- This administrative-authorization slice does not implement a failed-artifact
-  cleanup queue, deletion receipt, outbox, or retry worker. Tenant-owned job
-  deletion is authoritative before the current best-effort artifact removal;
-  a removal failure can therefore leave orphaned artifact bytes.
-- Issue #263 owns the restart-safe deletion-receipt, transactional-outbox, and
-  cleanup-worker boundary. Do not claim that subsystem or its operational
-  evidence exists until its production implementation and deterministic
-  recovery tests are integrated.
+- This slice integrates a single-process, receipt-first cleanup worker. It
+  forces deletion intent before the first artifact read, binds an exact digest
+  before metadata tombstoning, retries incomplete cleanup after startup and on
+  a bounded fixed-delay schedule, and exposes only low-cardinality aggregate
+  evidence. The filesystem-backed receipt ledger is restart-replayable; the
+  in-memory adapter remains available for standalone tests and ephemeral use.
+- Do not overstate that reference boundary. It does not provide a cross-resource
+  transactional outbox, a distributed generation fence, or remote-object-store
+  atomicity across multiple service instances. Production adapters must provide
+  equivalent durable uniqueness, object-version preconditions, idempotent
+  retries, and operator recovery evidence before distributed cutover.
+- Issue #263 remains the umbrella for the distributed adapter and later truthful
+  API/UI lifecycle work. Do not describe durable cleanup as absent, and do not
+  describe the current single-process implementation as a distributed deletion
+  transaction.
 
 ### Code exploration
 

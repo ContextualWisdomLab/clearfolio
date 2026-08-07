@@ -1,0 +1,6 @@
+I need to remove the assertions for the hardcoded headers from `src/test/java/com/clearfolio/viewer/controller/ViewerUiControllerTest.java`, specifically:
+`assertTrue(script.contains("X-Clearfolio-Tenant-Id"));`
+`assertTrue(script.contains("X-Clearfolio-Permissions"));`
+Since we removed them in `demo.js`.
+Wait, we didn't remove `X-Clearfolio-Operator-Id`. It is still in `demo.js` at line 316.
+Let's modify the test to remove `X-Clearfolio-Tenant-Id` and `X-Clearfolio-Permissions`.

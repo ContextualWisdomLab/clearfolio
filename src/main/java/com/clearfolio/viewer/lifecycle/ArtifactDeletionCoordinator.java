@@ -55,6 +55,7 @@ public class ArtifactDeletionCoordinator {
     private final ArtifactDeletionMetrics metrics;
     private final ArtifactLifecycleLockRegistry lifecycleLocks;
     private final int maxReceiptsPerRun;
+    private int recoveryCursor;
 
     /**
      * Creates the Spring-managed coordinator and validates the recovery bound.
@@ -156,16 +157,26 @@ public class ArtifactDeletionCoordinator {
      * Replays one bounded deterministic batch of incomplete deletion receipts.
      *
      * <p>A failure in one receipt is isolated so later receipts in the same
-     * batch remain eligible. The receipt remains authoritative recovery evidence.</p>
+     * batch remain eligible. Selection rotates between passes, preventing one
+     * permanently failing early receipt from starving newer work when the
+     * configured batch is smaller than the pending backlog. The durable receipt
+     * remains authoritative; a process restart safely begins again from the
+     * deterministic request order.</p>
      *
      * @return number of receipts selected for this recovery pass
      */
-    public int retryPendingWork() {
+    public synchronized int retryPendingWork() {
         List<ArtifactDeletionReceipt> pending = receiptStore.pendingReceipts();
         int selected = Math.min(maxReceiptsPerRun, pending.size());
-        for (int index = 0; index < selected; index++) {
+        if (selected == 0) {
+            recoveryCursor = 0;
+            return 0;
+        }
+        int start = Math.floorMod(recoveryCursor, pending.size());
+        for (int offset = 0; offset < selected; offset++) {
+            int candidateIndex = (int) ((start + (long) offset) % pending.size());
             try {
-                resumeReceipt(pending.get(index));
+                resumeReceipt(pending.get(candidateIndex));
             } catch (RuntimeException exception) {
                 metrics.recordFailed();
                 log.warn(
@@ -174,6 +185,7 @@ public class ArtifactDeletionCoordinator {
                 );
             }
         }
+        recoveryCursor = (int) ((start + (long) selected) % pending.size());
         return selected;
     }
 

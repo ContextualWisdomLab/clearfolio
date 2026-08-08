@@ -1,9 +1,9 @@
 name: One-shot update hourly product scheduler
 
 on:
-  push:
-    branches:
-      - feat/hourly-opencode-commercial-loop
+  pull_request:
+    types:
+      - synchronize
     paths:
       - .github/workflows/one-shot-update-hourly-scheduler.yml
 
@@ -20,6 +20,9 @@ env:
 
 jobs:
   update:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/hourly-opencode-commercial-loop'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -43,7 +46,7 @@ jobs:
           persist-credentials: true
 
       - name: Assert exact trigger head
-        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
 
       - name: Recover reviewed RED and GREEN patch programs
         run: |

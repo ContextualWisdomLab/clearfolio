@@ -1,11 +1,12 @@
 name: One-shot repair hourly scheduler YAML
 
+# The follow-up synchronize event runs only after this workflow exists on the PR branch.
 on:
   pull_request:
     types:
       - synchronize
     paths:
-      - .github/workflows/one-shot-repair-hourly-yaml.yml
+      - '.github/workflows/**'
 
 concurrency:
   group: clearfolio-one-shot-repair-hourly-yaml

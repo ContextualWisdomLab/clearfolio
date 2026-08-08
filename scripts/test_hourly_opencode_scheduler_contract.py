@@ -236,7 +236,6 @@ def test_open_pr_latency_keeps_disjoint_product_work_active() -> None:
     assert "startswith($prefix)" in workflow
 
 
-
 def test_scheduler_step_blocks_preserve_yaml_indentation() -> None:
     """Keep generated env mappings and shell literals inside their workflow steps."""
     workflow = _read(PRODUCT_WORKFLOW)
@@ -263,3 +262,31 @@ def test_scheduler_step_blocks_preserve_yaml_indentation() -> None:
             not line or line.startswith("          ")
             for line in lines[run_index + 1 :]
         )
+
+
+def test_scheduler_requires_rca_feasibility_and_same_run_action() -> None:
+    """Turn obstacles into verified actions instead of terminal blocker reports."""
+    workflow = _read(PRODUCT_WORKFLOW)
+    guide = _read(OPERATOR_GUIDE)
+    model_section = workflow.split("cat >\"$prompt_file\" <<'PROMPT'", 1)[1].split(
+        "\n          PROMPT", 1
+    )[0]
+    normalized_prompt = " ".join(model_section.split())
+
+    required_prompt_contract = (
+        "Perform root-cause analysis before choosing a remedy.",
+        "Evaluate every candidate remedy for practical feasibility in this run.",
+        "Execute the highest-impact feasible remedy in this run.",
+        "If the original obstacle is external or infeasible, continue with the next path-disjoint buyer-visible gap.",
+        "Do not stop at reporting a blocker, writing a plan, or requesting human action.",
+    )
+    for requirement in required_prompt_contract:
+        assert requirement in normalized_prompt
+
+    assert "reason=autonomous_draft_queue_full" in workflow
+    assert "reason=missing_required_credentials" in workflow
+    assert "feasibility=not_executable_in_this_run" in workflow
+    assert "Record deterministic RCA when proposal dispatch is impossible" in workflow
+    assert "## RCA-to-action contract" in guide
+    assert "repository-controlled root cause" in guide
+    assert "external or infeasible" in guide

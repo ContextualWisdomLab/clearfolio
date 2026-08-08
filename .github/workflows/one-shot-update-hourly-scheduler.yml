@@ -76,6 +76,60 @@ jobs:
               output.write_text(dedented + "\n", encoding="utf-8")
           PY
 
+      - name: Repair exact multiline replacement matching
+        run: |
+          set -euo pipefail
+          PATCH_PROGRAM="${RUNNER_TEMP}/scheduler-patch-2.py" python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ["PATCH_PROGRAM"])
+          source = path.read_text(encoding="utf-8")
+          old = '''def replace_once(source: str, old: str, new: str) -> str:
+    count = source.count(old)
+    if count != 1:
+        raise SystemExit(f"expected one occurrence, found {count}: {old!r}")
+    return source.replace(old, new, 1)
+'''
+          new = '''def replace_once(source: str, old: str, new: str) -> str:
+    count = source.count(old)
+    if count == 1:
+        return source.replace(old, new, 1)
+    if count > 1:
+        raise SystemExit(f"expected one occurrence, found {count}: {old!r}")
+
+    source_lines = source.splitlines(keepends=True)
+    old_lines = old.splitlines(keepends=True)
+    matches: list[int] = []
+    for index in range(len(source_lines) - len(old_lines) + 1):
+        window = source_lines[index : index + len(old_lines)]
+        if all(
+            source_line.lstrip(" ") == old_line.lstrip(" ")
+            for source_line, old_line in zip(window, old_lines, strict=True)
+        ):
+            matches.append(index)
+    if len(matches) != 1:
+        raise SystemExit(
+            f"expected one indentation-insensitive occurrence, found {len(matches)}: {old!r}"
+        )
+
+    new_lines = new.splitlines(keepends=True)
+    repaired_new = "".join(
+        line if line_number == 0 or not line.strip() else "          " + line
+        for line_number, line in enumerate(new_lines)
+    )
+    index = matches[0]
+    return (
+        "".join(source_lines[:index])
+        + repaired_new
+        + "".join(source_lines[index + len(old_lines) :])
+    )
+'''
+          if source.count(old) != 1:
+              raise SystemExit("unable to locate exact replace_once helper")
+          path.write_text(source.replace(old, new, 1), encoding="utf-8")
+          PY
+
       - name: Add and verify RED scheduler contract
         run: |
           set -euo pipefail

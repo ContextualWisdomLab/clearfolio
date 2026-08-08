@@ -87,7 +87,10 @@ jobs:
           echo "active_autonomous_prs=$active_autonomous_prs" >>"$GITHUB_OUTPUT"
           if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
             echo "dispatch=false" >>"$GITHUB_OUTPUT"
-            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); PR maintenance continues independently."
+            echo "reason=autonomous_draft_queue_full" >>"$GITHUB_OUTPUT"
+            echo "feasibility=not_executable_in_this_run" >>"$GITHUB_OUTPUT"
+            echo "next_action=continue_central_pr_maintenance_and_retry_after_capacity" >>"$GITHUB_OUTPUT"
+            echo "::notice::RCA: Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); another product write is not realistically safe in this run, while central PR maintenance continues independently."
             exit 0
           fi
           while IFS= read -r pr_number; do
@@ -101,10 +104,33 @@ jobs:
             || [ "$APP_CLIENT_CONFIGURED" != "true" ] \
             || [ "$APP_KEY_CONFIGURED" != "true" ]; }; then
             echo "dispatch=false" >>"$GITHUB_OUTPUT"
-            echo "::notice::Autonomous development is disabled until the dedicated NIM and maintainer App credentials are configured."
+            echo "reason=missing_required_credentials" >>"$GITHUB_OUTPUT"
+            echo "feasibility=not_executable_in_this_run" >>"$GITHUB_OUTPUT"
+            echo "next_action=configure_declared_repository_prerequisites" >>"$GITHUB_OUTPUT"
+            echo "::notice::RCA: one or more declared NIM or maintainer App prerequisites are absent; inventing a key, broadening token scope, or using a fallback credential is not a realistic safe remedy."
             exit 0
           fi
           echo "dispatch=true" >>"$GITHUB_OUTPUT"
+          echo "reason=capacity_and_credentials_satisfied" >>"$GITHUB_OUTPUT"
+          echo "feasibility=executable_in_this_run" >>"$GITHUB_OUTPUT"
+          echo "next_action=run_bounded_rca_and_product_change" >>"$GITHUB_OUTPUT"
+
+      - name: Record deterministic RCA when proposal dispatch is impossible
+        if: steps.gate.outputs.dispatch != 'true'
+        env:
+          BLOCK_REASON: ${{ steps.gate.outputs.reason }}
+          FEASIBILITY: ${{ steps.gate.outputs.feasibility }}
+          NEXT_ACTION: ${{ steps.gate.outputs.next_action }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Scheduler RCA"
+            echo "- root cause: `${BLOCK_REASON}`"
+            echo "- practical feasibility: `${FEASIBILITY}`"
+            echo "- next safe action: `${NEXT_ACTION}`"
+            echo
+            echo "The scheduler did not claim or attempt a repository write outside its declared credentials, queue capacity, or trust boundary."
+          } >>"$GITHUB_STEP_SUMMARY"
 
       - name: Record dry-run contract
         if: steps.gate.outputs.dispatch == 'true' && env.DRY_RUN == 'true'
@@ -169,7 +195,22 @@ jobs:
 
           The workflow has confirmed that the bounded autonomous Draft queue has capacity. Existing open
           pull requests may still be waiting for exact-head checks or independent approval; that latency
-          must not stop disjoint productive work. Inspect AGENTS.md, README.md, CHANGELOG.md, architecture,
+          must not stop disjoint productive work.
+
+          For every obstacle or product gap, follow this mandatory RCA-to-action loop:
+          1. Perform root-cause analysis before choosing a remedy. Trace the observed symptom to a
+             repository-controlled source, contract, data flow, or operational boundary, and distinguish
+             external waiting from a defect this repository can change.
+          2. Enumerate competing remedies when more than one credible option exists.
+          3. Evaluate every candidate remedy for practical feasibility in this run. Check current permissions,
+             allowed paths, open-PR path ownership, required dependencies, bounded time and compute, test-first
+             reproducibility, security and privacy, rollback, and whether the credential-free verifier can prove it.
+          4. Execute the highest-impact feasible remedy in this run. Add the failing regression first, confirm
+             that it fails for the diagnosed reason, then implement the minimum production change.
+          5. If the original obstacle is external or infeasible, continue with the next path-disjoint buyer-visible gap.
+
+          Do not stop at reporting a blocker, writing a plan, or requesting human action. A blocker report is
+          evidence for the decision, not the product outcome. Inspect AGENTS.md, README.md, CHANGELOG.md, architecture,
           security, privacy, operations, issue and roadmap documentation,
           production source, tests, packaging, release evidence, and buyer-visible workflows. Select exactly
           one highest-impact bounded vertical slice. Prioritize secure document conversion and viewing,

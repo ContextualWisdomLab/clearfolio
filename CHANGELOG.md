@@ -6,6 +6,7 @@
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 - NVIDIA NIM 기반 OpenCode가 리뷰·Check·독립 승인 대기 중인 PR과 경로가 겹치지 않는 상용화 개선안을 계속 제안하도록 시간별 제품 개발 루프를 갱신했습니다. 같은 저장소의 `automation/hourly-` Draft는 최대 2개로 제한하고, 자격 증명 없는 검증 후 전용 GitHub App으로 Draft PR만 생성합니다.
+- 시간별 OpenCode 제품 루프에 RCA→후보 조치→현실성 검증→같은 실행의 조치 계약을 추가했습니다. 외부 대기나 실행 불가능한 조치를 만나면 멈추지 않고 다음 비중첩 buyer-visible Gap으로 이동하며, 큐 용량이나 필수 자격증명이 실제로 실행을 막는 경우에는 안전 경계 밖의 조치를 가장하지 않고 정확한 원인과 다음 안전 행동을 기록합니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.
   - 실패(dead-lettered) 상태인 작업을 관리자가 재시도 큐에 등록할 수 있는 `POST /api/v1/admin/convert/jobs/{jobId}/retry` 엔드포인트를 추가했습니다.

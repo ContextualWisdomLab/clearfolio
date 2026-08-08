@@ -92,6 +92,14 @@ The publisher's egress policy is also fail-closed. Its allowlist contains only t
 
 The publication job does not execute proposed code and has no approval, automatic merge, merge, release, package publication, or deployment command. The resulting Draft enters ordinary exact-head CI, Security Scan, SAST, fuzzing, CodeRabbit, OpenCode/Noema/Strix, unresolved-thread, independent approval, repository-policy, and branch-protection processing.
 
+## RCA-to-action contract
+
+A wait state or failed attempt is evidence to analyze, not a terminal product outcome. Before editing, the hourly product loop identifies the observable symptom, traces a repository-controlled root cause or a clearly external boundary, and compares credible remedies.
+
+Each candidate is checked against the permissions available in the current run, the allowed file boundary, open-PR path ownership, required credentials and dependencies, bounded execution cost, test-first reproducibility, security and privacy, rollback, and whether the credential-free verifier can prove the result. The loop executes the highest-impact feasible remedy immediately. When the original obstacle is external or infeasible, it continues with the next path-disjoint buyer-visible gap instead of ending with a blocker report or a request for human action.
+
+The only valid no-change result is one backed by evidence that queue capacity, declared credentials, every safe material candidate, or repository ownership makes a write unrealistic in that run. The workflow records that deterministic reason without inventing secrets, weakening protection, racing another writer, or claiming an action that it could not execute.
+
 ## Backpressure and idempotency
 
 The product scheduler counts every page of open pull requests during proposal, verification, and publication, but review or Check latency is not a repository-wide development stop. Open PRs retain exclusive ownership of every path they change. The scheduler may work only on a disjoint path set and may keep no more than two same-repository `automation/hourly-` Draft PRs open at once. The central PR-maintenance plane continues to review, repair, revalidate, and merge the existing queue independently.

@@ -234,3 +234,32 @@ def test_open_pr_latency_keeps_disjoint_product_work_active() -> None:
     assert workflow.count("comm -12") >= 4
     assert ".head.repo.full_name == $repo" in workflow
     assert "startswith($prefix)" in workflow
+
+
+
+def test_scheduler_step_blocks_preserve_yaml_indentation() -> None:
+    """Keep generated env mappings and shell literals inside their workflow steps."""
+    workflow = _read(PRODUCT_WORKFLOW)
+    step_names = (
+        "Enforce bounded autonomous queue and credential prerequisites",
+        "Recheck bounded queue, disjoint paths, and exact-base preconditions",
+        "Recheck bounded queue, disjoint paths, and patch identity",
+        "Recheck immediately before Draft publication",
+    )
+
+    for step_name in step_names:
+        remainder = workflow.split(f"      - name: {step_name}\n", 1)[1]
+        next_step = remainder.find("\n      - name: ")
+        step_block = remainder if next_step < 0 else remainder[:next_step]
+        lines = step_block.splitlines()
+        env_index = lines.index("        env:")
+        run_index = lines.index("        run: |")
+        assert env_index < run_index
+        assert all(
+            not line or line.startswith("          ")
+            for line in lines[env_index + 1 : run_index]
+        )
+        assert all(
+            not line or line.startswith("          ")
+            for line in lines[run_index + 1 :]
+        )

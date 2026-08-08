@@ -65,46 +65,46 @@ jobs:
       - name: Enforce bounded autonomous queue and credential prerequisites
         id: gate
         env:
-GH_TOKEN: ${{ github.token }}
-NIM_CONFIGURED: ${{ secrets.NVIDIA_NIM_API_KEY != '' }}
-APP_CLIENT_CONFIGURED: ${{ vars.CLEARFOLIO_MAINTAINER_APP_CLIENT_ID != '' }}
-APP_KEY_CONFIGURED: ${{ secrets.CLEARFOLIO_MAINTAINER_APP_PRIVATE_KEY != '' }}
+          GH_TOKEN: ${{ github.token }}
+          NIM_CONFIGURED: ${{ secrets.NVIDIA_NIM_API_KEY != '' }}
+          APP_CLIENT_CONFIGURED: ${{ vars.CLEARFOLIO_MAINTAINER_APP_CLIENT_ID != '' }}
+          APP_KEY_CONFIGURED: ${{ secrets.CLEARFOLIO_MAINTAINER_APP_PRIVATE_KEY != '' }}
         run: |
-set -euo pipefail
-inventory_file="${RUNNER_TEMP}/open-pulls.json"
-blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
-gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
-  --paginate \
-  --slurp \
-  --jq 'add // []' >"$inventory_file"
-open_prs="$(jq 'length' "$inventory_file")"
-active_autonomous_prs="$(
-  jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \
-    '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \
-    "$inventory_file"
-)"
-echo "open_prs=$open_prs" >>"$GITHUB_OUTPUT"
-echo "active_autonomous_prs=$active_autonomous_prs" >>"$GITHUB_OUTPUT"
-if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
-  echo "dispatch=false" >>"$GITHUB_OUTPUT"
-  echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); PR maintenance continues independently."
-  exit 0
-fi
-while IFS= read -r pr_number; do
-  gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \
-    --paginate \
-    --slurp \
-    --jq 'add // [] | .[].filename'
-done < <(jq -r '.[].number' "$inventory_file") \
-  | LC_ALL=C sort -u >"$blocked_paths_file"
-if [ "$DRY_RUN" != "true" ] && { [ "$NIM_CONFIGURED" != "true" ] \
-  || [ "$APP_CLIENT_CONFIGURED" != "true" ] \
-  || [ "$APP_KEY_CONFIGURED" != "true" ]; }; then
-  echo "dispatch=false" >>"$GITHUB_OUTPUT"
-  echo "::notice::Autonomous development is disabled until the dedicated NIM and maintainer App credentials are configured."
-  exit 0
-fi
-echo "dispatch=true" >>"$GITHUB_OUTPUT"
+          set -euo pipefail
+          inventory_file="${RUNNER_TEMP}/open-pulls.json"
+          blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
+          gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+            --paginate \
+            --slurp \
+            --jq 'add // []' >"$inventory_file"
+          open_prs="$(jq 'length' "$inventory_file")"
+          active_autonomous_prs="$(
+            jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \
+              '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \
+              "$inventory_file"
+          )"
+          echo "open_prs=$open_prs" >>"$GITHUB_OUTPUT"
+          echo "active_autonomous_prs=$active_autonomous_prs" >>"$GITHUB_OUTPUT"
+          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
+            echo "dispatch=false" >>"$GITHUB_OUTPUT"
+            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); PR maintenance continues independently."
+            exit 0
+          fi
+          while IFS= read -r pr_number; do
+            gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \
+              --paginate \
+              --slurp \
+              --jq 'add // [] | .[].filename'
+          done < <(jq -r '.[].number' "$inventory_file") \
+            | LC_ALL=C sort -u >"$blocked_paths_file"
+          if [ "$DRY_RUN" != "true" ] && { [ "$NIM_CONFIGURED" != "true" ] \
+            || [ "$APP_CLIENT_CONFIGURED" != "true" ] \
+            || [ "$APP_KEY_CONFIGURED" != "true" ]; }; then
+            echo "dispatch=false" >>"$GITHUB_OUTPUT"
+            echo "::notice::Autonomous development is disabled until the dedicated NIM and maintainer App credentials are configured."
+            exit 0
+          fi
+          echo "dispatch=true" >>"$GITHUB_OUTPUT"
 
       - name: Record dry-run contract
         if: steps.gate.outputs.dispatch == 'true' && env.DRY_RUN == 'true'
@@ -358,52 +358,52 @@ echo "dispatch=true" >>"$GITHUB_OUTPUT"
       - name: Recheck bounded queue, disjoint paths, and exact-base preconditions
         id: gate
         env:
-GH_TOKEN: ${{ github.token }}
-EXPECTED_BASE_SHA: ${{ needs.propose.outputs.base_sha }}
-EXPECTED_PATCH_SHA256: ${{ needs.propose.outputs.patch_sha256 }}
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_BASE_SHA: ${{ needs.propose.outputs.base_sha }}
+          EXPECTED_PATCH_SHA256: ${{ needs.propose.outputs.patch_sha256 }}
         run: |
-set -euo pipefail
-inventory_file="${RUNNER_TEMP}/open-pulls.json"
-blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
-proposal_paths_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/proposal-paths"
-gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
-  --paginate \
-  --slurp \
-  --jq 'add // []' >"$inventory_file"
-active_autonomous_prs="$(
-  jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \
-    '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \
-    "$inventory_file"
-)"
-if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
-  echo "verify=false" >>"$GITHUB_OUTPUT"
-  echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); discarding proposal."
-  exit 0
-fi
-while IFS= read -r pr_number; do
-  gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \
-    --paginate \
-    --slurp \
-    --jq 'add // [] | .[].filename'
-done < <(jq -r '.[].number' "$inventory_file") \
-  | LC_ALL=C sort -u >"$blocked_paths_file"
-conflict_file="${RUNNER_TEMP}/proposal-open-pr-conflicts"
-comm -12 "$blocked_paths_file" "$proposal_paths_file" >"$conflict_file"
-if [ -s "$conflict_file" ]; then
-  echo "verify=false" >>"$GITHUB_OUTPUT"
-  sed 's/^/::notice::Proposal overlaps an open pull request path: /' "$conflict_file"
-  exit 0
-fi
-current_sha="$(git rev-parse HEAD)"
-patch_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/clearfolio.patch"
-observed_patch_sha256="$(sha256sum "$patch_file" | cut -d' ' -f1)"
-if [ "$current_sha" != "$EXPECTED_BASE_SHA" ] \
-  || [ "$observed_patch_sha256" != "$EXPECTED_PATCH_SHA256" ]; then
-  echo "verify=false" >>"$GITHUB_OUTPUT"
-  echo "::notice::Discarding proposal because protected base or patch identity changed."
-  exit 0
-fi
-echo "verify=true" >>"$GITHUB_OUTPUT"
+          set -euo pipefail
+          inventory_file="${RUNNER_TEMP}/open-pulls.json"
+          blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
+          proposal_paths_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/proposal-paths"
+          gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+            --paginate \
+            --slurp \
+            --jq 'add // []' >"$inventory_file"
+          active_autonomous_prs="$(
+            jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \
+              '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \
+              "$inventory_file"
+          )"
+          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
+            echo "verify=false" >>"$GITHUB_OUTPUT"
+            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); discarding proposal."
+            exit 0
+          fi
+          while IFS= read -r pr_number; do
+            gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \
+              --paginate \
+              --slurp \
+              --jq 'add // [] | .[].filename'
+          done < <(jq -r '.[].number' "$inventory_file") \
+            | LC_ALL=C sort -u >"$blocked_paths_file"
+          conflict_file="${RUNNER_TEMP}/proposal-open-pr-conflicts"
+          comm -12 "$blocked_paths_file" "$proposal_paths_file" >"$conflict_file"
+          if [ -s "$conflict_file" ]; then
+            echo "verify=false" >>"$GITHUB_OUTPUT"
+            sed 's/^/::notice::Proposal overlaps an open pull request path: /' "$conflict_file"
+            exit 0
+          fi
+          current_sha="$(git rev-parse HEAD)"
+          patch_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/clearfolio.patch"
+          observed_patch_sha256="$(sha256sum "$patch_file" | cut -d' ' -f1)"
+          if [ "$current_sha" != "$EXPECTED_BASE_SHA" ] \
+            || [ "$observed_patch_sha256" != "$EXPECTED_PATCH_SHA256" ]; then
+            echo "verify=false" >>"$GITHUB_OUTPUT"
+            echo "::notice::Discarding proposal because protected base or patch identity changed."
+            exit 0
+          fi
+          echo "verify=true" >>"$GITHUB_OUTPUT"
 
       - name: Apply verified proposal
         if: steps.gate.outputs.verify == 'true'
@@ -482,52 +482,52 @@ echo "verify=true" >>"$GITHUB_OUTPUT"
       - name: Recheck bounded queue, disjoint paths, and patch identity
         id: publish_gate
         env:
-GH_TOKEN: ${{ github.token }}
-EXPECTED_BASE_SHA: ${{ needs.verify.outputs.base_sha }}
-EXPECTED_PATCH_SHA256: ${{ needs.verify.outputs.patch_sha256 }}
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_BASE_SHA: ${{ needs.verify.outputs.base_sha }}
+          EXPECTED_PATCH_SHA256: ${{ needs.verify.outputs.patch_sha256 }}
         run: |
-set -euo pipefail
-inventory_file="${RUNNER_TEMP}/open-pulls.json"
-blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
-proposal_paths_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/proposal-paths"
-gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
-  --paginate \
-  --slurp \
-  --jq 'add // []' >"$inventory_file"
-active_autonomous_prs="$(
-  jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \
-    '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \
-    "$inventory_file"
-)"
-if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
-  echo "publish=false" >>"$GITHUB_OUTPUT"
-  echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); discarding verified proposal."
-  exit 0
-fi
-while IFS= read -r pr_number; do
-  gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \
-    --paginate \
-    --slurp \
-    --jq 'add // [] | .[].filename'
-done < <(jq -r '.[].number' "$inventory_file") \
-  | LC_ALL=C sort -u >"$blocked_paths_file"
-conflict_file="${RUNNER_TEMP}/proposal-open-pr-conflicts"
-comm -12 "$blocked_paths_file" "$proposal_paths_file" >"$conflict_file"
-if [ -s "$conflict_file" ]; then
-  echo "publish=false" >>"$GITHUB_OUTPUT"
-  sed 's/^/::notice::Proposal overlaps an open pull request path: /' "$conflict_file"
-  exit 0
-fi
-current_sha="$(git rev-parse HEAD)"
-patch_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/clearfolio.patch"
-observed_patch_sha256="$(sha256sum "$patch_file" | cut -d' ' -f1)"
-if [ "$current_sha" != "$EXPECTED_BASE_SHA" ] \
-  || [ "$observed_patch_sha256" != "$EXPECTED_PATCH_SHA256" ]; then
-  echo "publish=false" >>"$GITHUB_OUTPUT"
-  echo "::notice::Discarding verified proposal because protected base or patch identity changed before publication."
-  exit 0
-fi
-echo "publish=true" >>"$GITHUB_OUTPUT"
+          set -euo pipefail
+          inventory_file="${RUNNER_TEMP}/open-pulls.json"
+          blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
+          proposal_paths_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/proposal-paths"
+          gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+            --paginate \
+            --slurp \
+            --jq 'add // []' >"$inventory_file"
+          active_autonomous_prs="$(
+            jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \
+              '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \
+              "$inventory_file"
+          )"
+          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
+            echo "publish=false" >>"$GITHUB_OUTPUT"
+            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); discarding verified proposal."
+            exit 0
+          fi
+          while IFS= read -r pr_number; do
+            gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \
+              --paginate \
+              --slurp \
+              --jq 'add // [] | .[].filename'
+          done < <(jq -r '.[].number' "$inventory_file") \
+            | LC_ALL=C sort -u >"$blocked_paths_file"
+          conflict_file="${RUNNER_TEMP}/proposal-open-pr-conflicts"
+          comm -12 "$blocked_paths_file" "$proposal_paths_file" >"$conflict_file"
+          if [ -s "$conflict_file" ]; then
+            echo "publish=false" >>"$GITHUB_OUTPUT"
+            sed 's/^/::notice::Proposal overlaps an open pull request path: /' "$conflict_file"
+            exit 0
+          fi
+          current_sha="$(git rev-parse HEAD)"
+          patch_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/clearfolio.patch"
+          observed_patch_sha256="$(sha256sum "$patch_file" | cut -d' ' -f1)"
+          if [ "$current_sha" != "$EXPECTED_BASE_SHA" ] \
+            || [ "$observed_patch_sha256" != "$EXPECTED_PATCH_SHA256" ]; then
+            echo "publish=false" >>"$GITHUB_OUTPUT"
+            echo "::notice::Discarding verified proposal because protected base or patch identity changed before publication."
+            exit 0
+          fi
+          echo "publish=true" >>"$GITHUB_OUTPUT"
 
       - name: Mint dedicated maintainer App token only for publication
         if: steps.publish_gate.outputs.publish == 'true'
@@ -545,50 +545,50 @@ echo "publish=true" >>"$GITHUB_OUTPUT"
         if: steps.publish_gate.outputs.publish == 'true'
         id: final_publish_gate
         env:
-GH_TOKEN: ${{ steps.maintainer_app.outputs.token }}
-EXPECTED_BASE_SHA: ${{ needs.verify.outputs.base_sha }}
-EXPECTED_PATCH_SHA256: ${{ needs.verify.outputs.patch_sha256 }}
+          GH_TOKEN: ${{ steps.maintainer_app.outputs.token }}
+          EXPECTED_BASE_SHA: ${{ needs.verify.outputs.base_sha }}
+          EXPECTED_PATCH_SHA256: ${{ needs.verify.outputs.patch_sha256 }}
         run: |
-set -euo pipefail
-echo "publish=false" >>"$GITHUB_OUTPUT"
-inventory_file="${RUNNER_TEMP}/open-pulls.json"
-blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
-proposal_paths_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/proposal-paths"
-gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
-  --paginate \
-  --slurp \
-  --jq 'add // []' >"$inventory_file"
-active_autonomous_prs="$(
-  jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \
-    '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \
-    "$inventory_file"
-)"
-if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
-  echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); discarding verified proposal."
-  exit 0
-fi
-while IFS= read -r pr_number; do
-  gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \
-    --paginate \
-    --slurp \
-    --jq 'add // [] | .[].filename'
-done < <(jq -r '.[].number' "$inventory_file") \
-  | LC_ALL=C sort -u >"$blocked_paths_file"
-conflict_file="${RUNNER_TEMP}/proposal-open-pr-conflicts"
-comm -12 "$blocked_paths_file" "$proposal_paths_file" >"$conflict_file"
-if [ -s "$conflict_file" ]; then
-  sed 's/^/::notice::Proposal overlaps an open pull request path: /' "$conflict_file"
-  exit 0
-fi
-current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
-patch_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/clearfolio.patch"
-observed_patch_sha256="$(sha256sum "$patch_file" | cut -d' ' -f1)"
-if [ "$current_sha" != "$EXPECTED_BASE_SHA" ] \
-  || [ "$observed_patch_sha256" != "$EXPECTED_PATCH_SHA256" ]; then
-  echo "::notice::Discarding verified proposal because protected base or patch identity changed after write-token minting."
-  exit 0
-fi
-echo "publish=true" >>"$GITHUB_OUTPUT"
+          set -euo pipefail
+          echo "publish=false" >>"$GITHUB_OUTPUT"
+          inventory_file="${RUNNER_TEMP}/open-pulls.json"
+          blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
+          proposal_paths_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/proposal-paths"
+          gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \
+            --paginate \
+            --slurp \
+            --jq 'add // []' >"$inventory_file"
+          active_autonomous_prs="$(
+            jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \
+              '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \
+              "$inventory_file"
+          )"
+          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
+            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); discarding verified proposal."
+            exit 0
+          fi
+          while IFS= read -r pr_number; do
+            gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \
+              --paginate \
+              --slurp \
+              --jq 'add // [] | .[].filename'
+          done < <(jq -r '.[].number' "$inventory_file") \
+            | LC_ALL=C sort -u >"$blocked_paths_file"
+          conflict_file="${RUNNER_TEMP}/proposal-open-pr-conflicts"
+          comm -12 "$blocked_paths_file" "$proposal_paths_file" >"$conflict_file"
+          if [ -s "$conflict_file" ]; then
+            sed 's/^/::notice::Proposal overlaps an open pull request path: /' "$conflict_file"
+            exit 0
+          fi
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          patch_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/clearfolio.patch"
+          observed_patch_sha256="$(sha256sum "$patch_file" | cut -d' ' -f1)"
+          if [ "$current_sha" != "$EXPECTED_BASE_SHA" ] \
+            || [ "$observed_patch_sha256" != "$EXPECTED_PATCH_SHA256" ]; then
+            echo "::notice::Discarding verified proposal because protected base or patch identity changed after write-token minting."
+            exit 0
+          fi
+          echo "publish=true" >>"$GITHUB_OUTPUT"
 
       - name: Create a draft pull request without auto-merge
         if: steps.final_publish_gate.outputs.publish == 'true'

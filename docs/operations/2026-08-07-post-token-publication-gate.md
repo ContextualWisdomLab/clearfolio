@@ -5,9 +5,9 @@ Status: Accepted
 
 ## Context
 
-The hourly product-development workflow separates model execution, credential-free verification, and publication. The publication job originally verified the paginated open-PR inventory, protected-base SHA, and immutable patch digest before minting the short-lived Maintainer GitHub App token.
+The hourly product-development workflow separates model execution, credential-free verification, and publication. The publication job verifies the paginated open-PR inventory, bounded same-repository autonomous Draft count, disjoint path ownership, protected-base SHA, and immutable patch digest before minting the short-lived Maintainer GitHub App token.
 
-That ordering left a bounded time-of-check/time-of-use interval after token minting. Another pull request could open, protected `main` could move, or the proposal artifact could change before the first branch write. The workflow would still create a stale or duplicate Draft. It could not merge or bypass protection, but it could violate the one-product-proposal backpressure contract and add avoidable reviewer and CI load.
+That ordering leaves a bounded time-of-check/time-of-use interval after token minting. Another autonomous Draft could fill the bounded queue, a competing pull request could claim one of the proposed paths, protected `main` could move, or the proposal artifact could change before the first branch write. The workflow could then create a stale, overlapping, or excess Draft. It could not merge or bypass protection, but it could violate bounded backpressure and add avoidable reviewer and CI load.
 
 GitHub installation access tokens are short lived and can be restricted to selected repositories and a subset of the App's installed permissions. They still carry the requested write authority until expiration, so authorization should occur as late as practical and every mutable precondition must be revalidated immediately before its first use.
 
@@ -17,7 +17,7 @@ After the repository-scoped App token is minted and before any `git apply`, bran
 
 The final gate:
 
-1. queries every page of open pull requests and requires a count of zero;
+1. queries every page of open pull requests, requires capacity below two same-repository `automation/hourly-` Drafts, and rejects any proposed path already owned by an open pull request;
 2. compares the checked-out protected-base SHA with the independently verified expected SHA;
 3. recomputes and compares the immutable proposal patch SHA-256;
 4. initializes `publish=false` before evaluation;
@@ -31,7 +31,7 @@ No repository write occurs between token minting and this recheck. The token ret
 
 The change narrows the publication TOCTOU window to the unavoidable interval between the final API/SHA checks and the immediately following write step. It cannot make the GitHub API query and branch push transactional, so protected-branch rules, unique branch names, Draft-only creation, ordinary exact-head checks, independent approval, and central PR maintenance remain mandatory compensating controls.
 
-A competing pull request or base update after the final gate can still occur. The result remains an unmerged Draft on a unique branch, not a protected-branch mutation. Central PR maintenance then treats that Draft through normal exact-head governance. The workflow never deletes a competing PR, overwrites an existing branch, approves itself, or infers merge readiness.
+A competing pull request, path claim, queue change, or base update after the final gate can still occur. The result remains an unmerged Draft on a unique branch, not a protected-branch mutation. Central PR maintenance then treats that Draft through normal exact-head governance. The workflow never deletes a competing PR, overwrites an existing branch, approves itself, or infers merge readiness.
 
 The check is repeated rather than cached because GitHub's open-PR inventory and protected branch are mutable external state. Patch identity is repeated because the artifact crosses jobs and the write-capable job is the final trust boundary.
 
@@ -39,7 +39,7 @@ The check is repeated rather than cached because GitHub's open-PR inventory and 
 
 `scripts/test_hourly_opencode_scheduler_contract.py` requires:
 
-- at least four complete paginated open-PR queries across proposal, verification, pre-token publication, and post-token publication;
+- at least four complete paginated open-PR queries across proposal, verification, pre-token publication, and post-token publication, with a two-Draft same-repository cap and disjoint open-PR path checks;
 - App-token minting before the final gate and the final gate before Draft creation;
 - exact protected-base and patch identity checks in the final gate;
 - a fail-closed default output;
@@ -50,7 +50,7 @@ The canonical repository checks remain `mvn -B --no-transfer-progress verify` an
 
 ## Rollback
 
-Rollback removes the final post-token recheck and restores the Draft step's pre-token gate dependency. That rollback reopens the duplicate/stale-publication interval and therefore requires an explicit security review. Disabling the product scheduler is safer than weakening this gate.
+Rollback removes the final post-token recheck and restores the Draft step's pre-token gate dependency. That rollback reopens the excess, overlapping, or stale-publication interval and therefore requires an explicit security review. Disabling the product scheduler is safer than weakening this gate.
 
 ## References
 

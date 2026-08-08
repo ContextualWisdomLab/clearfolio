@@ -5,7 +5,7 @@
 Clearfolio separates organization PR maintenance from repository-local product development.
 
 - `ContextualWisdomLab/.github` owns **one central PR-maintenance caller**, `clearfolio-hourly-review-repair.yml`. The central caller inventories open Clearfolio pull requests, invokes the shared review-repair engine, preserves the existing reviewer identities and credentials, and leaves approval and merge decisions to repository protection.
-- `.github/workflows/hourly-product-development.yml` is the only repository-local hourly caller in this change. It runs at minute 23 and may propose one bounded buyer-visible increment only when the complete paginated open-pull-request count is zero and protected `main` remains unchanged through proposal, verification, and publication.
+- `.github/workflows/hourly-product-development.yml` is the only repository-local hourly caller in this change. It runs at minute 23 and may propose one bounded buyer-visible increment while unrelated pull requests await checks or independent approval. It allows at most two same-repository `automation/hourly-` Drafts, rejects every path already owned by an open pull request, and requires protected `main` to remain unchanged through proposal, verification, and publication.
 
 Keeping PR maintenance central prevents duplicate scheduled sweeps, conflicting branch updates, repeated review dispatches, and avoidable GitHub Actions consumption. The local product loop remains independently usable by Clearfolio while its published Draft PRs re-enter the same organization review and merge plane as every other change.
 
@@ -72,7 +72,7 @@ No credential is stored in the proposal artifact.
 
 ### 2. Credential-free verifier
 
-A fresh runner checks out protected `main`, downloads the immutable proposal, and rejects it when any pull request exists, `main` moved, the patch hash changed, or the patch no longer applies. It runs `git apply --check` and `git diff --check`, then executes the repository acceptance commands:
+A fresh runner checks out protected `main`, downloads the immutable proposal, and rejects it when the bounded autonomous Draft queue is full, any proposed path is already changed by an open pull request, `main` moved, the patch hash changed, or the patch no longer applies. It runs `git apply --check` and `git diff --check`, then executes the repository acceptance commands:
 
 ```bash
 mvn -B --no-transfer-progress verify
@@ -86,7 +86,7 @@ The verifier still executes untrusted proposed tests and production code. Its Ha
 
 ### 3. Publication-only identity
 
-A third fresh runner rechecks the complete paginated PR inventory, protected-base SHA, and patch SHA-256. Only then does it mint a short-lived repository-scoped Maintainer App token, apply the already verified patch, push a unique automation branch, and open a Draft pull request.
+A third fresh runner rechecks the complete paginated PR inventory, same-repository autonomous Draft count, open-PR path ownership, protected-base SHA, and patch SHA-256. Only then does it mint a short-lived repository-scoped Maintainer App token, apply the already verified patch, push a unique automation branch, and open a Draft pull request.
 
 The publisher's egress policy is also fail-closed. Its allowlist contains only the GitHub endpoints required to download verified evidence, mint the scoped token, push the branch, and create the Draft. NVIDIA, Maven Central, PyPI, and arbitrary destinations are absent.
 
@@ -94,15 +94,16 @@ The publication job does not execute proposed code and has no approval, automati
 
 ## Backpressure and idempotency
 
-The product scheduler counts every page of open pull requests during proposal, verification, and publication. A single open PR transfers ownership to the central PR-maintenance plane and prevents another autonomous product branch.
+The product scheduler counts every page of open pull requests during proposal, verification, and publication, but review or Check latency is not a repository-wide development stop. Open PRs retain exclusive ownership of every path they change. The scheduler may work only on a disjoint path set and may keep no more than two same-repository `automation/hourly-` Draft PRs open at once. The central PR-maintenance plane continues to review, repair, revalidate, and merge the existing queue independently.
 
-The workflow also rejects publication when:
+The workflow rejects publication when:
 
+- the bounded autonomous Draft queue is full;
+- any proposed path overlaps an open pull request path;
 - protected `main` moves;
 - the patch digest differs;
 - a proposal contains a prohibited change class;
 - the verifier no longer reproduces the proposal;
-- another open PR appears;
 - required credentials are absent.
 
 Unique branch names include workflow run and attempt identifiers. Non-cancelling single-flight concurrency prevents product runs from overlapping. Evidence expires after three days. A failed or discarded run leaves no branch, PR, release, deployment, or partial repository mutation. Operators fix the underlying prerequisite and use a later schedule or manual dispatch; they do not bypass the failed gate.
@@ -118,7 +119,7 @@ No naruon runtime dependency is introduced. A future naruon module may observe C
 1. Confirm `ContextualWisdomLab/.github` has exactly one enabled Clearfolio PR-maintenance caller on its protected default branch.
 2. Confirm Clearfolio has no repository-local `hourly-pr-maintenance.yml` duplicate.
 3. Confirm the central caller targets `ContextualWisdomLab/clearfolio`, preserves reviewer identities, throttles same-head retries, and cannot approve or bypass protection.
-4. Run the product workflow with `dry_run=true`; it should report open-PR ownership or readiness without invoking OpenCode.
+4. Run the product workflow with `dry_run=true`; it should report bounded autonomous-queue capacity and the current open-PR count without invoking OpenCode.
 5. Confirm all three product prerequisites are configured without displaying their values.
 6. Inspect the proposal job for the pinned OpenCode version and archive checksum, blocked egress, explicit permission map, absence of automatic permission granting, and credential-disclosure scan.
 7. Confirm newly created allowed text files are included and that binary, deletion, rename, symlink, mode, workflow, script, dependency, and build-metadata changes are rejected.

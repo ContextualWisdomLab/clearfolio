@@ -5,7 +5,7 @@
 ### Added
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
-- PR이 0개일 때만 NVIDIA NIM 기반 OpenCode가 한 개의 제한된 상용화 개선안을 제안하고, 자격 증명 없는 검증 후 전용 GitHub App으로 Draft PR만 생성하는 시간별 제품 개발 루프를 추가했습니다.
+- NVIDIA NIM 기반 OpenCode가 리뷰·Check·독립 승인 대기 중인 PR과 경로가 겹치지 않는 상용화 개선안을 계속 제안하도록 시간별 제품 개발 루프를 갱신했습니다. 같은 저장소의 `automation/hourly-` Draft는 최대 2개로 제한하고, 자격 증명 없는 검증 후 전용 GitHub App으로 Draft PR만 생성합니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.
   - 실패(dead-lettered) 상태인 작업을 관리자가 재시도 큐에 등록할 수 있는 `POST /api/v1/admin/convert/jobs/{jobId}/retry` 엔드포인트를 추가했습니다.
@@ -26,7 +26,7 @@
 
 ### Security
 
-- OpenCode 제품 루프가 전용 GitHub App 쓰기 토큰을 발급한 뒤에도 첫 브랜치 쓰기 직전에 전체 페이지의 open PR 수, 보호된 `main`의 정확한 SHA, 불변 패치 SHA-256을 다시 검증하도록 강화했습니다. 경쟁 PR이나 base 변경이 토큰 발급 직후 발생하면 `publish=false`로 종료해 stale·중복 Draft와 불필요한 CI 소비를 차단합니다.
+- OpenCode 제품 루프가 전용 GitHub App 쓰기 토큰을 발급한 뒤에도 첫 브랜치 쓰기 직전에 전체 페이지의 open PR, 같은 저장소 자동 Draft 수, 제안 경로의 비중첩성, 보호된 `main`의 정확한 SHA, 불변 패치 SHA-256을 다시 검증하도록 강화했습니다. 큐가 2개로 가득 차거나 경쟁 PR이 경로를 선점하거나 base가 변경되면 `publish=false`로 종료해 stale·중복·충돌 Draft와 불필요한 CI 소비를 차단합니다.
 - `GET /api/v1/convert/jobs/{jobId}/download`가 리소스 조회 전에 전용 `artifact:read` 권한을 검증하고, PDF 저장소 접근 전에 작업의 tenant 소유권을 확인하도록 강화했습니다. `job:read`만으로는 문서 바이트를 읽을 수 없으며, 인증 누락·권한 누락·교차 tenant UUID 접근은 각각 fail closed 처리되고 교차 tenant 요청은 리소스 존재를 숨기는 `404`를 반환합니다.
 - 자격 증명이 있는 OpenCode 단계에서 `--auto` 권한 승인을 제거했습니다. 명시적으로 허용되지 않은 도구나 리소스 요청은 비대화식 실행에서 자동 승인되지 않고 거부되어, 도구 추가나 권한 패턴 불일치가 발생해도 스케줄러가 fail-closed로 동작합니다.
 - 제품 개발 루프가 허용 범위의 새 텍스트 파일을 `intent-to-add`로 불변 패치에 포함하고, `numstat`에서 바이너리로 판정되는 변경은 아티팩트 생성 전에 거부하도록 보강했습니다. 새 회귀 테스트·소스·운영 문서가 조용히 누락되거나 불투명한 바이너리 페이로드가 게시되는 경로를 차단합니다.

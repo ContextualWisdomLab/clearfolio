@@ -65,11 +65,11 @@ def test_credentialed_model_step_cannot_execute_or_publish_repository_code() -> 
 
 
 def test_product_scheduler_is_single_flight_bounded_and_exact_base_safe() -> None:
-    """Discard proposals when another PR or protected-base change races the run."""
+    """Discard proposals when queue, path ownership, base, or patch identity changes."""
     workflow = " ".join(_read(PRODUCT_WORKFLOW).replace("\\\n", "").split())
     paginated_query = (
         'gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" '
-        "--paginate --slurp --jq 'map(length) | add // 0'"
+        "--paginate --slurp --jq 'add // []'"
     )
 
     assert workflow.count(paginated_query) >= 4
@@ -216,3 +216,21 @@ def test_operator_guide_records_identity_boundaries_and_prerequisites() -> None:
     assert "credential-free verifier" in guide
     assert "independent approval" in guide
     assert "COPILOT_GITHUB_TOKEN" not in guide
+
+
+def test_open_pr_latency_keeps_disjoint_product_work_active() -> None:
+    """Allow bounded disjoint work while unrelated PRs wait on external gates."""
+    workflow = _read(PRODUCT_WORKFLOW)
+
+    assert 'MAX_ACTIVE_AUTONOMOUS_PRS: "2"' in workflow
+    assert 'AUTONOMOUS_BRANCH_PREFIX: "automation/hourly-"' in workflow
+    assert 'if [ "$open_prs" -ne 0 ]' not in workflow
+    assert "Existing open" in workflow
+    assert "pull requests may still be waiting" in workflow
+    assert workflow.count("open-pr-paths") >= 4
+    assert workflow.count("proposal-paths") >= 4
+    assert workflow.count("Autonomous Draft queue is full") >= 4
+    assert workflow.count("Proposal overlaps an open pull request path") >= 4
+    assert workflow.count("comm -12") >= 4
+    assert ".head.repo.full_name == $repo" in workflow
+    assert "startswith($prefix)" in workflow

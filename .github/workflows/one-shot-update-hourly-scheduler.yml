@@ -16,10 +16,10 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PATCH_SOURCE_COMMIT: 5651b3275bf2cd6d0bd7373c765f811d5b70ac5b
 
 jobs:
   update:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -45,59 +45,39 @@ jobs:
       - name: Assert exact trigger head
         run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 
-      - name: Add RED scheduler contract
+      - name: Recover reviewed RED and GREEN patch programs
         run: |
           set -euo pipefail
-          python3 - <<'PY'
+          source_file="${RUNNER_TEMP}/scheduler-patch-source.yml"
+          git show "${PATCH_SOURCE_COMMIT}:.github/workflows/one-shot-update-hourly-scheduler.yml" >"$source_file"
+          SOURCE_FILE="$source_file" OUTPUT_DIR="$RUNNER_TEMP" python3 - <<'PY'
+          import os
+          import re
           from pathlib import Path
 
-          path = Path("scripts/test_hourly_opencode_scheduler_contract.py")
-          text = path.read_text(encoding="utf-8")
-
-          def replace_once(source: str, old: str, new: str) -> str:
-              count = source.count(old)
-              if count != 1:
-                  raise SystemExit(f"expected one occurrence, found {count}: {old!r}")
-              return source.replace(old, new, 1)
-
-          text = replace_once(
-              text,
-              '    """Discard proposals when another PR or protected-base change races the run."""',
-              '    """Discard proposals when queue, path ownership, base, or patch identity changes."""',
+          source = Path(os.environ["SOURCE_FILE"]).read_text(encoding="utf-8")
+          pattern = re.compile(
+              r"^          python3 - <<'PY'\n(?P<body>.*?)^          PY\n",
+              flags=re.MULTILINE | re.DOTALL,
           )
-          text = replace_once(
-              text,
-              '        "--paginate --slurp --jq \'map(length) | add // 0\'"',
-              '        "--paginate --slurp --jq \'add // []\'"',
-          )
-
-          marker = "def test_open_pr_latency_keeps_disjoint_product_work_active()"
-          if marker in text:
-              raise SystemExit("RED contract already exists")
-          text += '''\n\ndef test_open_pr_latency_keeps_disjoint_product_work_active() -> None:\n    """Allow bounded disjoint work while unrelated PRs wait on external gates."""\n    workflow = _read(PRODUCT_WORKFLOW)\n\n    assert 'MAX_ACTIVE_AUTONOMOUS_PRS: "2"' in workflow\n    assert 'AUTONOMOUS_BRANCH_PREFIX: "automation/hourly-"' in workflow\n    assert 'if [ "$open_prs" -ne 0 ]' not in workflow\n    assert "Existing open pull requests may still be waiting" in workflow\n    assert workflow.count("open-pr-paths") >= 4\n    assert workflow.count("proposal-paths") >= 4\n    assert workflow.count("Autonomous Draft queue is full") >= 4\n    assert workflow.count("Proposal overlaps an open pull request path") >= 4\n    assert workflow.count("comm -12") >= 4\n    assert ".head.repo.full_name == $repo" in workflow\n    assert "startswith($prefix)" in workflow\n'''
-          path.write_text(text, encoding="utf-8")
+          blocks = [match.group("body") for match in pattern.finditer(source)]
+          if len(blocks) != 4:
+              raise SystemExit(f"expected four reviewed Python blocks, found {len(blocks)}")
+          output_dir = Path(os.environ["OUTPUT_DIR"])
+          for index, block in enumerate(blocks):
+              lines = block.splitlines()
+              dedented = "\n".join(
+                  line[10:] if line.startswith("          ") else line for line in lines
+              )
+              output = output_dir / f"scheduler-patch-{index}.py"
+              output.write_text(dedented + "\n", encoding="utf-8")
           PY
 
-      - name: Verify RED failure
+      - name: Add and verify RED scheduler contract
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import importlib.util
-          from pathlib import Path
-
-          path = Path("scripts/test_hourly_opencode_scheduler_contract.py")
-          spec = importlib.util.spec_from_file_location("scheduler_contract", path)
-          if spec is None or spec.loader is None:
-              raise SystemExit("unable to load scheduler contract")
-          module = importlib.util.module_from_spec(spec)
-          spec.loader.exec_module(module)
-          try:
-              module.test_open_pr_latency_keeps_disjoint_product_work_active()
-          except AssertionError:
-              print("RED confirmed: the zero-open-PR scheduler blocks disjoint work.")
-          else:
-              raise SystemExit("RED contract unexpectedly passed before implementation")
-          PY
+          python3 "${RUNNER_TEMP}/scheduler-patch-0.py"
+          python3 "${RUNNER_TEMP}/scheduler-patch-1.py"
 
       - name: Commit RED contract
         run: |
@@ -108,451 +88,11 @@ jobs:
           git diff --cached --check
           git commit -m "test: require productive work during approval latency"
 
-      - name: Implement bounded disjoint scheduling
+      - name: Implement and verify bounded disjoint scheduling
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def replace_once(source: str, old: str, new: str) -> str:
-              count = source.count(old)
-              if count != 1:
-                  raise SystemExit(f"expected one occurrence, found {count}: {old!r}")
-              return source.replace(old, new, 1)
-
-          def replace_between(source: str, start: str, end: str, replacement: str) -> str:
-              start_index = source.find(start)
-              if start_index < 0:
-                  raise SystemExit(f"missing start marker: {start!r}")
-              end_index = source.find(end, start_index)
-              if end_index < 0:
-                  raise SystemExit(f"missing end marker: {end!r}")
-              return source[:start_index] + replacement + source[end_index:]
-
-          workflow_path = Path(".github/workflows/hourly-product-development.yml")
-          workflow = workflow_path.read_text(encoding="utf-8")
-          workflow = replace_once(
-              workflow,
-              '  MAX_DIFF_BYTES: "200000"\n',
-              '  MAX_DIFF_BYTES: "200000"\n  MAX_ACTIVE_AUTONOMOUS_PRS: "2"\n  AUTONOMOUS_BRANCH_PREFIX: "automation/hourly-"\n',
-          )
-
-          propose_gate = '''      - name: Enforce bounded autonomous queue and credential prerequisites
-        id: gate
-        env:
-          GH_TOKEN: ${{ github.token }}
-          NIM_CONFIGURED: ${{ secrets.NVIDIA_NIM_API_KEY != '' }}
-          APP_CLIENT_CONFIGURED: ${{ vars.CLEARFOLIO_MAINTAINER_APP_CLIENT_ID != '' }}
-          APP_KEY_CONFIGURED: ${{ secrets.CLEARFOLIO_MAINTAINER_APP_PRIVATE_KEY != '' }}
-        run: |
-          set -euo pipefail
-          inventory_file="${RUNNER_TEMP}/open-pulls.json"
-          blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
-          gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \\
-            --paginate \\
-            --slurp \\
-            --jq 'add // []' >"$inventory_file"
-          open_prs="$(jq 'length' "$inventory_file")"
-          active_autonomous_prs="$(
-            jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \\
-              '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \\
-              "$inventory_file"
-          )"
-          echo "open_prs=$open_prs" >>"$GITHUB_OUTPUT"
-          echo "active_autonomous_prs=$active_autonomous_prs" >>"$GITHUB_OUTPUT"
-          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
-            echo "dispatch=false" >>"$GITHUB_OUTPUT"
-            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); PR maintenance continues independently."
-            exit 0
-          fi
-          while IFS= read -r pr_number; do
-            gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \\
-              --paginate \\
-              --slurp \\
-              --jq 'add // [] | .[].filename'
-          done < <(jq -r '.[].number' "$inventory_file") \\
-            | LC_ALL=C sort -u >"$blocked_paths_file"
-          if [ "$DRY_RUN" != "true" ] && { [ "$NIM_CONFIGURED" != "true" ] \\
-            || [ "$APP_CLIENT_CONFIGURED" != "true" ] \\
-            || [ "$APP_KEY_CONFIGURED" != "true" ]; }; then
-            echo "dispatch=false" >>"$GITHUB_OUTPUT"
-            echo "::notice::Autonomous development is disabled until the dedicated NIM and maintainer App credentials are configured."
-            exit 0
-          fi
-          echo "dispatch=true" >>"$GITHUB_OUTPUT"
-
-'''
-          workflow = replace_between(
-              workflow,
-              "      - name: Enforce zero-open-PR and credential prerequisites\n",
-              "      - name: Record dry-run contract\n",
-              propose_gate,
-          )
-          workflow = replace_once(
-              workflow,
-              '          echo "The zero-open-PR gate permits one bounded proposal; no credentialed action ran." >>"$GITHUB_STEP_SUMMARY"',
-              '          echo "The bounded queue permits one disjoint proposal with ${{ steps.gate.outputs.open_prs }} open PR(s) and ${{ steps.gate.outputs.active_autonomous_prs }} autonomous Draft(s); no credentialed action ran." >>"$GITHUB_STEP_SUMMARY"',
-          )
-          workflow = replace_once(
-              workflow,
-              "          The workflow has confirmed that no pull request is open. Inspect AGENTS.md, README.md,\n          CHANGELOG.md, architecture, security, privacy, operations, issue and roadmap documentation,\n",
-              "          The workflow has confirmed that the bounded autonomous Draft queue has capacity. Existing open\n          pull requests may still be waiting for exact-head checks or independent approval; that latency\n          must not stop disjoint productive work. Inspect AGENTS.md, README.md, CHANGELOG.md, architecture,\n          security, privacy, operations, issue and roadmap documentation,\n",
-          )
-          workflow = replace_once(
-              workflow,
-              '''          PROMPT
-          opencode run --model "$OPENCODE_MODEL" --format json \\
-            "$(cat "$prompt_file")" >"$result_file"
-''',
-              '''          PROMPT
-          {
-            printf '\\nOpen pull requests already own the following paths. Do not modify any listed path:\\n'
-            if [ -s "${RUNNER_TEMP}/open-pr-paths" ]; then
-              sed 's/^/- /' "${RUNNER_TEMP}/open-pr-paths"
-            else
-              printf '%s\\n' '- none'
-            fi
-          } >>"$prompt_file"
-          opencode run --model "$OPENCODE_MODEL" --format json \\
-            "$(cat "$prompt_file")" >"$result_file"
-''',
-          )
-          workflow = replace_once(
-              workflow,
-              '''          if [ "${#changed_paths[@]}" -gt "$MAX_CHANGED_FILES" ]; then
-            echo "::error::Changed-file budget exceeded."
-            exit 1
-          fi
-          for path in "${changed_paths[@]}"; do
-''',
-              '''          if [ "${#changed_paths[@]}" -gt "$MAX_CHANGED_FILES" ]; then
-            echo "::error::Changed-file budget exceeded."
-            exit 1
-          fi
-          proposed_paths_file="${RUNNER_TEMP}/proposal-paths"
-          printf '%s\\n' "${changed_paths[@]}" | LC_ALL=C sort -u >"$proposed_paths_file"
-          conflict_file="${RUNNER_TEMP}/proposal-open-pr-conflicts"
-          comm -12 "${RUNNER_TEMP}/open-pr-paths" "$proposed_paths_file" >"$conflict_file"
-          if [ -s "$conflict_file" ]; then
-            sed 's/^/::error::Proposal overlaps an open pull request path: /' "$conflict_file"
-            exit 1
-          fi
-          for path in "${changed_paths[@]}"; do
-''',
-          )
-          workflow = replace_once(
-              workflow,
-              '''            ${{ runner.temp }}/proposal-patch-sha256
-            ${{ runner.temp }}/opencode-result.ndjson
-''',
-              '''            ${{ runner.temp }}/proposal-patch-sha256
-            ${{ runner.temp }}/proposal-paths
-            ${{ runner.temp }}/opencode-result.ndjson
-''',
-          )
-
-          verify_gate = '''      - name: Recheck bounded queue, disjoint paths, and exact-base preconditions
-        id: gate
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EXPECTED_BASE_SHA: ${{ needs.propose.outputs.base_sha }}
-          EXPECTED_PATCH_SHA256: ${{ needs.propose.outputs.patch_sha256 }}
-        run: |
-          set -euo pipefail
-          inventory_file="${RUNNER_TEMP}/open-pulls.json"
-          blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
-          proposal_paths_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/proposal-paths"
-          gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \\
-            --paginate \\
-            --slurp \\
-            --jq 'add // []' >"$inventory_file"
-          active_autonomous_prs="$(
-            jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \\
-              '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \\
-              "$inventory_file"
-          )"
-          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
-            echo "verify=false" >>"$GITHUB_OUTPUT"
-            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); discarding proposal."
-            exit 0
-          fi
-          while IFS= read -r pr_number; do
-            gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \\
-              --paginate \\
-              --slurp \\
-              --jq 'add // [] | .[].filename'
-          done < <(jq -r '.[].number' "$inventory_file") \\
-            | LC_ALL=C sort -u >"$blocked_paths_file"
-          conflict_file="${RUNNER_TEMP}/proposal-open-pr-conflicts"
-          comm -12 "$blocked_paths_file" "$proposal_paths_file" >"$conflict_file"
-          if [ -s "$conflict_file" ]; then
-            echo "verify=false" >>"$GITHUB_OUTPUT"
-            sed 's/^/::notice::Proposal overlaps an open pull request path: /' "$conflict_file"
-            exit 0
-          fi
-          current_sha="$(git rev-parse HEAD)"
-          patch_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/clearfolio.patch"
-          observed_patch_sha256="$(sha256sum "$patch_file" | cut -d' ' -f1)"
-          if [ "$current_sha" != "$EXPECTED_BASE_SHA" ] \\
-            || [ "$observed_patch_sha256" != "$EXPECTED_PATCH_SHA256" ]; then
-            echo "verify=false" >>"$GITHUB_OUTPUT"
-            echo "::notice::Discarding proposal because protected base or patch identity changed."
-            exit 0
-          fi
-          echo "verify=true" >>"$GITHUB_OUTPUT"
-
-'''
-          workflow = replace_between(
-              workflow,
-              "      - name: Recheck zero-PR and exact-base preconditions\n",
-              "      - name: Apply verified proposal\n",
-              verify_gate,
-          )
-
-          publish_gate = '''      - name: Recheck bounded queue, disjoint paths, and patch identity
-        id: publish_gate
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EXPECTED_BASE_SHA: ${{ needs.verify.outputs.base_sha }}
-          EXPECTED_PATCH_SHA256: ${{ needs.verify.outputs.patch_sha256 }}
-        run: |
-          set -euo pipefail
-          inventory_file="${RUNNER_TEMP}/open-pulls.json"
-          blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
-          proposal_paths_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/proposal-paths"
-          gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \\
-            --paginate \\
-            --slurp \\
-            --jq 'add // []' >"$inventory_file"
-          active_autonomous_prs="$(
-            jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \\
-              '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \\
-              "$inventory_file"
-          )"
-          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
-            echo "publish=false" >>"$GITHUB_OUTPUT"
-            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); discarding verified proposal."
-            exit 0
-          fi
-          while IFS= read -r pr_number; do
-            gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \\
-              --paginate \\
-              --slurp \\
-              --jq 'add // [] | .[].filename'
-          done < <(jq -r '.[].number' "$inventory_file") \\
-            | LC_ALL=C sort -u >"$blocked_paths_file"
-          conflict_file="${RUNNER_TEMP}/proposal-open-pr-conflicts"
-          comm -12 "$blocked_paths_file" "$proposal_paths_file" >"$conflict_file"
-          if [ -s "$conflict_file" ]; then
-            echo "publish=false" >>"$GITHUB_OUTPUT"
-            sed 's/^/::notice::Proposal overlaps an open pull request path: /' "$conflict_file"
-            exit 0
-          fi
-          current_sha="$(git rev-parse HEAD)"
-          patch_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/clearfolio.patch"
-          observed_patch_sha256="$(sha256sum "$patch_file" | cut -d' ' -f1)"
-          if [ "$current_sha" != "$EXPECTED_BASE_SHA" ] \\
-            || [ "$observed_patch_sha256" != "$EXPECTED_PATCH_SHA256" ]; then
-            echo "publish=false" >>"$GITHUB_OUTPUT"
-            echo "::notice::Discarding verified proposal because protected base or patch identity changed before publication."
-            exit 0
-          fi
-          echo "publish=true" >>"$GITHUB_OUTPUT"
-
-'''
-          workflow = replace_between(
-              workflow,
-              "      - name: Recheck repository state and patch identity\n",
-              "      - name: Mint dedicated maintainer App token only for publication\n",
-              publish_gate,
-          )
-
-          final_gate = '''      - name: Recheck immediately before Draft publication
-        if: steps.publish_gate.outputs.publish == 'true'
-        id: final_publish_gate
-        env:
-          GH_TOKEN: ${{ steps.maintainer_app.outputs.token }}
-          EXPECTED_BASE_SHA: ${{ needs.verify.outputs.base_sha }}
-          EXPECTED_PATCH_SHA256: ${{ needs.verify.outputs.patch_sha256 }}
-        run: |
-          set -euo pipefail
-          echo "publish=false" >>"$GITHUB_OUTPUT"
-          inventory_file="${RUNNER_TEMP}/open-pulls.json"
-          blocked_paths_file="${RUNNER_TEMP}/open-pr-paths"
-          proposal_paths_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/proposal-paths"
-          gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" \\
-            --paginate \\
-            --slurp \\
-            --jq 'add // []' >"$inventory_file"
-          active_autonomous_prs="$(
-            jq --arg repo "$GITHUB_REPOSITORY" --arg prefix "$AUTONOMOUS_BRANCH_PREFIX" \\
-              '[.[] | select(.head.repo.full_name == $repo and (.head.ref | startswith($prefix)))] | length' \\
-              "$inventory_file"
-          )"
-          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
-            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); discarding verified proposal."
-            exit 0
-          fi
-          while IFS= read -r pr_number; do
-            gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/files?per_page=100" \\
-              --paginate \\
-              --slurp \\
-              --jq 'add // [] | .[].filename'
-          done < <(jq -r '.[].number' "$inventory_file") \\
-            | LC_ALL=C sort -u >"$blocked_paths_file"
-          conflict_file="${RUNNER_TEMP}/proposal-open-pr-conflicts"
-          comm -12 "$blocked_paths_file" "$proposal_paths_file" >"$conflict_file"
-          if [ -s "$conflict_file" ]; then
-            sed 's/^/::notice::Proposal overlaps an open pull request path: /' "$conflict_file"
-            exit 0
-          fi
-          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
-          patch_file="${RUNNER_TEMP}/hourly-clearfolio-proposal/clearfolio.patch"
-          observed_patch_sha256="$(sha256sum "$patch_file" | cut -d' ' -f1)"
-          if [ "$current_sha" != "$EXPECTED_BASE_SHA" ] \\
-            || [ "$observed_patch_sha256" != "$EXPECTED_PATCH_SHA256" ]; then
-            echo "::notice::Discarding verified proposal because protected base or patch identity changed after write-token minting."
-            exit 0
-          fi
-          echo "publish=true" >>"$GITHUB_OUTPUT"
-
-'''
-          workflow = replace_between(
-              workflow,
-              "      - name: Recheck immediately before Draft publication\n",
-              "      - name: Create a draft pull request without auto-merge\n",
-              final_gate,
-          )
-          workflow = replace_once(
-              workflow,
-              "          OpenCode produced one bounded Clearfolio increment from protected base \\`$BASE_SHA\\`.\n",
-              "          OpenCode produced one bounded, open-PR-path-disjoint Clearfolio increment from protected base \\`$BASE_SHA\\`.\n",
-          )
-          workflow_path.write_text(workflow, encoding="utf-8")
-
-          guide_path = Path("docs/operations/hourly-development.md")
-          guide = guide_path.read_text(encoding="utf-8")
-          guide = replace_once(
-              guide,
-              "- `.github/workflows/hourly-product-development.yml` is the only repository-local hourly caller in this change. It runs at minute 23 and may propose one bounded buyer-visible increment only when the complete paginated open-pull-request count is zero and protected `main` remains unchanged through proposal, verification, and publication.",
-              "- `.github/workflows/hourly-product-development.yml` is the only repository-local hourly caller in this change. It runs at minute 23 and may propose one bounded buyer-visible increment while unrelated pull requests await checks or independent approval. It allows at most two same-repository `automation/hourly-` Drafts, rejects every path already owned by an open pull request, and requires protected `main` to remain unchanged through proposal, verification, and publication.",
-          )
-          guide = replace_once(
-              guide,
-              "A fresh runner checks out protected `main`, downloads the immutable proposal, and rejects it when any pull request exists, `main` moved, the patch hash changed, or the patch no longer applies.",
-              "A fresh runner checks out protected `main`, downloads the immutable proposal, and rejects it when the bounded autonomous Draft queue is full, any proposed path is already changed by an open pull request, `main` moved, the patch hash changed, or the patch no longer applies.",
-          )
-          guide = replace_once(
-              guide,
-              "A third fresh runner rechecks the complete paginated PR inventory, protected-base SHA, and patch SHA-256. Only then does it mint a short-lived repository-scoped Maintainer App token, apply the already verified patch, push a unique automation branch, and open a Draft pull request.",
-              "A third fresh runner rechecks the complete paginated PR inventory, same-repository autonomous Draft count, open-PR path ownership, protected-base SHA, and patch SHA-256. Only then does it mint a short-lived repository-scoped Maintainer App token, apply the already verified patch, push a unique automation branch, and open a Draft pull request.",
-          )
-          old_backpressure = '''The product scheduler counts every page of open pull requests during proposal, verification, and publication. A single open PR transfers ownership to the central PR-maintenance plane and prevents another autonomous product branch.
-
-The workflow also rejects publication when:
-
-- protected `main` moves;
-- the patch digest differs;
-- a proposal contains a prohibited change class;
-- the verifier no longer reproduces the proposal;
-- another open PR appears;
-- required credentials are absent.
-'''
-          new_backpressure = '''The product scheduler counts every page of open pull requests during proposal, verification, and publication, but review or Check latency is not a repository-wide development stop. Open PRs retain exclusive ownership of every path they change. The scheduler may work only on a disjoint path set and may keep no more than two same-repository `automation/hourly-` Draft PRs open at once. The central PR-maintenance plane continues to review, repair, revalidate, and merge the existing queue independently.
-
-The workflow rejects publication when:
-
-- the bounded autonomous Draft queue is full;
-- any proposed path overlaps an open pull request path;
-- protected `main` moves;
-- the patch digest differs;
-- a proposal contains a prohibited change class;
-- the verifier no longer reproduces the proposal;
-- required credentials are absent.
-'''
-          guide = replace_once(guide, old_backpressure, new_backpressure)
-          guide = replace_once(
-              guide,
-              "4. Run the product workflow with `dry_run=true`; it should report open-PR ownership or readiness without invoking OpenCode.",
-              "4. Run the product workflow with `dry_run=true`; it should report bounded autonomous-queue capacity and the current open-PR count without invoking OpenCode.",
-          )
-          guide_path.write_text(guide, encoding="utf-8")
-
-          adr_path = Path("docs/operations/2026-08-07-post-token-publication-gate.md")
-          adr = adr_path.read_text(encoding="utf-8")
-          adr = replace_once(
-              adr,
-              "The hourly product-development workflow separates model execution, credential-free verification, and publication. The publication job originally verified the paginated open-PR inventory, protected-base SHA, and immutable patch digest before minting the short-lived Maintainer GitHub App token.",
-              "The hourly product-development workflow separates model execution, credential-free verification, and publication. The publication job verifies the paginated open-PR inventory, bounded same-repository autonomous Draft count, disjoint path ownership, protected-base SHA, and immutable patch digest before minting the short-lived Maintainer GitHub App token.",
-          )
-          adr = replace_once(
-              adr,
-              "That ordering left a bounded time-of-check/time-of-use interval after token minting. Another pull request could open, protected `main` could move, or the proposal artifact could change before the first branch write. The workflow would still create a stale or duplicate Draft. It could not merge or bypass protection, but it could violate the one-product-proposal backpressure contract and add avoidable reviewer and CI load.",
-              "That ordering leaves a bounded time-of-check/time-of-use interval after token minting. Another autonomous Draft could fill the bounded queue, a competing pull request could claim one of the proposed paths, protected `main` could move, or the proposal artifact could change before the first branch write. The workflow could then create a stale, overlapping, or excess Draft. It could not merge or bypass protection, but it could violate bounded backpressure and add avoidable reviewer and CI load.",
-          )
-          adr = replace_once(
-              adr,
-              "1. queries every page of open pull requests and requires a count of zero;",
-              "1. queries every page of open pull requests, requires capacity below two same-repository `automation/hourly-` Drafts, and rejects any proposed path already owned by an open pull request;",
-          )
-          adr = replace_once(
-              adr,
-              "A competing pull request or base update after the final gate can still occur. The result remains an unmerged Draft on a unique branch, not a protected-branch mutation.",
-              "A competing pull request, path claim, queue change, or base update after the final gate can still occur. The result remains an unmerged Draft on a unique branch, not a protected-branch mutation.",
-          )
-          adr = replace_once(
-              adr,
-              "- at least four complete paginated open-PR queries across proposal, verification, pre-token publication, and post-token publication;",
-              "- at least four complete paginated open-PR queries across proposal, verification, pre-token publication, and post-token publication, with a two-Draft same-repository cap and disjoint open-PR path checks;",
-          )
-          adr = replace_once(
-              adr,
-              "Rollback removes the final post-token recheck and restores the Draft step's pre-token gate dependency. That rollback reopens the duplicate/stale-publication interval and therefore requires an explicit security review.",
-              "Rollback removes the final post-token recheck and restores the Draft step's pre-token gate dependency. That rollback reopens the excess, overlapping, or stale-publication interval and therefore requires an explicit security review.",
-          )
-          adr_path.write_text(adr, encoding="utf-8")
-
-          changelog_path = Path("CHANGELOG.md")
-          changelog = changelog_path.read_text(encoding="utf-8")
-          changelog = replace_once(
-              changelog,
-              "- PR이 0개일 때만 NVIDIA NIM 기반 OpenCode가 한 개의 제한된 상용화 개선안을 제안하고, 자격 증명 없는 검증 후 전용 GitHub App으로 Draft PR만 생성하는 시간별 제품 개발 루프를 추가했습니다.",
-              "- NVIDIA NIM 기반 OpenCode가 리뷰·Check·독립 승인 대기 중인 PR과 경로가 겹치지 않는 상용화 개선안을 계속 제안하도록 시간별 제품 개발 루프를 갱신했습니다. 같은 저장소의 `automation/hourly-` Draft는 최대 2개로 제한하고, 자격 증명 없는 검증 후 전용 GitHub App으로 Draft PR만 생성합니다.",
-          )
-          changelog = replace_once(
-              changelog,
-              "- OpenCode 제품 루프가 전용 GitHub App 쓰기 토큰을 발급한 뒤에도 첫 브랜치 쓰기 직전에 전체 페이지의 open PR 수, 보호된 `main`의 정확한 SHA, 불변 패치 SHA-256을 다시 검증하도록 강화했습니다. 경쟁 PR이나 base 변경이 토큰 발급 직후 발생하면 `publish=false`로 종료해 stale·중복 Draft와 불필요한 CI 소비를 차단합니다.",
-              "- OpenCode 제품 루프가 전용 GitHub App 쓰기 토큰을 발급한 뒤에도 첫 브랜치 쓰기 직전에 전체 페이지의 open PR, 같은 저장소 자동 Draft 수, 제안 경로의 비중첩성, 보호된 `main`의 정확한 SHA, 불변 패치 SHA-256을 다시 검증하도록 강화했습니다. 큐가 2개로 가득 차거나 경쟁 PR이 경로를 선점하거나 base가 변경되면 `publish=false`로 종료해 stale·중복·충돌 Draft와 불필요한 CI 소비를 차단합니다.",
-          )
-          changelog_path.write_text(changelog, encoding="utf-8")
-          PY
-
-      - name: Verify GREEN contracts
-        run: |
-          set -euo pipefail
-          python3 -m compileall -q scripts/test_hourly_opencode_scheduler_contract.py
-          python3 - <<'PY'
-          import importlib.util
-          from pathlib import Path
-
-          path = Path("scripts/test_hourly_opencode_scheduler_contract.py")
-          spec = importlib.util.spec_from_file_location("scheduler_contract", path)
-          if spec is None or spec.loader is None:
-              raise SystemExit("unable to load scheduler contract")
-          module = importlib.util.module_from_spec(spec)
-          spec.loader.exec_module(module)
-          tests = [
-              (name, value)
-              for name, value in vars(module).items()
-              if name.startswith("test_") and callable(value)
-          ]
-          for name, test in sorted(tests):
-              test()
-              print(f"PASS {name}")
-          print(f"{len(tests)} scheduler contract tests passed")
-          PY
-          git diff --check
-          test ! -e .github/workflows/hourly-pr-maintenance.yml
+          python3 "${RUNNER_TEMP}/scheduler-patch-2.py"
+          python3 "${RUNNER_TEMP}/scheduler-patch-3.py"
 
       - name: Commit implementation and remove one-shot workflow
         run: |
@@ -570,6 +110,5 @@ The workflow rejects publication when:
       - name: Push test-first scheduler update
         run: |
           set -euo pipefail
-          git status --short
           test -z "$(git status --porcelain)"
           git push origin HEAD:feat/hourly-opencode-commercial-loop

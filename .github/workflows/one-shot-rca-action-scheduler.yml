@@ -1,10 +1,9 @@
 name: One-shot RCA-to-action scheduler repair
 
-# Synchronize once after GitHub registers this branch-local workflow.
 on:
-  pull_request:
-    types:
-      - synchronize
+  push:
+    branches:
+      - feat/hourly-opencode-commercial-loop
     paths:
       - .github/workflows/one-shot-rca-action-scheduler.yml
 
@@ -20,9 +19,7 @@ env:
 
 jobs:
   repair:
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.head.ref == 'feat/hourly-opencode-commercial-loop'
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -46,7 +43,7 @@ jobs:
           persist-credentials: true
 
       - name: Assert exact trigger head
-        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+        run: test "$(git rev-parse HEAD)" = "${{ github.sha }}"
 
       - name: Implement RCA-to-action contract and verify
         run: |
@@ -258,7 +255,7 @@ The only valid no-change result is one backed by evidence that queue capacity, d
         run: |
           set -euo pipefail
           {
-            echo "trigger_head=${{ github.event.pull_request.head.sha }}"
+            echo "trigger_head=${{ github.sha }}"
             echo "green_commit=$(git rev-parse HEAD)"
             echo "workflow_blob=$(git rev-parse HEAD:.github/workflows/hourly-product-development.yml)"
             echo "guide_blob=$(git rev-parse HEAD:docs/operations/hourly-development.md)"
@@ -280,7 +277,7 @@ The only valid no-change result is one backed by evidence that queue capacity, d
       - name: Upload verified RCA-to-action repair artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: verified-rca-action-scheduler-${{ github.event.pull_request.head.sha }}
+          name: verified-rca-action-scheduler-${{ github.sha }}
           path: |
             .github/workflows/hourly-product-development.yml
             scripts/test_hourly_opencode_scheduler_contract.py

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
@@ -17,13 +18,15 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
+    private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService);
+        tenantAccessService = new TenantAccessService();
+        controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -31,12 +34,15 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsReturnsAllJobsWhenNoFilterProvided() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "buyer-demo", "buyer-demo-operator", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "buyer-demo", "buyer-demo-operator", "b.pdf", "application/pdf", "hash-b", 100L, 3);
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
+                .header("X-Clearfolio-Tenant-Id", "buyer-demo")
+                .header("X-Clearfolio-Subject-Id", "buyer-demo-operator")
+                .header("X-Clearfolio-Permissions", "job:read")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -47,14 +53,17 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsFiltersByDeadLetteredTrue() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "buyer-demo", "buyer-demo-operator", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         job1.markDeadLettered("failed");
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "buyer-demo", "buyer-demo-operator", "b.pdf", "application/pdf", "hash-b", 100L, 3);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .header("X-Clearfolio-Tenant-Id", "buyer-demo")
+                .header("X-Clearfolio-Subject-Id", "buyer-demo-operator")
+                .header("X-Clearfolio-Permissions", "job:read")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -64,14 +73,17 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsFiltersByDeadLetteredFalse() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "buyer-demo", "buyer-demo-operator", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         job1.markDeadLettered("failed");
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "buyer-demo", "buyer-demo-operator", "b.pdf", "application/pdf", "hash-b", 100L, 3);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
+                .header("X-Clearfolio-Tenant-Id", "buyer-demo")
+                .header("X-Clearfolio-Subject-Id", "buyer-demo-operator")
+                .header("X-Clearfolio-Permissions", "job:read")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -82,9 +94,13 @@ class AdminControllerTest {
     @Test
     void deleteJobReturnsNoContent() {
         UUID jobId = UUID.randomUUID();
+        when(conversionService.deleteJob(org.mockito.ArgumentMatchers.eq(jobId), org.mockito.ArgumentMatchers.any())).thenReturn(true);
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .header("X-Clearfolio-Tenant-Id", "buyer-demo")
+                .header("X-Clearfolio-Subject-Id", "buyer-demo-operator")
+                .header("X-Clearfolio-Permissions", "job:delete")
                 .exchange()
                 .expectStatus().isNoContent();
     }
@@ -92,10 +108,15 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
+        ConversionJob job = new ConversionJob(jobId, "buyer-demo", "buyer-demo-operator", "a.pdf", "application/pdf", "hash", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
+        when(conversionService.retryDeadLettered(org.mockito.ArgumentMatchers.eq(jobId), org.mockito.ArgumentMatchers.anyString())).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header("X-Clearfolio-Tenant-Id", "buyer-demo")
+                .header("X-Clearfolio-Subject-Id", "buyer-demo-operator")
+                .header("X-Clearfolio-Permissions", "job:retry")
                 .exchange()
                 .expectStatus().isAccepted();
     }
@@ -103,10 +124,15 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsNotFoundWhenNotFound() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
+        ConversionJob job = new ConversionJob(jobId, "buyer-demo", "buyer-demo-operator", "a.pdf", "application/pdf", "hash", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
+        when(conversionService.retryDeadLettered(org.mockito.ArgumentMatchers.eq(jobId), org.mockito.ArgumentMatchers.anyString())).thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header("X-Clearfolio-Tenant-Id", "buyer-demo")
+                .header("X-Clearfolio-Subject-Id", "buyer-demo-operator")
+                .header("X-Clearfolio-Permissions", "job:retry")
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -114,10 +140,15 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsConflictWhenNotEligible() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
+        ConversionJob job = new ConversionJob(jobId, "buyer-demo", "buyer-demo-operator", "a.pdf", "application/pdf", "hash", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
+        when(conversionService.retryDeadLettered(org.mockito.ArgumentMatchers.eq(jobId), org.mockito.ArgumentMatchers.anyString())).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header("X-Clearfolio-Tenant-Id", "buyer-demo")
+                .header("X-Clearfolio-Subject-Id", "buyer-demo-operator")
+                .header("X-Clearfolio-Permissions", "job:retry")
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
     }

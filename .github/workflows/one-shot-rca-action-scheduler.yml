@@ -60,135 +60,148 @@ jobs:
           changelog_path = Path("CHANGELOG.md")
           one_shot_path = Path(".github/workflows/one-shot-rca-action-scheduler.yml")
 
-          def replace_once(text: str, old: str, new: str, label: str) -> str:
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"{label}: expected one occurrence, found {count}")
-              return text.replace(old, new, 1)
+          def exact_index(lines: list[str], expected: str, *, start: int = 0) -> int:
+              matches = [index for index in range(start, len(lines)) if lines[index] == expected]
+              if len(matches) != 1:
+                  raise SystemExit(
+                      f"expected one exact line after {start}, found {len(matches)}: {expected!r}"
+                  )
+              return matches[0]
 
-          workflow = workflow_path.read_text(encoding="utf-8")
-          workflow = replace_once(
-              workflow,
-              '''          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
-            echo "dispatch=false" >>"$GITHUB_OUTPUT"
-            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); PR maintenance continues independently."
-            exit 0
-          fi
-''',
-              '''          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then
-            echo "dispatch=false" >>"$GITHUB_OUTPUT"
-            echo "reason=autonomous_draft_queue_full" >>"$GITHUB_OUTPUT"
-            echo "feasibility=not_executable_in_this_run" >>"$GITHUB_OUTPUT"
-            echo "next_action=continue_central_pr_maintenance_and_retry_after_capacity" >>"$GITHUB_OUTPUT"
-            echo "::notice::RCA: the autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); another product write is not realistically safe in this run, while central PR maintenance continues independently."
-            exit 0
-          fi
-''',
-              "queue RCA",
+          workflow_lines = workflow_path.read_text(encoding="utf-8").splitlines()
+
+          queue_index = exact_index(
+              workflow_lines,
+              '          if [ "$active_autonomous_prs" -ge "$MAX_ACTIVE_AUTONOMOUS_PRS" ]; then',
           )
-          workflow = replace_once(
-              workflow,
-              '''          if [ "$DRY_RUN" != "true" ] && { [ "$NIM_CONFIGURED" != "true" ] \
-            || [ "$APP_CLIENT_CONFIGURED" != "true" ] \
-            || [ "$APP_KEY_CONFIGURED" != "true" ]; }; then
-            echo "dispatch=false" >>"$GITHUB_OUTPUT"
-            echo "::notice::Autonomous development is disabled until the dedicated NIM and maintainer App credentials are configured."
-            exit 0
-          fi
-          echo "dispatch=true" >>"$GITHUB_OUTPUT"
-''',
-              '''          if [ "$DRY_RUN" != "true" ] && { [ "$NIM_CONFIGURED" != "true" ] \
-            || [ "$APP_CLIENT_CONFIGURED" != "true" ] \
-            || [ "$APP_KEY_CONFIGURED" != "true" ]; }; then
-            echo "dispatch=false" >>"$GITHUB_OUTPUT"
-            echo "reason=missing_required_credentials" >>"$GITHUB_OUTPUT"
-            echo "feasibility=not_executable_in_this_run" >>"$GITHUB_OUTPUT"
-            echo "next_action=configure_declared_repository_prerequisites" >>"$GITHUB_OUTPUT"
-            echo "::notice::RCA: one or more declared NIM or maintainer App prerequisites are absent; inventing a key, broadening token scope, or using a fallback credential is not a realistic safe remedy."
-            exit 0
-          fi
-          echo "dispatch=true" >>"$GITHUB_OUTPUT"
-          echo "reason=capacity_and_credentials_satisfied" >>"$GITHUB_OUTPUT"
-          echo "feasibility=executable_in_this_run" >>"$GITHUB_OUTPUT"
-          echo "next_action=run_bounded_rca_and_product_change" >>"$GITHUB_OUTPUT"
-''',
-              "credential RCA",
+          queue_dispatch_index = exact_index(
+              workflow_lines,
+              '            echo "dispatch=false" >>"$GITHUB_OUTPUT"',
+              start=queue_index,
           )
-          workflow = replace_once(
-              workflow,
-              '''      - name: Record dry-run contract
-''',
-              '''      - name: Record deterministic RCA when proposal dispatch is impossible
-        if: steps.gate.outputs.dispatch != 'true'
-        env:
-          BLOCK_REASON: ${{ steps.gate.outputs.reason }}
-          FEASIBILITY: ${{ steps.gate.outputs.feasibility }}
-          NEXT_ACTION: ${{ steps.gate.outputs.next_action }}
-        run: |
-          set -euo pipefail
-          {
-            echo "## Scheduler RCA"
-            echo "- root cause: \`${BLOCK_REASON}\`"
-            echo "- practical feasibility: \`${FEASIBILITY}\`"
-            echo "- next safe action: \`${NEXT_ACTION}\`"
-            echo
-            echo "The scheduler did not claim or attempt a repository write outside its declared credentials, queue capacity, or trust boundary."
-          } >>"$GITHUB_STEP_SUMMARY"
-
-      - name: Record dry-run contract
-''',
-              "deterministic RCA step",
+          workflow_lines[queue_dispatch_index + 1 : queue_dispatch_index + 1] = [
+              '            echo "reason=autonomous_draft_queue_full" >>"$GITHUB_OUTPUT"',
+              '            echo "feasibility=not_executable_in_this_run" >>"$GITHUB_OUTPUT"',
+              '            echo "next_action=continue_central_pr_maintenance_and_retry_after_capacity" >>"$GITHUB_OUTPUT"',
+          ]
+          queue_notice_index = exact_index(
+              workflow_lines,
+              '            echo "::notice::Autonomous Draft queue is full (${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); PR maintenance continues independently."',
+              start=queue_dispatch_index,
           )
-          workflow = replace_once(
-              workflow,
-              '''          pull requests may still be waiting for exact-head checks or independent approval; that latency
-          must not stop disjoint productive work. Inspect AGENTS.md, README.md, CHANGELOG.md, architecture,
-''',
-              '''          pull requests may still be waiting for exact-head checks or independent approval; that latency
-          must not stop disjoint productive work.
-
-          For every obstacle or product gap, follow this mandatory RCA-to-action loop:
-          1. Perform root-cause analysis before choosing a remedy. Trace the observed symptom to a
-             repository-controlled source, contract, data flow, or operational boundary, and distinguish
-             external waiting from a defect this repository can change.
-          2. Enumerate competing remedies when more than one credible option exists.
-          3. Evaluate every candidate remedy for practical feasibility in this run. Check current permissions,
-             allowed paths, open-PR path ownership, required dependencies, bounded time and compute, test-first
-             reproducibility, security and privacy, rollback, and whether the credential-free verifier can prove it.
-          4. Execute the highest-impact feasible remedy in this run. Add the failing regression first, confirm
-             that it fails for the diagnosed reason, then implement the minimum production change.
-          5. If the original obstacle is external or infeasible, continue with the next path-disjoint buyer-visible gap.
-
-          Do not stop at reporting a blocker, writing a plan, or requesting human action. A blocker report is
-          evidence for the decision, not the product outcome. Inspect AGENTS.md, README.md, CHANGELOG.md, architecture,
-''',
-              "model RCA prompt",
+          workflow_lines[queue_notice_index] = (
+              '            echo "::notice::RCA: the autonomous Draft queue is full '
+              '(${active_autonomous_prs}/${MAX_ACTIVE_AUTONOMOUS_PRS}); another product write is not '
+              'realistically safe in this run, while central PR maintenance continues independently."'
           )
-          workflow_path.write_text(workflow, encoding="utf-8")
 
-          guide = guide_path.read_text(encoding="utf-8")
-          guide_section = '''## RCA-to-action contract
-
-A wait state or failed attempt is evidence to analyze, not a terminal product outcome. Before editing, the hourly product loop identifies the observable symptom, traces a repository-controlled root cause or a clearly external boundary, and compares credible remedies.
-
-Each candidate is checked against the permissions available in the current run, the allowed file boundary, open-PR path ownership, required credentials and dependencies, bounded execution cost, test-first reproducibility, security and privacy, rollback, and whether the credential-free verifier can prove the result. The loop executes the highest-impact feasible remedy immediately. When the original obstacle is external or infeasible, it continues with the next path-disjoint buyer-visible gap instead of ending with a blocker report or a request for human action.
-
-The only valid no-change result is one backed by evidence that queue capacity, declared credentials, every safe material candidate, or repository ownership makes a write unrealistic in that run. The workflow records that deterministic reason without inventing secrets, weakening protection, racing another writer, or claiming an action that it could not execute.
-
-'''
-          guide = replace_once(
-              guide,
-              "## Backpressure and idempotency\n",
-              guide_section + "## Backpressure and idempotency\n",
-              "operator RCA section",
+          credential_index = exact_index(
+              workflow_lines,
+              '          if [ "$DRY_RUN" != "true" ] && { [ "$NIM_CONFIGURED" != "true" ] \\',
           )
-          guide_path.write_text(guide, encoding="utf-8")
+          credential_dispatch_index = exact_index(
+              workflow_lines,
+              '            echo "dispatch=false" >>"$GITHUB_OUTPUT"',
+              start=credential_index,
+          )
+          workflow_lines[credential_dispatch_index + 1 : credential_dispatch_index + 1] = [
+              '            echo "reason=missing_required_credentials" >>"$GITHUB_OUTPUT"',
+              '            echo "feasibility=not_executable_in_this_run" >>"$GITHUB_OUTPUT"',
+              '            echo "next_action=configure_declared_repository_prerequisites" >>"$GITHUB_OUTPUT"',
+          ]
+          credential_notice_index = exact_index(
+              workflow_lines,
+              '            echo "::notice::Autonomous development is disabled until the dedicated NIM and maintainer App credentials are configured."',
+              start=credential_dispatch_index,
+          )
+          workflow_lines[credential_notice_index] = (
+              '            echo "::notice::RCA: one or more declared NIM or maintainer App prerequisites '
+              'are absent; inventing a key, broadening token scope, or using a fallback credential is not '
+              'a realistic safe remedy."'
+          )
+          dispatch_true_index = exact_index(
+              workflow_lines,
+              '          echo "dispatch=true" >>"$GITHUB_OUTPUT"',
+              start=credential_index,
+          )
+          workflow_lines[dispatch_true_index + 1 : dispatch_true_index + 1] = [
+              '          echo "reason=capacity_and_credentials_satisfied" >>"$GITHUB_OUTPUT"',
+              '          echo "feasibility=executable_in_this_run" >>"$GITHUB_OUTPUT"',
+              '          echo "next_action=run_bounded_rca_and_product_change" >>"$GITHUB_OUTPUT"',
+          ]
 
-          changelog = changelog_path.read_text(encoding="utf-8")
-          anchor = "- NVIDIA NIM 기반 OpenCode가 리뷰·Check·독립 승인 대기 중인 PR과 경로가 겹치지 않는 상용화 개선안을 계속 제안하도록 시간별 제품 개발 루프를 갱신했습니다. 같은 저장소의 `automation/hourly-` Draft는 최대 2개로 제한하고, 자격 증명 없는 검증 후 전용 GitHub App으로 Draft PR만 생성합니다.\n"
-          addition = anchor + "- 시간별 OpenCode 제품 루프에 RCA→후보 조치→현실성 검증→같은 실행의 조치 계약을 추가했습니다. 외부 대기나 실행 불가능한 조치를 만나면 멈추지 않고 다음 비중첩 buyer-visible Gap으로 이동하며, 큐 용량이나 필수 자격증명이 실제로 실행을 막는 경우에는 안전 경계 밖의 조치를 가장하지 않고 정확한 원인과 다음 안전 행동을 기록합니다.\n"
-          changelog = replace_once(changelog, anchor, addition, "changelog RCA entry")
-          changelog_path.write_text(changelog, encoding="utf-8")
+          dry_run_step_index = exact_index(
+              workflow_lines,
+              "      - name: Record dry-run contract",
+          )
+          workflow_lines[dry_run_step_index:dry_run_step_index] = [
+              "      - name: Record deterministic RCA when proposal dispatch is impossible",
+              "        if: steps.gate.outputs.dispatch != 'true'",
+              "        env:",
+              "          BLOCK_REASON: ${{ steps.gate.outputs.reason }}",
+              "          FEASIBILITY: ${{ steps.gate.outputs.feasibility }}",
+              "          NEXT_ACTION: ${{ steps.gate.outputs.next_action }}",
+              "        run: |",
+              "          set -euo pipefail",
+              "          {",
+              '            echo "## Scheduler RCA"',
+              '            echo "- root cause: `${BLOCK_REASON}`"',
+              '            echo "- practical feasibility: `${FEASIBILITY}`"',
+              '            echo "- next safe action: `${NEXT_ACTION}`"',
+              "            echo",
+              '            echo "The scheduler did not claim or attempt a repository write outside its declared credentials, queue capacity, or trust boundary."',
+              '          } >>"$GITHUB_STEP_SUMMARY"',
+              "",
+          ]
+
+          prompt_index = exact_index(
+              workflow_lines,
+              "          must not stop disjoint productive work. Inspect AGENTS.md, README.md, CHANGELOG.md, architecture,",
+          )
+          workflow_lines[prompt_index : prompt_index + 1] = [
+              "          must not stop disjoint productive work.",
+              "",
+              "          For every obstacle or product gap, follow this mandatory RCA-to-action loop:",
+              "          1. Perform root-cause analysis before choosing a remedy. Trace the observed symptom to a",
+              "             repository-controlled source, contract, data flow, or operational boundary, and distinguish",
+              "             external waiting from a defect this repository can change.",
+              "          2. Enumerate competing remedies when more than one credible option exists.",
+              "          3. Evaluate every candidate remedy for practical feasibility in this run. Check current permissions,",
+              "             allowed paths, open-PR path ownership, required dependencies, bounded time and compute, test-first",
+              "             reproducibility, security and privacy, rollback, and whether the credential-free verifier can prove it.",
+              "          4. Execute the highest-impact feasible remedy in this run. Add the failing regression first, confirm",
+              "             that it fails for the diagnosed reason, then implement the minimum production change.",
+              "          5. If the original obstacle is external or infeasible, continue with the next path-disjoint buyer-visible gap.",
+              "",
+              "          Do not stop at reporting a blocker, writing a plan, or requesting human action. A blocker report is",
+              "          evidence for the decision, not the product outcome. Inspect AGENTS.md, README.md, CHANGELOG.md, architecture,",
+          ]
+          workflow_path.write_text("\n".join(workflow_lines) + "\n", encoding="utf-8")
+
+          guide_lines = guide_path.read_text(encoding="utf-8").splitlines()
+          guide_anchor = exact_index(guide_lines, "## Backpressure and idempotency")
+          guide_lines[guide_anchor:guide_anchor] = [
+              "## RCA-to-action contract",
+              "",
+              "A wait state or failed attempt is evidence to analyze, not a terminal product outcome. Before editing, the hourly product loop identifies the observable symptom, traces a repository-controlled root cause or a clearly external boundary, and compares credible remedies.",
+              "",
+              "Each candidate is checked against the permissions available in the current run, the allowed file boundary, open-PR path ownership, required credentials and dependencies, bounded execution cost, test-first reproducibility, security and privacy, rollback, and whether the credential-free verifier can prove the result. The loop executes the highest-impact feasible remedy immediately. When the original obstacle is external or infeasible, it continues with the next path-disjoint buyer-visible gap instead of ending with a blocker report or a request for human action.",
+              "",
+              "The only valid no-change result is one backed by evidence that queue capacity, declared credentials, every safe material candidate, or repository ownership makes a write unrealistic in that run. The workflow records that deterministic reason without inventing secrets, weakening protection, racing another writer, or claiming an action that it could not execute.",
+              "",
+          ]
+          guide_path.write_text("\n".join(guide_lines) + "\n", encoding="utf-8")
+
+          changelog_lines = changelog_path.read_text(encoding="utf-8").splitlines()
+          changelog_anchor = exact_index(
+              changelog_lines,
+              "- NVIDIA NIM 기반 OpenCode가 리뷰·Check·독립 승인 대기 중인 PR과 경로가 겹치지 않는 상용화 개선안을 계속 제안하도록 시간별 제품 개발 루프를 갱신했습니다. 같은 저장소의 `automation/hourly-` Draft는 최대 2개로 제한하고, 자격 증명 없는 검증 후 전용 GitHub App으로 Draft PR만 생성합니다.",
+          )
+          changelog_lines.insert(
+              changelog_anchor + 1,
+              "- 시간별 OpenCode 제품 루프에 RCA→후보 조치→현실성 검증→같은 실행의 조치 계약을 추가했습니다. 외부 대기나 실행 불가능한 조치를 만나면 멈추지 않고 다음 비중첩 buyer-visible Gap으로 이동하며, 큐 용량이나 필수 자격증명이 실제로 실행을 막는 경우에는 안전 경계 밖의 조치를 가장하지 않고 정확한 원인과 다음 안전 행동을 기록합니다.",
+          )
+          changelog_path.write_text("\n".join(changelog_lines) + "\n", encoding="utf-8")
 
           contract_path = Path("scripts/test_hourly_opencode_scheduler_contract.py")
           spec = importlib.util.spec_from_file_location("scheduler_contract", contract_path)
@@ -207,24 +220,13 @@ The only valid no-change result is one backed by evidence that queue capacity, d
           print(f"{len(tests)} scheduler contract tests passed")
 
           subprocess.run(
-              [
-                  "ruby",
-                  "-e",
-                  'require "yaml"; YAML.parse_file(ARGV.fetch(0))',
-                  str(workflow_path),
-              ],
+              ["ruby", "-e", 'require "yaml"; YAML.parse_file(ARGV.fetch(0))', str(workflow_path)],
               check=True,
           )
           subprocess.run(["git", "diff", "--check"], check=True)
-
           subprocess.run(["git", "config", "user.name", "clearfolio-maintainer[bot]"], check=True)
           subprocess.run(
-              [
-                  "git",
-                  "config",
-                  "user.email",
-                  "clearfolio-maintainer[bot]@users.noreply.github.com",
-              ],
+              ["git", "config", "user.email", "clearfolio-maintainer[bot]@users.noreply.github.com"],
               check=True,
           )
           one_shot_path.unlink()
@@ -241,12 +243,7 @@ The only valid no-change result is one backed by evidence that queue capacity, d
           )
           subprocess.run(["git", "diff", "--cached", "--check"], check=True)
           subprocess.run(
-              [
-                  "git",
-                  "commit",
-                  "-m",
-                  "fix(automation): turn scheduler blockers into feasible actions",
-              ],
+              ["git", "commit", "-m", "fix(automation): turn scheduler blockers into feasible actions"],
               check=True,
           )
           PY

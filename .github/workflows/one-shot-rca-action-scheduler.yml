@@ -1,5 +1,6 @@
 name: One-shot RCA-to-action scheduler repair
 
+# Synchronize once after GitHub registers this branch-local workflow.
 on:
   pull_request:
     types:

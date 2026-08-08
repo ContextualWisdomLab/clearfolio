@@ -45,15 +45,18 @@ jobs:
       - name: Assert exact trigger head
         run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
 
-      - name: Run test-first YAML repair and create local commits
+      - name: Add RED contract, repair YAML, and verify GREEN
+        env:
+          CONTRACT_APPEND_B64: CgoKZGVmIHRlc3Rfc2NoZWR1bGVyX3N0ZXBfYmxvY2tzX3ByZXNlcnZlX3lhbWxfaW5kZW50YXRpb24oKSAtPiBOb25lOgogICAgIiIiS2VlcCBnZW5lcmF0ZWQgZW52IG1hcHBpbmdzIGFuZCBzaGVsbCBsaXRlcmFscyBpbnNpZGUgdGhlaXIgd29ya2Zsb3cgc3RlcHMuIiIiCiAgICB3b3JrZmxvdyA9IF9yZWFkKFBST0RVQ1RfV09SS0ZMT1cpCiAgICBzdGVwX25hbWVzID0gKAogICAgICAgICJFbmZvcmNlIGJvdW5kZWQgYXV0b25vbW91cyBxdWV1ZSBhbmQgY3JlZGVudGlhbCBwcmVyZXF1aXNpdGVzIiwKICAgICAgICAiUmVjaGVjayBib3VuZGVkIHF1ZXVlLCBkaXNqb2ludCBwYXRocywgYW5kIGV4YWN0LWJhc2UgcHJlY29uZGl0aW9ucyIsCiAgICAgICAgIlJlY2hlY2sgYm91bmRlZCBxdWV1ZSwgZGlzam9pbnQgcGF0aHMsIGFuZCBwYXRjaCBpZGVudGl0eSIsCiAgICAgICAgIlJlY2hlY2sgaW1tZWRpYXRlbHkgYmVmb3JlIERyYWZ0IHB1YmxpY2F0aW9uIiwKICAgICkKCiAgICBmb3Igc3RlcF9uYW1lIGluIHN0ZXBfbmFtZXM6CiAgICAgICAgcmVtYWluZGVyID0gd29ya2Zsb3cuc3BsaXQoZiIgICAgICAtIG5hbWU6IHtzdGVwX25hbWV9XG4iLCAxKVsxXQogICAgICAgIG5leHRfc3RlcCA9IHJlbWFpbmRlci5maW5kKCJcbiAgICAgIC0gbmFtZTogIikKICAgICAgICBzdGVwX2Jsb2NrID0gcmVtYWluZGVyIGlmIG5leHRfc3RlcCA8IDAgZWxzZSByZW1haW5kZXJbOm5leHRfc3RlcF0KICAgICAgICBsaW5lcyA9IHN0ZXBfYmxvY2suc3BsaXRsaW5lcygpCiAgICAgICAgZW52X2luZGV4ID0gbGluZXMuaW5kZXgoIiAgICAgICAgZW52OiIpCiAgICAgICAgcnVuX2luZGV4ID0gbGluZXMuaW5kZXgoIiAgICAgICAgcnVuOiB8IikKICAgICAgICBhc3NlcnQgZW52X2luZGV4IDwgcnVuX2luZGV4CiAgICAgICAgYXNzZXJ0IGFsbCgKICAgICAgICAgICAgbm90IGxpbmUgb3IgbGluZS5zdGFydHN3aXRoKCIgICAgICAgICAgIikKICAgICAgICAgICAgZm9yIGxpbmUgaW4gbGluZXNbZW52X2luZGV4ICsgMSA6IHJ1bl9pbmRleF0KICAgICAgICApCiAgICAgICAgYXNzZXJ0IGFsbCgKICAgICAgICAgICAgbm90IGxpbmUgb3IgbGluZS5zdGFydHN3aXRoKCIgICAgICAgICAgIikKICAgICAgICAgICAgZm9yIGxpbmUgaW4gbGluZXNbcnVuX2luZGV4ICsgMSA6XQogICAgICAgICkK
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from __future__ import annotations
 
+          import base64
           import importlib.util
+          import os
           import subprocess
-          import textwrap
           from pathlib import Path
 
           contract_path = Path("scripts/test_hourly_opencode_scheduler_contract.py")
@@ -75,38 +78,7 @@ jobs:
           marker = "def test_scheduler_step_blocks_preserve_yaml_indentation()"
           if marker in contract:
               raise SystemExit("YAML indentation contract already exists")
-          contract += textwrap.dedent(
-              '''
-
-
-              def test_scheduler_step_blocks_preserve_yaml_indentation() -> None:
-                  """Keep generated env mappings and shell literals inside their workflow steps."""
-                  workflow = _read(PRODUCT_WORKFLOW)
-                  step_names = (
-                      "Enforce bounded autonomous queue and credential prerequisites",
-                      "Recheck bounded queue, disjoint paths, and exact-base preconditions",
-                      "Recheck bounded queue, disjoint paths, and patch identity",
-                      "Recheck immediately before Draft publication",
-                  )
-
-                  for step_name in step_names:
-                      remainder = workflow.split(f"      - name: {step_name}\\n", 1)[1]
-                      next_step = remainder.find("\\n      - name: ")
-                      step_block = remainder if next_step < 0 else remainder[:next_step]
-                      lines = step_block.splitlines()
-                      env_index = lines.index("        env:")
-                      run_index = lines.index("        run: |")
-                      assert env_index < run_index
-                      assert all(
-                          not line or line.startswith("          ")
-                          for line in lines[env_index + 1 : run_index]
-                      )
-                      assert all(
-                          not line or line.startswith("          ")
-                          for line in lines[run_index + 1 :]
-                      )
-              '''
-          )
+          contract += base64.b64decode(os.environ["CONTRACT_APPEND_B64"]).decode("utf-8")
           contract_path.write_text(contract, encoding="utf-8")
 
           module = load_contract()
@@ -118,12 +90,7 @@ jobs:
               raise SystemExit("RED contract unexpectedly passed before repair")
 
           run("git", "config", "user.name", "clearfolio-maintainer[bot]")
-          run(
-              "git",
-              "config",
-              "user.email",
-              "clearfolio-maintainer[bot]@users.noreply.github.com",
-          )
+          run("git", "config", "user.email", "clearfolio-maintainer[bot]@users.noreply.github.com")
           run("git", "add", str(contract_path))
           run("git", "diff", "--cached", "--check")
           run("git", "commit", "-m", "test: require valid scheduler step indentation")
@@ -136,8 +103,10 @@ jobs:
               "Recheck immediately before Draft publication",
           )
           for step_name in step_names:
-              marker_line = f"      - name: {step_name}\\n"
-              matches = [index for index, line in enumerate(lines) if line == marker_line]
+              marker_text = f"      - name: {step_name}"
+              matches = [
+                  index for index, line in enumerate(lines) if line.rstrip("\n") == marker_text
+              ]
               if len(matches) != 1:
                   raise SystemExit(
                       f"expected one step marker for {step_name!r}, found {len(matches)}"
@@ -156,12 +125,12 @@ jobs:
               env_index = next(
                   index
                   for index in range(start + 1, end)
-                  if lines[index] == "        env:\n"
+                  if lines[index].rstrip("\n") == "        env:"
               )
               run_index = next(
                   index
                   for index in range(env_index + 1, end)
-                  if lines[index] == "        run: |\n"
+                  if lines[index].rstrip("\n") == "        run: |"
               )
               for index in range(env_index + 1, run_index):
                   if lines[index].strip() and not lines[index].startswith("          "):
@@ -181,13 +150,7 @@ jobs:
               test()
               print(f"PASS {name}")
           print(f"{len(tests)} scheduler contract tests passed")
-
-          run(
-              "ruby",
-              "-e",
-              'require "yaml"; YAML.parse_file(ARGV.fetch(0))',
-              str(workflow_path),
-          )
+          run("ruby", "-e", 'require "yaml"; YAML.parse_file(ARGV.fetch(0))', str(workflow_path))
           run("git", "diff", "--check")
           one_shot_path.unlink()
           run("git", "add", str(workflow_path), str(contract_path), str(one_shot_path))
@@ -212,14 +175,12 @@ jobs:
       - name: Upload generated objects to GitHub quarantine
         run: |
           set -euo pipefail
-          push_log="${RUNNER_TEMP}/push-attempt.log"
           set +e
-          git push origin HEAD:feat/hourly-opencode-commercial-loop >"$push_log" 2>&1
+          git push origin HEAD:feat/hourly-opencode-commercial-loop
           status=$?
           set -e
-          cat "$push_log"
           if [ "$status" -ne 0 ]; then
-            echo "::notice::Expected workflow-permission rejection uploaded generated Git objects for connector publication."
+            echo "::notice::Expected workflow-permission rejection uploaded generated Git objects."
           fi
 
       - name: Upload verified YAML repair artifact

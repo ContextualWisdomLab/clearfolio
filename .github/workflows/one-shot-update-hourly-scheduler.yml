@@ -79,7 +79,7 @@ jobs:
       - name: Repair exact multiline replacement matching
         run: |
           set -euo pipefail
-          PATCH_PROGRAM="${RUNNER_TEMP}/scheduler-patch-2.py" python3 - <<'PY'
+          PATCH_PROGRAM="${RUNNER_TEMP}/scheduler-patch-2.py" RED_PROGRAM="${RUNNER_TEMP}/scheduler-patch-0.py" python3 - <<'PY'
           import os
           from pathlib import Path
 
@@ -132,6 +132,20 @@ jobs:
           if source.count(old) != 1:
               raise SystemExit("unable to locate exact replace_once helper")
           path.write_text(source.replace(old, new, 1), encoding="utf-8")
+
+          red_path = Path(os.environ["RED_PROGRAM"])
+          red_source = red_path.read_text(encoding="utf-8")
+          stale_assertion = '    assert "Existing open pull requests may still be waiting" in workflow\n'
+          robust_assertions = (
+              '    assert "Existing open" in workflow\n'
+              '    assert "pull requests may still be waiting" in workflow\n'
+          )
+          if red_source.count(stale_assertion) != 1:
+              raise SystemExit("unable to locate wrapped prompt assertion")
+          red_path.write_text(
+              red_source.replace(stale_assertion, robust_assertions, 1),
+              encoding="utf-8",
+          )
           PY
 
       - name: Add and verify RED scheduler contract

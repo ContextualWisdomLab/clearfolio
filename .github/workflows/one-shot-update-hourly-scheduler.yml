@@ -135,10 +135,10 @@ jobs:
 
           red_path = Path(os.environ["RED_PROGRAM"])
           red_source = red_path.read_text(encoding="utf-8")
-          stale_assertion = '    assert "Existing open pull requests may still be waiting" in workflow\n'
+          stale_assertion = 'assert "Existing open pull requests may still be waiting" in workflow'
           robust_assertions = (
-              '    assert "Existing open" in workflow\n'
-              '    assert "pull requests may still be waiting" in workflow\n'
+              'assert "Existing open" in workflow\n'
+              '    assert "pull requests may still be waiting" in workflow'
           )
           if red_source.count(stale_assertion) != 1:
               raise SystemExit("unable to locate wrapped prompt assertion")

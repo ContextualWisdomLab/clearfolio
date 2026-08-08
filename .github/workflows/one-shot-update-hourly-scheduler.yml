@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -43,7 +43,7 @@ jobs:
         with:
           ref: feat/hourly-opencode-commercial-loop
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Assert exact trigger head
         run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
@@ -154,7 +154,7 @@ jobs:
           python3 "${RUNNER_TEMP}/scheduler-patch-0.py"
           python3 "${RUNNER_TEMP}/scheduler-patch-1.py"
 
-      - name: Commit RED contract
+      - name: Commit RED contract locally
         run: |
           set -euo pipefail
           git config user.name "clearfolio-maintainer[bot]"
@@ -169,21 +169,34 @@ jobs:
           python3 "${RUNNER_TEMP}/scheduler-patch-2.py"
           python3 "${RUNNER_TEMP}/scheduler-patch-3.py"
 
-      - name: Commit implementation and remove one-shot workflow
+      - name: Record verified generated files
         run: |
           set -euo pipefail
-          rm .github/workflows/one-shot-update-hourly-scheduler.yml
-          git add .github/workflows/hourly-product-development.yml \
+          git diff --check
+          printf '%s\n' \
+            "trigger_head=${{ github.event.pull_request.head.sha }}" \
+            "red_commit=$(git rev-parse HEAD)" \
+            "generated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            > scheduler-update-manifest.txt
+          sha256sum \
+            .github/workflows/hourly-product-development.yml \
             scripts/test_hourly_opencode_scheduler_contract.py \
             docs/operations/hourly-development.md \
             docs/operations/2026-08-07-post-token-publication-gate.md \
             CHANGELOG.md \
-            .github/workflows/one-shot-update-hourly-scheduler.yml
-          git diff --cached --check
-          git commit -m "fix(automation): continue disjoint work during approval latency"
+            >> scheduler-update-manifest.txt
 
-      - name: Push test-first scheduler update
-        run: |
-          set -euo pipefail
-          test -z "$(git status --porcelain)"
-          git push origin HEAD:feat/hourly-opencode-commercial-loop
+      - name: Upload verified scheduler update
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: verified-hourly-scheduler-update-${{ github.event.pull_request.head.sha }}
+          path: |
+            .github/workflows/hourly-product-development.yml
+            scripts/test_hourly_opencode_scheduler_contract.py
+            docs/operations/hourly-development.md
+            docs/operations/2026-08-07-post-token-publication-gate.md
+            CHANGELOG.md
+            scheduler-update-manifest.txt
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1

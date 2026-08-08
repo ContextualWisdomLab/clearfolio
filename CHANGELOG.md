@@ -3,6 +3,7 @@
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 
 ### Changed
+- **ConversionController 16진수 문자열 변환 성능 최적화**: 매번 생성되던 `MessageDigest` 해시 결과를 16진수 문자열로 변환할 때 클래스 레벨 상수로 선언된 `HEX_FORMAT`을 재사용하도록 최적화했습니다.
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
 
 # Changelog

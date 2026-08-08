@@ -1,12 +1,9 @@
 name: One-shot repair hourly scheduler YAML
 
-# The follow-up synchronize event runs only after this workflow exists on the PR branch.
 on:
   pull_request:
     types:
       - synchronize
-    paths:
-      - '.github/workflows/**'
 
 concurrency:
   group: clearfolio-one-shot-repair-hourly-yaml
@@ -48,100 +45,103 @@ jobs:
       - name: Assert exact trigger head
         run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
 
-      - name: Add RED YAML-structure contract
+      - name: Run test-first YAML repair and create local commits
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          from pathlib import Path
+          from __future__ import annotations
 
-          path = Path("scripts/test_hourly_opencode_scheduler_contract.py")
-          text = path.read_text(encoding="utf-8")
-          marker = "def test_scheduler_step_blocks_preserve_yaml_indentation()"
-          if marker in text:
-              raise SystemExit("YAML indentation contract already exists")
-          text += '''
-
-
-def test_scheduler_step_blocks_preserve_yaml_indentation() -> None:
-    """Keep generated env mappings and shell literals inside their workflow steps."""
-    workflow = _read(PRODUCT_WORKFLOW)
-    step_names = (
-        "Enforce bounded autonomous queue and credential prerequisites",
-        "Recheck bounded queue, disjoint paths, and exact-base preconditions",
-        "Recheck bounded queue, disjoint paths, and patch identity",
-        "Recheck immediately before Draft publication",
-    )
-
-    for step_name in step_names:
-        remainder = workflow.split(f"      - name: {step_name}\n", 1)[1]
-        next_step = remainder.find("\n      - name: ")
-        step_block = remainder if next_step < 0 else remainder[:next_step]
-        lines = step_block.splitlines()
-        env_index = lines.index("        env:")
-        run_index = lines.index("        run: |")
-        assert env_index < run_index
-        assert all(
-            not line or line.startswith("          ")
-            for line in lines[env_index + 1 : run_index]
-        )
-        assert all(
-            not line or line.startswith("          ")
-            for line in lines[run_index + 1 :]
-        )
-'''
-          path.write_text(text, encoding="utf-8")
-          PY
-
-      - name: Verify RED failure
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
           import importlib.util
+          import subprocess
+          import textwrap
           from pathlib import Path
 
-          path = Path("scripts/test_hourly_opencode_scheduler_contract.py")
-          spec = importlib.util.spec_from_file_location("scheduler_contract", path)
-          if spec is None or spec.loader is None:
-              raise SystemExit("unable to load scheduler contract")
-          module = importlib.util.module_from_spec(spec)
-          spec.loader.exec_module(module)
+          contract_path = Path("scripts/test_hourly_opencode_scheduler_contract.py")
+          workflow_path = Path(".github/workflows/hourly-product-development.yml")
+          one_shot_path = Path(".github/workflows/one-shot-repair-hourly-yaml.yml")
+
+          def run(*args: str) -> None:
+              subprocess.run(args, check=True)
+
+          def load_contract():
+              spec = importlib.util.spec_from_file_location("scheduler_contract", contract_path)
+              if spec is None or spec.loader is None:
+                  raise SystemExit("unable to load scheduler contract")
+              module = importlib.util.module_from_spec(spec)
+              spec.loader.exec_module(module)
+              return module
+
+          contract = contract_path.read_text(encoding="utf-8")
+          marker = "def test_scheduler_step_blocks_preserve_yaml_indentation()"
+          if marker in contract:
+              raise SystemExit("YAML indentation contract already exists")
+          contract += textwrap.dedent(
+              '''
+
+
+              def test_scheduler_step_blocks_preserve_yaml_indentation() -> None:
+                  """Keep generated env mappings and shell literals inside their workflow steps."""
+                  workflow = _read(PRODUCT_WORKFLOW)
+                  step_names = (
+                      "Enforce bounded autonomous queue and credential prerequisites",
+                      "Recheck bounded queue, disjoint paths, and exact-base preconditions",
+                      "Recheck bounded queue, disjoint paths, and patch identity",
+                      "Recheck immediately before Draft publication",
+                  )
+
+                  for step_name in step_names:
+                      remainder = workflow.split(f"      - name: {step_name}\\n", 1)[1]
+                      next_step = remainder.find("\\n      - name: ")
+                      step_block = remainder if next_step < 0 else remainder[:next_step]
+                      lines = step_block.splitlines()
+                      env_index = lines.index("        env:")
+                      run_index = lines.index("        run: |")
+                      assert env_index < run_index
+                      assert all(
+                          not line or line.startswith("          ")
+                          for line in lines[env_index + 1 : run_index]
+                      )
+                      assert all(
+                          not line or line.startswith("          ")
+                          for line in lines[run_index + 1 :]
+                      )
+              '''
+          )
+          contract_path.write_text(contract, encoding="utf-8")
+
+          module = load_contract()
           try:
               module.test_scheduler_step_blocks_preserve_yaml_indentation()
           except AssertionError:
-              print("RED confirmed: generated scheduler step content escaped YAML indentation.")
+              print("RED confirmed: scheduler step content escaped YAML indentation.")
           else:
               raise SystemExit("RED contract unexpectedly passed before repair")
-          PY
 
-      - name: Commit RED contract locally
-        run: |
-          set -euo pipefail
-          git config user.name "clearfolio-maintainer[bot]"
-          git config user.email "clearfolio-maintainer[bot]@users.noreply.github.com"
-          git add scripts/test_hourly_opencode_scheduler_contract.py
-          git diff --cached --check
-          git commit -m "test: require valid scheduler step indentation"
+          run("git", "config", "user.name", "clearfolio-maintainer[bot]")
+          run(
+              "git",
+              "config",
+              "user.email",
+              "clearfolio-maintainer[bot]@users.noreply.github.com",
+          )
+          run("git", "add", str(contract_path))
+          run("git", "diff", "--cached", "--check")
+          run("git", "commit", "-m", "test: require valid scheduler step indentation")
 
-      - name: Repair four generated workflow step blocks
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path(".github/workflows/hourly-product-development.yml")
-          lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+          lines = workflow_path.read_text(encoding="utf-8").splitlines(keepends=True)
           step_names = (
               "Enforce bounded autonomous queue and credential prerequisites",
               "Recheck bounded queue, disjoint paths, and exact-base preconditions",
               "Recheck bounded queue, disjoint paths, and patch identity",
               "Recheck immediately before Draft publication",
           )
-
           for step_name in step_names:
-              step_marker = f"      - name: {step_name}\n"
-              matches = [index for index, line in enumerate(lines) if line == step_marker]
+              marker_line = f"      - name: {step_name}\\n"
+              matches = [index for index, line in enumerate(lines) if line == marker_line]
               if len(matches) != 1:
-                  raise SystemExit(f"expected one step marker for {step_name!r}, found {len(matches)}")
+                  raise SystemExit(
+                      f"expected one step marker for {step_name!r}, found {len(matches)}"
+                  )
               start = matches[0]
               end = next(
                   (
@@ -154,10 +154,14 @@ def test_scheduler_step_blocks_preserve_yaml_indentation() -> None:
                   len(lines),
               )
               env_index = next(
-                  index for index in range(start + 1, end) if lines[index] == "        env:\n"
+                  index
+                  for index in range(start + 1, end)
+                  if lines[index] == "        env:\n"
               )
               run_index = next(
-                  index for index in range(env_index + 1, end) if lines[index] == "        run: |\n"
+                  index
+                  for index in range(env_index + 1, end)
+                  if lines[index] == "        run: |\n"
               )
               for index in range(env_index + 1, run_index):
                   if lines[index].strip() and not lines[index].startswith("          "):
@@ -165,47 +169,31 @@ def test_scheduler_step_blocks_preserve_yaml_indentation() -> None:
               for index in range(run_index + 1, end):
                   if lines[index].strip() and not lines[index].startswith("          "):
                       lines[index] = "          " + lines[index]
+          workflow_path.write_text("".join(lines), encoding="utf-8")
 
-          path.write_text("".join(lines), encoding="utf-8")
-          PY
-
-      - name: Verify GREEN contracts and YAML syntax
-        run: |
-          set -euo pipefail
-          python3 -m compileall -q scripts/test_hourly_opencode_scheduler_contract.py
-          python3 - <<'PY'
-          import importlib.util
-          from pathlib import Path
-
-          path = Path("scripts/test_hourly_opencode_scheduler_contract.py")
-          spec = importlib.util.spec_from_file_location("scheduler_contract", path)
-          if spec is None or spec.loader is None:
-              raise SystemExit("unable to load scheduler contract")
-          module = importlib.util.module_from_spec(spec)
-          spec.loader.exec_module(module)
-          tests = [
+          module = load_contract()
+          tests = sorted(
               (name, value)
               for name, value in vars(module).items()
               if name.startswith("test_") and callable(value)
-          ]
-          for name, test in sorted(tests):
+          )
+          for name, test in tests:
               test()
               print(f"PASS {name}")
           print(f"{len(tests)} scheduler contract tests passed")
-          PY
-          ruby -e 'require "yaml"; YAML.parse_file(ARGV.fetch(0))' \
-            .github/workflows/hourly-product-development.yml
-          git diff --check
 
-      - name: Commit GREEN repair and remove one-shot workflow
-        run: |
-          set -euo pipefail
-          rm .github/workflows/one-shot-repair-hourly-yaml.yml
-          git add .github/workflows/hourly-product-development.yml \
-            scripts/test_hourly_opencode_scheduler_contract.py \
-            .github/workflows/one-shot-repair-hourly-yaml.yml
-          git diff --cached --check
-          git commit -m "fix(automation): preserve scheduler YAML structure"
+          run(
+              "ruby",
+              "-e",
+              'require "yaml"; YAML.parse_file(ARGV.fetch(0))',
+              str(workflow_path),
+          )
+          run("git", "diff", "--check")
+          one_shot_path.unlink()
+          run("git", "add", str(workflow_path), str(contract_path), str(one_shot_path))
+          run("git", "diff", "--cached", "--check")
+          run("git", "commit", "-m", "fix(automation): preserve scheduler YAML structure")
+          PY
 
       - name: Record generated Git object identities
         run: |
@@ -222,7 +210,6 @@ def test_scheduler_step_blocks_preserve_yaml_indentation() -> None:
           cat "${RUNNER_TEMP}/yaml-repair-manifest.txt"
 
       - name: Upload generated objects to GitHub quarantine
-        id: push_attempt
         run: |
           set -euo pipefail
           push_log="${RUNNER_TEMP}/push-attempt.log"
@@ -231,11 +218,7 @@ def test_scheduler_step_blocks_preserve_yaml_indentation() -> None:
           status=$?
           set -e
           cat "$push_log"
-          echo "status=$status" >>"$GITHUB_OUTPUT"
-          if [ "$status" -eq 0 ]; then
-            echo "pushed=true" >>"$GITHUB_OUTPUT"
-          else
-            echo "pushed=false" >>"$GITHUB_OUTPUT"
+          if [ "$status" -ne 0 ]; then
             echo "::notice::Expected workflow-permission rejection uploaded generated Git objects for connector publication."
           fi
 

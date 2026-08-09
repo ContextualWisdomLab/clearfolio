@@ -63,8 +63,8 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     @Test
-    void adapterRejectsAnnotationUriAction() throws IOException {
-        OfficeConversionException failure = assertPolicyDenied(pdfWithAnnotationUriAction());
+    void adapterRejectsAnnotationJavaScriptAction() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithAnnotationJavaScriptAction());
 
         assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
         assertEquals("conversion output contains prohibited active content", failure.getMessage());
@@ -188,19 +188,15 @@ class OfficeConversionActiveContentPolicyTest {
         }
     }
 
-    private static byte[] pdfWithAnnotationUriAction() throws IOException {
+    private static byte[] pdfWithAnnotationJavaScriptAction() throws IOException {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             PDPage page = new PDPage();
 
-            COSDictionary uriAction = new COSDictionary();
-            uriAction.setItem(COSName.getPDFName("S"), COSName.getPDFName("URI"));
-            uriAction.setString(COSName.getPDFName("URI"), "https://example.invalid/clearfolio");
-
             COSDictionary annotation = new COSDictionary();
             annotation.setItem(COSName.TYPE, COSName.getPDFName("Annot"));
             annotation.setItem(COSName.SUBTYPE, COSName.getPDFName("Link"));
-            annotation.setItem(COSName.getPDFName("A"), uriAction);
+            annotation.setItem(COSName.getPDFName("A"), javascriptAction());
 
             COSArray annotations = new COSArray();
             annotations.add(annotation);

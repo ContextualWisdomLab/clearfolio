@@ -8,8 +8,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.cos.COSString;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.junit.jupiter.api.Test;
@@ -21,8 +23,22 @@ class OfficeConversionActiveContentPolicyTest {
 
     @Test
     void adapterRejectsJavaScriptDocumentOpenAction() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithJavaScriptOpenAction());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
+    void adapterRejectsDocumentJavaScriptNameTreeWithoutOpenAction() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithJavaScriptNameTree());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    private static OfficeConversionException assertPolicyDenied(byte[] pdf) {
         OfficeConversionRequest request = request();
-        byte[] pdf = pdfWithJavaScriptOpenAction();
         OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
                 "deterministic-fixture",
                 "1",
@@ -31,13 +47,10 @@ class OfficeConversionActiveContentPolicyTest {
                 pdf
         );
 
-        OfficeConversionException failure = assertThrows(
+        return assertThrows(
                 OfficeConversionException.class,
                 () -> adapter.convert(request)
         );
-
-        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
-        assertEquals("conversion output contains prohibited active content", failure.getMessage());
     }
 
     private static OfficeConversionRequest request() {
@@ -58,13 +71,40 @@ class OfficeConversionActiveContentPolicyTest {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             document.addPage(new PDPage());
-            COSDictionary javascriptAction = new COSDictionary();
-            javascriptAction.setItem(COSName.getPDFName("S"), COSName.getPDFName("JavaScript"));
-            javascriptAction.setString(COSName.getPDFName("JS"), "app.alert('clearfolio')");
+            COSDictionary javascriptAction = javascriptAction();
             document.getDocumentCatalog().getCOSObject()
                     .setItem(COSName.getPDFName("OpenAction"), javascriptAction);
             document.save(output);
             return output.toByteArray();
         }
+    }
+
+    private static byte[] pdfWithJavaScriptNameTree() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.addPage(new PDPage());
+
+            COSArray entries = new COSArray();
+            entries.add(new COSString("clearfolio-startup"));
+            entries.add(javascriptAction());
+
+            COSDictionary javaScriptTree = new COSDictionary();
+            javaScriptTree.setItem(COSName.getPDFName("Names"), entries);
+
+            COSDictionary names = new COSDictionary();
+            names.setItem(COSName.getPDFName("JavaScript"), javaScriptTree);
+            document.getDocumentCatalog().getCOSObject()
+                    .setItem(COSName.getPDFName("Names"), names);
+
+            document.save(output);
+            return output.toByteArray();
+        }
+    }
+
+    private static COSDictionary javascriptAction() {
+        COSDictionary javascriptAction = new COSDictionary();
+        javascriptAction.setItem(COSName.getPDFName("S"), COSName.getPDFName("JavaScript"));
+        javascriptAction.setString(COSName.getPDFName("JS"), "app.alert('clearfolio')");
+        return javascriptAction;
     }
 }

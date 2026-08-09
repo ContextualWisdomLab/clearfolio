@@ -9,7 +9,8 @@ import java.util.UUID;
  * <p>The binding includes every request authority field that may distinguish a
  * valid conversion generation even when two jobs carry byte-identical source
  * documents. Equality therefore acts as the stale-generation, provider-version,
- * and cross-request acceptance boundary after a provider returns candidate output.</p>
+ * policy-limit, and cross-request acceptance boundary after a provider returns
+ * candidate output.</p>
  *
  * @param tenantId canonical tenant identifier
  * @param jobId immutable conversion job identifier
@@ -21,6 +22,7 @@ import java.util.UUID;
  * @param correlationId controlled request correlation identifier
  * @param sourceSha256 lowercase SHA-256 digest of the immutable source bytes
  * @param maxOutputBytes positive maximum PDF bytes accepted for publication
+ * @param maxPdfPages positive maximum PDF pages accepted for publication
  */
 public record OfficeConversionRequestBinding(
         String tenantId,
@@ -32,14 +34,15 @@ public record OfficeConversionRequestBinding(
         String policyVersion,
         String correlationId,
         String sourceSha256,
-        long maxOutputBytes
+        long maxOutputBytes,
+        int maxPdfPages
 ) {
 
     private static final String CONTRACT_FIXTURE_ADAPTER_ID = "deterministic-fixture";
     private static final String CONTRACT_FIXTURE_ADAPTER_VERSION = "1";
 
     /**
-     * Creates a qualified-adapter binding using the request compatibility output ceiling.
+     * Creates a qualified-adapter binding using bounded compatibility publication limits.
      *
      * @param tenantId canonical tenant identifier
      * @param jobId immutable conversion job identifier
@@ -71,17 +74,13 @@ public record OfficeConversionRequestBinding(
                 policyVersion,
                 correlationId,
                 sourceSha256,
-                OfficeConversionRequest.DEFAULT_MAX_OUTPUT_BYTES
+                OfficeConversionRequest.DEFAULT_MAX_OUTPUT_BYTES,
+                OfficeConversionRequest.DEFAULT_MAX_PDF_PAGES
         );
     }
 
     /**
-     * Creates a package-local deterministic-fixture contract binding with an explicit output ceiling.
-     *
-     * <p>This compatibility overload is deliberately non-public and bound to the
-     * deterministic fixture id/version. Production sidecar or remote integrations
-     * must use a public constructor that supplies their qualified adapter identity
-     * explicitly.</p>
+     * Creates a package-local deterministic-fixture binding with an explicit byte ceiling.
      *
      * @param tenantId canonical tenant identifier
      * @param jobId immutable conversion job identifier
@@ -111,12 +110,13 @@ public record OfficeConversionRequestBinding(
                 policyVersion,
                 correlationId,
                 sourceSha256,
-                maxOutputBytes
+                maxOutputBytes,
+                OfficeConversionRequest.DEFAULT_MAX_PDF_PAGES
         );
     }
 
     /**
-     * Creates a package-local deterministic-fixture contract binding using the request compatibility output ceiling.
+     * Creates a package-local deterministic-fixture binding using bounded compatibility limits.
      *
      * @param tenantId canonical tenant identifier
      * @param jobId immutable conversion job identifier
@@ -144,7 +144,8 @@ public record OfficeConversionRequestBinding(
                 policyVersion,
                 correlationId,
                 sourceSha256,
-                OfficeConversionRequest.DEFAULT_MAX_OUTPUT_BYTES
+                OfficeConversionRequest.DEFAULT_MAX_OUTPUT_BYTES,
+                OfficeConversionRequest.DEFAULT_MAX_PDF_PAGES
         );
     }
 
@@ -171,6 +172,9 @@ public record OfficeConversionRequestBinding(
         }
         if (maxOutputBytes <= 0L) {
             throw new IllegalArgumentException("maxOutputBytes must be positive");
+        }
+        if (maxPdfPages <= 0) {
+            throw new IllegalArgumentException("maxPdfPages must be positive");
         }
     }
 

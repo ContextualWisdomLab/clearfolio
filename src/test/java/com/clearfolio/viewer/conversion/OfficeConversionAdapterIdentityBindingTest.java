@@ -31,13 +31,19 @@ class OfficeConversionAdapterIdentityBindingTest {
     }
 
     @Test
-    void publicRequestConstructorsRequireExplicitQualifiedAdapterIdentity() {
-        boolean allPublicConstructorsRequireAdapterIdentity = Arrays.stream(OfficeConversionRequest.class.getConstructors())
+    void publicAuthorityConstructorsRequireExplicitQualifiedAdapterIdentity() {
+        boolean requestConstructorsAreStrict = Arrays.stream(OfficeConversionRequest.class.getConstructors())
+                .allMatch(constructor -> constructor.getParameterCount() >= 9);
+        boolean bindingConstructorsAreStrict = Arrays.stream(OfficeConversionRequestBinding.class.getConstructors())
                 .allMatch(constructor -> constructor.getParameterCount() >= 9);
 
         assertTrue(
-                allPublicConstructorsRequireAdapterIdentity,
+                requestConstructorsAreStrict,
                 "public conversion requests must not silently bind a fixture/default adapter identity"
+        );
+        assertTrue(
+                bindingConstructorsAreStrict,
+                "public conversion bindings must not silently bind a fixture/default adapter identity"
         );
     }
 

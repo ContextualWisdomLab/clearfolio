@@ -133,7 +133,7 @@ final class OfficeSourceContainerPreflight {
     }
 
     private static boolean matchesAt(byte[] sourceBytes, int offset, byte[] signature) {
-        if (offset < 0 || offset > sourceBytes.length - signature.length) {
+        if (offset > sourceBytes.length - signature.length) {
             return false;
         }
         for (int index = 0; index < signature.length; index++) {

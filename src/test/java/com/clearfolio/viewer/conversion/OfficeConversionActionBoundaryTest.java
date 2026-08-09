@@ -81,6 +81,11 @@ class OfficeConversionActionBoundaryTest {
     }
 
     @Test
+    void rejectsMalformedAnnotationContainer() throws IOException {
+        assertPolicyDenied(pdfWithMalformedAnnotations(new COSString("not-an-annotation-array")));
+    }
+
+    @Test
     void rejectsMalformedNextActionValue() throws IOException {
         COSDictionary primary = goToAction();
         primary.setItem(COSName.getPDFName("Next"), new COSString("not-an-action"));
@@ -186,6 +191,16 @@ class OfficeConversionActionBoundaryTest {
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             document.getPage(0).getCOSObject()
                     .setItem(COSName.getPDFName("AA"), additionalActions);
+            document.save(output);
+            return output.toByteArray();
+        }
+    }
+
+    private static byte[] pdfWithMalformedAnnotations(COSBase annotations) throws IOException {
+        try (PDDocument document = onePageDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.getPage(0).getCOSObject()
+                    .setItem(COSName.getPDFName("Annots"), annotations);
             document.save(output);
             return output.toByteArray();
         }

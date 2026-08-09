@@ -79,6 +79,14 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     @Test
+    void adapterRejectsAnnotationLaunchAction() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithAnnotationAction(launchAction()));
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
     void adapterRejectsAnnotationAdditionalActions() throws IOException {
         OfficeConversionException failure = assertPolicyDenied(pdfWithAnnotationAdditionalActions());
 
@@ -282,6 +290,13 @@ class OfficeConversionActiveContentPolicyTest {
         uriAction.setItem(COSName.getPDFName("S"), COSName.getPDFName("URI"));
         uriAction.setString(COSName.getPDFName("URI"), "https://example.invalid/clearfolio");
         return uriAction;
+    }
+
+    private static COSDictionary launchAction() {
+        COSDictionary launchAction = new COSDictionary();
+        launchAction.setItem(COSName.getPDFName("S"), COSName.getPDFName("Launch"));
+        launchAction.setString(COSName.getPDFName("F"), "clearfolio-helper.exe");
+        return launchAction;
     }
 
     private static byte[] pdfWithEmptyNameDictionary() throws IOException {

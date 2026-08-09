@@ -23,7 +23,7 @@ class OfficeConversionPdfValidationTest {
         OfficeConversionRequest request = request();
         byte[] truncated = "%PDF-1.7\nnot-a-complete-document".getBytes(StandardCharsets.US_ASCII);
         OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
-                "fixture",
+                "deterministic-fixture",
                 "1",
                 input.sourceSha256(),
                 input.binding(),
@@ -44,7 +44,7 @@ class OfficeConversionPdfValidationTest {
         OfficeConversionRequest request = request();
         byte[] zeroPagePdf = zeroPagePdf();
         OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
-                "fixture",
+                "deterministic-fixture",
                 "1",
                 input.sourceSha256(),
                 input.binding(),
@@ -65,7 +65,7 @@ class OfficeConversionPdfValidationTest {
         OfficeConversionRequest request = request();
         byte[] pdf = onePagePdf();
         OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
-                "fixture",
+                "deterministic-fixture",
                 "1",
                 input.sourceSha256(),
                 input.binding(),

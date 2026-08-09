@@ -41,8 +41,6 @@ import reactor.core.publisher.Mono;
 @RestController
 public class ArtifactController {
 
-    private static final String RANGE_UNIT_BYTES = "bytes";
-
     private final DocumentConversionService conversionService;
     private final ArtifactStore artifactStore;
     private final ArtifactLinkService artifactLinkService;
@@ -154,19 +152,19 @@ public class ArtifactController {
         try {
             claims = artifactLinkService.verifyReadToken(docId, job.get(), pdfBytes, token);
         } catch (ArtifactTokenException ex) {
-            return Mono.just(tokenFailure(ex.getStatus()));
+            return Mono.just(ArtifactHttpResponse.tokenFailure(ex.getStatus()));
         }
 
         int totalLength = pdfBytes.length;
         Optional<ArtifactHttpRange.ResolvedRange> range = ArtifactHttpRange.resolveSingleRange(rangeHeader, totalLength);
         if (range.isPresent() && range.get().rejected()) {
-            ResponseEntity<byte[]> response = unsatisfiable(totalLength);
+            ResponseEntity<byte[]> response = ArtifactHttpResponse.unsatisfiable(totalLength, null, null);
             artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
             return Mono.just(response);
         }
 
         if (range.isEmpty()) {
-            ResponseEntity<byte[]> response = full(pdfBytes);
+            ResponseEntity<byte[]> response = ArtifactHttpResponse.full(pdfBytes, null, null);
             artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
             return Mono.just(response);
         }
@@ -174,56 +172,16 @@ public class ArtifactController {
         ArtifactHttpRange.ResolvedRange resolved = range.get();
         int start = resolved.startInclusive();
         int end = resolved.endInclusive();
-        int length = end - start + 1;
         byte[] slice = java.util.Arrays.copyOfRange(pdfBytes, start, end + 1);
-        ResponseEntity<byte[]> response = partial(slice, start, end, totalLength, length);
+        ResponseEntity<byte[]> response = ArtifactHttpResponse.partial(
+                slice,
+                start,
+                end,
+                totalLength,
+                null,
+                null
+        );
         artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
         return Mono.just(response);
-    }
-
-    private static ResponseEntity<byte[]> full(byte[] pdfBytes) {
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .header("X-Content-Type-Options", "nosniff")
-                .header(HttpHeaders.ACCEPT_RANGES, RANGE_UNIT_BYTES)
-                .contentLength(pdfBytes.length)
-                .body(pdfBytes);
-    }
-
-    private static ResponseEntity<byte[]> partial(
-            byte[] body,
-            int start,
-            int end,
-            int total,
-            int length) {
-        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .header("X-Content-Type-Options", "nosniff")
-                .header(HttpHeaders.ACCEPT_RANGES, RANGE_UNIT_BYTES)
-                .header(HttpHeaders.CONTENT_RANGE, contentRange(start, end, total))
-                .contentLength(length)
-                .body(body);
-    }
-
-    private static ResponseEntity<byte[]> unsatisfiable(int totalLength) {
-        return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .header("X-Content-Type-Options", "nosniff")
-                .header(HttpHeaders.ACCEPT_RANGES, RANGE_UNIT_BYTES)
-                .header(HttpHeaders.CONTENT_RANGE, RANGE_UNIT_BYTES + " */" + totalLength)
-                .build();
-    }
-
-    private static ResponseEntity<byte[]> tokenFailure(HttpStatus status) {
-        return ResponseEntity.status(status)
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .header("X-Content-Type-Options", "nosniff")
-                .build();
-    }
-
-    private static String contentRange(int start, int end, int total) {
-        return RANGE_UNIT_BYTES + " " + start + "-" + end + "/" + total;
     }
 }

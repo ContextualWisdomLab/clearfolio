@@ -3,8 +3,8 @@ package com.clearfolio.viewer.conversion;
 /**
  * Stable failure classes returned by qualified Office conversion adapters.
  *
- * <p>Retryability is part of the adapter contract so parser, policy, and user
- * input failures cannot be mistaken for transient engine failures.</p>
+ * <p>Retryability is part of the adapter contract so parser, policy, resource,
+ * and user-input failures cannot be mistaken for transient engine failures.</p>
  */
 public enum OfficeConversionFailureCode {
 
@@ -20,6 +20,8 @@ public enum OfficeConversionFailureCode {
     CANCELLED(false),
     /** Converter returned output that failed PDF validation. */
     INVALID_OUTPUT(false),
+    /** Candidate PDF exceeds the request-bound publication size ceiling. */
+    OUTPUT_LIMIT_EXCEEDED(false),
     /** Qualified converter service or capacity is temporarily unavailable. */
     ENGINE_UNAVAILABLE(true),
     /** Conversion exceeded its bounded execution deadline. */

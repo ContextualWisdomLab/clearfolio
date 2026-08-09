@@ -1,7 +1,5 @@
 package com.clearfolio.viewer.controller;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -255,7 +253,7 @@ public class ConversionController {
             return Mono.just(downloadTokenFailure(ex.getStatus()));
         }
 
-        String checksum = calculateSha256(pdfBytes);
+        String checksum = claims.artifactChecksum();
         String filename = pdfDownloadFilename(job.getOriginalFileName());
         ContentDisposition contentDisposition = ContentDisposition.attachment()
                 .filename(filename)
@@ -394,17 +392,6 @@ public class ConversionController {
             }
         }
         return sanitized.toString();
-    }
-
-    private String calculateSha256(final byte[] data) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(data);
-            // HexFormat.of() returns the JDK's immutable formatter singleton.
-            return java.util.HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm not available", e);
-        }
     }
 
     private ViewerBootstrapResponse getViewerBootstrap(UUID docId, TenantContext tenantContext) {

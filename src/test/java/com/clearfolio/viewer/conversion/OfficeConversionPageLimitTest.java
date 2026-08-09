@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -83,7 +82,7 @@ class OfficeConversionPageLimitTest {
                 "docx",
                 "policy-v1",
                 "trace-page-limit",
-                "fixture-source".getBytes(StandardCharsets.UTF_8),
+                OfficeConversionTestSource.zipPackage("fixture-source"),
                 maxOutputBytes,
                 maxPdfPages
         );

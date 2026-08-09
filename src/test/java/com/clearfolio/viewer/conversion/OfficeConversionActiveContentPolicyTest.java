@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.conversion;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -37,19 +38,37 @@ class OfficeConversionActiveContentPolicyTest {
         assertEquals("conversion output contains prohibited active content", failure.getMessage());
     }
 
+    @Test
+    void adapterRejectsEmbeddedFileNameTreeWithoutExecutableAction() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithEmbeddedFilesNameTree());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
+    void adapterAcceptsBenignEmptyDocumentNameDictionary() throws IOException {
+        byte[] pdf = pdfWithEmptyNameDictionary();
+        OfficeConversionAdapter adapter = adapterReturning(pdf);
+
+        assertDoesNotThrow(() -> adapter.convert(request()));
+    }
+
     private static OfficeConversionException assertPolicyDenied(byte[] pdf) {
-        OfficeConversionRequest request = request();
-        OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
+        OfficeConversionAdapter adapter = adapterReturning(pdf);
+        return assertThrows(
+                OfficeConversionException.class,
+                () -> adapter.convert(request())
+        );
+    }
+
+    private static OfficeConversionAdapter adapterReturning(byte[] pdf) {
+        return input -> new OfficeConversionResult(
                 "deterministic-fixture",
                 "1",
                 input.sourceSha256(),
                 input.binding(),
                 pdf
-        );
-
-        return assertThrows(
-                OfficeConversionException.class,
-                () -> adapter.convert(request)
         );
     }
 
@@ -96,6 +115,35 @@ class OfficeConversionActiveContentPolicyTest {
             document.getDocumentCatalog().getCOSObject()
                     .setItem(COSName.getPDFName("Names"), names);
 
+            document.save(output);
+            return output.toByteArray();
+        }
+    }
+
+    private static byte[] pdfWithEmbeddedFilesNameTree() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.addPage(new PDPage());
+
+            COSDictionary embeddedFilesTree = new COSDictionary();
+            embeddedFilesTree.setItem(COSName.getPDFName("Names"), new COSArray());
+
+            COSDictionary names = new COSDictionary();
+            names.setItem(COSName.getPDFName("EmbeddedFiles"), embeddedFilesTree);
+            document.getDocumentCatalog().getCOSObject()
+                    .setItem(COSName.getPDFName("Names"), names);
+
+            document.save(output);
+            return output.toByteArray();
+        }
+    }
+
+    private static byte[] pdfWithEmptyNameDictionary() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.addPage(new PDPage());
+            document.getDocumentCatalog().getCOSObject()
+                    .setItem(COSName.getPDFName("Names"), new COSDictionary());
             document.save(output);
             return output.toByteArray();
         }

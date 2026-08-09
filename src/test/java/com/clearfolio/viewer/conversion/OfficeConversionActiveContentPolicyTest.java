@@ -47,6 +47,14 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     @Test
+    void adapterRejectsCatalogAssociatedFiles() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithCatalogAssociatedFiles());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
     void adapterRejectsCatalogAdditionalActions() throws IOException {
         OfficeConversionException failure = assertPolicyDenied(pdfWithCatalogAdditionalActions());
 
@@ -172,6 +180,28 @@ class OfficeConversionActiveContentPolicyTest {
             names.setItem(COSName.getPDFName("EmbeddedFiles"), embeddedFilesTree);
             document.getDocumentCatalog().getCOSObject()
                     .setItem(COSName.getPDFName("Names"), names);
+
+            document.save(output);
+            return output.toByteArray();
+        }
+    }
+
+    private static byte[] pdfWithCatalogAssociatedFiles() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.addPage(new PDPage());
+
+            COSDictionary fileSpecification = new COSDictionary();
+            fileSpecification.setItem(COSName.TYPE, COSName.getPDFName("Filespec"));
+            fileSpecification.setString(COSName.getPDFName("F"), "attachment.txt");
+            fileSpecification.setItem(
+                    COSName.getPDFName("AFRelationship"),
+                    COSName.getPDFName("Data")
+            );
+            COSArray associatedFiles = new COSArray();
+            associatedFiles.add(fileSpecification);
+            document.getDocumentCatalog().getCOSObject()
+                    .setItem(COSName.getPDFName("AF"), associatedFiles);
 
             document.save(output);
             return output.toByteArray();

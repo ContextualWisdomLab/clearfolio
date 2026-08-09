@@ -48,6 +48,21 @@ class OfficeConversionAdapterContractTest {
     }
 
     @Test
+    void requestCanonicalizesSourceFormatBeforeAdapterRouting() {
+        OfficeConversionRequest request = new OfficeConversionRequest(
+                "tenant-a",
+                UUID.randomUUID(),
+                1L,
+                "  DoCx  ",
+                "policy-v1",
+                "trace-1",
+                "source".getBytes(StandardCharsets.UTF_8)
+        );
+
+        assertEquals("docx", request.sourceFormat());
+    }
+
+    @Test
     void requestRejectsMissingIdentityAndEmptySource() {
         byte[] source = "x".getBytes(StandardCharsets.UTF_8);
         UUID jobId = UUID.randomUUID();

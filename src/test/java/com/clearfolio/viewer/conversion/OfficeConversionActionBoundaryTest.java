@@ -86,6 +86,11 @@ class OfficeConversionActionBoundaryTest {
     }
 
     @Test
+    void rejectsMalformedAnnotationEntry() throws IOException {
+        assertPolicyDenied(pdfWithAnnotationEntry(new COSString("not-an-annotation-dictionary")));
+    }
+
+    @Test
     void rejectsMalformedNextActionValue() throws IOException {
         COSDictionary primary = goToAction();
         primary.setItem(COSName.getPDFName("Next"), new COSString("not-an-action"));
@@ -165,14 +170,18 @@ class OfficeConversionActionBoundaryTest {
     }
 
     private static byte[] pdfWithAnnotationAction(COSDictionary action) throws IOException {
+        COSDictionary annotation = new COSDictionary();
+        annotation.setItem(COSName.TYPE, COSName.getPDFName("Annot"));
+        annotation.setItem(COSName.SUBTYPE, COSName.getPDFName("Link"));
+        annotation.setItem(COSName.getPDFName("A"), action);
+        return pdfWithAnnotationEntry(annotation);
+    }
+
+    private static byte[] pdfWithAnnotationEntry(COSBase annotationEntry) throws IOException {
         try (PDDocument document = onePageDocument();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            COSDictionary annotation = new COSDictionary();
-            annotation.setItem(COSName.TYPE, COSName.getPDFName("Annot"));
-            annotation.setItem(COSName.SUBTYPE, COSName.getPDFName("Link"));
-            annotation.setItem(COSName.getPDFName("A"), action);
             COSArray annotations = new COSArray();
-            annotations.add(annotation);
+            annotations.add(annotationEntry);
             document.getPage(0).getCOSObject()
                     .setItem(COSName.getPDFName("Annots"), annotations);
             document.save(output);

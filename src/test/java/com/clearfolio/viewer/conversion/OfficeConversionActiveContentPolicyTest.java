@@ -79,6 +79,14 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     @Test
+    void adapterAcceptsEmptyCatalogAdditionalActionDictionary() throws IOException {
+        byte[] pdf = pdfWithEmptyCatalogAdditionalActions();
+        OfficeConversionAdapter adapter = adapterReturning(pdf);
+
+        assertDoesNotThrow(() -> adapter.convert(request()));
+    }
+
+    @Test
     void adapterRejectsPageAdditionalActions() throws IOException {
         OfficeConversionException failure = assertPolicyDenied(pdfWithPageAdditionalActions());
 
@@ -265,6 +273,17 @@ class OfficeConversionActiveContentPolicyTest {
 
     private static byte[] pdfWithCatalogAutomaticGoToAdditionalAction() throws IOException {
         return pdfWithCatalogAdditionalAction(goToAction());
+    }
+
+    private static byte[] pdfWithEmptyCatalogAdditionalActions() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.addPage(new PDPage());
+            document.getDocumentCatalog().getCOSObject()
+                    .setItem(COSName.getPDFName("AA"), new COSDictionary());
+            document.save(output);
+            return output.toByteArray();
+        }
     }
 
     private static byte[] pdfWithCatalogAdditionalAction(COSDictionary action) throws IOException {

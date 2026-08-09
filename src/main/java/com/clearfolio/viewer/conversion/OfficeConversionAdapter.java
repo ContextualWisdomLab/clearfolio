@@ -73,8 +73,9 @@ public interface OfficeConversionAdapter {
     OfficeConversionResult performConversion(OfficeConversionRequest request);
 
     private static void requireParseablePdf(byte[] pdfBytes) {
-        try (PDDocument ignored = Loader.loadPDF(pdfBytes)) {
-            // Loading and closing the bounded candidate proves PDFBox can parse its structure.
+        try (PDDocument document = Loader.loadPDF(pdfBytes)) {
+            // Force page-tree access so the parsed document resource is both validated and used.
+            document.getNumberOfPages();
         } catch (IOException ex) {
             throw new OfficeConversionException(
                     OfficeConversionFailureCode.INVALID_OUTPUT,

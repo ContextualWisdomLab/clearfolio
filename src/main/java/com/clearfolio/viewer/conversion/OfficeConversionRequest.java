@@ -77,6 +77,23 @@ public record OfficeConversionRequest(
         }
     }
 
+    /**
+     * Returns the full immutable authority tuple for provider-output validation.
+     *
+     * @return request binding containing identity, generation, policy and source digest
+     */
+    public OfficeConversionRequestBinding binding() {
+        return new OfficeConversionRequestBinding(
+                tenantId,
+                jobId,
+                jobGeneration,
+                sourceFormat,
+                policyVersion,
+                correlationId,
+                sourceSha256()
+        );
+    }
+
     private static String normalizeSourceFormat(String value) {
         return requireText(value, "sourceFormat").toLowerCase(Locale.ROOT);
     }

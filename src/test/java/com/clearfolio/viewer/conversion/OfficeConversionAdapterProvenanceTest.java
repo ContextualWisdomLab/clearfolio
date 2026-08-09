@@ -56,7 +56,7 @@ class OfficeConversionAdapterProvenanceTest {
                 "docx",
                 "policy-v1",
                 "trace-1",
-                sourceText.getBytes(StandardCharsets.UTF_8)
+                OfficeConversionTestSource.zipPackage(sourceText)
         );
     }
 }

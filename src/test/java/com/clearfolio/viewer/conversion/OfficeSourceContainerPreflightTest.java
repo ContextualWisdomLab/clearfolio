@@ -13,9 +13,10 @@ import org.junit.jupiter.api.Test;
  * Source-container regressions for the Office adapter trust boundary.
  *
  * <p>These tests deliberately cover only the common pre-conversion authority:
- * candidate format qualification and declared-format/container-signature
- * agreement. They do not treat a matching ZIP or compound-file signature as a
- * complete safety or fidelity qualification.</p>
+ * candidate format qualification, declared-format/container-family agreement,
+ * and bounded ZIP central-directory framing. They do not treat passing this
+ * preflight as complete safety, Office-package, archive-expansion, macro,
+ * malware, or fidelity qualification.</p>
  */
 class OfficeSourceContainerPreflightTest {
 
@@ -64,7 +65,7 @@ class OfficeSourceContainerPreflightTest {
 
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
-                () -> adapter.convert(request("xls", ZIP_LOCAL_HEADER))
+                () -> adapter.convert(request("xls", framedZip()))
         );
 
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
@@ -88,11 +89,26 @@ class OfficeSourceContainerPreflightTest {
     }
 
     @Test
-    void adapterInvokesProviderForQualifiedZipFamilySignature() {
+    void adapterRejectsZipPrefixWithoutCentralDirectoryFramingBeforeProviderInvocation() {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);
 
-        adapter.convert(request("pptx", ZIP_LOCAL_HEADER));
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> adapter.convert(request("docx", ZIP_LOCAL_HEADER))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source ZIP container framing is invalid", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
+    @Test
+    void adapterInvokesProviderForBoundedZipFamilyFraming() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        OfficeConversionAdapter adapter = countingAdapter(providerCalls);
+
+        adapter.convert(request("pptx", framedZip()));
 
         assertEquals(1, providerCalls.get());
     }
@@ -132,5 +148,41 @@ class OfficeSourceContainerPreflightTest {
                 1_000_000L,
                 10
         );
+    }
+
+    private static byte[] framedZip() {
+        // Signature-level fixture with one local-header marker, one central-directory
+        // marker, and a standard single-disk EOCD record. It is deliberately not a
+        // complete Office package and is used only for this bounded framing contract.
+        byte[] bytes = new byte[34];
+        System.arraycopy(ZIP_LOCAL_HEADER, 0, bytes, 0, ZIP_LOCAL_HEADER.length);
+        int centralOffset = 8;
+        bytes[centralOffset] = 0x50;
+        bytes[centralOffset + 1] = 0x4b;
+        bytes[centralOffset + 2] = 0x01;
+        bytes[centralOffset + 3] = 0x02;
+        int eocdOffset = 12;
+        bytes[eocdOffset] = 0x50;
+        bytes[eocdOffset + 1] = 0x4b;
+        bytes[eocdOffset + 2] = 0x05;
+        bytes[eocdOffset + 3] = 0x06;
+        putUnsignedShort(bytes, eocdOffset + 8, 1);
+        putUnsignedShort(bytes, eocdOffset + 10, 1);
+        putUnsignedInt(bytes, eocdOffset + 12, 4);
+        putUnsignedInt(bytes, eocdOffset + 16, centralOffset);
+        putUnsignedShort(bytes, eocdOffset + 20, 0);
+        return bytes;
+    }
+
+    private static void putUnsignedShort(byte[] bytes, int offset, int value) {
+        bytes[offset] = (byte) value;
+        bytes[offset + 1] = (byte) (value >>> 8);
+    }
+
+    private static void putUnsignedInt(byte[] bytes, int offset, long value) {
+        bytes[offset] = (byte) value;
+        bytes[offset + 1] = (byte) (value >>> 8);
+        bytes[offset + 2] = (byte) (value >>> 16);
+        bytes[offset + 3] = (byte) (value >>> 24);
     }
 }

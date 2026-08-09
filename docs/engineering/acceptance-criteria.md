@@ -67,13 +67,59 @@ code can write report files.
 
 | AC | Fail-closed gate | Reproduction and evidence |
 | --- | --- | --- |
-| coverage | JaCoCo 0.8.15 applies bundle-level `LINE` and `BRANCH` `MISSEDCOUNT` limits with a maximum of `0` | `mvn -B --no-transfer-progress verify`; inspect `target/site/jacoco/jacoco.csv` and the exact-head CI job |
-| docstring | Maven Javadoc Plugin 3.12.0 runs Java 21 doclint for public production APIs and fails on warnings or errors | `mvn -B --no-transfer-progress verify`; inspect `target/reports/apidocs` and the exact-head CI job |
+| coverage | JaCoCo 0.8.15 applies bundle-level `LINE` and `BRANCH` `MISSEDCOUNT` limits with a maximum of `0` | `mvn -B --no-transfer-progress verify`; inspect `target/site/jacoco/jacoco.csv` and the exact-head CI `Maven test` job |
+| docstring | Maven Javadoc Plugin 3.12.0 runs Java 21 doclint for public production APIs and fails on warnings or errors | `mvn -B --no-transfer-progress verify`; inspect `target/reports/apidocs` and the exact-head CI `Maven test` job |
 | non-blocking web | Request paths do not execute document conversion inline | `ConversionController`, `DefaultDocumentConversionService`, and their concurrency/integration tests |
 | lightweight queue | Capacity, rejection, retry, processing lease, and dead-letter behavior are executable contracts | `ConversionExecutorConfig`, `DefaultConversionWorker`, repository/state-store tests, and exact-head fuzzing |
-| warning 0 | Java compilation uses `-Xlint:all -Werror`; Maven report acceptance rejects skipped and zero-test evidence | `mvn -B --no-transfer-progress verify`, `python3 scripts/verify_maven_test_reports.py`, and exact-head CI |
-| deprecated 0 | Deprecated API warnings are build failures | `mvn -B --no-transfer-progress verify` |
-| 1-day schedule+security verification | Required GitHub Checks must be successful for the exact current head; queued, pending, cancelled, stale-head, or skipped-required outcomes are not passing | Delivery-plan evidence plus GitHub CI, Security Scan, SAST Semgrep, fuzz, automated review, independent approval, and branch-protection evidence |
+| warning 0 | Java compilation uses `-Xlint:all -Werror`; Maven report acceptance rejects skipped and zero-test evidence | `mvn -B --no-transfer-progress verify`, `python3 scripts/verify_maven_test_reports.py`, and the exact-head CI `Maven test` job |
+| deprecated 0 | Deprecated API warnings are build failures | `mvn -B --no-transfer-progress verify` in the exact-head CI `Maven test` job |
+| 1-day schedule+security verification | Required GitHub Checks must be successful for the exact current head; queued, pending, cancelled, stale-head, or skipped-required outcomes are not passing | Delivery-plan evidence plus the job-scoped exact-head evidence contract below |
+
+## Exact-head GitHub evidence authority
+
+The acceptance record is job-scoped. A green workflow name without the relevant
+job identity and revision proof is insufficient.
+
+- **CI / Maven test** — for pull requests, `actions/checkout` must use
+  `${{ github.event.pull_request.head.sha }}` (or the workflow's equivalent
+  exact-source expression), and `Verify exact checked-out revision` must prove
+  `git rev-parse HEAD` equals that source head. The same job executes
+  `mvn -B --no-transfer-progress verify` and then
+  `python3 scripts/verify_maven_test_reports.py`. This is the authoritative
+  source-head build, test, coverage, Javadoc, warning, deprecated-API and test-
+  report evidence.
+- **CI / Maven merge compatibility** — `actions/checkout` must use
+  `${{ github.sha }}` for the pull-request synthetic merge revision and the job
+  must prove `git rev-parse HEAD` equals that value before running Maven verify
+  and test-report validation. Synthetic-merge success demonstrates integration
+  compatibility only; it never substitutes for source-head evidence.
+- **CI / Buyer-readiness script tests** — checkout and explicit revision proof
+  must bind the script-policy tests to the exact source head before executing
+  the repository's script-test suite.
+- **Security Scan and SAST Semgrep** — the accepted workflow runs must be
+  associated with the same exact source-head SHA being considered for merge.
+  A successful run from a predecessor head, synthetic merge only, or another
+  ref is stale evidence. Job/check conclusions must be complete and successful.
+- **fuzz** — every configured matrix target is independent evidence. For the
+  current workflow this means `ArtifactTokenParserFuzzTest`,
+  `DocumentValidationFuzzTest`, and `TenantClaimsFuzzTest`; each target checks
+  out and explicitly verifies the same source-head SHA. One successful matrix
+  target cannot stand in for a missing, cancelled, skipped, or failed sibling.
+- **automated review** — CodeRabbit, OpenCode/Noema, GHAS and other review or
+  security evidence must identify or be demonstrably bound to the same source
+  head. Comment/status-only evidence is not a counted independent approval.
+- **independent approval** — the formal GitHub review submission must come from
+  an eligible non-author reviewer under the live repository/ruleset policy and
+  apply to the unchanged head. A predecessor-head approval, author review,
+  model verdict, check status, or advisory comment does not count.
+- **branch protection / ruleset** — evaluate the live required-check and review
+  policy against the unchanged expected head immediately before merge. A
+  historical PR `base.sha` is not the current protected base-ref tip.
+
+The merge record therefore keeps `source_head_sha`, the PR's historical base
+snapshot when useful for provenance, the independently resolved live base tip,
+workflow/run identity, job identity, and review identity as separate evidence.
+No single green badge collapses those authorities.
 
 ## Methodological rationale for evidence gates
 
@@ -100,7 +146,7 @@ normative merge gates.
 ## Evidence boundaries
 
 - Local output is diagnostic evidence only. Merge evidence must identify the
-  exact commit SHA and protected GitHub workflow runs for that SHA.
+  exact commit SHA and protected GitHub workflow runs/jobs for that SHA.
 - A successful earlier head does not validate a later head.
 - Generated reports containing local paths or internal runtime details remain
   local unless an explicit privacy and disclosure review approves publication.

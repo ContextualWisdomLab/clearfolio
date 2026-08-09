@@ -145,5 +145,14 @@ interface ArtifactHttpRange {
         static ResolvedRange unsatisfiableRange() {
             return new ResolvedRange(0, 0, false, true);
         }
+
+        /**
+         * Returns whether this result must produce a range failure response.
+         *
+         * @return {@code true} for invalid or unsatisfiable ranges
+         */
+        boolean rejected() {
+            return invalid ^ unsatisfiable;
+        }
     }
 }

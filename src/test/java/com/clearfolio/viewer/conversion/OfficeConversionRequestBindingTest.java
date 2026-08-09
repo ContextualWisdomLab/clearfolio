@@ -1,10 +1,12 @@
 package com.clearfolio.viewer.conversion;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -97,6 +99,38 @@ class OfficeConversionRequestBindingTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new OfficeConversionRequestBinding(
                         "tenant", jobId, 0L, "docx", "policy", "trace", digest.toUpperCase()));
+    }
+
+    @Test
+    void deterministicFixtureAdapterIsExactAndDefensivelyOwned() {
+        UUID jobId = UUID.randomUUID();
+        OfficeConversionRequest current = request(
+                "tenant-a", jobId, 5L, "docx", "policy-v1", "trace-1", "fixture-source");
+        OfficeConversionRequest stale = request(
+                "tenant-a", jobId, 4L, "docx", "policy-v1", "trace-1", "fixture-source");
+        byte[] pdf = "%PDF-1.7\nreference".getBytes(StandardCharsets.US_ASCII);
+        DeterministicFixtureOfficeConversionAdapter adapter = new DeterministicFixtureOfficeConversionAdapter(
+                Map.of(current.binding(), pdf)
+        );
+        pdf[0] = 'X';
+
+        OfficeConversionResult first = adapter.convert(current);
+        OfficeConversionResult second = adapter.convert(current);
+        byte[] canonicalPdf = "%PDF-1.7\nreference".getBytes(StandardCharsets.US_ASCII);
+
+        assertArrayEquals(canonicalPdf, first.pdfBytes());
+        assertArrayEquals(first.pdfBytes(), second.pdfBytes());
+        assertEquals(first.outputSha256(), second.outputSha256());
+        assertEquals(current.binding(), first.requestBinding());
+        assertEquals("deterministic-fixture", first.adapterId());
+        assertEquals("1", first.adapterVersion());
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> adapter.convert(stale)
+        );
+        assertEquals(OfficeConversionFailureCode.INVALID_OUTPUT, failure.failureCode());
+        assertEquals("deterministic fixture not registered for request binding", failure.getMessage());
     }
 
     private static OfficeConversionRequest request(

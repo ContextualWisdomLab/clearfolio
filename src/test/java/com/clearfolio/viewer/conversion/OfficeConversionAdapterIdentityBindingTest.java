@@ -3,8 +3,10 @@ package com.clearfolio.viewer.conversion;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,17 @@ class OfficeConversionAdapterIdentityBindingTest {
         assertEquals("24.8.5", baseline.binding().expectedAdapterVersion());
         assertNotEquals(baseline.binding(), otherAdapter.binding());
         assertNotEquals(baseline.binding(), otherVersion.binding());
+    }
+
+    @Test
+    void publicRequestConstructorsRequireExplicitQualifiedAdapterIdentity() {
+        boolean allPublicConstructorsRequireAdapterIdentity = Arrays.stream(OfficeConversionRequest.class.getConstructors())
+                .allMatch(constructor -> constructor.getParameterCount() >= 9);
+
+        assertTrue(
+                allPublicConstructorsRequireAdapterIdentity,
+                "public conversion requests must not silently bind a fixture/default adapter identity"
+        );
     }
 
     @Test

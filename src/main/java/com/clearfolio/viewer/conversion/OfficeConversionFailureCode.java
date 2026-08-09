@@ -22,6 +22,8 @@ public enum OfficeConversionFailureCode {
     INVALID_OUTPUT(false),
     /** Candidate PDF exceeds the request-bound publication size ceiling. */
     OUTPUT_LIMIT_EXCEEDED(false),
+    /** Candidate PDF exceeds the request-bound publication page ceiling. */
+    PAGE_LIMIT_EXCEEDED(false),
     /** Qualified converter service or capacity is temporarily unavailable. */
     ENGINE_UNAVAILABLE(true),
     /** Conversion exceeded its bounded execution deadline. */

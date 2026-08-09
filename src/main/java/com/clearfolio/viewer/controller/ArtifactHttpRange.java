@@ -29,11 +29,13 @@ interface ArtifactHttpRange {
         }
 
         String trimmed = rangeHeader.strip();
-        if (!trimmed.startsWith(RANGE_UNIT_BYTES + "=")) {
+        int equalsIndex = trimmed.indexOf('=');
+        if (equalsIndex < 0
+                || !trimmed.substring(0, equalsIndex).equalsIgnoreCase(RANGE_UNIT_BYTES)) {
             return Optional.of(ResolvedRange.invalidRange());
         }
 
-        String spec = trimmed.substring((RANGE_UNIT_BYTES + "=").length()).strip();
+        String spec = trimmed.substring(equalsIndex + 1).strip();
         if (spec.isEmpty()) {
             return Optional.of(ResolvedRange.invalidRange());
         }
@@ -46,8 +48,8 @@ interface ArtifactHttpRange {
             return Optional.of(ResolvedRange.invalidRange());
         }
 
-        String first = spec.substring(0, dash).strip();
-        String second = spec.substring(dash + 1).strip();
+        String first = spec.substring(0, dash);
+        String second = spec.substring(dash + 1);
         if (first.isEmpty()) {
             return resolveSuffix(second, totalLength);
         }

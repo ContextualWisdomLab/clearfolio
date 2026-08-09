@@ -7,6 +7,7 @@ import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 
 /**
  * Provider-neutral boundary for sandboxed or remote Office-to-PDF conversion.
@@ -39,9 +40,9 @@ public interface OfficeConversionAdapter {
      * @throws OfficeConversionException when the provider returns no result,
      *         mismatched provenance, an unexpected adapter id/version, an
      *         oversized candidate, a malformed or encrypted PDF, a PDF with a
-     *         document-open action, JavaScript name tree, or embedded-file name
-     *         tree, a PDF with no pages, or a PDF that exceeds the request-bound
-     *         page ceiling
+     *         document-open action, document JavaScript/embedded-file name tree,
+     *         or page additional-actions dictionary, a PDF with no pages, or a
+     *         PDF that exceeds the request-bound page ceiling
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -132,10 +133,17 @@ public interface OfficeConversionAdapter {
         }
 
         COSBase namesBase = catalog.getDictionaryObject(COSName.getPDFName("Names"));
-        if (!(namesBase instanceof COSDictionary names)) {
-            return false;
+        if (namesBase instanceof COSDictionary names
+                && (names.getDictionaryObject(COSName.getPDFName("JavaScript")) != null
+                || names.getDictionaryObject(COSName.getPDFName("EmbeddedFiles")) != null)) {
+            return true;
         }
-        return names.getDictionaryObject(COSName.getPDFName("JavaScript")) != null
-                || names.getDictionaryObject(COSName.getPDFName("EmbeddedFiles")) != null;
+
+        for (PDPage page : document.getPages()) {
+            if (page.getCOSObject().getDictionaryObject(COSName.getPDFName("AA")) != null) {
+                return true;
+            }
+        }
+        return false;
     }
 }

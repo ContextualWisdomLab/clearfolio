@@ -1,5 +1,8 @@
 package com.clearfolio.viewer.controller;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -7,39 +10,38 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
-import org.springframework.util.unit.DataSize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.codec.multipart.FilePart;
+import org.springframework.util.unit.DataSize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.bind.annotation.DeleteMapping;
 
-import com.clearfolio.viewer.auth.TenantAccessService;
-import com.clearfolio.viewer.auth.TenantContext;
-import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.api.ArtifactLinkRequest;
 import com.clearfolio.viewer.api.ArtifactLinkResponse;
 import com.clearfolio.viewer.api.ConversionJobStatusResponse;
 import com.clearfolio.viewer.api.SubmitConversionResponse;
 import com.clearfolio.viewer.api.ViewerBootstrapResponse;
 import com.clearfolio.viewer.artifact.ArtifactLinkService;
+import com.clearfolio.viewer.artifact.ArtifactStore;
+import com.clearfolio.viewer.artifact.ArtifactTokenClaims;
+import com.clearfolio.viewer.artifact.ArtifactTokenException;
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.PolicyOverrideRequest;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
-import com.clearfolio.viewer.artifact.ArtifactStore;
-
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Optional;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -206,17 +208,27 @@ public class ConversionController {
     /**
      * Downloads the converted PDF artifact for a tenant-owned conversion job.
      *
-     * <p>The caller must have the dedicated artifact-read permission. Job-status
-     * read access alone does not authorize access to document bytes.</p>
+     * <p>The caller must have the dedicated artifact-read permission and a valid
+     * signed artifact token. Job-status read access or tenant ownership alone does
+     * not authorize access to document bytes. The endpoint supports zero or one
+     * HTTP byte range and records verified read evidence.</p>
      *
      * @param jobId conversion job identifier
      * @param headers request headers carrying tenant claims
-     * @return PDF bytes with attachment disposition and checksum header
+     * @param rangeHeader optional {@code Range} header
+     * @param queryToken signed artifact token query parameter
+     * @param authorizationHeader optional bearer artifact token
+     * @param traceId optional request trace identifier
+     * @return signed PDF bytes with attachment disposition and checksum evidence
      */
     @GetMapping("/api/v1/convert/jobs/{jobId}/download")
     public Mono<ResponseEntity<byte[]>> downloadArtifact(
             @PathVariable UUID jobId,
-            @RequestHeader HttpHeaders headers) {
+            @RequestHeader HttpHeaders headers,
+            @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader,
+            @RequestParam(value = ArtifactLinkService.ARTIFACT_TOKEN_PARAM, required = false) String queryToken,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @RequestHeader(value = "X-Request-Id", required = false) String traceId) {
         TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ARTIFACT_READ);
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
@@ -235,17 +247,103 @@ public class ConversionController {
         }
 
         byte[] pdfBytes = stored.get();
+        String token = ArtifactLinkService.resolveToken(queryToken, authorizationHeader);
+        ArtifactTokenClaims claims;
+        try {
+            claims = artifactLinkService.verifyReadToken(jobId, job, pdfBytes, token);
+        } catch (ArtifactTokenException ex) {
+            return Mono.just(downloadTokenFailure(ex.getStatus()));
+        }
+
         String checksum = calculateSha256(pdfBytes);
         String filename = pdfDownloadFilename(job.getOriginalFileName());
         ContentDisposition contentDisposition = ContentDisposition.attachment()
                 .filename(filename)
                 .build();
+        int totalLength = pdfBytes.length;
+        Optional<ArtifactHttpRange.ResolvedRange> range = ArtifactHttpRange.resolveSingleRange(rangeHeader, totalLength);
 
-        return Mono.just(ResponseEntity.ok()
+        if (range.isPresent() && range.get().rejected()) {
+            ResponseEntity<byte[]> response = downloadUnsatisfiable(contentDisposition, checksum, totalLength);
+            artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
+            return Mono.just(response);
+        }
+
+        if (range.isEmpty()) {
+            ResponseEntity<byte[]> response = downloadFull(contentDisposition, checksum, pdfBytes);
+            artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
+            return Mono.just(response);
+        }
+
+        ArtifactHttpRange.ResolvedRange resolved = range.get();
+        int start = resolved.startInclusive();
+        int end = resolved.endInclusive();
+        byte[] slice = java.util.Arrays.copyOfRange(pdfBytes, start, end + 1);
+        ResponseEntity<byte[]> response = downloadPartial(
+                contentDisposition,
+                checksum,
+                slice,
+                start,
+                end,
+                totalLength
+        );
+        artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
+        return Mono.just(response);
+    }
+
+    private static ResponseEntity<byte[]> downloadFull(
+            ContentDisposition contentDisposition,
+            String checksum,
+            byte[] pdfBytes) {
+        return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.ACCEPT_RANGES, ArtifactHttpRange.RANGE_UNIT_BYTES)
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
                 .header("X-Checksum-Sha256", checksum)
-                .body(pdfBytes));
+                .contentLength(pdfBytes.length)
+                .body(pdfBytes);
+    }
+
+    private static ResponseEntity<byte[]> downloadPartial(
+            ContentDisposition contentDisposition,
+            String checksum,
+            byte[] body,
+            int start,
+            int end,
+            int totalLength) {
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.ACCEPT_RANGES, ArtifactHttpRange.RANGE_UNIT_BYTES)
+                .header(HttpHeaders.CONTENT_RANGE, ArtifactHttpRange.RANGE_UNIT_BYTES + " " + start + "-" + end + "/" + totalLength)
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
+                .header("X-Checksum-Sha256", checksum)
+                .contentLength(body.length)
+                .body(body);
+    }
+
+    private static ResponseEntity<byte[]> downloadUnsatisfiable(
+            ContentDisposition contentDisposition,
+            String checksum,
+            int totalLength) {
+        return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.ACCEPT_RANGES, ArtifactHttpRange.RANGE_UNIT_BYTES)
+                .header(HttpHeaders.CONTENT_RANGE, ArtifactHttpRange.RANGE_UNIT_BYTES + " */" + totalLength)
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
+                .header("X-Checksum-Sha256", checksum)
+                .build();
+    }
+
+    private static ResponseEntity<byte[]> downloadTokenFailure(HttpStatus status) {
+        return ResponseEntity.status(status)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header("X-Content-Type-Options", "nosniff")
+                .build();
     }
 
     static String pdfDownloadFilename(String originalFileName) {
@@ -302,8 +400,7 @@ public class ConversionController {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(data);
-            // Optimization: java.util.HexFormat.of().formatHex() is faster
-            // and allocates less memory than String.format.
+            // HexFormat.of() returns the JDK's immutable formatter singleton.
             return java.util.HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 algorithm not available", e);
@@ -334,5 +431,4 @@ public class ConversionController {
                 job.getStatus() + " not ready yet. retry in a few seconds"
         );
     }
-
 }

@@ -1,6 +1,6 @@
 # Engineering Acceptance Criteria
 
-Last updated: 2026-08-06
+Last updated: 2026-08-09
 
 This document is the canonical acceptance policy for the current Clearfolio
 Viewer delivery baseline. Historical evidence snapshots remain useful for
@@ -75,6 +75,28 @@ code can write report files.
 | deprecated 0 | Deprecated API warnings are build failures | `mvn -B --no-transfer-progress verify` |
 | 1-day schedule+security verification | Required GitHub Checks must be successful for the exact current head; queued, pending, cancelled, stale-head, or skipped-required outcomes are not passing | Delivery-plan evidence plus GitHub CI, Security Scan, SAST Semgrep, fuzz, automated review, independent approval, and branch-protection evidence |
 
+## Methodological rationale for evidence gates
+
+The exact coverage threshold is a deliberate structural invariant, not a claim
+that code coverage alone establishes test effectiveness. Inozemtseva and Holmes
+(2014) found that, after controlling for test-suite size, coverage was not
+strongly correlated with test-suite effectiveness. Clearfolio therefore keeps
+100% owned production line/branch coverage as a fail-closed completeness floor
+**and separately requires domain-valid security, lifecycle, concurrency,
+fidelity, accessibility, crash/restart, migration/rollback, and release
+assertions**. A change must not satisfy the policy by adding execution without a
+meaningful behavioral oracle.
+
+Likewise, a test process returning exit code zero is not sufficient evidence
+when report generation, test discovery, skipping, or oracle quality can fail
+independently. Barr et al. (2015) describe the software-testing oracle problem:
+determining whether observed output is correct is itself a central testing
+problem. Clearfolio's report verifier therefore checks that tests actually ran,
+that outcome counters are explicit, and that no skipped/failing/error result is
+silently promoted to success. These literature references explain the evidence
+model; the executable Maven/JUnit/JaCoCo contracts remain the repository's
+normative merge gates.
+
 ## Evidence boundaries
 
 - Local output is diagnostic evidence only. Merge evidence must identify the
@@ -119,6 +141,15 @@ https://maven.apache.org/plugins/maven-javadoc-plugin/javadoc-mojo.html
 Apache Software Foundation. (2026). *Surefire reports*. Maven Surefire Plugin.
 Retrieved August 6, 2026, from
 https://maven.apache.org/surefire/maven-surefire-plugin/examples/reporting.html
+
+Barr, E. T., Harman, M., McMinn, P., Shahbaz, M., & Yoo, S. (2015). The oracle
+problem in software testing: A survey. *IEEE Transactions on Software
+Engineering, 41*(5), 507–525. https://doi.org/10.1109/TSE.2014.2372785
+
+Inozemtseva, L., & Holmes, R. (2014). Coverage is not strongly correlated with
+test suite effectiveness. In *Proceedings of the 36th International Conference
+on Software Engineering* (pp. 435–445). Association for Computing Machinery.
+https://doi.org/10.1145/2568225.2568271
 
 JaCoCo. (2026). *JaCoCo Maven plug-in: `jacoco:check`*. Retrieved August 5,
 2026, from https://www.jacoco.org/jacoco/trunk/doc/check-mojo.html

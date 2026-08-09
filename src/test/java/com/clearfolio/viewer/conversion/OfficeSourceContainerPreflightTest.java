@@ -73,6 +73,21 @@ class OfficeSourceContainerPreflightTest {
     }
 
     @Test
+    void adapterRejectsTruncatedZipSignatureBeforeProviderInvocation() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        OfficeConversionAdapter adapter = countingAdapter(providerCalls);
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> adapter.convert(request("docx", new byte[] {0x50, 0x4b, 0x03}))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source container signature does not match declared format", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
+    @Test
     void adapterInvokesProviderForQualifiedZipFamilySignature() {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);

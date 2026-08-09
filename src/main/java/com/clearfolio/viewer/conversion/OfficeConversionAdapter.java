@@ -30,31 +30,28 @@ public interface OfficeConversionAdapter {
     int MAX_ACTION_CHAIN_DEPTH = 32;
 
     /**
-     * Converts one immutable Office request and verifies that the result is
-     * present, source-bound, tied to the exact qualified adapter/runtime,
-     * request generation and policy, within request-bound byte and page
-     * publication ceilings, and parseable as a non-empty, unencrypted PDF
-     * without prohibited active content.
+     * Converts one immutable Office request and verifies its source and result.
      *
-     * <p>This method is the public conversion authority. Implementations supply
-     * only {@link #performConversion(OfficeConversionRequest)}; callers cannot
-     * accidentally accept output for a different source, tenant, job, lifecycle
-     * generation, adapter id/version, format, policy, correlation identity,
-     * publication policy, or a truncated, empty, encrypted, actively executable,
-     * embedded-file-bearing, or over-page-limit PDF container that is not
-     * acceptable document output.</p>
+     * <p>Before provider invocation, Clearfolio requires the declared source
+     * format to be a current Office conversion candidate and requires its leading
+     * container signature to match the declared format family. This common
+     * preflight is intentionally narrower than complete archive, macro, OLE,
+     * malware, or fidelity qualification, which remain sandbox/content-policy
+     * responsibilities. After provider execution, the result must be present,
+     * source-bound, tied to the exact qualified adapter/runtime, request
+     * generation and policy, within request-bound byte/page publication ceilings,
+     * and parseable as a non-empty, unencrypted PDF without prohibited active
+     * content.</p>
      *
      * @param request immutable tenant-, generation-, and adapter-bound conversion request
      * @return verified PDF result with source, request, and adapter provenance
-     * @throws OfficeConversionException when the provider returns no result,
-     *         mismatched provenance, an unexpected adapter id/version, an
-     *         oversized candidate, a malformed or encrypted PDF, a PDF with a
-     *         prohibited automatic or executable action, catalog associated
-     *         files, document JavaScript/embedded-file name trees, a prohibited
-     *         annotation action, a PDF with no pages, or a PDF that exceeds the
-     *         request-bound page ceiling
+     * @throws OfficeConversionException when source preflight fails, the provider
+     *         returns no result, provenance mismatches, adapter identity is
+     *         unexpected, output exceeds limits, output is malformed/encrypted,
+     *         prohibited active content is present, or page limits are exceeded
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
+        OfficeSourceContainerPreflight.requireQualifiedContainer(request);
         OfficeConversionResult result = performConversion(request);
         if (result == null) {
             throw new OfficeConversionException(

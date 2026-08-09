@@ -11,7 +11,7 @@ import java.util.UUID;
  *
  * <p>The request binds untrusted document bytes to tenant, job-generation,
  * source format, qualified adapter identity, policy, correlation identity, and
- * an output-publication size ceiling before any converter implementation can
+ * bounded PDF publication limits before any converter implementation can
  * process them. Source bytes are defensively copied at construction and on
  * access so callers cannot mutate the digest-bound payload after validation.</p>
  *
@@ -25,6 +25,7 @@ import java.util.UUID;
  * @param correlationId request correlation identifier used for controlled tracing
  * @param sourceBytes untrusted source bytes, defensively copied
  * @param maxOutputBytes positive maximum PDF bytes accepted for publication
+ * @param maxPdfPages positive maximum PDF pages accepted for publication
  */
 public record OfficeConversionRequest(
         String tenantId,
@@ -36,21 +37,25 @@ public record OfficeConversionRequest(
         String policyVersion,
         String correlationId,
         byte[] sourceBytes,
-        long maxOutputBytes
+        long maxOutputBytes,
+        int maxPdfPages
 ) {
 
-    /** Default compatibility ceiling for contract callers that have not supplied a policy-specific limit. */
+    /** Default compatibility byte ceiling for contract callers without a policy-specific limit. */
     public static final long DEFAULT_MAX_OUTPUT_BYTES = 64L * 1024L * 1024L;
+
+    /** Default compatibility page ceiling for contract callers without a policy-specific limit. */
+    public static final int DEFAULT_MAX_PDF_PAGES = 1_000;
 
     private static final String CONTRACT_FIXTURE_ADAPTER_ID = "deterministic-fixture";
     private static final String CONTRACT_FIXTURE_ADAPTER_VERSION = "1";
 
     /**
-     * Creates a qualified-adapter request using the bounded compatibility output ceiling.
+     * Creates a qualified-adapter request using bounded compatibility publication limits.
      *
-     * <p>Production integration should prefer this overload when the output
-     * ceiling is inherited from the currently qualified policy. The exact
-     * adapter id and version remain mandatory authority fields.</p>
+     * <p>Production integration should use the canonical constructor when policy
+     * supplies explicit byte or page ceilings. The exact adapter id and version
+     * remain mandatory authority fields.</p>
      *
      * @param tenantId tenant that owns the conversion request
      * @param jobId immutable conversion job identifier
@@ -82,18 +87,56 @@ public record OfficeConversionRequest(
                 policyVersion,
                 correlationId,
                 sourceBytes,
-                DEFAULT_MAX_OUTPUT_BYTES
+                DEFAULT_MAX_OUTPUT_BYTES,
+                DEFAULT_MAX_PDF_PAGES
         );
     }
 
     /**
-     * Creates a package-local deterministic-fixture contract request with an explicit output ceiling.
+     * Creates a package-local deterministic-fixture request with explicit publication limits.
      *
      * <p>This compatibility overload is deliberately non-public and bound to the
      * deterministic fixture adapter. A production sidecar or remote-service
-     * integration must use a public overload that supplies its qualified adapter
-     * id and exact version; external callers cannot silently inherit the fixture
-     * identity.</p>
+     * integration must use the canonical public constructor and supply qualified
+     * adapter identity explicitly.</p>
+     *
+     * @param tenantId tenant that owns the conversion request
+     * @param jobId immutable conversion job identifier
+     * @param jobGeneration immutable lifecycle generation
+     * @param sourceFormat normalized source format
+     * @param policyVersion conversion-policy version
+     * @param correlationId controlled correlation identifier
+     * @param sourceBytes untrusted source bytes
+     * @param maxOutputBytes positive maximum PDF bytes accepted for publication
+     * @param maxPdfPages positive maximum PDF pages accepted for publication
+     */
+    OfficeConversionRequest(
+            String tenantId,
+            UUID jobId,
+            long jobGeneration,
+            String sourceFormat,
+            String policyVersion,
+            String correlationId,
+            byte[] sourceBytes,
+            long maxOutputBytes,
+            int maxPdfPages) {
+        this(
+                tenantId,
+                jobId,
+                jobGeneration,
+                sourceFormat,
+                CONTRACT_FIXTURE_ADAPTER_ID,
+                CONTRACT_FIXTURE_ADAPTER_VERSION,
+                policyVersion,
+                correlationId,
+                sourceBytes,
+                maxOutputBytes,
+                maxPdfPages
+        );
+    }
+
+    /**
+     * Creates a package-local deterministic-fixture request with an explicit byte ceiling.
      *
      * @param tenantId tenant that owns the conversion request
      * @param jobId immutable conversion job identifier
@@ -118,22 +161,16 @@ public record OfficeConversionRequest(
                 jobId,
                 jobGeneration,
                 sourceFormat,
-                CONTRACT_FIXTURE_ADAPTER_ID,
-                CONTRACT_FIXTURE_ADAPTER_VERSION,
                 policyVersion,
                 correlationId,
                 sourceBytes,
-                maxOutputBytes
+                maxOutputBytes,
+                DEFAULT_MAX_PDF_PAGES
         );
     }
 
     /**
-     * Creates a package-local deterministic-fixture contract request using the bounded compatibility output ceiling.
-     *
-     * <p>This non-public overload exists for the offline contract fixture only.
-     * Production adapter integration must name the qualified adapter id and exact
-     * runtime version explicitly so provider provenance cannot float independently
-     * of the immutable request binding.</p>
+     * Creates a package-local deterministic-fixture request using bounded compatibility limits.
      *
      * @param tenantId tenant that owns the conversion request
      * @param jobId immutable conversion job identifier
@@ -156,20 +193,19 @@ public record OfficeConversionRequest(
                 jobId,
                 jobGeneration,
                 sourceFormat,
-                CONTRACT_FIXTURE_ADAPTER_ID,
-                CONTRACT_FIXTURE_ADAPTER_VERSION,
                 policyVersion,
                 correlationId,
                 sourceBytes,
-                DEFAULT_MAX_OUTPUT_BYTES
+                DEFAULT_MAX_OUTPUT_BYTES,
+                DEFAULT_MAX_PDF_PAGES
         );
     }
 
     /**
-     * Validates immutable conversion identity, qualified adapter identity, the
-     * publication limit, and copies source bytes.
+     * Validates immutable conversion identity, qualified adapter identity,
+     * publication limits, and copies source bytes.
      *
-     * @throws IllegalArgumentException when required identity, source bytes, or limit are invalid
+     * @throws IllegalArgumentException when required identity, source bytes, or limits are invalid
      */
     public OfficeConversionRequest {
         tenantId = requireText(tenantId, "tenantId");
@@ -189,6 +225,9 @@ public record OfficeConversionRequest(
         }
         if (maxOutputBytes <= 0L) {
             throw new IllegalArgumentException("maxOutputBytes must be positive");
+        }
+        if (maxPdfPages <= 0) {
+            throw new IllegalArgumentException("maxPdfPages must be positive");
         }
         sourceBytes = sourceBytes.clone();
     }
@@ -220,7 +259,7 @@ public record OfficeConversionRequest(
      * Returns the full immutable authority tuple for provider-output validation.
      *
      * @return request binding containing identity, generation, adapter, policy,
-     *         output limit, and source digest
+     *         publication limits, and source digest
      */
     public OfficeConversionRequestBinding binding() {
         return new OfficeConversionRequestBinding(
@@ -233,7 +272,8 @@ public record OfficeConversionRequest(
                 policyVersion,
                 correlationId,
                 sourceSha256(),
-                maxOutputBytes
+                maxOutputBytes,
+                maxPdfPages
         );
     }
 

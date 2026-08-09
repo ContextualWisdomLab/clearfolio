@@ -48,18 +48,21 @@ class OfficeConversionAdapterContractTest {
     }
 
     @Test
-    void requestCanonicalizesSourceFormatBeforeAdapterRouting() {
+    void requestCanonicalizesTextIdentityBeforeCrossBoundaryUse() {
         OfficeConversionRequest request = new OfficeConversionRequest(
-                "tenant-a",
+                "  tenant-a  ",
                 UUID.randomUUID(),
                 1L,
                 "  DoCx  ",
-                "policy-v1",
-                "trace-1",
+                "  policy-v1  ",
+                "  trace-1  ",
                 "source".getBytes(StandardCharsets.UTF_8)
         );
 
+        assertEquals("tenant-a", request.tenantId());
         assertEquals("docx", request.sourceFormat());
+        assertEquals("policy-v1", request.policyVersion());
+        assertEquals("trace-1", request.correlationId());
     }
 
     @Test
@@ -147,6 +150,22 @@ class OfficeConversionAdapterContractTest {
         assertTrue(OfficeConversionFailureCode.ENGINE_UNAVAILABLE.isRetryable());
         assertTrue(OfficeConversionFailureCode.TIMEOUT.isRetryable());
         assertTrue(OfficeConversionFailureCode.ENGINE_CRASH.isRetryable());
+    }
+
+    @Test
+    void adapterFailuresCarryStableClassAndRetryability() {
+        OfficeConversionException failure = new OfficeConversionException(
+                OfficeConversionFailureCode.TIMEOUT,
+                "  conversion deadline exceeded  "
+        );
+
+        assertEquals(OfficeConversionFailureCode.TIMEOUT, failure.failureCode());
+        assertTrue(failure.isRetryable());
+        assertEquals("conversion deadline exceeded", failure.getMessage());
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionException(null, "failure"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionException(OfficeConversionFailureCode.ENGINE_CRASH, " "));
     }
 
     @Test

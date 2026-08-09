@@ -141,7 +141,7 @@ unauthorized action, depending on route semantics.
 | --- | --- | --- |
 | `POST /api/v1/convert/jobs` | `job:create` | Assign job to caller `tenantId`. |
 | `GET /api/v1/convert/jobs/{jobId}` | `job:read` | `job.tenantId == token.tenantId`. |
-| `GET /api/v1/convert/jobs/{jobId}/download` | tenant `artifact:read` **and** valid signed artifact token | Verify dedicated tenant permission before job lookup; conceal tenant mismatch as `404`; require succeeded job and artifact; verify token signature, expiry, scope, route document id, tenant/job binding, current checksum, issued-token ledger, and revocation; support zero or one Range; record verified full/partial/rejected-range read audit. |
+| `GET /api/v1/convert/jobs/{jobId}/download` | tenant `artifact:read` **and** valid signed artifact token | `401` when tenant claims or the signed token are missing/structurally invalid/signature-invalid/expired; `403` when tenant permission is missing or signed scope/document/ledger/revocation/checksum authority fails; `404` for missing or cross-tenant job and missing artifact; `409` until the owned job is `SUCCEEDED`; `416` for invalid, multi-range, or unsatisfiable Range; `200` for a verified full read; `206` for a verified single-range read. Verified full, partial, and rejected-range reads are audited. |
 | `POST /api/v1/convert/jobs/{jobId}/retry` | `job:retry` | Same tenant plus operator role. |
 | `GET /api/v1/viewer/{docId}` | `viewer:read` | `job.tenantId == token.tenantId`; bootstrap issues signed artifact link for ready jobs. |
 | `GET /viewer/{docId}` | none for HTML shell | Shell does not inspect job existence; protected JSON APIs decide state. |
@@ -188,16 +188,29 @@ all repository gates and integrates.
 
 ## Artifact Delivery Failure Semantics
 
+The direct-download rows below are executable contracts and are covered by
+`ConversionDownloadAuthorizationTest`; the canonical `/artifacts/{docId}.pdf`
+route uses the same signed-token and single-range authority.
+
 | Condition | Status | Contract |
 | --- | ---: | --- |
+| Missing tenant claims | 401 | Fail before job or artifact lookup. |
+| Missing tenant `artifact:read` permission | 403 | Fail before job or artifact lookup. |
+| Missing job or cross-tenant job | 404 | Conceal cross-tenant existence and do not read artifact bytes. |
+| Owned job not yet `SUCCEEDED` | 409 | Do not expose bytes from submitted, processing, or failed work. |
+| Missing stored artifact for an owned succeeded job | 404 | Do not convert missing bytes into a successful response. |
 | Missing signed artifact token | 401 | Fail before document bytes are returned. |
-| Invalid signature/structure/expiry | 401 or controlled token status | Do not disclose token internals. |
-| Missing tenant permission | 403 | Fail before resource lookup where the endpoint requires permission. |
-| Wrong tenant | 404 concealment on resource lookup | Do not reveal cross-tenant document existence. |
-| Revoked issued artifact token | 403 on the current artifact-token contract | Preserve revocation without falling back to tenant permission. |
-| Token document/tenant/checksum mismatch | controlled 401/403 | Current artifact integrity and ownership must match the signed claim. |
-| Valid single Range | 206 | Return one bounded slice with `Content-Range` and `Accept-Ranges`. |
-| Invalid, multi-range, or unsatisfiable range | 416 under Clearfolio's deliberately narrow range profile | Do not silently serve a whole artifact. |
+| Malformed token, invalid signature, or expired token | 401 | `ArtifactLinkService.verifyReadToken()` treats these as authentication failures without exposing token internals. |
+| Signed token scope is not `artifact:read` | 403 | Signed authority does not include artifact-byte access. |
+| Signed token document id does not match the route job id | 403 | Prevent token reuse across documents. |
+| Signed token is absent from the issued-token ledger | 403 | A structurally valid token is not sufficient without issuance evidence. |
+| Revoked issued artifact token | 403 | Preserve revocation without falling back to tenant permission. |
+| Signed token ledger tenant/document/checksum binding mismatch | 403 | Issuance evidence must match the verified claim. |
+| Signed token job tenant mismatch | 403 | Signed authority must remain bound to the owned job tenant. |
+| Current artifact checksum differs from signed checksum | 403 | Prevent reuse after artifact replacement. |
+| Valid request without `Range` | 200 | Return the verified full artifact with `Accept-Ranges`, `no-store`, `nosniff`, attachment disposition, checksum, and read audit. |
+| Valid single `bytes` Range | 206 | Return one bounded slice with `Content-Range`, `Accept-Ranges`, attachment disposition, checksum, and read audit. |
+| Invalid syntax, unsupported unit, multi-range, or unsatisfiable Range | 416 | Do not silently serve a whole artifact; record the rejected verified read. |
 | Unknown OIDC issuer/audience (future IdP path) | 401 | Production identity integration remains planned. |
 
 Error payloads must keep the existing shared API shape and must not include raw

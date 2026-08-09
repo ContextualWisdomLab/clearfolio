@@ -148,7 +148,7 @@ class OfficeConversionRequestBindingTest {
                 sourceFormat,
                 policyVersion,
                 correlationId,
-                sourceText.getBytes(StandardCharsets.UTF_8)
+                OfficeConversionTestSource.forFormat(sourceFormat, sourceText)
         );
     }
 }

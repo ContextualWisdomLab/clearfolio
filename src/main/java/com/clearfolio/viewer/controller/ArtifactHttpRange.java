@@ -24,6 +24,9 @@ interface ArtifactHttpRange {
         if (rangeHeader == null || rangeHeader.isBlank()) {
             return Optional.empty();
         }
+        if (totalLength <= 0) {
+            return Optional.of(ResolvedRange.unsatisfiableRange());
+        }
 
         String trimmed = rangeHeader.strip();
         if (!trimmed.startsWith(RANGE_UNIT_BYTES + "=")) {

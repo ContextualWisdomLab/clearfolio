@@ -11,6 +11,8 @@ import java.util.UUID;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
+import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -61,6 +63,27 @@ class OfficeConversionPdfValidationTest {
     }
 
     @Test
+    void adapterRejectsEncryptedPdf() throws IOException {
+        OfficeConversionRequest request = request();
+        byte[] encryptedPdf = encryptedOnePagePdf();
+        OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
+                "deterministic-fixture",
+                "1",
+                input.sourceSha256(),
+                input.binding(),
+                encryptedPdf
+        );
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> adapter.convert(request)
+        );
+
+        assertEquals(OfficeConversionFailureCode.INVALID_OUTPUT, failure.failureCode());
+        assertEquals("conversion output PDF must not be encrypted", failure.getMessage());
+    }
+
+    @Test
     void adapterAcceptsParseablePdf() throws IOException {
         OfficeConversionRequest request = request();
         byte[] pdf = onePagePdf();
@@ -93,6 +116,19 @@ class OfficeConversionPdfValidationTest {
     private static byte[] zeroPagePdf() throws IOException {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.save(output);
+            return output.toByteArray();
+        }
+    }
+
+    private static byte[] encryptedOnePagePdf() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.addPage(new PDPage());
+            AccessPermission permissions = new AccessPermission();
+            StandardProtectionPolicy policy = new StandardProtectionPolicy("owner-secret", "", permissions);
+            policy.setEncryptionKeyLength(128);
+            document.protect(policy);
             document.save(output);
             return output.toByteArray();
         }

@@ -18,6 +18,7 @@ import java.util.UUID;
  * @param policyVersion conversion-policy version applied to the request
  * @param correlationId controlled request correlation identifier
  * @param sourceSha256 lowercase SHA-256 digest of the immutable source bytes
+ * @param maxOutputBytes positive maximum PDF bytes accepted for publication
  */
 public record OfficeConversionRequestBinding(
         String tenantId,
@@ -26,13 +27,45 @@ public record OfficeConversionRequestBinding(
         String sourceFormat,
         String policyVersion,
         String correlationId,
-        String sourceSha256
+        String sourceSha256,
+        long maxOutputBytes
 ) {
+
+    /**
+     * Creates a binding using the request compatibility output ceiling.
+     *
+     * @param tenantId canonical tenant identifier
+     * @param jobId immutable conversion job identifier
+     * @param jobGeneration lifecycle generation
+     * @param sourceFormat canonical source format
+     * @param policyVersion conversion-policy version
+     * @param correlationId controlled correlation identifier
+     * @param sourceSha256 lowercase source digest
+     */
+    public OfficeConversionRequestBinding(
+            String tenantId,
+            UUID jobId,
+            long jobGeneration,
+            String sourceFormat,
+            String policyVersion,
+            String correlationId,
+            String sourceSha256) {
+        this(
+                tenantId,
+                jobId,
+                jobGeneration,
+                sourceFormat,
+                policyVersion,
+                correlationId,
+                sourceSha256,
+                OfficeConversionRequest.DEFAULT_MAX_OUTPUT_BYTES
+        );
+    }
 
     /**
      * Validates and canonicalizes the complete immutable request identity.
      *
-     * @throws IllegalArgumentException when any authority field is invalid
+     * @throws IllegalArgumentException when any authority field or limit is invalid
      */
     public OfficeConversionRequestBinding {
         tenantId = requireText(tenantId, "tenantId");
@@ -47,6 +80,9 @@ public record OfficeConversionRequestBinding(
         correlationId = requireText(correlationId, "correlationId");
         if (sourceSha256 == null || !sourceSha256.matches("[0-9a-f]{64}")) {
             throw new IllegalArgumentException("sourceSha256 must be lowercase SHA-256 hex");
+        }
+        if (maxOutputBytes <= 0L) {
+            throw new IllegalArgumentException("maxOutputBytes must be positive");
         }
     }
 

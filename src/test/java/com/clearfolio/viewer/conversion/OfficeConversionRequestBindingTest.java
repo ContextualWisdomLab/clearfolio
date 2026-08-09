@@ -108,7 +108,8 @@ class OfficeConversionRequestBindingTest {
                 "tenant-a", jobId, 5L, "docx", "policy-v1", "trace-1", "fixture-source");
         OfficeConversionRequest stale = request(
                 "tenant-a", jobId, 4L, "docx", "policy-v1", "trace-1", "fixture-source");
-        byte[] pdf = "%PDF-1.7\nreference".getBytes(StandardCharsets.US_ASCII);
+        byte[] pdf = OfficeConversionTestPdf.onePage();
+        byte[] canonicalPdf = pdf.clone();
         DeterministicFixtureOfficeConversionAdapter adapter = new DeterministicFixtureOfficeConversionAdapter(
                 Map.of(current.binding(), pdf)
         );
@@ -116,7 +117,6 @@ class OfficeConversionRequestBindingTest {
 
         OfficeConversionResult first = adapter.convert(current);
         OfficeConversionResult second = adapter.convert(current);
-        byte[] canonicalPdf = "%PDF-1.7\nreference".getBytes(StandardCharsets.US_ASCII);
 
         assertArrayEquals(canonicalPdf, first.pdfBytes());
         assertArrayEquals(first.pdfBytes(), second.pdfBytes());

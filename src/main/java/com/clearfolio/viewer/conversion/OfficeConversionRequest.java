@@ -3,7 +3,6 @@ package com.clearfolio.viewer.conversion;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -39,7 +38,9 @@ public record OfficeConversionRequest(
      */
     public OfficeConversionRequest {
         tenantId = requireText(tenantId, "tenantId");
-        jobId = Objects.requireNonNull(jobId, "jobId");
+        if (jobId == null) {
+            throw new IllegalArgumentException("jobId must not be null");
+        }
         if (jobGeneration < 0L) {
             throw new IllegalArgumentException("jobGeneration must be non-negative");
         }

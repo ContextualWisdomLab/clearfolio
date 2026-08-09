@@ -1,5 +1,10 @@
 package com.clearfolio.viewer.conversion;
 
+import java.io.IOException;
+
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+
 /**
  * Provider-neutral boundary for sandboxed or remote Office-to-PDF conversion.
  *
@@ -14,17 +19,18 @@ public interface OfficeConversionAdapter {
     /**
      * Converts one immutable Office request and verifies that the result is
      * present, source-bound, tied to the exact request generation and policy,
-     * and within the request-bound publication size ceiling.
+     * within the request-bound publication size ceiling, and parseable as PDF.
      *
      * <p>This method is the public conversion authority. Implementations supply
      * only {@link #performConversion(OfficeConversionRequest)}; callers cannot
      * accidentally accept output for a different source, tenant, job, lifecycle
-     * generation, format, policy, correlation identity, or output-size policy.</p>
+     * generation, format, policy, correlation identity, output-size policy, or
+     * a truncated byte sequence that only carries a PDF magic prefix.</p>
      *
      * @param request immutable tenant- and generation-bound conversion request
      * @return verified PDF result with source, request, and adapter provenance
      * @throws OfficeConversionException when the provider returns no result,
-     *         mismatched provenance, or an oversized candidate PDF
+     *         mismatched provenance, an oversized candidate, or malformed PDF
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -46,12 +52,15 @@ public interface OfficeConversionAdapter {
                     "conversion result request binding mismatch"
             );
         }
-        if (result.pdfBytes().length > request.maxOutputBytes()) {
+
+        byte[] pdfBytes = result.pdfBytes();
+        if (pdfBytes.length > request.maxOutputBytes()) {
             throw new OfficeConversionException(
                     OfficeConversionFailureCode.OUTPUT_LIMIT_EXCEEDED,
                     "conversion output exceeds maximum bytes"
             );
         }
+        requireParseablePdf(pdfBytes);
         return result;
     }
 
@@ -62,4 +71,15 @@ public interface OfficeConversionAdapter {
      * @return provider result, which the default conversion authority validates
      */
     OfficeConversionResult performConversion(OfficeConversionRequest request);
+
+    private static void requireParseablePdf(byte[] pdfBytes) {
+        try (PDDocument ignored = Loader.loadPDF(pdfBytes)) {
+            // Loading and closing the bounded candidate proves PDFBox can parse its structure.
+        } catch (IOException ex) {
+            throw new OfficeConversionException(
+                    OfficeConversionFailureCode.INVALID_OUTPUT,
+                    "conversion output is not a valid PDF"
+            );
+        }
+    }
 }

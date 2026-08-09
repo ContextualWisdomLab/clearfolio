@@ -159,7 +159,7 @@ public class ArtifactController {
 
         int totalLength = pdfBytes.length;
         Optional<ArtifactHttpRange.ResolvedRange> range = ArtifactHttpRange.resolveSingleRange(rangeHeader, totalLength);
-        if (range.isPresent() && (range.get().unsatisfiable() || range.get().invalid())) {
+        if (range.isPresent() && range.get().rejected()) {
             ResponseEntity<byte[]> response = unsatisfiable(totalLength);
             artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
             return Mono.just(response);

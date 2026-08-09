@@ -227,13 +227,13 @@ public interface OfficeConversionAdapter {
         if (!(additionalActionsBase instanceof COSDictionary additionalActions)) {
             return true;
         }
-        for (COSName trigger : additionalActions.keySet()) {
-            COSBase action = additionalActions.getDictionaryObject(trigger);
-            if (isProhibitedAction(action, false, newIdentitySet(), 0)) {
-                return true;
-            }
-        }
-        return false;
+
+        // PDF /AA entries are event-triggered actions rather than explicit user
+        // navigation. Preserve an empty dictionary for interoperability, but fail
+        // closed when any trigger is configured regardless of the nested action
+        // type. A benign direct /A GoTo may remain fidelity-preserving; an /AA
+        // GoTo can execute automatically on page/document/annotation events.
+        return !additionalActions.keySet().isEmpty();
     }
 
     private static boolean isProhibitedAction(

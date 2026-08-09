@@ -17,12 +17,15 @@ class OfficeConversionRequestBindingTest {
     @Test
     void convertRejectsStaleGenerationEvenWhenSourceBytesMatch() {
         UUID jobId = UUID.randomUUID();
-        OfficeConversionRequest current = request("tenant-a", jobId, 2L, "docx", "policy-v2", "trace-current", "same");
-        OfficeConversionRequest stale = request("tenant-a", jobId, 1L, "docx", "policy-v2", "trace-current", "same");
+        OfficeConversionRequest current = request(
+                "tenant-a", jobId, 2L, "docx", "policy-v2", "trace-current", "same");
+        OfficeConversionRequest stale = request(
+                "tenant-a", jobId, 1L, "docx", "policy-v2", "trace-current", "same");
         byte[] pdf = "%PDF-1.7\nfixture".getBytes(StandardCharsets.US_ASCII);
         OfficeConversionAdapter adapter = ignored -> new OfficeConversionResult(
                 "deterministic-fixture",
                 "1",
+                stale.sourceSha256(),
                 stale.binding(),
                 pdf
         );
@@ -39,16 +42,61 @@ class OfficeConversionRequestBindingTest {
     @Test
     void bindingChangesAcrossEveryRequestAuthorityField() {
         UUID jobId = UUID.randomUUID();
-        OfficeConversionRequest baseline = request("tenant-a", jobId, 2L, "docx", "policy-v2", "trace-a", "same");
+        OfficeConversionRequest baseline = request(
+                "tenant-a", jobId, 2L, "docx", "policy-v2", "trace-a", "same");
         OfficeConversionRequestBinding binding = baseline.binding();
 
-        assertNotEquals(binding, request("tenant-b", jobId, 2L, "docx", "policy-v2", "trace-a", "same").binding());
-        assertNotEquals(binding, request("tenant-a", UUID.randomUUID(), 2L, "docx", "policy-v2", "trace-a", "same").binding());
-        assertNotEquals(binding, request("tenant-a", jobId, 3L, "docx", "policy-v2", "trace-a", "same").binding());
-        assertNotEquals(binding, request("tenant-a", jobId, 2L, "xlsx", "policy-v2", "trace-a", "same").binding());
-        assertNotEquals(binding, request("tenant-a", jobId, 2L, "docx", "policy-v3", "trace-a", "same").binding());
-        assertNotEquals(binding, request("tenant-a", jobId, 2L, "docx", "policy-v2", "trace-b", "same").binding());
-        assertNotEquals(binding, request("tenant-a", jobId, 2L, "docx", "policy-v2", "trace-a", "different").binding());
+        assertNotEquals(binding,
+                request("tenant-b", jobId, 2L, "docx", "policy-v2", "trace-a", "same").binding());
+        assertNotEquals(binding,
+                request("tenant-a", UUID.randomUUID(), 2L, "docx", "policy-v2", "trace-a", "same").binding());
+        assertNotEquals(binding,
+                request("tenant-a", jobId, 3L, "docx", "policy-v2", "trace-a", "same").binding());
+        assertNotEquals(binding,
+                request("tenant-a", jobId, 2L, "xlsx", "policy-v2", "trace-a", "same").binding());
+        assertNotEquals(binding,
+                request("tenant-a", jobId, 2L, "docx", "policy-v3", "trace-a", "same").binding());
+        assertNotEquals(binding,
+                request("tenant-a", jobId, 2L, "docx", "policy-v2", "trace-b", "same").binding());
+        assertNotEquals(binding,
+                request("tenant-a", jobId, 2L, "docx", "policy-v2", "trace-a", "different").binding());
+    }
+
+    @Test
+    void bindingCanonicalizesTextAndRejectsInvalidAuthority() {
+        UUID jobId = UUID.randomUUID();
+        String digest = request(
+                "tenant", jobId, 0L, "docx", "policy", "trace", "source").sourceSha256();
+        OfficeConversionRequestBinding binding = new OfficeConversionRequestBinding(
+                "  tenant-a  ", jobId, 4L, "  DoCx  ", "  policy-v4  ", "  trace-4  ", digest);
+
+        assertEquals("tenant-a", binding.tenantId());
+        assertEquals("docx", binding.sourceFormat());
+        assertEquals("policy-v4", binding.policyVersion());
+        assertEquals("trace-4", binding.correlationId());
+        assertEquals(digest, binding.sourceSha256());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionRequestBinding(null, jobId, 0L, "docx", "policy", "trace", digest));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionRequestBinding(" ", jobId, 0L, "docx", "policy", "trace", digest));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionRequestBinding("tenant", null, 0L, "docx", "policy", "trace", digest));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionRequestBinding("tenant", jobId, -1L, "docx", "policy", "trace", digest));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionRequestBinding("tenant", jobId, 0L, " ", "policy", "trace", digest));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionRequestBinding("tenant", jobId, 0L, "docx", " ", "trace", digest));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionRequestBinding("tenant", jobId, 0L, "docx", "policy", " ", digest));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionRequestBinding("tenant", jobId, 0L, "docx", "policy", "trace", null));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionRequestBinding("tenant", jobId, 0L, "docx", "policy", "trace", "bad"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionRequestBinding(
+                        "tenant", jobId, 0L, "docx", "policy", "trace", digest.toUpperCase()));
     }
 
     private static OfficeConversionRequest request(

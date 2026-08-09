@@ -10,9 +10,10 @@ import java.util.UUID;
  * Immutable request passed across the provider-neutral Office conversion boundary.
  *
  * <p>The request binds untrusted document bytes to tenant, job-generation,
- * policy, format, and correlation identity before any converter implementation
- * can process them. Source bytes are defensively copied at construction and on
- * access so callers cannot mutate the digest-bound payload after validation.</p>
+ * policy, format, correlation identity, and an output-publication size ceiling
+ * before any converter implementation can process them. Source bytes are
+ * defensively copied at construction and on access so callers cannot mutate the
+ * digest-bound payload after validation.</p>
  *
  * @param tenantId tenant that owns the conversion request
  * @param jobId immutable conversion job identifier
@@ -21,6 +22,7 @@ import java.util.UUID;
  * @param policyVersion conversion and active-content policy version
  * @param correlationId request correlation identifier used for controlled tracing
  * @param sourceBytes untrusted source bytes, defensively copied
+ * @param maxOutputBytes positive maximum PDF bytes accepted for publication
  */
 public record OfficeConversionRequest(
         String tenantId,
@@ -29,13 +31,52 @@ public record OfficeConversionRequest(
         String sourceFormat,
         String policyVersion,
         String correlationId,
-        byte[] sourceBytes
+        byte[] sourceBytes,
+        long maxOutputBytes
 ) {
 
+    /** Default compatibility ceiling for contract callers that have not supplied a policy-specific limit. */
+    public static final long DEFAULT_MAX_OUTPUT_BYTES = 64L * 1024L * 1024L;
+
     /**
-     * Validates immutable conversion identity and copies the untrusted source bytes.
+     * Creates a request using the bounded compatibility output ceiling.
      *
-     * @throws IllegalArgumentException when required identity or source bytes are invalid
+     * <p>Production adapter integration should supply the policy-specific output
+     * ceiling explicitly. This overload keeps existing contract callers bounded
+     * while the provider runtime remains unintegrated.</p>
+     *
+     * @param tenantId tenant that owns the conversion request
+     * @param jobId immutable conversion job identifier
+     * @param jobGeneration immutable lifecycle generation
+     * @param sourceFormat normalized source format
+     * @param policyVersion conversion-policy version
+     * @param correlationId controlled correlation identifier
+     * @param sourceBytes untrusted source bytes
+     */
+    public OfficeConversionRequest(
+            String tenantId,
+            UUID jobId,
+            long jobGeneration,
+            String sourceFormat,
+            String policyVersion,
+            String correlationId,
+            byte[] sourceBytes) {
+        this(
+                tenantId,
+                jobId,
+                jobGeneration,
+                sourceFormat,
+                policyVersion,
+                correlationId,
+                sourceBytes,
+                DEFAULT_MAX_OUTPUT_BYTES
+        );
+    }
+
+    /**
+     * Validates immutable conversion identity, the publication limit, and copies source bytes.
+     *
+     * @throws IllegalArgumentException when required identity, source bytes, or limit are invalid
      */
     public OfficeConversionRequest {
         tenantId = requireText(tenantId, "tenantId");
@@ -50,6 +91,9 @@ public record OfficeConversionRequest(
         correlationId = requireText(correlationId, "correlationId");
         if (sourceBytes == null || sourceBytes.length == 0) {
             throw new IllegalArgumentException("sourceBytes must not be empty");
+        }
+        if (maxOutputBytes <= 0L) {
+            throw new IllegalArgumentException("maxOutputBytes must be positive");
         }
         sourceBytes = sourceBytes.clone();
     }
@@ -80,7 +124,7 @@ public record OfficeConversionRequest(
     /**
      * Returns the full immutable authority tuple for provider-output validation.
      *
-     * @return request binding containing identity, generation, policy and source digest
+     * @return request binding containing identity, generation, policy, output limit, and source digest
      */
     public OfficeConversionRequestBinding binding() {
         return new OfficeConversionRequestBinding(
@@ -90,7 +134,8 @@ public record OfficeConversionRequest(
                 sourceFormat,
                 policyVersion,
                 correlationId,
-                sourceSha256()
+                sourceSha256(),
+                maxOutputBytes
         );
     }
 

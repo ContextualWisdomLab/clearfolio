@@ -10,15 +10,17 @@ import java.util.UUID;
  * Immutable request passed across the provider-neutral Office conversion boundary.
  *
  * <p>The request binds untrusted document bytes to tenant, job-generation,
- * policy, format, correlation identity, and an output-publication size ceiling
- * before any converter implementation can process them. Source bytes are
- * defensively copied at construction and on access so callers cannot mutate the
- * digest-bound payload after validation.</p>
+ * source format, qualified adapter identity, policy, correlation identity, and
+ * an output-publication size ceiling before any converter implementation can
+ * process them. Source bytes are defensively copied at construction and on
+ * access so callers cannot mutate the digest-bound payload after validation.</p>
  *
  * @param tenantId tenant that owns the conversion request
  * @param jobId immutable conversion job identifier
  * @param jobGeneration immutable lifecycle generation for stale-work fencing
  * @param sourceFormat normalized source format such as {@code docx}
+ * @param expectedAdapterId qualified adapter implementation identifier
+ * @param expectedAdapterVersion exact qualified adapter/runtime version
  * @param policyVersion conversion and active-content policy version
  * @param correlationId request correlation identifier used for controlled tracing
  * @param sourceBytes untrusted source bytes, defensively copied
@@ -29,6 +31,8 @@ public record OfficeConversionRequest(
         UUID jobId,
         long jobGeneration,
         String sourceFormat,
+        String expectedAdapterId,
+        String expectedAdapterVersion,
         String policyVersion,
         String correlationId,
         byte[] sourceBytes,
@@ -38,12 +42,97 @@ public record OfficeConversionRequest(
     /** Default compatibility ceiling for contract callers that have not supplied a policy-specific limit. */
     public static final long DEFAULT_MAX_OUTPUT_BYTES = 64L * 1024L * 1024L;
 
+    private static final String CONTRACT_FIXTURE_ADAPTER_ID = "deterministic-fixture";
+    private static final String CONTRACT_FIXTURE_ADAPTER_VERSION = "1";
+
     /**
-     * Creates a request using the bounded compatibility output ceiling.
+     * Creates a qualified-adapter request using the bounded compatibility output ceiling.
      *
-     * <p>Production adapter integration should supply the policy-specific output
-     * ceiling explicitly. This overload keeps existing contract callers bounded
-     * while the provider runtime remains unintegrated.</p>
+     * <p>Production integration should prefer this overload when the output
+     * ceiling is inherited from the currently qualified policy. The exact
+     * adapter id and version remain mandatory authority fields.</p>
+     *
+     * @param tenantId tenant that owns the conversion request
+     * @param jobId immutable conversion job identifier
+     * @param jobGeneration immutable lifecycle generation
+     * @param sourceFormat normalized source format
+     * @param expectedAdapterId qualified adapter identifier
+     * @param expectedAdapterVersion exact qualified adapter/runtime version
+     * @param policyVersion conversion-policy version
+     * @param correlationId controlled correlation identifier
+     * @param sourceBytes untrusted source bytes
+     */
+    public OfficeConversionRequest(
+            String tenantId,
+            UUID jobId,
+            long jobGeneration,
+            String sourceFormat,
+            String expectedAdapterId,
+            String expectedAdapterVersion,
+            String policyVersion,
+            String correlationId,
+            byte[] sourceBytes) {
+        this(
+                tenantId,
+                jobId,
+                jobGeneration,
+                sourceFormat,
+                expectedAdapterId,
+                expectedAdapterVersion,
+                policyVersion,
+                correlationId,
+                sourceBytes,
+                DEFAULT_MAX_OUTPUT_BYTES
+        );
+    }
+
+    /**
+     * Creates a deterministic-fixture contract request with an explicit output ceiling.
+     *
+     * <p>This compatibility overload is deliberately bound to the deterministic
+     * fixture adapter. A production sidecar or remote-service integration must
+     * use an overload that supplies its qualified adapter id and exact version;
+     * it cannot silently inherit this fixture identity.</p>
+     *
+     * @param tenantId tenant that owns the conversion request
+     * @param jobId immutable conversion job identifier
+     * @param jobGeneration immutable lifecycle generation
+     * @param sourceFormat normalized source format
+     * @param policyVersion conversion-policy version
+     * @param correlationId controlled correlation identifier
+     * @param sourceBytes untrusted source bytes
+     * @param maxOutputBytes positive maximum PDF bytes accepted for publication
+     */
+    public OfficeConversionRequest(
+            String tenantId,
+            UUID jobId,
+            long jobGeneration,
+            String sourceFormat,
+            String policyVersion,
+            String correlationId,
+            byte[] sourceBytes,
+            long maxOutputBytes) {
+        this(
+                tenantId,
+                jobId,
+                jobGeneration,
+                sourceFormat,
+                CONTRACT_FIXTURE_ADAPTER_ID,
+                CONTRACT_FIXTURE_ADAPTER_VERSION,
+                policyVersion,
+                correlationId,
+                sourceBytes,
+                maxOutputBytes
+        );
+    }
+
+    /**
+     * Creates a deterministic-fixture contract request using the bounded compatibility output ceiling.
+     *
+     * <p>This overload exists for the offline contract fixture only. Production
+     * adapter integration must name the qualified adapter id and exact runtime
+     * version explicitly so provider provenance cannot float independently of
+     * the immutable request binding.</p>
      *
      * @param tenantId tenant that owns the conversion request
      * @param jobId immutable conversion job identifier
@@ -66,6 +155,8 @@ public record OfficeConversionRequest(
                 jobId,
                 jobGeneration,
                 sourceFormat,
+                CONTRACT_FIXTURE_ADAPTER_ID,
+                CONTRACT_FIXTURE_ADAPTER_VERSION,
                 policyVersion,
                 correlationId,
                 sourceBytes,
@@ -74,7 +165,8 @@ public record OfficeConversionRequest(
     }
 
     /**
-     * Validates immutable conversion identity, the publication limit, and copies source bytes.
+     * Validates immutable conversion identity, qualified adapter identity, the
+     * publication limit, and copies source bytes.
      *
      * @throws IllegalArgumentException when required identity, source bytes, or limit are invalid
      */
@@ -87,6 +179,8 @@ public record OfficeConversionRequest(
             throw new IllegalArgumentException("jobGeneration must be non-negative");
         }
         sourceFormat = normalizeSourceFormat(sourceFormat);
+        expectedAdapterId = requireText(expectedAdapterId, "expectedAdapterId");
+        expectedAdapterVersion = requireText(expectedAdapterVersion, "expectedAdapterVersion");
         policyVersion = requireText(policyVersion, "policyVersion");
         correlationId = requireText(correlationId, "correlationId");
         if (sourceBytes == null || sourceBytes.length == 0) {
@@ -124,7 +218,8 @@ public record OfficeConversionRequest(
     /**
      * Returns the full immutable authority tuple for provider-output validation.
      *
-     * @return request binding containing identity, generation, policy, output limit, and source digest
+     * @return request binding containing identity, generation, adapter, policy,
+     *         output limit, and source digest
      */
     public OfficeConversionRequestBinding binding() {
         return new OfficeConversionRequestBinding(
@@ -132,6 +227,8 @@ public record OfficeConversionRequest(
                 jobId,
                 jobGeneration,
                 sourceFormat,
+                expectedAdapterId,
+                expectedAdapterVersion,
                 policyVersion,
                 correlationId,
                 sourceSha256(),

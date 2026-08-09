@@ -19,18 +19,20 @@ public interface OfficeConversionAdapter {
     /**
      * Converts one immutable Office request and verifies that the result is
      * present, source-bound, tied to the exact request generation and policy,
-     * within the request-bound publication size ceiling, and parseable as PDF.
+     * within the request-bound publication size ceiling, and parseable as a
+     * non-empty PDF.
      *
      * <p>This method is the public conversion authority. Implementations supply
      * only {@link #performConversion(OfficeConversionRequest)}; callers cannot
      * accidentally accept output for a different source, tenant, job, lifecycle
      * generation, format, policy, correlation identity, output-size policy, or
-     * a truncated byte sequence that only carries a PDF magic prefix.</p>
+     * a truncated/empty PDF container that is not usable document output.</p>
      *
      * @param request immutable tenant- and generation-bound conversion request
      * @return verified PDF result with source, request, and adapter provenance
      * @throws OfficeConversionException when the provider returns no result,
-     *         mismatched provenance, an oversized candidate, or malformed PDF
+     *         mismatched provenance, an oversized candidate, a malformed PDF,
+     *         or a parseable PDF with no pages
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -74,8 +76,12 @@ public interface OfficeConversionAdapter {
 
     private static void requireParseablePdf(byte[] pdfBytes) {
         try (PDDocument document = Loader.loadPDF(pdfBytes)) {
-            // Force page-tree access so the parsed document resource is both validated and used.
-            document.getNumberOfPages();
+            if (document.getNumberOfPages() == 0) {
+                throw new OfficeConversionException(
+                        OfficeConversionFailureCode.INVALID_OUTPUT,
+                        "conversion output PDF has no pages"
+                );
+            }
         } catch (IOException ex) {
             throw new OfficeConversionException(
                     OfficeConversionFailureCode.INVALID_OUTPUT,

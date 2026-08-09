@@ -198,8 +198,10 @@ public interface OfficeConversionAdapter {
         }
         for (int index = 0; index < annotations.size(); index++) {
             COSBase annotationBase = annotations.getObject(index);
-            if (annotationBase instanceof COSDictionary annotation
-                    && annotationContainsProhibitedActiveContent(annotation)) {
+            if (!(annotationBase instanceof COSDictionary annotation)) {
+                return true;
+            }
+            if (annotationContainsProhibitedActiveContent(annotation)) {
                 return true;
             }
         }

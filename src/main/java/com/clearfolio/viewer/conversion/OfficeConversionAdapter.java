@@ -3,6 +3,7 @@ package com.clearfolio.viewer.conversion;
 import java.io.IOException;
 
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
@@ -25,7 +26,7 @@ public interface OfficeConversionAdapter {
      * present, source-bound, tied to the exact qualified adapter/runtime,
      * request generation and policy, within request-bound byte and page
      * publication ceilings, and parseable as a non-empty, unencrypted PDF
-     * without prohibited document-level active content.
+     * without prohibited active content.
      *
      * <p>This method is the public conversion authority. Implementations supply
      * only {@link #performConversion(OfficeConversionRequest)}; callers cannot
@@ -41,8 +42,9 @@ public interface OfficeConversionAdapter {
      *         mismatched provenance, an unexpected adapter id/version, an
      *         oversized candidate, a malformed or encrypted PDF, a PDF with a
      *         document-open action, catalog/page additional-actions dictionary,
-     *         document JavaScript/embedded-file name tree, a PDF with no pages,
-     *         or a PDF that exceeds the request-bound page ceiling
+     *         document JavaScript/embedded-file name tree, annotation
+     *         additional actions or annotation JavaScript action, a PDF with no
+     *         pages, or a PDF that exceeds the request-bound page ceiling
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -141,10 +143,42 @@ public interface OfficeConversionAdapter {
         }
 
         for (PDPage page : document.getPages()) {
-            if (page.getCOSObject().getDictionaryObject(COSName.getPDFName("AA")) != null) {
+            if (pageContainsProhibitedActiveContent(page)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static boolean pageContainsProhibitedActiveContent(PDPage page) {
+        COSDictionary pageDictionary = page.getCOSObject();
+        if (pageDictionary.getDictionaryObject(COSName.getPDFName("AA")) != null) {
+            return true;
+        }
+
+        COSBase annotationsBase = pageDictionary.getDictionaryObject(COSName.getPDFName("Annots"));
+        if (!(annotationsBase instanceof COSArray annotations)) {
+            return false;
+        }
+        for (int index = 0; index < annotations.size(); index++) {
+            COSBase annotationBase = annotations.getObject(index);
+            if (annotationBase instanceof COSDictionary annotation
+                    && annotationContainsProhibitedActiveContent(annotation)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean annotationContainsProhibitedActiveContent(COSDictionary annotation) {
+        if (annotation.getDictionaryObject(COSName.getPDFName("AA")) != null) {
+            return true;
+        }
+        COSBase actionBase = annotation.getDictionaryObject(COSName.getPDFName("A"));
+        if (!(actionBase instanceof COSDictionary action)) {
+            return false;
+        }
+        COSBase actionType = action.getDictionaryObject(COSName.getPDFName("S"));
+        return COSName.getPDFName("JavaScript").equals(actionType);
     }
 }

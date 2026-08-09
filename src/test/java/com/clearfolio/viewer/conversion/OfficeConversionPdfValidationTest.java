@@ -40,6 +40,27 @@ class OfficeConversionPdfValidationTest {
     }
 
     @Test
+    void adapterRejectsParseablePdfWithoutPages() throws IOException {
+        OfficeConversionRequest request = request();
+        byte[] zeroPagePdf = zeroPagePdf();
+        OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
+                "fixture",
+                "1",
+                input.sourceSha256(),
+                input.binding(),
+                zeroPagePdf
+        );
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> adapter.convert(request)
+        );
+
+        assertEquals(OfficeConversionFailureCode.INVALID_OUTPUT, failure.failureCode());
+        assertEquals("conversion output PDF has no pages", failure.getMessage());
+    }
+
+    @Test
     void adapterAcceptsParseablePdf() throws IOException {
         OfficeConversionRequest request = request();
         byte[] pdf = onePagePdf();
@@ -67,6 +88,14 @@ class OfficeConversionPdfValidationTest {
                 "fixture-source".getBytes(StandardCharsets.UTF_8),
                 OfficeConversionRequest.DEFAULT_MAX_OUTPUT_BYTES
         );
+    }
+
+    private static byte[] zeroPagePdf() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.save(output);
+            return output.toByteArray();
+        }
     }
 
     private static byte[] onePagePdf() throws IOException {

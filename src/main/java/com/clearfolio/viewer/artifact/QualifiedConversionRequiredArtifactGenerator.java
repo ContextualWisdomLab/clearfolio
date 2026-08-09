@@ -21,6 +21,14 @@ import com.clearfolio.viewer.model.ConversionJob;
 public final class QualifiedConversionRequiredArtifactGenerator implements PdfArtifactGenerator {
 
     /**
+     * Creates the fail-closed production generator used until a qualified
+     * transformed-format conversion adapter is configured.
+     */
+    public QualifiedConversionRequiredArtifactGenerator() {
+        // Explicit constructor exists so the public API is fully documented.
+    }
+
+    /**
      * Rejects transformed-format generation while no qualified adapter exists.
      *
      * @param job conversion job that requires transformed-format rendering

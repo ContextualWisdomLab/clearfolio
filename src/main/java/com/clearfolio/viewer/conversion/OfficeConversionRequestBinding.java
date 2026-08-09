@@ -76,11 +76,12 @@ public record OfficeConversionRequestBinding(
     }
 
     /**
-     * Creates a deterministic-fixture contract binding with an explicit output ceiling.
+     * Creates a package-local deterministic-fixture contract binding with an explicit output ceiling.
      *
-     * <p>This compatibility overload is fail-closed for production adapters: it
-     * binds the deterministic fixture id/version. Production sidecar or remote
-     * integrations must supply their qualified adapter identity explicitly.</p>
+     * <p>This compatibility overload is deliberately non-public and bound to the
+     * deterministic fixture id/version. Production sidecar or remote integrations
+     * must use a public constructor that supplies their qualified adapter identity
+     * explicitly.</p>
      *
      * @param tenantId canonical tenant identifier
      * @param jobId immutable conversion job identifier
@@ -91,7 +92,7 @@ public record OfficeConversionRequestBinding(
      * @param sourceSha256 lowercase source digest
      * @param maxOutputBytes positive maximum PDF bytes accepted for publication
      */
-    public OfficeConversionRequestBinding(
+    OfficeConversionRequestBinding(
             String tenantId,
             UUID jobId,
             long jobGeneration,
@@ -115,7 +116,7 @@ public record OfficeConversionRequestBinding(
     }
 
     /**
-     * Creates a deterministic-fixture contract binding using the request compatibility output ceiling.
+     * Creates a package-local deterministic-fixture contract binding using the request compatibility output ceiling.
      *
      * @param tenantId canonical tenant identifier
      * @param jobId immutable conversion job identifier
@@ -125,7 +126,7 @@ public record OfficeConversionRequestBinding(
      * @param correlationId controlled correlation identifier
      * @param sourceSha256 lowercase source digest
      */
-    public OfficeConversionRequestBinding(
+    OfficeConversionRequestBinding(
             String tenantId,
             UUID jobId,
             long jobGeneration,

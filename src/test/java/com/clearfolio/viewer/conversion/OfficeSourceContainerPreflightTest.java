@@ -29,18 +29,18 @@ class OfficeSourceContainerPreflightTest {
             (byte) 0xa1, (byte) 0xb1, 0x1a, (byte) 0xe1
     };
     private static final int CENTRAL_OFFSET = 8;
-    private static final int EOCD_OFFSET = 12;
+    private static final int CENTRAL_RECORD_LENGTH = 46;
+    private static final int EOCD_OFFSET = CENTRAL_OFFSET + CENTRAL_RECORD_LENGTH;
+    private static final int EOCD_LENGTH = 22;
 
     @Test
     void adapterRejectsUnknownFormatBeforeProviderInvocation() {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);
-
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
                 () -> adapter.convert(request("pdf", "%PDF-1.7".getBytes(StandardCharsets.US_ASCII)))
         );
-
         assertEquals(OfficeConversionFailureCode.UNSUPPORTED_FORMAT, failure.failureCode());
         assertEquals("source format is not an Office conversion candidate", failure.getMessage());
         assertEquals(0, providerCalls.get());
@@ -50,12 +50,10 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsZipFamilyWithCompoundFileSignatureBeforeProviderInvocation() {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);
-
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
                 () -> adapter.convert(request("docx", COMPOUND_FILE_HEADER))
         );
-
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
         assertEquals("source container signature does not match declared format", failure.getMessage());
         assertEquals(0, providerCalls.get());
@@ -65,12 +63,10 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsLegacyFamilyWithZipSignatureBeforeProviderInvocation() {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);
-
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
                 () -> adapter.convert(request("xls", framedZip()))
         );
-
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
         assertEquals("source container signature does not match declared format", failure.getMessage());
         assertEquals(0, providerCalls.get());
@@ -80,12 +76,10 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsTruncatedZipSignatureBeforeProviderInvocation() {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);
-
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
                 () -> adapter.convert(request("docx", new byte[] {0x50, 0x4b, 0x03}))
         );
-
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
         assertEquals("source container signature does not match declared format", failure.getMessage());
         assertEquals(0, providerCalls.get());
@@ -100,7 +94,6 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsLongZipCandidateWithoutEocdBeforeProviderInvocation() {
         byte[] bytes = new byte[40];
         System.arraycopy(ZIP_LOCAL_HEADER, 0, bytes, 0, ZIP_LOCAL_HEADER.length);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -108,7 +101,6 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsEocdWithCommentLengthBeyondBuffer() {
         byte[] bytes = framedZip();
         putUnsignedShort(bytes, EOCD_OFFSET + 20, 1);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -116,7 +108,6 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsMultiDiskZipFraming() {
         byte[] bytes = framedZip();
         putUnsignedShort(bytes, EOCD_OFFSET + 4, 1);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -124,7 +115,6 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsCentralDirectoryOnDifferentDisk() {
         byte[] bytes = framedZip();
         putUnsignedShort(bytes, EOCD_OFFSET + 6, 1);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -133,7 +123,6 @@ class OfficeSourceContainerPreflightTest {
         byte[] bytes = framedZip();
         putUnsignedShort(bytes, EOCD_OFFSET + 8, 0);
         putUnsignedShort(bytes, EOCD_OFFSET + 10, 0);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -141,7 +130,6 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsMismatchedEntryCounts() {
         byte[] bytes = framedZip();
         putUnsignedShort(bytes, EOCD_OFFSET + 10, 2);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -150,7 +138,6 @@ class OfficeSourceContainerPreflightTest {
         byte[] bytes = framedZip();
         putUnsignedShort(bytes, EOCD_OFFSET + 8, 0xffff);
         putUnsignedShort(bytes, EOCD_OFFSET + 10, 0xffff);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -158,7 +145,6 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsZip64CentralDirectorySizeSentinel() {
         byte[] bytes = framedZip();
         putUnsignedInt(bytes, EOCD_OFFSET + 12, 0xffff_ffffL);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -166,7 +152,6 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsZip64CentralDirectoryOffsetSentinel() {
         byte[] bytes = framedZip();
         putUnsignedInt(bytes, EOCD_OFFSET + 16, 0xffff_ffffL);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -174,7 +159,6 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsEmptyCentralDirectorySize() {
         byte[] bytes = framedZip();
         putUnsignedInt(bytes, EOCD_OFFSET + 12, 0L);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -182,15 +166,13 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsCentralDirectoryOffsetOutsideAddressableInput() {
         byte[] bytes = framedZip();
         putUnsignedInt(bytes, EOCD_OFFSET + 16, 0x8000_0000L);
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
     @Test
     void adapterRejectsCentralDirectoryThatOverlapsEocd() {
         byte[] bytes = framedZip();
-        putUnsignedInt(bytes, EOCD_OFFSET + 12, 8L);
-
+        putUnsignedInt(bytes, EOCD_OFFSET + 12, CENTRAL_RECORD_LENGTH + 1L);
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -198,7 +180,6 @@ class OfficeSourceContainerPreflightTest {
     void adapterRejectsMissingCentralDirectorySignature() {
         byte[] bytes = framedZip();
         bytes[CENTRAL_OFFSET] = 0x00;
-
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -206,9 +187,7 @@ class OfficeSourceContainerPreflightTest {
     void adapterInvokesProviderForBoundedZipFamilyFraming() {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);
-
         adapter.convert(request("pptx", framedZip()));
-
         assertEquals(1, providerCalls.get());
     }
 
@@ -221,9 +200,7 @@ class OfficeSourceContainerPreflightTest {
         putUnsignedShort(withComment, EOCD_OFFSET + 20, 2);
         withComment[withComment.length - 2] = 'o';
         withComment[withComment.length - 1] = 'k';
-
         adapter.convert(request("docx", withComment));
-
         assertEquals(1, providerCalls.get());
     }
 
@@ -231,21 +208,17 @@ class OfficeSourceContainerPreflightTest {
     void adapterInvokesProviderForQualifiedLegacyCompoundFileSignature() {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);
-
         adapter.convert(request("doc", COMPOUND_FILE_HEADER));
-
         assertEquals(1, providerCalls.get());
     }
 
     private static void assertMalformedZipBeforeProvider(byte[] bytes) {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);
-
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
                 () -> adapter.convert(request("docx", bytes))
         );
-
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
         assertEquals("source ZIP container framing is invalid", failure.getMessage());
         assertEquals(0, providerCalls.get());
@@ -279,19 +252,20 @@ class OfficeSourceContainerPreflightTest {
     }
 
     private static byte[] framedZip() {
-        byte[] bytes = new byte[34];
+        byte[] bytes = new byte[EOCD_OFFSET + EOCD_LENGTH];
         System.arraycopy(ZIP_LOCAL_HEADER, 0, bytes, 0, ZIP_LOCAL_HEADER.length);
         bytes[CENTRAL_OFFSET] = 0x50;
         bytes[CENTRAL_OFFSET + 1] = 0x4b;
         bytes[CENTRAL_OFFSET + 2] = 0x01;
         bytes[CENTRAL_OFFSET + 3] = 0x02;
+        putUnsignedInt(bytes, CENTRAL_OFFSET + 42, 0L);
         bytes[EOCD_OFFSET] = 0x50;
         bytes[EOCD_OFFSET + 1] = 0x4b;
         bytes[EOCD_OFFSET + 2] = 0x05;
         bytes[EOCD_OFFSET + 3] = 0x06;
         putUnsignedShort(bytes, EOCD_OFFSET + 8, 1);
         putUnsignedShort(bytes, EOCD_OFFSET + 10, 1);
-        putUnsignedInt(bytes, EOCD_OFFSET + 12, 4);
+        putUnsignedInt(bytes, EOCD_OFFSET + 12, CENTRAL_RECORD_LENGTH);
         putUnsignedInt(bytes, EOCD_OFFSET + 16, CENTRAL_OFFSET);
         putUnsignedShort(bytes, EOCD_OFFSET + 20, 0);
         return bytes;

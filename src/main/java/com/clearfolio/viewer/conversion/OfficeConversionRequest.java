@@ -3,6 +3,7 @@ package com.clearfolio.viewer.conversion;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -44,7 +45,7 @@ public record OfficeConversionRequest(
         if (jobGeneration < 0L) {
             throw new IllegalArgumentException("jobGeneration must be non-negative");
         }
-        sourceFormat = requireText(sourceFormat, "sourceFormat");
+        sourceFormat = normalizeSourceFormat(sourceFormat);
         policyVersion = requireText(policyVersion, "policyVersion");
         correlationId = requireText(correlationId, "correlationId");
         if (sourceBytes == null || sourceBytes.length == 0) {
@@ -74,6 +75,10 @@ public record OfficeConversionRequest(
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 is unavailable", ex);
         }
+    }
+
+    private static String normalizeSourceFormat(String value) {
+        return requireText(value, "sourceFormat").strip().toLowerCase(Locale.ROOT);
     }
 
     private static String requireText(String value, String fieldName) {

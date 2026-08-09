@@ -31,15 +31,17 @@ public interface OfficeConversionAdapter {
      * accidentally accept output for a different source, tenant, job, lifecycle
      * generation, adapter id/version, format, policy, correlation identity,
      * publication policy, or a truncated, empty, encrypted, actively executable,
-     * or over-page-limit PDF container that is not acceptable document output.</p>
+     * embedded-file-bearing, or over-page-limit PDF container that is not
+     * acceptable document output.</p>
      *
      * @param request immutable tenant-, generation-, and adapter-bound conversion request
      * @return verified PDF result with source, request, and adapter provenance
      * @throws OfficeConversionException when the provider returns no result,
      *         mismatched provenance, an unexpected adapter id/version, an
      *         oversized candidate, a malformed or encrypted PDF, a PDF with a
-     *         document-open action or JavaScript name tree, a PDF with no pages,
-     *         or a PDF that exceeds the request-bound page ceiling
+     *         document-open action, JavaScript name tree, or embedded-file name
+     *         tree, a PDF with no pages, or a PDF that exceeds the request-bound
+     *         page ceiling
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -133,6 +135,7 @@ public interface OfficeConversionAdapter {
         if (!(namesBase instanceof COSDictionary names)) {
             return false;
         }
-        return names.getDictionaryObject(COSName.getPDFName("JavaScript")) != null;
+        return names.getDictionaryObject(COSName.getPDFName("JavaScript")) != null
+                || names.getDictionaryObject(COSName.getPDFName("EmbeddedFiles")) != null;
     }
 }

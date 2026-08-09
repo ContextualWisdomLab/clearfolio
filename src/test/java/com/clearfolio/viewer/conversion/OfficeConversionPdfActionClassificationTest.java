@@ -20,10 +20,11 @@ import org.junit.jupiter.api.Test;
  * Behavior-level PDF action-policy regressions for converter output.
  *
  * <p>Network-independent conversion forbids dereferencing remote resources during
- * conversion, but it does not make inert navigation metadata executable. The
- * publication boundary therefore preserves benign internal navigation and
- * user-activated URI links while rejecting executable, automatic, malformed,
- * chained-active, and unknown action behavior.</p>
+ * conversion, but it does not make explicit user navigation metadata executable.
+ * The publication boundary therefore preserves direct internal navigation and
+ * approved user-activated URI links while rejecting event-triggered additional
+ * actions, executable behavior, malformed actions, chained-active actions, and
+ * unknown action behavior.</p>
  */
 class OfficeConversionPdfActionClassificationTest {
 
@@ -35,17 +36,20 @@ class OfficeConversionPdfActionClassificationTest {
     }
 
     @Test
-    void adapterPreservesInternalPageAdditionalGoToAction() throws IOException {
-        byte[] pdf = pdfWithPageAdditionalAction(goToAction());
+    void adapterPreservesExplicitInternalAnnotationGoToAction() throws IOException {
+        byte[] pdf = pdfWithAnnotationAction(goToAction());
 
         assertDoesNotThrow(() -> adapterReturning(pdf).convert(request()));
     }
 
     @Test
-    void adapterPreservesInternalAnnotationAdditionalGoToAction() throws IOException {
-        byte[] pdf = pdfWithAnnotationAdditionalAction(goToAction());
+    void adapterRejectsInternalPageAdditionalGoToAction() throws IOException {
+        assertPolicyDenied(pdfWithPageAdditionalAction(goToAction()));
+    }
 
-        assertDoesNotThrow(() -> adapterReturning(pdf).convert(request()));
+    @Test
+    void adapterRejectsInternalAnnotationAdditionalGoToAction() throws IOException {
+        assertPolicyDenied(pdfWithAnnotationAdditionalAction(goToAction()));
     }
 
     @Test

@@ -171,7 +171,7 @@ interface ArtifactHttpRange {
          * @return {@code true} for invalid or unsatisfiable ranges
          */
         boolean rejected() {
-            return invalid ^ unsatisfiable;
+            return invalid || unsatisfiable;
         }
     }
 }

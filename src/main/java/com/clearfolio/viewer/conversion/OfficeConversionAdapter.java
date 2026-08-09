@@ -43,8 +43,8 @@ public interface OfficeConversionAdapter {
      *         oversized candidate, a malformed or encrypted PDF, a PDF with a
      *         document-open action, catalog/page additional-actions dictionary,
      *         catalog associated files, document JavaScript/embedded-file name
-     *         tree, annotation additional actions or annotation JavaScript
-     *         action, a PDF with no pages, or a PDF that exceeds the
+     *         tree, annotation additional actions, annotation JavaScript or
+     *         launch actions, a PDF with no pages, or a PDF that exceeds the
      *         request-bound page ceiling
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
@@ -181,6 +181,7 @@ public interface OfficeConversionAdapter {
             return false;
         }
         COSBase actionType = action.getDictionaryObject(COSName.getPDFName("S"));
-        return COSName.getPDFName("JavaScript").equals(actionType);
+        return COSName.getPDFName("JavaScript").equals(actionType)
+                || COSName.getPDFName("Launch").equals(actionType);
     }
 }

@@ -62,8 +62,8 @@ class OfficeConversionOutputLimitTest {
     }
 
     @Test
-    void adapterAcceptsPdfAtExactOutputLimit() {
-        byte[] pdf = "%PDF-".getBytes(StandardCharsets.US_ASCII);
+    void adapterAcceptsParseablePdfAtExactOutputLimit() {
+        byte[] pdf = OfficeConversionTestPdf.onePage();
         OfficeConversionRequest request = requestWithLimit(pdf.length);
         OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
                 "fixture",

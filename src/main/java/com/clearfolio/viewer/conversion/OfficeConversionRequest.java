@@ -93,6 +93,51 @@ public record OfficeConversionRequest(
     }
 
     /**
+     * Creates a qualified-adapter request with an explicit byte ceiling and the
+     * bounded compatibility page ceiling.
+     *
+     * <p>This overload preserves the public authority contract introduced by
+     * the byte-limit slice. New policy integrations that also control page count
+     * should use the canonical constructor.</p>
+     *
+     * @param tenantId tenant that owns the conversion request
+     * @param jobId immutable conversion job identifier
+     * @param jobGeneration immutable lifecycle generation
+     * @param sourceFormat normalized source format
+     * @param expectedAdapterId qualified adapter identifier
+     * @param expectedAdapterVersion exact qualified adapter/runtime version
+     * @param policyVersion conversion-policy version
+     * @param correlationId controlled correlation identifier
+     * @param sourceBytes untrusted source bytes
+     * @param maxOutputBytes positive maximum PDF bytes accepted for publication
+     */
+    public OfficeConversionRequest(
+            String tenantId,
+            UUID jobId,
+            long jobGeneration,
+            String sourceFormat,
+            String expectedAdapterId,
+            String expectedAdapterVersion,
+            String policyVersion,
+            String correlationId,
+            byte[] sourceBytes,
+            long maxOutputBytes) {
+        this(
+                tenantId,
+                jobId,
+                jobGeneration,
+                sourceFormat,
+                expectedAdapterId,
+                expectedAdapterVersion,
+                policyVersion,
+                correlationId,
+                sourceBytes,
+                maxOutputBytes,
+                DEFAULT_MAX_PDF_PAGES
+        );
+    }
+
+    /**
      * Creates a package-local deterministic-fixture request with explicit publication limits.
      *
      * <p>This compatibility overload is deliberately non-public and bound to the

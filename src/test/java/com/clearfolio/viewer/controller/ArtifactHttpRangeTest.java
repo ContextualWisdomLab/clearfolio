@@ -52,4 +52,53 @@ class ArtifactHttpRangeTest {
         assertTrue(range.isPresent());
         assertTrue(range.get().rejected());
     }
+
+    @Test
+    void rejectsRangeHeaderWithoutEqualsDelimiter() {
+        var range = ArtifactHttpRange.resolveSingleRange("bytes", 10);
+
+        assertTrue(range.isPresent());
+        assertTrue(range.get().rejected());
+    }
+
+    @Test
+    void rejectsUnsupportedRangeUnitAfterEqualsDelimiter() {
+        var range = ArtifactHttpRange.resolveSingleRange("items=1-2", 10);
+
+        assertTrue(range.isPresent());
+        assertTrue(range.get().rejected());
+    }
+
+    @Test
+    void rejectsStartPositionThatOverflowsLong() {
+        var range = ArtifactHttpRange.resolveSingleRange(
+                "bytes=999999999999999999999999999999-2",
+                10
+        );
+
+        assertTrue(range.isPresent());
+        assertTrue(range.get().rejected());
+    }
+
+    @Test
+    void rejectsEndPositionThatOverflowsLong() {
+        var range = ArtifactHttpRange.resolveSingleRange(
+                "bytes=1-999999999999999999999999999999",
+                10
+        );
+
+        assertTrue(range.isPresent());
+        assertTrue(range.get().rejected());
+    }
+
+    @Test
+    void rejectsSuffixLengthThatOverflowsLong() {
+        var range = ArtifactHttpRange.resolveSingleRange(
+                "bytes=-999999999999999999999999999999",
+                10
+        );
+
+        assertTrue(range.isPresent());
+        assertTrue(range.get().rejected());
+    }
 }

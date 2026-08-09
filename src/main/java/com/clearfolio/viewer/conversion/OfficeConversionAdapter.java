@@ -186,8 +186,11 @@ public interface OfficeConversionAdapter {
         }
 
         COSBase annotationsBase = pageDictionary.getDictionaryObject(COSName.getPDFName("Annots"));
-        if (!(annotationsBase instanceof COSArray annotations)) {
+        if (annotationsBase == null) {
             return false;
+        }
+        if (!(annotationsBase instanceof COSArray annotations)) {
+            return true;
         }
         for (int index = 0; index < annotations.size(); index++) {
             COSBase annotationBase = annotations.getObject(index);

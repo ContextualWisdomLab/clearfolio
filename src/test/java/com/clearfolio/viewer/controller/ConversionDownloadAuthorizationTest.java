@@ -142,6 +142,7 @@ class ConversionDownloadAuthorizationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_PDF)
+                .expectHeader().valueEquals(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"report.pdf\"")
                 .expectBody(byte[].class).isEqualTo(pdfBytes);
 
@@ -177,6 +178,31 @@ class ConversionDownloadAuthorizationTest {
         assertEquals("bytes=0-3", event.rangeRequested());
         assertEquals(206, event.statusCode());
         assertEquals("direct-download-range", event.traceId());
+    }
+
+    @Test
+    void downloadRejectsUnsatisfiableRangeAndRecordsAuditEvidence() {
+        UUID jobId = UUID.randomUUID();
+        byte[] pdfBytes = pdfBytes();
+        ConversionJob ownedJob = prepareOwnedSucceededJob(jobId, pdfBytes);
+        ArtifactLinkResponse link = createLink(ownedJob);
+
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/convert/jobs/{jobId}/download")
+                        .queryParam(ArtifactLinkService.ARTIFACT_TOKEN_PARAM, tokenFrom(link))
+                        .build(jobId))
+                .headers(headers -> addAuth(headers, TenantPermissions.ARTIFACT_READ))
+                .header(HttpHeaders.RANGE, "bytes=99-100")
+                .exchange()
+                .expectStatus().isEqualTo(416)
+                .expectHeader().valueEquals(HttpHeaders.CONTENT_RANGE, "bytes */9")
+                .expectHeader().valueEquals(HttpHeaders.ACCEPT_RANGES, "bytes")
+                .expectHeader().valueEquals(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"report.pdf\"");
+
+        ArtifactReadEventResponse event = onlyReadEvent(jobId);
+        assertEquals("bytes=99-100", event.rangeRequested());
+        assertEquals(416, event.statusCode());
     }
 
     @Test

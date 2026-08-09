@@ -151,10 +151,14 @@ public interface OfficeConversionAdapter {
         }
 
         COSBase namesBase = catalog.getDictionaryObject(COSName.getPDFName("Names"));
-        if (namesBase instanceof COSDictionary names
-                && (names.getDictionaryObject(COSName.getPDFName("JavaScript")) != null
-                || names.getDictionaryObject(COSName.getPDFName("EmbeddedFiles")) != null)) {
-            return true;
+        if (namesBase != null) {
+            if (!(namesBase instanceof COSDictionary names)) {
+                return true;
+            }
+            if (names.getDictionaryObject(COSName.getPDFName("JavaScript")) != null
+                    || names.getDictionaryObject(COSName.getPDFName("EmbeddedFiles")) != null) {
+                return true;
+            }
         }
 
         for (PDPage page : document.getPages()) {

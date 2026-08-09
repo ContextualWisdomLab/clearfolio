@@ -78,13 +78,13 @@ public record OfficeConversionRequest(
     }
 
     private static String normalizeSourceFormat(String value) {
-        return requireText(value, "sourceFormat").strip().toLowerCase(Locale.ROOT);
+        return requireText(value, "sourceFormat").toLowerCase(Locale.ROOT);
     }
 
     private static String requireText(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(fieldName + " must not be blank");
         }
-        return value;
+        return value.strip();
     }
 }

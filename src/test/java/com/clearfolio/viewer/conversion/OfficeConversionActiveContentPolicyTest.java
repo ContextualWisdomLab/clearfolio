@@ -63,6 +63,14 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     @Test
+    void adapterRejectsAnnotationUriAction() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithAnnotationUriAction());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
     void adapterAcceptsBenignEmptyDocumentNameDictionary() throws IOException {
         byte[] pdf = pdfWithEmptyNameDictionary();
         OfficeConversionAdapter adapter = adapterReturning(pdf);
@@ -174,6 +182,29 @@ class OfficeConversionActiveContentPolicyTest {
             COSDictionary additionalActions = new COSDictionary();
             additionalActions.setItem(COSName.getPDFName("O"), javascriptAction());
             page.getCOSObject().setItem(COSName.getPDFName("AA"), additionalActions);
+            document.addPage(page);
+            document.save(output);
+            return output.toByteArray();
+        }
+    }
+
+    private static byte[] pdfWithAnnotationUriAction() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            PDPage page = new PDPage();
+
+            COSDictionary uriAction = new COSDictionary();
+            uriAction.setItem(COSName.getPDFName("S"), COSName.getPDFName("URI"));
+            uriAction.setString(COSName.getPDFName("URI"), "https://example.invalid/clearfolio");
+
+            COSDictionary annotation = new COSDictionary();
+            annotation.setItem(COSName.TYPE, COSName.getPDFName("Annot"));
+            annotation.setItem(COSName.SUBTYPE, COSName.getPDFName("Link"));
+            annotation.setItem(COSName.getPDFName("A"), uriAction);
+
+            COSArray annotations = new COSArray();
+            annotations.add(annotation);
+            page.getCOSObject().setItem(COSName.getPDFName("Annots"), annotations);
             document.addPage(page);
             document.save(output);
             return output.toByteArray();

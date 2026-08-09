@@ -44,6 +44,8 @@ class OfficeConversionAdapterContractTest {
         assertEquals("trace-123", request.correlationId());
         assertArrayEquals("office-source".getBytes(StandardCharsets.UTF_8), request.sourceBytes());
         assertEquals(expectedDigest, request.sourceSha256());
+        assertEquals(expectedDigest, request.binding().sourceSha256());
+        assertEquals(7L, request.binding().jobGeneration());
         assertEquals(64, expectedDigest.length());
     }
 
@@ -94,8 +96,8 @@ class OfficeConversionAdapterContractTest {
     void resultDefensivelyCopiesVerifiedPdfAndCarriesProvenance() {
         byte[] pdf = "%PDF-1.7\nfixture".getBytes(StandardCharsets.US_ASCII);
         OfficeConversionResult result = new OfficeConversionResult(
-                "fixture-adapter",
-                "1.0.0",
+                " fixture-adapter ",
+                " 1.0.0 ",
                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 pdf
         );
@@ -108,6 +110,7 @@ class OfficeConversionAdapterContractTest {
         assertEquals("fixture-adapter", result.adapterId());
         assertEquals("1.0.0", result.adapterVersion());
         assertEquals(64, result.sourceSha256().length());
+        assertEquals(null, result.requestBinding());
         assertArrayEquals("%PDF-1.7\nfixture".getBytes(StandardCharsets.US_ASCII), result.pdfBytes());
         assertEquals(outputDigest, result.outputSha256());
         assertEquals(64, outputDigest.length());
@@ -118,6 +121,9 @@ class OfficeConversionAdapterContractTest {
         byte[] pdf = "%PDF-1.7\nfixture".getBytes(StandardCharsets.US_ASCII);
         byte[] notPdf = "not-pdf".getBytes(StandardCharsets.US_ASCII);
         String digest = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        String otherDigest = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        OfficeConversionRequestBinding otherBinding = new OfficeConversionRequestBinding(
+                "tenant", UUID.randomUUID(), 0L, "docx", "policy", "trace", otherDigest);
 
         assertThrows(IllegalArgumentException.class,
                 () -> new OfficeConversionResult(null, "1", digest, pdf));
@@ -131,6 +137,8 @@ class OfficeConversionAdapterContractTest {
                 () -> new OfficeConversionResult("adapter", "1", "bad", pdf));
         assertThrows(IllegalArgumentException.class,
                 () -> new OfficeConversionResult("adapter", "1", digest.toUpperCase(), pdf));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionResult("adapter", "1", digest, otherBinding, pdf));
         assertThrows(IllegalArgumentException.class,
                 () -> new OfficeConversionResult("adapter", "1", digest, null));
         assertThrows(IllegalArgumentException.class,
@@ -179,12 +187,14 @@ class OfficeConversionAdapterContractTest {
                 "deterministic-fixture",
                 "1",
                 input.sourceSha256(),
+                input.binding(),
                 pdf
         );
 
         OfficeConversionResult result = adapter.convert(request);
 
         assertEquals(request.sourceSha256(), result.sourceSha256());
+        assertEquals(request.binding(), result.requestBinding());
         assertArrayEquals(pdf, result.pdfBytes());
     }
 }

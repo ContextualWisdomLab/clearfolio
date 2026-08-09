@@ -55,6 +55,10 @@ interface ArtifactHttpRange {
     }
 
     private static Optional<ResolvedRange> resolveStartEnd(String first, String second, int totalLength) {
+        if (!isAsciiDigits(first) || (!second.isEmpty() && !isAsciiDigits(second))) {
+            return Optional.of(ResolvedRange.invalidRange());
+        }
+
         long startLong;
         try {
             startLong = Long.parseLong(first);
@@ -85,7 +89,7 @@ interface ArtifactHttpRange {
     }
 
     private static Optional<ResolvedRange> resolveSuffix(String suffix, int totalLength) {
-        if (suffix.isEmpty()) {
+        if (suffix.isEmpty() || !isAsciiDigits(suffix)) {
             return Optional.of(ResolvedRange.invalidRange());
         }
 
@@ -104,6 +108,16 @@ interface ArtifactHttpRange {
 
         long startLong = totalLength - suffixLong;
         return Optional.of(ResolvedRange.ok((int) startLong, totalLength - 1));
+    }
+
+    private static boolean isAsciiDigits(String value) {
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (character < '0' || character > '9') {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

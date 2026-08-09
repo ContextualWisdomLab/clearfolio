@@ -19,22 +19,22 @@ public interface OfficeConversionAdapter {
     /**
      * Converts one immutable Office request and verifies that the result is
      * present, source-bound, tied to the exact qualified adapter/runtime,
-     * request generation and policy, within the request-bound publication size
-     * ceiling, and parseable as a non-empty, unencrypted PDF.
+     * request generation and policy, within request-bound byte and page
+     * publication ceilings, and parseable as a non-empty, unencrypted PDF.
      *
      * <p>This method is the public conversion authority. Implementations supply
      * only {@link #performConversion(OfficeConversionRequest)}; callers cannot
      * accidentally accept output for a different source, tenant, job, lifecycle
      * generation, adapter id/version, format, policy, correlation identity,
-     * output-size policy, or a truncated, empty, or encrypted PDF container that
-     * is not acceptable document output.</p>
+     * publication policy, or a truncated, empty, encrypted, or over-page-limit
+     * PDF container that is not acceptable document output.</p>
      *
      * @param request immutable tenant-, generation-, and adapter-bound conversion request
      * @return verified PDF result with source, request, and adapter provenance
      * @throws OfficeConversionException when the provider returns no result,
      *         mismatched provenance, an unexpected adapter id/version, an
-     *         oversized candidate, a malformed or encrypted PDF, or a parseable
-     *         PDF with no pages
+     *         oversized candidate, a malformed or encrypted PDF, a PDF with no
+     *         pages, or a PDF that exceeds the request-bound page ceiling
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -71,7 +71,7 @@ public interface OfficeConversionAdapter {
                     "conversion output exceeds maximum bytes"
             );
         }
-        requireParseablePdf(pdfBytes);
+        requireParseablePdf(pdfBytes, request.maxPdfPages());
         return result;
     }
 
@@ -83,7 +83,7 @@ public interface OfficeConversionAdapter {
      */
     OfficeConversionResult performConversion(OfficeConversionRequest request);
 
-    private static void requireParseablePdf(byte[] pdfBytes) {
+    private static void requireParseablePdf(byte[] pdfBytes, int maxPdfPages) {
         try (PDDocument document = Loader.loadPDF(pdfBytes)) {
             if (document.isEncrypted()) {
                 throw new OfficeConversionException(
@@ -91,10 +91,17 @@ public interface OfficeConversionAdapter {
                         "conversion output PDF must not be encrypted"
                 );
             }
-            if (document.getNumberOfPages() == 0) {
+            int pageCount = document.getNumberOfPages();
+            if (pageCount == 0) {
                 throw new OfficeConversionException(
                         OfficeConversionFailureCode.INVALID_OUTPUT,
                         "conversion output PDF has no pages"
+                );
+            }
+            if (pageCount > maxPdfPages) {
+                throw new OfficeConversionException(
+                        OfficeConversionFailureCode.PAGE_LIMIT_EXCEEDED,
+                        "conversion output exceeds maximum pages"
                 );
             }
         } catch (IOException ex) {

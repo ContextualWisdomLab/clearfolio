@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 
@@ -23,22 +24,22 @@ public interface OfficeConversionAdapter {
      * present, source-bound, tied to the exact qualified adapter/runtime,
      * request generation and policy, within request-bound byte and page
      * publication ceilings, and parseable as a non-empty, unencrypted PDF
-     * without a document-open action.
+     * without prohibited document-level active content.
      *
      * <p>This method is the public conversion authority. Implementations supply
      * only {@link #performConversion(OfficeConversionRequest)}; callers cannot
      * accidentally accept output for a different source, tenant, job, lifecycle
      * generation, adapter id/version, format, policy, correlation identity,
-     * publication policy, or a truncated, empty, encrypted, active-on-open, or
-     * over-page-limit PDF container that is not acceptable document output.</p>
+     * publication policy, or a truncated, empty, encrypted, actively executable,
+     * or over-page-limit PDF container that is not acceptable document output.</p>
      *
      * @param request immutable tenant-, generation-, and adapter-bound conversion request
      * @return verified PDF result with source, request, and adapter provenance
      * @throws OfficeConversionException when the provider returns no result,
      *         mismatched provenance, an unexpected adapter id/version, an
      *         oversized candidate, a malformed or encrypted PDF, a PDF with a
-     *         document-open action or no pages, or a PDF that exceeds the
-     *         request-bound page ceiling
+     *         document-open action or JavaScript name tree, a PDF with no pages,
+     *         or a PDF that exceeds the request-bound page ceiling
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -95,9 +96,7 @@ public interface OfficeConversionAdapter {
                         "conversion output PDF must not be encrypted"
                 );
             }
-            COSBase openAction = document.getDocumentCatalog().getCOSObject()
-                    .getDictionaryObject(COSName.getPDFName("OpenAction"));
-            if (openAction != null) {
+            if (containsProhibitedActiveContent(document)) {
                 throw new OfficeConversionException(
                         OfficeConversionFailureCode.POLICY_DENIED,
                         "conversion output contains prohibited active content"
@@ -122,5 +121,18 @@ public interface OfficeConversionAdapter {
                     "conversion output is not a valid PDF"
             );
         }
+    }
+
+    private static boolean containsProhibitedActiveContent(PDDocument document) {
+        COSDictionary catalog = document.getDocumentCatalog().getCOSObject();
+        if (catalog.getDictionaryObject(COSName.getPDFName("OpenAction")) != null) {
+            return true;
+        }
+
+        COSBase namesBase = catalog.getDictionaryObject(COSName.getPDFName("Names"));
+        if (!(namesBase instanceof COSDictionary names)) {
+            return false;
+        }
+        return names.getDictionaryObject(COSName.getPDFName("JavaScript")) != null;
     }
 }

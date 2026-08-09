@@ -107,8 +107,22 @@ public class KpiSnapshotLedger {
     }
 
     private void replayLine(String line) {
-        String[] fields = line.split("\t", -1);
-        if (fields.length != 12 || !SNAPSHOT.equals(fields[0])) {
+        String[] fields = new String[12];
+        int start = 0;
+        for (int i = 0; i < 11; i++) {
+            int tabIndex = line.indexOf('\t', start);
+            if (tabIndex == -1) {
+                throw invalidLine();
+            }
+            fields[i] = line.substring(start, tabIndex);
+            start = tabIndex + 1;
+        }
+        if (line.indexOf('\t', start) != -1) {
+            throw invalidLine();
+        }
+        fields[11] = line.substring(start);
+
+        if (!SNAPSHOT.equals(fields[0])) {
             throw invalidLine();
         }
         snapshots.add(new KpiSnapshotRecord(

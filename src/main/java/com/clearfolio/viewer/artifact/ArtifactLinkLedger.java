@@ -147,7 +147,37 @@ public class ArtifactLinkLedger {
     }
 
     private void replayLine(String line) {
-        String[] fields = line.split("\t", -1);
+        int expectedCount = 0;
+        int nextTab = line.indexOf('\t');
+        if (nextTab == -1) {
+            throw invalidLine();
+        }
+        String type = line.substring(0, nextTab);
+
+        switch (type) {
+            case ISSUED -> expectedCount = 14;
+            case REVOKED -> expectedCount = 5;
+            case READ -> expectedCount = 9;
+            default -> throw invalidLine();
+        }
+
+        String[] fields = new String[expectedCount];
+        fields[0] = type;
+        int start = nextTab + 1;
+        for (int i = 1; i < expectedCount - 1; i++) {
+            int tabIndex = line.indexOf('\t', start);
+            if (tabIndex == -1) {
+                throw invalidLine();
+            }
+            fields[i] = line.substring(start, tabIndex);
+            start = tabIndex + 1;
+        }
+
+        if (line.indexOf('\t', start) != -1) {
+            throw invalidLine();
+        }
+        fields[expectedCount - 1] = line.substring(start);
+
         switch (fields[0]) {
             case ISSUED -> replayIssued(fields);
             case REVOKED -> replayRevoked(fields);

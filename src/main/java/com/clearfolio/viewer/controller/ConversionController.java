@@ -250,7 +250,7 @@ public class ConversionController {
         try {
             claims = artifactLinkService.verifyReadToken(jobId, job, pdfBytes, token);
         } catch (ArtifactTokenException ex) {
-            return Mono.just(downloadTokenFailure(ex.getStatus()));
+            return Mono.just(ArtifactHttpResponse.tokenFailure(ex.getStatus()));
         }
 
         String checksum = claims.artifactChecksum();
@@ -262,13 +262,17 @@ public class ConversionController {
         Optional<ArtifactHttpRange.ResolvedRange> range = ArtifactHttpRange.resolveSingleRange(rangeHeader, totalLength);
 
         if (range.isPresent() && range.get().rejected()) {
-            ResponseEntity<byte[]> response = downloadUnsatisfiable(contentDisposition, checksum, totalLength);
+            ResponseEntity<byte[]> response = ArtifactHttpResponse.unsatisfiable(
+                    totalLength,
+                    contentDisposition,
+                    checksum
+            );
             artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
             return Mono.just(response);
         }
 
         if (range.isEmpty()) {
-            ResponseEntity<byte[]> response = downloadFull(contentDisposition, checksum, pdfBytes);
+            ResponseEntity<byte[]> response = ArtifactHttpResponse.full(pdfBytes, contentDisposition, checksum);
             artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
             return Mono.just(response);
         }
@@ -277,71 +281,16 @@ public class ConversionController {
         int start = resolved.startInclusive();
         int end = resolved.endInclusive();
         byte[] slice = java.util.Arrays.copyOfRange(pdfBytes, start, end + 1);
-        ResponseEntity<byte[]> response = downloadPartial(
-                contentDisposition,
-                checksum,
+        ResponseEntity<byte[]> response = ArtifactHttpResponse.partial(
                 slice,
                 start,
                 end,
-                totalLength
+                totalLength,
+                contentDisposition,
+                checksum
         );
         artifactLinkService.recordRead(claims, rangeHeader, response.getStatusCode().value(), traceId);
         return Mono.just(response);
-    }
-
-    private static ResponseEntity<byte[]> downloadFull(
-            ContentDisposition contentDisposition,
-            String checksum,
-            byte[] pdfBytes) {
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .header("X-Content-Type-Options", "nosniff")
-                .header(HttpHeaders.ACCEPT_RANGES, ArtifactHttpRange.RANGE_UNIT_BYTES)
-                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
-                .header("X-Checksum-Sha256", checksum)
-                .contentLength(pdfBytes.length)
-                .body(pdfBytes);
-    }
-
-    private static ResponseEntity<byte[]> downloadPartial(
-            ContentDisposition contentDisposition,
-            String checksum,
-            byte[] body,
-            int start,
-            int end,
-            int totalLength) {
-        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .header("X-Content-Type-Options", "nosniff")
-                .header(HttpHeaders.ACCEPT_RANGES, ArtifactHttpRange.RANGE_UNIT_BYTES)
-                .header(HttpHeaders.CONTENT_RANGE, ArtifactHttpRange.RANGE_UNIT_BYTES + " " + start + "-" + end + "/" + totalLength)
-                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
-                .header("X-Checksum-Sha256", checksum)
-                .contentLength(body.length)
-                .body(body);
-    }
-
-    private static ResponseEntity<byte[]> downloadUnsatisfiable(
-            ContentDisposition contentDisposition,
-            String checksum,
-            int totalLength) {
-        return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .header("X-Content-Type-Options", "nosniff")
-                .header(HttpHeaders.ACCEPT_RANGES, ArtifactHttpRange.RANGE_UNIT_BYTES)
-                .header(HttpHeaders.CONTENT_RANGE, ArtifactHttpRange.RANGE_UNIT_BYTES + " */" + totalLength)
-                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
-                .header("X-Checksum-Sha256", checksum)
-                .build();
-    }
-
-    private static ResponseEntity<byte[]> downloadTokenFailure(HttpStatus status) {
-        return ResponseEntity.status(status)
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .header("X-Content-Type-Options", "nosniff")
-                .build();
     }
 
     static String pdfDownloadFilename(String originalFileName) {

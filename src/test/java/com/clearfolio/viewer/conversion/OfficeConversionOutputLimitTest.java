@@ -86,7 +86,7 @@ class OfficeConversionOutputLimitTest {
                 "docx",
                 "policy-v1",
                 "trace-output-limit",
-                "fixture-source".getBytes(StandardCharsets.UTF_8),
+                OfficeConversionTestSource.zipPackage("fixture-source"),
                 maxOutputBytes
         );
     }

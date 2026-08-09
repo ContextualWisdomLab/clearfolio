@@ -9,13 +9,9 @@ import java.util.Optional;
  * rejected rather than being interpreted inconsistently by different artifact
  * endpoints.</p>
  */
-final class ArtifactHttpRange {
+interface ArtifactHttpRange {
 
-    private static final String RANGE_UNIT_BYTES = "bytes";
-
-    private ArtifactHttpRange() {
-        // Utility class.
-    }
+    String RANGE_UNIT_BYTES = "bytes";
 
     /**
      * Parses an optional single HTTP {@code bytes} range.
@@ -35,7 +31,10 @@ final class ArtifactHttpRange {
         }
 
         String spec = trimmed.substring((RANGE_UNIT_BYTES + "=").length()).strip();
-        if (spec.isEmpty() || spec.contains(",")) {
+        if (spec.isEmpty()) {
+            return Optional.of(ResolvedRange.invalidRange());
+        }
+        if (spec.contains(",")) {
             return Optional.of(ResolvedRange.invalidRange());
         }
 

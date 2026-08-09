@@ -179,7 +179,7 @@ class OfficeConversionAdapterContractTest {
 
     @Test
     void adapterContractCanReturnDeterministicFixtureEvidence() {
-        byte[] source = "fixture-docx".getBytes(StandardCharsets.UTF_8);
+        byte[] source = OfficeConversionTestSource.zipPackage("fixture-docx");
         OfficeConversionRequest request = new OfficeConversionRequest(
                 "tenant-a", UUID.randomUUID(), 1L, "docx", "policy-v1", "trace-1", source);
         byte[] pdf = OfficeConversionTestPdf.onePage();

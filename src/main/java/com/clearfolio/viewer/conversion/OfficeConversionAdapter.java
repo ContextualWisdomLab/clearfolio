@@ -13,17 +13,18 @@ public interface OfficeConversionAdapter {
 
     /**
      * Converts one immutable Office request and verifies that the result is
-     * present, source-bound, and tied to the exact request generation and policy.
+     * present, source-bound, tied to the exact request generation and policy,
+     * and within the request-bound publication size ceiling.
      *
      * <p>This method is the public conversion authority. Implementations supply
      * only {@link #performConversion(OfficeConversionRequest)}; callers cannot
      * accidentally accept output for a different source, tenant, job, lifecycle
-     * generation, format, policy, or correlation identity.</p>
+     * generation, format, policy, correlation identity, or output-size policy.</p>
      *
      * @param request immutable tenant- and generation-bound conversion request
      * @return verified PDF result with source, request, and adapter provenance
-     * @throws OfficeConversionException when the provider returns no result or
-     *         provenance for a different source or request generation
+     * @throws OfficeConversionException when the provider returns no result,
+     *         mismatched provenance, or an oversized candidate PDF
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -43,6 +44,12 @@ public interface OfficeConversionAdapter {
             throw new OfficeConversionException(
                     OfficeConversionFailureCode.INVALID_OUTPUT,
                     "conversion result request binding mismatch"
+            );
+        }
+        if (result.pdfBytes().length > request.maxOutputBytes()) {
+            throw new OfficeConversionException(
+                    OfficeConversionFailureCode.OUTPUT_LIMIT_EXCEEDED,
+                    "conversion output exceeds maximum bytes"
             );
         }
         return result;

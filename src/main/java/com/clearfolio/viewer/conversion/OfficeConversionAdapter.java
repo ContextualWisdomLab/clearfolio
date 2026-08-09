@@ -42,9 +42,10 @@ public interface OfficeConversionAdapter {
      *         mismatched provenance, an unexpected adapter id/version, an
      *         oversized candidate, a malformed or encrypted PDF, a PDF with a
      *         document-open action, catalog/page additional-actions dictionary,
-     *         document JavaScript/embedded-file name tree, annotation
-     *         additional actions or annotation JavaScript action, a PDF with no
-     *         pages, or a PDF that exceeds the request-bound page ceiling
+     *         catalog associated files, document JavaScript/embedded-file name
+     *         tree, annotation additional actions or annotation JavaScript
+     *         action, a PDF with no pages, or a PDF that exceeds the
+     *         request-bound page ceiling
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -131,7 +132,8 @@ public interface OfficeConversionAdapter {
     private static boolean containsProhibitedActiveContent(PDDocument document) {
         COSDictionary catalog = document.getDocumentCatalog().getCOSObject();
         if (catalog.getDictionaryObject(COSName.getPDFName("OpenAction")) != null
-                || catalog.getDictionaryObject(COSName.getPDFName("AA")) != null) {
+                || catalog.getDictionaryObject(COSName.getPDFName("AA")) != null
+                || catalog.getDictionaryObject(COSName.getPDFName("AF")) != null) {
             return true;
         }
 

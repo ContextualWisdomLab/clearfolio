@@ -108,7 +108,7 @@ class OfficeConversionPdfValidationTest {
                 "docx",
                 "policy-v1",
                 "trace-pdf-validation",
-                "fixture-source".getBytes(StandardCharsets.UTF_8),
+                OfficeConversionTestSource.zipPackage("fixture-source"),
                 OfficeConversionRequest.DEFAULT_MAX_OUTPUT_BYTES
         );
     }

@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import org.apache.pdfbox.cos.COSArray;
@@ -102,7 +101,7 @@ class OfficeConversionPdfActionClassificationTest {
                 "docx",
                 "policy-v1",
                 "trace-action-policy",
-                "fixture-source".getBytes(StandardCharsets.UTF_8),
+                OfficeConversionTestSource.zipPackage("fixture-source"),
                 1_000_000L,
                 10
         );

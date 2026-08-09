@@ -71,8 +71,24 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     @Test
+    void adapterRejectsCatalogAutomaticGoToAdditionalAction() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithCatalogAutomaticGoToAdditionalAction());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
     void adapterRejectsPageAdditionalActions() throws IOException {
         OfficeConversionException failure = assertPolicyDenied(pdfWithPageAdditionalActions());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
+    void adapterRejectsPageAutomaticGoToAdditionalAction() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithPageAutomaticGoToAdditionalAction());
 
         assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
         assertEquals("conversion output contains prohibited active content", failure.getMessage());
@@ -97,6 +113,14 @@ class OfficeConversionActiveContentPolicyTest {
     @Test
     void adapterRejectsAnnotationAdditionalActions() throws IOException {
         OfficeConversionException failure = assertPolicyDenied(pdfWithAnnotationAdditionalActions());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
+    void adapterRejectsAnnotationAutomaticGoToAdditionalAction() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithAnnotationAutomaticGoToAdditionalAction());
 
         assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
         assertEquals("conversion output contains prohibited active content", failure.getMessage());
@@ -236,11 +260,19 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     private static byte[] pdfWithCatalogAdditionalActions() throws IOException {
+        return pdfWithCatalogAdditionalAction(javascriptAction());
+    }
+
+    private static byte[] pdfWithCatalogAutomaticGoToAdditionalAction() throws IOException {
+        return pdfWithCatalogAdditionalAction(goToAction());
+    }
+
+    private static byte[] pdfWithCatalogAdditionalAction(COSDictionary action) throws IOException {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             document.addPage(new PDPage());
             COSDictionary additionalActions = new COSDictionary();
-            additionalActions.setItem(COSName.getPDFName("WC"), javascriptAction());
+            additionalActions.setItem(COSName.getPDFName("WC"), action);
             document.getDocumentCatalog().getCOSObject()
                     .setItem(COSName.getPDFName("AA"), additionalActions);
             document.save(output);
@@ -249,11 +281,19 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     private static byte[] pdfWithPageAdditionalActions() throws IOException {
+        return pdfWithPageAdditionalAction(javascriptAction());
+    }
+
+    private static byte[] pdfWithPageAutomaticGoToAdditionalAction() throws IOException {
+        return pdfWithPageAdditionalAction(goToAction());
+    }
+
+    private static byte[] pdfWithPageAdditionalAction(COSDictionary action) throws IOException {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             PDPage page = new PDPage();
             COSDictionary additionalActions = new COSDictionary();
-            additionalActions.setItem(COSName.getPDFName("O"), javascriptAction());
+            additionalActions.setItem(COSName.getPDFName("O"), action);
             page.getCOSObject().setItem(COSName.getPDFName("AA"), additionalActions);
             document.addPage(page);
             document.save(output);
@@ -279,12 +319,20 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     private static byte[] pdfWithAnnotationAdditionalActions() throws IOException {
+        return pdfWithAnnotationAdditionalAction(javascriptAction());
+    }
+
+    private static byte[] pdfWithAnnotationAutomaticGoToAdditionalAction() throws IOException {
+        return pdfWithAnnotationAdditionalAction(goToAction());
+    }
+
+    private static byte[] pdfWithAnnotationAdditionalAction(COSDictionary action) throws IOException {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             PDPage page = new PDPage();
 
             COSDictionary additionalActions = new COSDictionary();
-            additionalActions.setItem(COSName.getPDFName("E"), javascriptAction());
+            additionalActions.setItem(COSName.getPDFName("E"), action);
             COSDictionary annotation = linkAnnotation();
             annotation.setItem(COSName.getPDFName("AA"), additionalActions);
 
@@ -309,6 +357,13 @@ class OfficeConversionActiveContentPolicyTest {
         uriAction.setItem(COSName.getPDFName("S"), COSName.getPDFName("URI"));
         uriAction.setString(COSName.getPDFName("URI"), "https://example.invalid/clearfolio");
         return uriAction;
+    }
+
+    private static COSDictionary goToAction() {
+        COSDictionary goToAction = new COSDictionary();
+        goToAction.setItem(COSName.getPDFName("S"), COSName.getPDFName("GoTo"));
+        goToAction.setString(COSName.getPDFName("D"), "destination-one");
+        return goToAction;
     }
 
     private static COSDictionary launchAction() {

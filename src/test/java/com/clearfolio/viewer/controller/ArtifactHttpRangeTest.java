@@ -101,4 +101,11 @@ class ArtifactHttpRangeTest {
         assertTrue(range.isPresent());
         assertTrue(range.get().rejected());
     }
+
+    @Test
+    void rejectsOutcomeWhenBothFailureFlagsAreSet() {
+        var range = new ArtifactHttpRange.ResolvedRange(0, 0, true, true);
+
+        assertTrue(range.rejected());
+    }
 }

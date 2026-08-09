@@ -13,16 +13,17 @@ public interface OfficeConversionAdapter {
 
     /**
      * Converts one immutable Office request and verifies that the result is
-     * present and bound to the exact source digest supplied to the provider.
+     * present, source-bound, and tied to the exact request generation and policy.
      *
      * <p>This method is the public conversion authority. Implementations supply
      * only {@link #performConversion(OfficeConversionRequest)}; callers cannot
-     * accidentally accept a result for a different source document.</p>
+     * accidentally accept output for a different source, tenant, job, lifecycle
+     * generation, format, policy, or correlation identity.</p>
      *
      * @param request immutable tenant- and generation-bound conversion request
-     * @return verified PDF result with source and adapter provenance
+     * @return verified PDF result with source, request, and adapter provenance
      * @throws OfficeConversionException when the provider returns no result or
-     *         provenance for a different source document
+     *         provenance for a different source or request generation
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -36,6 +37,12 @@ public interface OfficeConversionAdapter {
             throw new OfficeConversionException(
                     OfficeConversionFailureCode.INVALID_OUTPUT,
                     "conversion result source digest mismatch"
+            );
+        }
+        if (!request.binding().equals(result.requestBinding())) {
+            throw new OfficeConversionException(
+                    OfficeConversionFailureCode.INVALID_OUTPUT,
+                    "conversion result request binding mismatch"
             );
         }
         return result;

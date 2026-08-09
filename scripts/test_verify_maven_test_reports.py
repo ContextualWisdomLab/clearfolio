@@ -19,6 +19,30 @@ REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 CI_WORKFLOW = REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml"
 
 
+def _workflow_jobs(workflow: str) -> dict[str, str]:
+    """Return top-level workflow job bodies without adding a YAML dependency."""
+    jobs: dict[str, list[str]] = {}
+    current_job: str | None = None
+    in_jobs = False
+
+    for line in workflow.splitlines():
+        if line == "jobs:":
+            in_jobs = True
+            continue
+        if not in_jobs:
+            continue
+        if line and not line.startswith(" "):
+            break
+        if line.startswith("  ") and not line.startswith("    ") and line.endswith(":"):
+            current_job = line.strip()[:-1]
+            jobs[current_job] = []
+            continue
+        if current_job is not None:
+            jobs[current_job].append(line)
+
+    return {job: "\n".join(body) for job, body in jobs.items()}
+
+
 def _write_report(
     directory: Path,
     *,
@@ -236,13 +260,17 @@ class MavenTestReportGateTest(unittest.TestCase):
                     verify_maven_reports(target)
 
     def test_ci_invokes_report_gate_after_maven_verify(self) -> None:
-        """Keep the executable report gate in the exact-head Maven job."""
+        """Keep the executable report gate after Maven verify in the exact-head job."""
         workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+        maven_job = _workflow_jobs(workflow)["test"]
+        verify_command = "mvn -B --no-transfer-progress verify"
+        report_gate_command = "python3 scripts/verify_maven_test_reports.py"
 
-        self.assertIn("python3 scripts/verify_maven_test_reports.py", workflow)
+        self.assertIn(verify_command, maven_job)
+        self.assertIn(report_gate_command, maven_job)
         self.assertLess(
-            workflow.index("mvn -B --no-transfer-progress verify"),
-            workflow.index("python3 scripts/verify_maven_test_reports.py"),
+            maven_job.index(verify_command),
+            maven_job.index(report_gate_command),
         )
 
 

@@ -1,6 +1,7 @@
 # Auth, RBAC, and Tenant Model
 
 Date: 2026-07-02
+Last updated: 2026-08-09
 
 This document defines the production authorization contract needed before
 Clearfolio Viewer can claim tenant-safe preview access. It now includes the
@@ -108,13 +109,24 @@ to the identity provider or gateway, not the viewer service.
 Server-side authorization must check both permission and tenant ownership. A
 matching permission without matching `tenantId` is insufficient.
 
+Artifact-byte authorization deliberately has two independent layers when the
+endpoint contract requires them:
+
+1. tenant authorization (`artifact:read` plus same-tenant ownership), and
+2. signed artifact-delivery authority (signature, expiry, `artifact:read` scope,
+   document/tenant/checksum binding, issued-token ledger, revocation, canonical
+   single-Range handling, and controlled read-audit evidence).
+
+Possessing the tenant permission does not bypass the signed token boundary, and
+possessing a signed token does not bypass an endpoint's tenant authorization.
+
 ## Resource Ownership Rules
 
 | Resource | Tenant binding | Access rule |
 | --- | --- | --- |
 | Conversion job | `job.tenantId` | Caller `tenantId` must match before status, direct download, viewer bootstrap, retry, or analytics drill-down. |
 | Source document metadata | `document.tenantId` | Exposed only through job/viewer APIs after permission check. |
-| Preview artifact | `artifact.tenantId` and `artifactChecksum` | Read through short-lived signed artifact token; the direct job-download route additionally requires dedicated `artifact:read` and matching job tenant before artifact-store access. |
+| Preview artifact | `artifact.tenantId` and `artifactChecksum` | Read through the short-lived signed artifact-delivery contract. The direct job-download route additionally requires dedicated `artifact:read` and matching job tenant before artifact-store access, then validates signature, expiry, scope, document/tenant/checksum binding, issuance and revocation before returning bytes. |
 | Artifact link | `artifactLink.tenantId` and `tokenId` | Revocable by operator or tenant admin in the same tenant. |
 | Metrics event | `event.tenantId` | Aggregate views must filter tenant unless explicitly buyer-demo scoped. |
 | Audit event | `audit.tenantId` | Read by operator, tenant admin, or buyer reviewer for scoped evidence. |
@@ -125,25 +137,36 @@ unauthorized action, depending on route semantics.
 
 ## API Enforcement Matrix
 
-| API | Required permission | Tenant check |
+| API | Required permission / signed authority | Tenant and artifact checks |
 | --- | --- | --- |
 | `POST /api/v1/convert/jobs` | `job:create` | Assign job to caller `tenantId`. |
 | `GET /api/v1/convert/jobs/{jobId}` | `job:read` | `job.tenantId == token.tenantId`. |
-| `GET /api/v1/convert/jobs/{jobId}/download` | `artifact:read` | Verify the dedicated artifact permission before job lookup; require `job.tenantId == token.tenantId` before artifact-store access; conceal mismatch as `404`. |
+| `GET /api/v1/convert/jobs/{jobId}/download` | tenant `artifact:read` **and** valid signed artifact token | Verify dedicated tenant permission before job lookup; conceal tenant mismatch as `404`; require succeeded job and artifact; verify token signature, expiry, scope, route document id, tenant/job binding, current checksum, issued-token ledger, and revocation; support zero or one Range; record verified full/partial/rejected-range read audit. |
 | `POST /api/v1/convert/jobs/{jobId}/retry` | `job:retry` | Same tenant plus operator role. |
-| `GET /api/v1/viewer/{docId}` | `viewer:read` | `job.tenantId == token.tenantId`; artifact tokens are enforced in the signed-link slice. |
+| `GET /api/v1/viewer/{docId}` | `viewer:read` | `job.tenantId == token.tenantId`; bootstrap issues signed artifact link for ready jobs. |
 | `GET /viewer/{docId}` | none for HTML shell | Shell does not inspect job existence; protected JSON APIs decide state. |
 | `POST /api/v1/viewer/{docId}/artifact-links` | `artifact-link:create` | Same tenant and succeeded job. |
-| `GET /artifacts/{docId}.pdf` | `artifact:read` | Signed artifact token tenant and checksum must match. |
+| `GET /artifacts/{docId}.pdf` | valid signed artifact token | Signed token scope/document/tenant/current checksum/issuance/revocation must match; zero or one Range; record read audit. |
 | `GET /api/v1/analytics/kpi-snapshot` | `analytics:read` | Tenant-scoped aggregate by default. |
 
-Current implementation status:
+## Current Branch Implementation Status
+
+The bullets in this section describe the current branch under review. They do
+not become protected-main release evidence until the unchanged exact head passes
+all repository gates and integrates.
 
 - Implemented: `job:create`, `job:read`, `job:retry`, `viewer:read`,
   `artifact:read`, and `analytics:read` permission checks on JSON APIs.
 - Implemented: direct conversion-job downloads validate dedicated
   `artifact:read` before resource lookup, enforce same-tenant ownership before
-  artifact-store access, and return `404` for cross-tenant UUID access.
+  artifact-store access, and conceal cross-tenant UUID access as `404`.
+- Implemented on the current branch: direct downloads now reuse
+  `ArtifactLinkService` signed-delivery verification rather than returning bytes
+  on tenant permission alone. Missing/invalid tokens fail closed, revoked tokens
+  are rejected, token scope/document/tenant/current-checksum/issuance state is
+  validated, zero-or-one Range semantics are shared with canonical artifact
+  delivery, and verified full/partial/rejected-range reads emit controlled audit
+  evidence.
 - Implemented: `ConversionJob.tenantId` and `ConversionJob.subjectId`.
 - Implemented: tenant-aware content-hash dedupe so two tenants do not collapse
   onto one canonical job for the same upload bytes.
@@ -154,35 +177,35 @@ Current implementation status:
   `clearfolio.tenant-claims.hmac-secret` is configured.
 - Implemented: `production` Spring profile startup fails when signed tenant
   claim secret is missing.
-- Not implemented: OIDC/JWT signature, issuer, audience, expiry, revocation, and
-  role mapping.
+- Not implemented: production OIDC/JWT signature, issuer, audience, expiry,
+  revocation, and role mapping.
 - Implemented: signed artifact link creation and artifact token verification
-  for current in-memory PDF artifacts.
+  for current PDF artifacts.
 - Implemented: runtime artifact token ledger, tenant-scoped token revocation,
   and artifact read audit-event API.
-- Not implemented: durable artifact metadata, externally persisted revocation
-  state, persisted artifact audit events, and production key management.
+- Not implemented: durable distributed artifact metadata/revocation/audit state
+  and production external key-management integration.
 
-## Error Semantics
+## Artifact Delivery Failure Semantics
 
-| Condition | Status | Error code |
+| Condition | Status | Contract |
 | --- | ---: | --- |
-| Missing token | 401 | `AUTH_TOKEN_REQUIRED` |
-| Invalid token or signature | 401 | `AUTH_TOKEN_INVALID` |
-| Expired token | 401 | `AUTH_TOKEN_EXPIRED` |
-| Missing permission | 403 | `AUTH_FORBIDDEN` |
-| Wrong tenant | 403 or 404 | `TENANT_RESOURCE_FORBIDDEN` |
-| Revoked token | 401 | `AUTH_TOKEN_REVOKED` |
-| Unknown issuer or audience | 401 | `AUTH_TOKEN_INVALID` |
+| Missing signed artifact token | 401 | Fail before document bytes are returned. |
+| Invalid signature/structure/expiry | 401 or controlled token status | Do not disclose token internals. |
+| Missing tenant permission | 403 | Fail before resource lookup where the endpoint requires permission. |
+| Wrong tenant | 404 concealment on resource lookup | Do not reveal cross-tenant document existence. |
+| Revoked issued artifact token | 403 on the current artifact-token contract | Preserve revocation without falling back to tenant permission. |
+| Token document/tenant/checksum mismatch | controlled 401/403 | Current artifact integrity and ownership must match the signed claim. |
+| Valid single Range | 206 | Return one bounded slice with `Content-Range` and `Accept-Ranges`. |
+| Invalid, multi-range, or unsatisfiable range | 416 under Clearfolio's deliberately narrow range profile | Do not silently serve a whole artifact. |
+| Unknown OIDC issuer/audience (future IdP path) | 401 | Production identity integration remains planned. |
 
 Error payloads must keep the existing shared API shape and must not include raw
 tokens or cross-tenant identifiers.
 
 Current scaffold note: the shared `ApiExceptionHandler` emits HTTP status names
-as `errorCode` values, so missing tenant headers currently return
-`errorCode=UNAUTHORIZED` with message `auth token required`, and missing
-permissions return `errorCode=FORBIDDEN`. Auth-specific error codes can replace
-those once the OIDC/JWT validator is introduced.
+as `errorCode` values for tenant-claim failures. Artifact-token delivery returns
+controlled low-information HTTP failures and does not echo token content.
 
 ## Audit Events
 
@@ -196,7 +219,7 @@ those once the OIDC/JWT validator is introduced.
 | `artifact.link.revoked` | `tenantId`, `operatorId`, `tokenId`, `reason`, `traceId` |
 | `artifact.read` | `tenantId`, `subjectId`, `docId`, `tokenId`, `rangeRequested`, `statusCode`, `traceId` |
 
-Store token fingerprints, not raw tokens.
+Store token fingerprints or controlled token identifiers, not raw tokens.
 
 ## Buyer Acceptance Criteria
 
@@ -204,9 +227,11 @@ Store token fingerprints, not raw tokens.
   tenant boundary.
 - Every write or sensitive read has a server-side permission check.
 - Artifact reads use signed artifact tokens, not bare `docId` capability URLs.
-- Direct conversion-job downloads require authenticated `artifact:read`
-  permission and same-tenant ownership before artifact bytes are touched;
-  `job:read` alone never authorizes document content.
+- Direct conversion-job downloads require authenticated `artifact:read`,
+  same-tenant ownership, a valid non-revoked signed artifact token bound to the
+  current artifact checksum, the canonical zero-or-one Range profile, and
+  controlled read-audit evidence; `job:read` or `artifact:read` alone never
+  authorizes document bytes.
 - Operator retry requires an operator permission and is auditable.
 - KPI snapshots can be shown for one tenant without leaking another tenant's
   volume, latency, or failure rate.
@@ -227,11 +252,15 @@ Store token fingerprints, not raw tokens.
 6. Done: fail closed for `production` profile when the tenant-claim signing
    secret is absent.
 7. Next: replace demo headers with validated gateway/OIDC JWT claims.
-8. Done: add signed artifact link creation and token verification.
-9. Done: enforce tenant-scoped and artifact-scoped authorization on direct
-   conversion-job downloads.
-10. Next: add durable revocation, persisted audit events, and CI/contract tests
-    for production token rejection paths.
+8. Done: add signed artifact link creation, issued-token ledger, revocation,
+   current-artifact checksum binding, Range handling, and read auditing.
+9. Done on the current branch: route direct conversion-job downloads through the
+   same signed artifact-delivery authority while preserving dedicated tenant
+   `artifact:read` and cross-tenant `404` concealment.
+10. Next: move token issuance/revocation/read-audit and job lifecycle evidence
+    from process/local-ledger boundaries to the reviewed durable distributed
+    persistence design; add production key-management integration and end-to-end
+    IdP rejection contracts.
 
 No library split is justified until a second Clearfolio service or external SDK
 needs to reuse this authorization contract.

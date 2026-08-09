@@ -16,4 +16,20 @@ class ArtifactHttpRangeTest {
         assertTrue(range.isPresent());
         assertTrue(range.get().rejected());
     }
+
+    @Test
+    void rejectsExplicitPlusSignInFirstPosition() {
+        var range = ArtifactHttpRange.resolveSingleRange("bytes=+1-2", 10);
+
+        assertTrue(range.isPresent());
+        assertTrue(range.get().rejected());
+    }
+
+    @Test
+    void rejectsExplicitPlusSignInSuffixLength() {
+        var range = ArtifactHttpRange.resolveSingleRange("bytes=-+1", 10);
+
+        assertTrue(range.isPresent());
+        assertTrue(range.get().rejected());
+    }
 }

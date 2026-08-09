@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -99,7 +98,7 @@ class OfficeConversionAdapterIdentityBindingTest {
                 adapterVersion,
                 "policy-v3",
                 "trace-adapter-binding",
-                "fixture-source".getBytes(StandardCharsets.UTF_8),
+                OfficeConversionTestSource.zipPackage("fixture-source"),
                 OfficeConversionRequest.DEFAULT_MAX_OUTPUT_BYTES
         );
     }

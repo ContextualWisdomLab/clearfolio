@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -27,6 +28,8 @@ class OfficeSourceContainerPreflightTest {
             (byte) 0xd0, (byte) 0xcf, 0x11, (byte) 0xe0,
             (byte) 0xa1, (byte) 0xb1, 0x1a, (byte) 0xe1
     };
+    private static final int CENTRAL_OFFSET = 8;
+    private static final int EOCD_OFFSET = 12;
 
     @Test
     void adapterRejectsUnknownFormatBeforeProviderInvocation() {
@@ -90,17 +93,113 @@ class OfficeSourceContainerPreflightTest {
 
     @Test
     void adapterRejectsZipPrefixWithoutCentralDirectoryFramingBeforeProviderInvocation() {
-        AtomicInteger providerCalls = new AtomicInteger();
-        OfficeConversionAdapter adapter = countingAdapter(providerCalls);
+        assertMalformedZipBeforeProvider(ZIP_LOCAL_HEADER);
+    }
 
-        OfficeConversionException failure = assertThrows(
-                OfficeConversionException.class,
-                () -> adapter.convert(request("docx", ZIP_LOCAL_HEADER))
-        );
+    @Test
+    void adapterRejectsLongZipCandidateWithoutEocdBeforeProviderInvocation() {
+        byte[] bytes = new byte[40];
+        System.arraycopy(ZIP_LOCAL_HEADER, 0, bytes, 0, ZIP_LOCAL_HEADER.length);
 
-        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
-        assertEquals("source ZIP container framing is invalid", failure.getMessage());
-        assertEquals(0, providerCalls.get());
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsEocdWithCommentLengthBeyondBuffer() {
+        byte[] bytes = framedZip();
+        putUnsignedShort(bytes, EOCD_OFFSET + 20, 1);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsMultiDiskZipFraming() {
+        byte[] bytes = framedZip();
+        putUnsignedShort(bytes, EOCD_OFFSET + 4, 1);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsCentralDirectoryOnDifferentDisk() {
+        byte[] bytes = framedZip();
+        putUnsignedShort(bytes, EOCD_OFFSET + 6, 1);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsZeroEntryZipFraming() {
+        byte[] bytes = framedZip();
+        putUnsignedShort(bytes, EOCD_OFFSET + 8, 0);
+        putUnsignedShort(bytes, EOCD_OFFSET + 10, 0);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsMismatchedEntryCounts() {
+        byte[] bytes = framedZip();
+        putUnsignedShort(bytes, EOCD_OFFSET + 10, 2);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsZip64EntrySentinelWithoutSeparateQualification() {
+        byte[] bytes = framedZip();
+        putUnsignedShort(bytes, EOCD_OFFSET + 8, 0xffff);
+        putUnsignedShort(bytes, EOCD_OFFSET + 10, 0xffff);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsZip64CentralDirectorySizeSentinel() {
+        byte[] bytes = framedZip();
+        putUnsignedInt(bytes, EOCD_OFFSET + 12, 0xffff_ffffL);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsZip64CentralDirectoryOffsetSentinel() {
+        byte[] bytes = framedZip();
+        putUnsignedInt(bytes, EOCD_OFFSET + 16, 0xffff_ffffL);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsEmptyCentralDirectorySize() {
+        byte[] bytes = framedZip();
+        putUnsignedInt(bytes, EOCD_OFFSET + 12, 0L);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsCentralDirectoryOffsetOutsideAddressableInput() {
+        byte[] bytes = framedZip();
+        putUnsignedInt(bytes, EOCD_OFFSET + 16, 0x8000_0000L);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsCentralDirectoryThatOverlapsEocd() {
+        byte[] bytes = framedZip();
+        putUnsignedInt(bytes, EOCD_OFFSET + 12, 8L);
+
+        assertMalformedZipBeforeProvider(bytes);
+    }
+
+    @Test
+    void adapterRejectsMissingCentralDirectorySignature() {
+        byte[] bytes = framedZip();
+        bytes[CENTRAL_OFFSET] = 0x00;
+
+        assertMalformedZipBeforeProvider(bytes);
     }
 
     @Test
@@ -114,6 +213,21 @@ class OfficeSourceContainerPreflightTest {
     }
 
     @Test
+    void adapterInvokesProviderForBoundedZipFramingWithComment() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        OfficeConversionAdapter adapter = countingAdapter(providerCalls);
+        byte[] base = framedZip();
+        byte[] withComment = Arrays.copyOf(base, base.length + 2);
+        putUnsignedShort(withComment, EOCD_OFFSET + 20, 2);
+        withComment[withComment.length - 2] = 'o';
+        withComment[withComment.length - 1] = 'k';
+
+        adapter.convert(request("docx", withComment));
+
+        assertEquals(1, providerCalls.get());
+    }
+
+    @Test
     void adapterInvokesProviderForQualifiedLegacyCompoundFileSignature() {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);
@@ -121,6 +235,20 @@ class OfficeSourceContainerPreflightTest {
         adapter.convert(request("doc", COMPOUND_FILE_HEADER));
 
         assertEquals(1, providerCalls.get());
+    }
+
+    private static void assertMalformedZipBeforeProvider(byte[] bytes) {
+        AtomicInteger providerCalls = new AtomicInteger();
+        OfficeConversionAdapter adapter = countingAdapter(providerCalls);
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> adapter.convert(request("docx", bytes))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source ZIP container framing is invalid", failure.getMessage());
+        assertEquals(0, providerCalls.get());
     }
 
     private static OfficeConversionAdapter countingAdapter(AtomicInteger providerCalls) {
@@ -151,26 +279,21 @@ class OfficeSourceContainerPreflightTest {
     }
 
     private static byte[] framedZip() {
-        // Signature-level fixture with one local-header marker, one central-directory
-        // marker, and a standard single-disk EOCD record. It is deliberately not a
-        // complete Office package and is used only for this bounded framing contract.
         byte[] bytes = new byte[34];
         System.arraycopy(ZIP_LOCAL_HEADER, 0, bytes, 0, ZIP_LOCAL_HEADER.length);
-        int centralOffset = 8;
-        bytes[centralOffset] = 0x50;
-        bytes[centralOffset + 1] = 0x4b;
-        bytes[centralOffset + 2] = 0x01;
-        bytes[centralOffset + 3] = 0x02;
-        int eocdOffset = 12;
-        bytes[eocdOffset] = 0x50;
-        bytes[eocdOffset + 1] = 0x4b;
-        bytes[eocdOffset + 2] = 0x05;
-        bytes[eocdOffset + 3] = 0x06;
-        putUnsignedShort(bytes, eocdOffset + 8, 1);
-        putUnsignedShort(bytes, eocdOffset + 10, 1);
-        putUnsignedInt(bytes, eocdOffset + 12, 4);
-        putUnsignedInt(bytes, eocdOffset + 16, centralOffset);
-        putUnsignedShort(bytes, eocdOffset + 20, 0);
+        bytes[CENTRAL_OFFSET] = 0x50;
+        bytes[CENTRAL_OFFSET + 1] = 0x4b;
+        bytes[CENTRAL_OFFSET + 2] = 0x01;
+        bytes[CENTRAL_OFFSET + 3] = 0x02;
+        bytes[EOCD_OFFSET] = 0x50;
+        bytes[EOCD_OFFSET + 1] = 0x4b;
+        bytes[EOCD_OFFSET + 2] = 0x05;
+        bytes[EOCD_OFFSET + 3] = 0x06;
+        putUnsignedShort(bytes, EOCD_OFFSET + 8, 1);
+        putUnsignedShort(bytes, EOCD_OFFSET + 10, 1);
+        putUnsignedInt(bytes, EOCD_OFFSET + 12, 4);
+        putUnsignedInt(bytes, EOCD_OFFSET + 16, CENTRAL_OFFSET);
+        putUnsignedShort(bytes, EOCD_OFFSET + 20, 0);
         return bytes;
     }
 

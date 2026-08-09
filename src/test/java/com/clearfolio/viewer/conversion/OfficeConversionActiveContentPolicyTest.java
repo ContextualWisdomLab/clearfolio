@@ -47,6 +47,14 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     @Test
+    void adapterRejectsPageAdditionalActions() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithPageAdditionalActions());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
     void adapterAcceptsBenignEmptyDocumentNameDictionary() throws IOException {
         byte[] pdf = pdfWithEmptyNameDictionary();
         OfficeConversionAdapter adapter = adapterReturning(pdf);
@@ -133,6 +141,19 @@ class OfficeConversionActiveContentPolicyTest {
             document.getDocumentCatalog().getCOSObject()
                     .setItem(COSName.getPDFName("Names"), names);
 
+            document.save(output);
+            return output.toByteArray();
+        }
+    }
+
+    private static byte[] pdfWithPageAdditionalActions() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            PDPage page = new PDPage();
+            COSDictionary additionalActions = new COSDictionary();
+            additionalActions.setItem(COSName.getPDFName("O"), javascriptAction());
+            page.getCOSObject().setItem(COSName.getPDFName("AA"), additionalActions);
+            document.addPage(page);
             document.save(output);
             return output.toByteArray();
         }

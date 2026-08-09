@@ -45,7 +45,7 @@ class OfficeConversionOutputLimitTest {
         OfficeConversionRequest request = requestWithLimit(8L);
         byte[] pdf = "%PDF-1.7\nreference".getBytes(StandardCharsets.US_ASCII);
         OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
-                "fixture",
+                "deterministic-fixture",
                 "1",
                 input.sourceSha256(),
                 input.binding(),
@@ -66,7 +66,7 @@ class OfficeConversionOutputLimitTest {
         byte[] pdf = OfficeConversionTestPdf.onePage();
         OfficeConversionRequest request = requestWithLimit(pdf.length);
         OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
-                "fixture",
+                "deterministic-fixture",
                 "1",
                 input.sourceSha256(),
                 input.binding(),

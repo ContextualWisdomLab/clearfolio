@@ -62,11 +62,14 @@ class CiWorkflowStackCoverageTest(unittest.TestCase):
         self.assertIn(revision_assertion, maven_job)
 
         self.assertIn(checkout_action, merge_job)
-        self.assertNotIn("ref: ${{ github.event.pull_request.head.sha", merge_job)
+        self.assertIn("ref: ${{ github.sha }}", merge_job)
         self.assertIn("EXPECTED_SHA: ${{ github.sha }}", merge_job)
         self.assertIn(revision_assertion, merge_job)
-        self.assertIn("mvn -B --no-transfer-progress verify", merge_job)
-        self.assertIn("python3 scripts/verify_maven_test_reports.py", merge_job)
+        maven_verify = "mvn -B --no-transfer-progress verify"
+        report_verify = "python3 scripts/verify_maven_test_reports.py"
+        self.assertIn(maven_verify, merge_job)
+        self.assertIn(report_verify, merge_job)
+        self.assertLess(merge_job.index(maven_verify), merge_job.index(report_verify))
 
         self.assertIn("name: Buyer-readiness script tests", script_job)
 

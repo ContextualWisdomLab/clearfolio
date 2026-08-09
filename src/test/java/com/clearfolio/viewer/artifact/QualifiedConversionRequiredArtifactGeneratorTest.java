@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.artifact;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -8,6 +9,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.stereotype.Component;
 
 import com.clearfolio.viewer.model.ConversionJob;
 
@@ -27,6 +29,11 @@ class QualifiedConversionRequiredArtifactGeneratorTest {
             PdfArtifactGenerator selected = context.getBean(PdfArtifactGenerator.class);
             assertInstanceOf(QualifiedConversionRequiredArtifactGenerator.class, selected);
         }
+    }
+
+    @Test
+    void developmentPlaceholderIsNotAProductionScannedComponent() {
+        assertFalse(PdfBoxArtifactGenerator.class.isAnnotationPresent(Component.class));
     }
 
     @Test

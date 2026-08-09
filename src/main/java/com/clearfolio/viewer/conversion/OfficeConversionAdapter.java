@@ -20,20 +20,21 @@ public interface OfficeConversionAdapter {
      * Converts one immutable Office request and verifies that the result is
      * present, source-bound, tied to the exact qualified adapter/runtime,
      * request generation and policy, within the request-bound publication size
-     * ceiling, and parseable as a non-empty PDF.
+     * ceiling, and parseable as a non-empty, unencrypted PDF.
      *
      * <p>This method is the public conversion authority. Implementations supply
      * only {@link #performConversion(OfficeConversionRequest)}; callers cannot
      * accidentally accept output for a different source, tenant, job, lifecycle
      * generation, adapter id/version, format, policy, correlation identity,
-     * output-size policy, or a truncated/empty PDF container that is not usable
-     * document output.</p>
+     * output-size policy, or a truncated, empty, or encrypted PDF container that
+     * is not acceptable document output.</p>
      *
      * @param request immutable tenant-, generation-, and adapter-bound conversion request
      * @return verified PDF result with source, request, and adapter provenance
      * @throws OfficeConversionException when the provider returns no result,
      *         mismatched provenance, an unexpected adapter id/version, an
-     *         oversized candidate, a malformed PDF, or a parseable PDF with no pages
+     *         oversized candidate, a malformed or encrypted PDF, or a parseable
+     *         PDF with no pages
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeConversionResult result = performConversion(request);
@@ -84,6 +85,12 @@ public interface OfficeConversionAdapter {
 
     private static void requireParseablePdf(byte[] pdfBytes) {
         try (PDDocument document = Loader.loadPDF(pdfBytes)) {
+            if (document.isEncrypted()) {
+                throw new OfficeConversionException(
+                        OfficeConversionFailureCode.INVALID_OUTPUT,
+                        "conversion output PDF must not be encrypted"
+                );
+            }
             if (document.getNumberOfPages() == 0) {
                 throw new OfficeConversionException(
                         OfficeConversionFailureCode.INVALID_OUTPUT,

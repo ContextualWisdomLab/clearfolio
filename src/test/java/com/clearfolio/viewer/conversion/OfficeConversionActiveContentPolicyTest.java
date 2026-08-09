@@ -64,10 +64,26 @@ class OfficeConversionActiveContentPolicyTest {
 
     @Test
     void adapterRejectsAnnotationJavaScriptAction() throws IOException {
-        OfficeConversionException failure = assertPolicyDenied(pdfWithAnnotationJavaScriptAction());
+        OfficeConversionException failure = assertPolicyDenied(pdfWithAnnotationAction(javascriptAction()));
 
         assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
         assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
+    void adapterRejectsAnnotationAdditionalActions() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithAnnotationAdditionalActions());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
+    void adapterPreservesBenignAnnotationUriAction() throws IOException {
+        byte[] pdf = pdfWithAnnotationAction(uriAction());
+        OfficeConversionAdapter adapter = adapterReturning(pdf);
+
+        assertDoesNotThrow(() -> adapter.convert(request()));
     }
 
     @Test
@@ -188,15 +204,13 @@ class OfficeConversionActiveContentPolicyTest {
         }
     }
 
-    private static byte[] pdfWithAnnotationJavaScriptAction() throws IOException {
+    private static byte[] pdfWithAnnotationAction(COSDictionary action) throws IOException {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             PDPage page = new PDPage();
 
-            COSDictionary annotation = new COSDictionary();
-            annotation.setItem(COSName.TYPE, COSName.getPDFName("Annot"));
-            annotation.setItem(COSName.SUBTYPE, COSName.getPDFName("Link"));
-            annotation.setItem(COSName.getPDFName("A"), javascriptAction());
+            COSDictionary annotation = linkAnnotation();
+            annotation.setItem(COSName.getPDFName("A"), action);
 
             COSArray annotations = new COSArray();
             annotations.add(annotation);
@@ -205,6 +219,39 @@ class OfficeConversionActiveContentPolicyTest {
             document.save(output);
             return output.toByteArray();
         }
+    }
+
+    private static byte[] pdfWithAnnotationAdditionalActions() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            PDPage page = new PDPage();
+
+            COSDictionary additionalActions = new COSDictionary();
+            additionalActions.setItem(COSName.getPDFName("E"), javascriptAction());
+            COSDictionary annotation = linkAnnotation();
+            annotation.setItem(COSName.getPDFName("AA"), additionalActions);
+
+            COSArray annotations = new COSArray();
+            annotations.add(annotation);
+            page.getCOSObject().setItem(COSName.getPDFName("Annots"), annotations);
+            document.addPage(page);
+            document.save(output);
+            return output.toByteArray();
+        }
+    }
+
+    private static COSDictionary linkAnnotation() {
+        COSDictionary annotation = new COSDictionary();
+        annotation.setItem(COSName.TYPE, COSName.getPDFName("Annot"));
+        annotation.setItem(COSName.SUBTYPE, COSName.getPDFName("Link"));
+        return annotation;
+    }
+
+    private static COSDictionary uriAction() {
+        COSDictionary uriAction = new COSDictionary();
+        uriAction.setItem(COSName.getPDFName("S"), COSName.getPDFName("URI"));
+        uriAction.setString(COSName.getPDFName("URI"), "https://example.invalid/clearfolio");
+        return uriAction;
     }
 
     private static byte[] pdfWithEmptyNameDictionary() throws IOException {

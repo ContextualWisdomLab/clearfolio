@@ -8,9 +8,9 @@ import java.util.Set;
  * <p>This preflight intentionally proves only a bounded set of facts before untrusted
  * bytes reach a sidecar or remote converter: the declared source format belongs to the
  * current Office conversion candidate set, the leading container signature matches that
- * format family, and ZIP-family candidates contain a self-consistent standard single-disk
- * central-directory/end-of-central-directory frame. Passing this preflight is
- * <strong>not</strong> complete package, macro, embedded-object, archive-expansion,
+ * format family, and ZIP-family candidates contain self-consistent standard single-disk
+ * central-directory records and end-of-central-directory framing. Passing this preflight
+ * is <strong>not</strong> complete package, macro, embedded-object, archive-expansion,
  * malware, or fidelity qualification. Those deeper controls remain separate
  * sandbox/content-policy acceptance gates.</p>
  */
@@ -36,20 +36,23 @@ final class OfficeSourceContainerPreflight {
             (byte) 0xa1, (byte) 0xb1, 0x1a, (byte) 0xe1
     };
     private static final int ZIP_EOCD_MINIMUM_LENGTH = 22;
+    private static final int ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH = 46;
     private static final int ZIP_MAXIMUM_COMMENT_LENGTH = 65_535;
     private static final int ZIP16_SENTINEL = 0xffff;
     private static final long ZIP32_SENTINEL = 0xffff_ffffL;
+    private static final int ZIP_ENCRYPTED_FLAG = 0x0001;
 
     private OfficeSourceContainerPreflight() {
     }
 
     /**
-     * Rejects unknown candidate formats and obvious declared-format/container mismatches.
+     * Rejects unknown candidate formats and invalid source-container framing.
      *
      * @param request immutable conversion request containing declared format and source bytes
      * @throws OfficeConversionException when the format is not a current candidate, the
-     *         source does not match that format family's required container signature, or a
-     *         ZIP-family source lacks bounded standard single-disk central-directory framing
+     *         source does not match that format family's required container signature, a
+     *         ZIP-family source has invalid central-directory framing, or a ZIP entry is
+     *         encrypted
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
         String sourceFormat = request.sourceFormat();
@@ -100,6 +103,65 @@ final class OfficeSourceContainerPreflight {
         if (centralDirectoryEnd > eocdOffset
                 || !matchesAt(sourceBytes, (int) centralDirectoryOffset, ZIP_CENTRAL_DIRECTORY_HEADER)) {
             throw invalidZipFraming();
+        }
+        requireCentralDirectoryRecords(
+                sourceBytes,
+                (int) centralDirectoryOffset,
+                (int) centralDirectoryEnd,
+                entryCount
+        );
+    }
+
+    private static void requireCentralDirectoryRecords(
+            byte[] sourceBytes,
+            int centralDirectoryOffset,
+            int centralDirectoryEnd,
+            int entryCount
+    ) {
+        int cursor = centralDirectoryOffset;
+        for (int entryIndex = 0; entryIndex < entryCount; entryIndex++) {
+            if (cursor > centralDirectoryEnd - ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH
+                    || !matchesAt(sourceBytes, cursor, ZIP_CENTRAL_DIRECTORY_HEADER)) {
+                throw invalidCentralDirectory();
+            }
+
+            int flags = unsignedShort(sourceBytes, cursor + 8);
+            if ((flags & ZIP_ENCRYPTED_FLAG) != 0) {
+                throw new OfficeConversionException(
+                        OfficeConversionFailureCode.PASSWORD_PROTECTED,
+                        "source ZIP entry is encrypted"
+                );
+            }
+
+            long compressedSize = unsignedInt(sourceBytes, cursor + 20);
+            long uncompressedSize = unsignedInt(sourceBytes, cursor + 24);
+            int fileNameLength = unsignedShort(sourceBytes, cursor + 28);
+            int extraFieldLength = unsignedShort(sourceBytes, cursor + 30);
+            int fileCommentLength = unsignedShort(sourceBytes, cursor + 32);
+            int diskStart = unsignedShort(sourceBytes, cursor + 34);
+            long localHeaderOffset = unsignedInt(sourceBytes, cursor + 42);
+            if (compressedSize == ZIP32_SENTINEL
+                    || uncompressedSize == ZIP32_SENTINEL
+                    || diskStart == ZIP16_SENTINEL
+                    || diskStart != 0
+                    || localHeaderOffset == ZIP32_SENTINEL
+                    || localHeaderOffset >= centralDirectoryOffset
+                    || !matchesAt(sourceBytes, (int) localHeaderOffset, ZIP_LOCAL_FILE_HEADER)) {
+                throw invalidCentralDirectory();
+            }
+
+            long recordLength = (long) ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH
+                    + fileNameLength
+                    + extraFieldLength
+                    + fileCommentLength;
+            long nextCursor = (long) cursor + recordLength;
+            if (nextCursor > centralDirectoryEnd) {
+                throw invalidCentralDirectory();
+            }
+            cursor = (int) nextCursor;
+        }
+        if (cursor != centralDirectoryEnd) {
+            throw invalidCentralDirectory();
         }
     }
 
@@ -162,6 +224,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ZIP container framing is invalid"
+        );
+    }
+
+    private static OfficeConversionException invalidCentralDirectory() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ZIP central directory is invalid"
         );
     }
 }

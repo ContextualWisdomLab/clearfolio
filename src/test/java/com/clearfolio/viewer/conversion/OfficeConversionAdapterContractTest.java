@@ -53,6 +53,8 @@ class OfficeConversionAdapterContractTest {
         UUID jobId = UUID.randomUUID();
 
         assertThrows(IllegalArgumentException.class, () -> new OfficeConversionRequest(
+                null, jobId, 0L, "docx", "policy", "trace", source));
+        assertThrows(IllegalArgumentException.class, () -> new OfficeConversionRequest(
                 " ", jobId, 0L, "docx", "policy", "trace", source));
         assertThrows(IllegalArgumentException.class, () -> new OfficeConversionRequest(
                 "tenant", null, 0L, "docx", "policy", "trace", source));
@@ -64,6 +66,8 @@ class OfficeConversionAdapterContractTest {
                 "tenant", jobId, 0L, "docx", " ", "trace", source));
         assertThrows(IllegalArgumentException.class, () -> new OfficeConversionRequest(
                 "tenant", jobId, 0L, "docx", "policy", " ", source));
+        assertThrows(IllegalArgumentException.class, () -> new OfficeConversionRequest(
+                "tenant", jobId, 0L, "docx", "policy", "trace", null));
         assertThrows(IllegalArgumentException.class, () -> new OfficeConversionRequest(
                 "tenant", jobId, 0L, "docx", "policy", "trace", new byte[0]));
     }
@@ -98,11 +102,21 @@ class OfficeConversionAdapterContractTest {
         String digest = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
         assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionResult(null, "1", digest, pdf));
+        assertThrows(IllegalArgumentException.class,
                 () -> new OfficeConversionResult(" ", "1", digest, pdf));
         assertThrows(IllegalArgumentException.class,
                 () -> new OfficeConversionResult("adapter", " ", digest, pdf));
         assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionResult("adapter", "1", null, pdf));
+        assertThrows(IllegalArgumentException.class,
                 () -> new OfficeConversionResult("adapter", "1", "bad", pdf));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionResult("adapter", "1", digest.toUpperCase(), pdf));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionResult("adapter", "1", digest, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OfficeConversionResult("adapter", "1", digest, new byte[0]));
         assertThrows(IllegalArgumentException.class,
                 () -> new OfficeConversionResult("adapter", "1", digest, notPdf));
     }

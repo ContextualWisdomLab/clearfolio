@@ -1,12 +1,16 @@
 package com.clearfolio.viewer.conversion;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.cos.COSString;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 
@@ -20,6 +24,8 @@ import org.apache.pdfbox.pdmodel.PDPage;
  */
 @FunctionalInterface
 public interface OfficeConversionAdapter {
+
+    int MAX_ACTION_CHAIN_DEPTH = 32;
 
     /**
      * Converts one immutable Office request and verifies that the result is
@@ -41,10 +47,9 @@ public interface OfficeConversionAdapter {
      * @throws OfficeConversionException when the provider returns no result,
      *         mismatched provenance, an unexpected adapter id/version, an
      *         oversized candidate, a malformed or encrypted PDF, a PDF with a
-     *         document-open action, catalog/page additional-actions dictionary,
-     *         catalog associated files, document JavaScript/embedded-file name
-     *         tree, annotation additional actions, annotation JavaScript or
-     *         launch actions, a PDF with no pages, or a PDF that exceeds the
+     *         prohibited automatic or executable action, catalog associated
+     *         files, document JavaScript/embedded-file name trees, a prohibited
+     *         annotation action, a PDF with no pages, or a PDF that exceeds the
      *         request-bound page ceiling
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
@@ -131,9 +136,15 @@ public interface OfficeConversionAdapter {
 
     private static boolean containsProhibitedActiveContent(PDDocument document) {
         COSDictionary catalog = document.getDocumentCatalog().getCOSObject();
-        if (catalog.getDictionaryObject(COSName.getPDFName("OpenAction")) != null
-                || catalog.getDictionaryObject(COSName.getPDFName("AA")) != null
-                || catalog.getDictionaryObject(COSName.getPDFName("AF")) != null) {
+        COSBase openAction = catalog.getDictionaryObject(COSName.getPDFName("OpenAction"));
+        if (openAction != null && isProhibitedOpenAction(openAction)) {
+            return true;
+        }
+        if (containsProhibitedAdditionalActions(
+                catalog.getDictionaryObject(COSName.getPDFName("AA")))) {
+            return true;
+        }
+        if (catalog.getDictionaryObject(COSName.getPDFName("AF")) != null) {
             return true;
         }
 
@@ -152,9 +163,23 @@ public interface OfficeConversionAdapter {
         return false;
     }
 
+    private static boolean isProhibitedOpenAction(COSBase openAction) {
+        if (isInternalDestination(openAction)) {
+            return false;
+        }
+        return isProhibitedAction(openAction, false, newIdentitySet(), 0);
+    }
+
+    private static boolean isInternalDestination(COSBase destination) {
+        return destination instanceof COSArray
+                || destination instanceof COSName
+                || destination instanceof COSString;
+    }
+
     private static boolean pageContainsProhibitedActiveContent(PDPage page) {
         COSDictionary pageDictionary = page.getCOSObject();
-        if (pageDictionary.getDictionaryObject(COSName.getPDFName("AA")) != null) {
+        if (containsProhibitedAdditionalActions(
+                pageDictionary.getDictionaryObject(COSName.getPDFName("AA")))) {
             return true;
         }
 
@@ -173,15 +198,76 @@ public interface OfficeConversionAdapter {
     }
 
     private static boolean annotationContainsProhibitedActiveContent(COSDictionary annotation) {
-        if (annotation.getDictionaryObject(COSName.getPDFName("AA")) != null) {
+        if (containsProhibitedAdditionalActions(
+                annotation.getDictionaryObject(COSName.getPDFName("AA")))) {
             return true;
         }
         COSBase actionBase = annotation.getDictionaryObject(COSName.getPDFName("A"));
-        if (!(actionBase instanceof COSDictionary action)) {
+        if (actionBase == null) {
             return false;
         }
+        return isProhibitedAction(actionBase, true, newIdentitySet(), 0);
+    }
+
+    private static boolean containsProhibitedAdditionalActions(COSBase additionalActionsBase) {
+        if (additionalActionsBase == null) {
+            return false;
+        }
+        if (!(additionalActionsBase instanceof COSDictionary additionalActions)) {
+            return true;
+        }
+        for (COSName trigger : additionalActions.keySet()) {
+            COSBase action = additionalActions.getDictionaryObject(trigger);
+            if (isProhibitedAction(action, false, newIdentitySet(), 0)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isProhibitedAction(
+            COSBase actionBase,
+            boolean allowUri,
+            Set<COSBase> visited,
+            int depth
+    ) {
+        if (!(actionBase instanceof COSDictionary action)
+                || depth >= MAX_ACTION_CHAIN_DEPTH
+                || !visited.add(action)) {
+            return true;
+        }
+
         COSBase actionType = action.getDictionaryObject(COSName.getPDFName("S"));
-        return COSName.getPDFName("JavaScript").equals(actionType)
-                || COSName.getPDFName("Launch").equals(actionType);
+        boolean allowedType = COSName.getPDFName("GoTo").equals(actionType)
+                || (allowUri && COSName.getPDFName("URI").equals(actionType));
+        if (!allowedType) {
+            return true;
+        }
+        if (COSName.getPDFName("GoTo").equals(actionType)
+                && action.getDictionaryObject(COSName.getPDFName("D")) == null) {
+            return true;
+        }
+        if (COSName.getPDFName("URI").equals(actionType)
+                && !(action.getDictionaryObject(COSName.getPDFName("URI")) instanceof COSString)) {
+            return true;
+        }
+
+        COSBase next = action.getDictionaryObject(COSName.getPDFName("Next"));
+        if (next == null) {
+            return false;
+        }
+        if (next instanceof COSArray chainedActions) {
+            for (int index = 0; index < chainedActions.size(); index++) {
+                if (isProhibitedAction(chainedActions.getObject(index), allowUri, visited, depth + 1)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return isProhibitedAction(next, allowUri, visited, depth + 1);
+    }
+
+    private static Set<COSBase> newIdentitySet() {
+        return Collections.newSetFromMap(new IdentityHashMap<>());
     }
 }

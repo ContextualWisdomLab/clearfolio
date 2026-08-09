@@ -87,12 +87,13 @@ public record OfficeConversionRequest(
     }
 
     /**
-     * Creates a deterministic-fixture contract request with an explicit output ceiling.
+     * Creates a package-local deterministic-fixture contract request with an explicit output ceiling.
      *
-     * <p>This compatibility overload is deliberately bound to the deterministic
-     * fixture adapter. A production sidecar or remote-service integration must
-     * use an overload that supplies its qualified adapter id and exact version;
-     * it cannot silently inherit this fixture identity.</p>
+     * <p>This compatibility overload is deliberately non-public and bound to the
+     * deterministic fixture adapter. A production sidecar or remote-service
+     * integration must use a public overload that supplies its qualified adapter
+     * id and exact version; external callers cannot silently inherit the fixture
+     * identity.</p>
      *
      * @param tenantId tenant that owns the conversion request
      * @param jobId immutable conversion job identifier
@@ -103,7 +104,7 @@ public record OfficeConversionRequest(
      * @param sourceBytes untrusted source bytes
      * @param maxOutputBytes positive maximum PDF bytes accepted for publication
      */
-    public OfficeConversionRequest(
+    OfficeConversionRequest(
             String tenantId,
             UUID jobId,
             long jobGeneration,
@@ -127,12 +128,12 @@ public record OfficeConversionRequest(
     }
 
     /**
-     * Creates a deterministic-fixture contract request using the bounded compatibility output ceiling.
+     * Creates a package-local deterministic-fixture contract request using the bounded compatibility output ceiling.
      *
-     * <p>This overload exists for the offline contract fixture only. Production
-     * adapter integration must name the qualified adapter id and exact runtime
-     * version explicitly so provider provenance cannot float independently of
-     * the immutable request binding.</p>
+     * <p>This non-public overload exists for the offline contract fixture only.
+     * Production adapter integration must name the qualified adapter id and exact
+     * runtime version explicitly so provider provenance cannot float independently
+     * of the immutable request binding.</p>
      *
      * @param tenantId tenant that owns the conversion request
      * @param jobId immutable conversion job identifier
@@ -142,7 +143,7 @@ public record OfficeConversionRequest(
      * @param correlationId controlled correlation identifier
      * @param sourceBytes untrusted source bytes
      */
-    public OfficeConversionRequest(
+    OfficeConversionRequest(
             String tenantId,
             UUID jobId,
             long jobGeneration,

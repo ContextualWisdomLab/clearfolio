@@ -155,6 +155,7 @@ class OfficeConversionAdapterContractTest {
         assertFalse(OfficeConversionFailureCode.MALFORMED_INPUT.isRetryable());
         assertFalse(OfficeConversionFailureCode.CANCELLED.isRetryable());
         assertFalse(OfficeConversionFailureCode.INVALID_OUTPUT.isRetryable());
+        assertFalse(OfficeConversionFailureCode.OUTPUT_LIMIT_EXCEEDED.isRetryable());
         assertTrue(OfficeConversionFailureCode.ENGINE_UNAVAILABLE.isRetryable());
         assertTrue(OfficeConversionFailureCode.TIMEOUT.isRetryable());
         assertTrue(OfficeConversionFailureCode.ENGINE_CRASH.isRetryable());
@@ -181,7 +182,7 @@ class OfficeConversionAdapterContractTest {
         byte[] source = "fixture-docx".getBytes(StandardCharsets.UTF_8);
         OfficeConversionRequest request = new OfficeConversionRequest(
                 "tenant-a", UUID.randomUUID(), 1L, "docx", "policy-v1", "trace-1", source);
-        byte[] pdf = "%PDF-1.7\nreference".getBytes(StandardCharsets.US_ASCII);
+        byte[] pdf = OfficeConversionTestPdf.onePage();
 
         OfficeConversionAdapter adapter = input -> new OfficeConversionResult(
                 "deterministic-fixture",

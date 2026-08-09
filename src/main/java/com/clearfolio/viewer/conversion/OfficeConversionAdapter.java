@@ -1,6 +1,8 @@
 package com.clearfolio.viewer.conversion;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
@@ -248,7 +250,7 @@ public interface OfficeConversionAdapter {
             return true;
         }
         if (COSName.getPDFName("URI").equals(actionType)
-                && !(action.getDictionaryObject(COSName.getPDFName("URI")) instanceof COSString)) {
+                && !isAllowedUriAction(action)) {
             return true;
         }
 
@@ -265,6 +267,23 @@ public interface OfficeConversionAdapter {
             return false;
         }
         return isProhibitedAction(next, allowUri, visited, depth + 1);
+    }
+
+    private static boolean isAllowedUriAction(COSDictionary action) {
+        COSBase uriBase = action.getDictionaryObject(COSName.getPDFName("URI"));
+        if (!(uriBase instanceof COSString uriString)) {
+            return false;
+        }
+        try {
+            URI uri = new URI(uriString.getString());
+            String scheme = uri.getScheme();
+            return scheme != null
+                    && ("http".equalsIgnoreCase(scheme)
+                    || "https".equalsIgnoreCase(scheme)
+                    || "mailto".equalsIgnoreCase(scheme));
+        } catch (URISyntaxException ex) {
+            return false;
+        }
     }
 
     private static Set<COSBase> newIdentitySet() {

@@ -47,6 +47,14 @@ class OfficeConversionActiveContentPolicyTest {
     }
 
     @Test
+    void adapterRejectsMalformedDocumentNameContainer() throws IOException {
+        OfficeConversionException failure = assertPolicyDenied(pdfWithMalformedNameContainer());
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("conversion output contains prohibited active content", failure.getMessage());
+    }
+
+    @Test
     void adapterRejectsCatalogAssociatedFiles() throws IOException {
         OfficeConversionException failure = assertPolicyDenied(pdfWithCatalogAssociatedFiles());
 
@@ -189,6 +197,17 @@ class OfficeConversionActiveContentPolicyTest {
             document.getDocumentCatalog().getCOSObject()
                     .setItem(COSName.getPDFName("Names"), names);
 
+            document.save(output);
+            return output.toByteArray();
+        }
+    }
+
+    private static byte[] pdfWithMalformedNameContainer() throws IOException {
+        try (PDDocument document = new PDDocument();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.addPage(new PDPage());
+            document.getDocumentCatalog().getCOSObject()
+                    .setItem(COSName.getPDFName("Names"), new COSString("not-a-name-dictionary"));
             document.save(output);
             return output.toByteArray();
         }

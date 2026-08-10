@@ -260,7 +260,7 @@ class DefaultDocumentConversionServiceTest {
     }
 
     @Test
-    void submitWithNullTenantContextFallsBackToDemoOwnership() {
+    void submitWithNullTenantContextFailsClosed() {
         ConversionJobRepository repository = new InMemoryConversionJobRepository();
         RecordingConversionWorker worker = new RecordingConversionWorker();
         DocumentConversionService service = new DefaultDocumentConversionService(
@@ -277,11 +277,14 @@ class DefaultDocumentConversionServiceTest {
                 "hello-viewer".getBytes()
         );
 
-        UUID jobId = service.submit(file, PolicyOverrideRequest.none(), null);
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.submit(file, PolicyOverrideRequest.none(), null)
+        );
 
-        ConversionJob job = repository.findById(jobId).orElseThrow();
-        assertEquals(TenantContext.DEMO_TENANT_ID, job.getTenantId());
-        assertEquals(TenantContext.DEMO_SUBJECT_ID, job.getSubjectId());
+        assertEquals("tenant context is required", error.getMessage());
+        assertTrue(repository.findAll().isEmpty());
+        assertEquals(0, worker.enqueuedCount());
     }
 
     @Test

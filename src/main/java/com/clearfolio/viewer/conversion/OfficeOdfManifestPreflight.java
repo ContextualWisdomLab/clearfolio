@@ -22,9 +22,9 @@ import javax.xml.stream.XMLStreamReader;
  * methods, entry-name safety, duplicated local/central metadata, required manifest presence,
  * and optional {@code mimetype} placement. This second boundary extracts only the manifest
  * payload, bounds its expanded size, parses it as non-validating namespace-aware XML with
- * DTD and external-entity support disabled, binds ordinary ZIP files to exactly one manifest
- * entry, and enforces the ODF root media-type contract. It intentionally does not attempt
- * full Relax NG manifest-schema validation.</p>
+ * DTD and external-entity support disabled, requires the OpenDocument 1.4 manifest version,
+ * binds ordinary ZIP files to exactly one manifest entry, and enforces the ODF root media-type
+ * contract. It intentionally does not attempt full Relax NG manifest-schema validation.</p>
  */
 final class OfficeOdfManifestPreflight {
 
@@ -35,6 +35,7 @@ final class OfficeOdfManifestPreflight {
     );
     private static final String MANIFEST_NAMESPACE =
             "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0";
+    private static final String SUPPORTED_MANIFEST_VERSION = "1.4";
     private static final String MANIFEST_ENTRY_PATH = "META-INF/manifest.xml";
     private static final String MIMETYPE_ENTRY_PATH = "mimetype";
     private static final byte[] MANIFEST_ENTRY_NAME =
@@ -63,8 +64,9 @@ final class OfficeOdfManifestPreflight {
      *
      * @param request immutable conversion request that already passed common container preflight
      * @throws OfficeConversionException when the manifest cannot be safely extracted or parsed,
-     *         ordinary package-file inventory is inconsistent, or the root-document media type
-     *         disagrees with the package {@code mimetype}
+     *         does not advertise the supported OpenDocument manifest version, ordinary package-file
+     *         inventory is inconsistent, or the root-document media type disagrees with the package
+     *         {@code mimetype}
      */
     static void requireQualifiedManifest(OfficeConversionRequest request) {
         String expectedMediaType = ODF_MIMETYPE_BY_FORMAT.get(request.sourceFormat());
@@ -228,6 +230,10 @@ final class OfficeOdfManifestPreflight {
                                 || !"manifest".equals(reader.getLocalName())) {
                             throw invalidManifest();
                         }
+                        String manifestVersion = reader.getAttributeValue(MANIFEST_NAMESPACE, "version");
+                        if (!SUPPORTED_MANIFEST_VERSION.equals(manifestVersion)) {
+                            throw unsupportedManifestVersion();
+                        }
                     }
                     if (!MANIFEST_NAMESPACE.equals(reader.getNamespaceURI())
                             || !"file-entry".equals(reader.getLocalName())) {
@@ -332,6 +338,13 @@ final class OfficeOdfManifestPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ODF manifest is invalid"
+        );
+    }
+
+    private static OfficeConversionException unsupportedManifestVersion() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ODF manifest version is not allowed"
         );
     }
 

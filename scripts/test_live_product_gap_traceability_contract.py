@@ -86,6 +86,30 @@ class LiveProductGapTraceabilityContractTest(unittest.TestCase):
             with self.subTest(required=required):
                 self.assertIn(required, traceability)
 
+    def test_traceability_tracks_current_accessibility_and_logging_reconciliations(self) -> None:
+        """Require the newly verified current-base slices to replace historical/deferred prose."""
+
+        traceability = read_text("docs/TRACEABILITY.md")
+        assessment = read_text("docs/DOCUMENTATION_ASSESSMENT.md")
+
+        for required in (
+            "nested-safe accessible asynchronous controls | `active_pr`; current #264",
+            "deterministic single logging runtime binding | `active_pr`; issue #320; current #340",
+            "dependency-free node",
+            "spring-jcl",
+            "commons-logging",
+        ):
+            with self.subTest(document="traceability", required=required):
+                self.assertIn(required, traceability)
+
+        for required in (
+            "current #264",
+            "current #340",
+            "only #268 remains unreconciled",
+        ):
+            with self.subTest(document="assessment", required=required):
+                self.assertIn(required, assessment)
+
     def test_assessment_exposes_current_api_workspace_and_credential_gaps(self) -> None:
         """Require the fitness assessment to expose current executable product/security gaps."""
 

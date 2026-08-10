@@ -7,8 +7,8 @@ info:
     This spec reflects the current Clearfolio Viewer JSON API contract and the
     buyer-demo signed-header scaffold. It is not a production OIDC/JWT profile.
   license:
-    name: Proprietary - buyer diligence use only
-    url: https://github.com/ContextualWisdomLab/clearfolio
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
 servers:
   - url: https://{gatewayHost}
     description: Buyer gateway in front of Clearfolio Viewer.

@@ -65,6 +65,27 @@ class LiveProductGapTraceabilityContractTest(unittest.TestCase):
             with self.subTest(required=required):
                 self.assertIn(required, traceability)
 
+    def test_traceability_tracks_current_clean_replacements_and_main_advancement(self) -> None:
+        """Prevent closed predecessor PR identities from remaining the canonical live mapping."""
+
+        traceability = read_text("docs/TRACEABILITY.md")
+        for required in (
+            "protected `main` at `55d7ae8647208e301f282350f076eeddaba61d11`",
+            "direct-download signed delivery | `implemented_on_main`",
+            "privacy-safe hmac audit pseudonymization | `implemented_on_main`",
+            "exact-head ci/test evidence | `implemented_on_main`",
+            "issue #324; current `active_pr` #334",
+            "issue #327; current `active_pr` #338",
+            "issue #329; current `active_pr` #339",
+            "issue #315; current `active_pr` #337",
+            "#325",
+            "superseded",
+            "#328",
+            "#330",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, traceability)
+
     def test_assessment_exposes_current_api_workspace_and_credential_gaps(self) -> None:
         """Require the fitness assessment to expose current executable product/security gaps."""
 

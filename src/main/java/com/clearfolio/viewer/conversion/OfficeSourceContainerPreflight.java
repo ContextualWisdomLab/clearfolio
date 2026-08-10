@@ -17,13 +17,13 @@ import java.util.Set;
  * and size metadata must agree where applicable, advertised compressed bytes cannot extend
  * beyond the local-data area before the central directory, and entry names are rejected
  * when they are absolute, contain parent traversal, use backslash path separators, or
- * contain NUL bytes. OpenDocument candidates additionally require the package manifest
- * entry mandated by the ODF package specification and, when a mimetype entry is present,
- * require it to be the first local ZIP entry, stored without compression, free of a
- * local-header extra field, and equal to the media type implied by the declared ODF format.
- * Passing this preflight is <strong>not</strong> complete package, macro, embedded-object,
- * archive-expansion, malware, or fidelity qualification. Those deeper controls remain
- * separate sandbox/content-policy acceptance gates.</p>
+ * contain NUL bytes. OpenDocument candidates additionally require the package manifest,
+ * restrict META-INF content to the manifest plus signature-named entries, and, when a
+ * mimetype entry is present, require it to be the first local ZIP entry, stored without
+ * compression, free of a local-header extra field, and equal to the media type implied by
+ * the declared ODF format. Passing this preflight is <strong>not</strong> complete package,
+ * macro, embedded-object, archive-expansion, malware, or fidelity qualification. Those
+ * deeper controls remain separate sandbox/content-policy acceptance gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -45,6 +45,10 @@ final class OfficeSourceContainerPreflight {
             "META-INF/manifest.xml".getBytes(StandardCharsets.UTF_8);
     private static final byte[] ODF_MIMETYPE_ENTRY_NAME =
             "mimetype".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] ODF_META_INF_PREFIX =
+            "META-INF/".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] ODF_SIGNATURES_NAME_FRAGMENT =
+            "signatures".getBytes(StandardCharsets.UTF_8);
     private static final byte[] ZIP_LOCAL_FILE_HEADER = new byte[] {
             0x50, 0x4b, 0x03, 0x04
     };
@@ -221,6 +225,29 @@ final class OfficeSourceContainerPreflight {
                 throw invalidEntryDataRange();
             }
             requireSafeEntryPath(sourceBytes, centralNameOffset, fileNameLength);
+            boolean odfManifestEntry = requireOdfManifest
+                    && entryNameMatches(
+                            sourceBytes,
+                            centralNameOffset,
+                            fileNameLength,
+                            ODF_MANIFEST_ENTRY_NAME
+                    );
+            if (requireOdfManifest
+                    && entryNameStartsWith(
+                            sourceBytes,
+                            centralNameOffset,
+                            fileNameLength,
+                            ODF_META_INF_PREFIX
+                    )
+                    && !odfManifestEntry
+                    && !entryNameContains(
+                            sourceBytes,
+                            centralNameOffset,
+                            fileNameLength,
+                            ODF_SIGNATURES_NAME_FRAGMENT
+                    )) {
+                throw invalidOdfMetaInfEntry();
+            }
             boolean odfMimetypeEntry = requireOdfManifest
                     && entryNameMatches(
                             sourceBytes,
@@ -243,12 +270,7 @@ final class OfficeSourceContainerPreflight {
                     || !matchesAt(sourceBytes, (int) localDataOffset, expectedOdfMimetype))) {
                 throw invalidOdfMimetypePayload();
             }
-            if (entryNameMatches(
-                    sourceBytes,
-                    centralNameOffset,
-                    fileNameLength,
-                    ODF_MANIFEST_ENTRY_NAME
-            )) {
+            if (odfManifestEntry) {
                 odfManifestFound = true;
             }
             cursor = (int) nextCursor;
@@ -328,6 +350,48 @@ final class OfficeSourceContainerPreflight {
             }
         }
         return true;
+    }
+
+    private static boolean entryNameStartsWith(
+            byte[] sourceBytes,
+            int nameOffset,
+            int nameLength,
+            byte[] expectedPrefix
+    ) {
+        if (nameLength < expectedPrefix.length) {
+            return false;
+        }
+        for (int index = 0; index < expectedPrefix.length; index++) {
+            if (sourceBytes[nameOffset + index] != expectedPrefix[index]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean entryNameContains(
+            byte[] sourceBytes,
+            int nameOffset,
+            int nameLength,
+            byte[] expectedFragment
+    ) {
+        if (nameLength < expectedFragment.length) {
+            return false;
+        }
+        int lastStart = nameLength - expectedFragment.length;
+        for (int start = 0; start <= lastStart; start++) {
+            boolean match = true;
+            for (int index = 0; index < expectedFragment.length; index++) {
+                if (sourceBytes[nameOffset + start + index] != expectedFragment[index]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isAllowedCompressionMethod(int compressionMethod) {
@@ -476,6 +540,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ODF package manifest is missing"
+        );
+    }
+
+    private static OfficeConversionException invalidOdfMetaInfEntry() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ODF META-INF entry is not allowed"
         );
     }
 

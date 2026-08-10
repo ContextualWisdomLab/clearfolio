@@ -14,8 +14,9 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The converter may eventually use a filesystem-backed sandbox internally, so
  * path traversal and platform-absolute entry names must fail before provider
- * invocation. These tests inspect only central-directory metadata and do not
- * extract archive contents.</p>
+ * invocation. Local-header and central-directory entry names must also agree so
+ * different ZIP consumers cannot be given conflicting path metadata. These tests
+ * inspect archive metadata and do not extract archive contents.</p>
  */
 class OfficeSourceEntryPathPolicyTest {
 
@@ -42,6 +43,21 @@ class OfficeSourceEntryPathPolicyTest {
     @Test
     void adapterRejectsNulEntryNameBeforeProviderInvocation() {
         assertUnsafeEntry("word/document.xml\u0000.exe");
+    }
+
+    @Test
+    void adapterRejectsLocalHeaderNameThatDiffersFromCentralDirectoryBeforeProviderInvocation() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        OfficeConversionAdapter adapter = countingAdapter(providerCalls);
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> adapter.convert(request(zipWithEntryNames("../outside.bin", "word/document.xml")))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source ZIP local header does not match central directory", failure.getMessage());
+        assertEquals(0, providerCalls.get());
     }
 
     @Test
@@ -96,21 +112,26 @@ class OfficeSourceEntryPathPolicyTest {
     }
 
     private static byte[] zipWithEntry(String entryName) {
-        byte[] nameBytes = entryName.getBytes(StandardCharsets.UTF_8);
-        int localHeaderLength = 30 + nameBytes.length;
+        return zipWithEntryNames(entryName, entryName);
+    }
+
+    private static byte[] zipWithEntryNames(String localEntryName, String centralEntryName) {
+        byte[] localNameBytes = localEntryName.getBytes(StandardCharsets.UTF_8);
+        byte[] centralNameBytes = centralEntryName.getBytes(StandardCharsets.UTF_8);
+        int localHeaderLength = 30 + localNameBytes.length;
         int centralOffset = localHeaderLength;
-        int centralLength = 46 + nameBytes.length;
+        int centralLength = 46 + centralNameBytes.length;
         int eocdOffset = centralOffset + centralLength;
         byte[] bytes = new byte[eocdOffset + 22];
 
         putUnsignedInt(bytes, 0, 0x04034b50L);
-        putUnsignedShort(bytes, 26, nameBytes.length);
-        System.arraycopy(nameBytes, 0, bytes, 30, nameBytes.length);
+        putUnsignedShort(bytes, 26, localNameBytes.length);
+        System.arraycopy(localNameBytes, 0, bytes, 30, localNameBytes.length);
 
         putUnsignedInt(bytes, centralOffset, 0x02014b50L);
-        putUnsignedShort(bytes, centralOffset + 28, nameBytes.length);
+        putUnsignedShort(bytes, centralOffset + 28, centralNameBytes.length);
         putUnsignedInt(bytes, centralOffset + 42, 0L);
-        System.arraycopy(nameBytes, 0, bytes, centralOffset + 46, nameBytes.length);
+        System.arraycopy(centralNameBytes, 0, bytes, centralOffset + 46, centralNameBytes.length);
 
         putUnsignedInt(bytes, eocdOffset, 0x06054b50L);
         putUnsignedShort(bytes, eocdOffset + 8, 1);

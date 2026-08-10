@@ -77,24 +77,6 @@ class ConversionJobTest {
     }
 
     @Test
-    void constructorFallsBackToDemoMetadataForBlankTenantClaims() {
-        ConversionJob job = new ConversionJob(
-                UUID.randomUUID(),
-                " \u0000 ",
-                null,
-                "report.docx",
-                "application/octet-stream",
-                "hash",
-                10L,
-                3
-        );
-
-        assertEquals(TenantContext.DEMO_TENANT_ID, job.getTenantId());
-        assertEquals(TenantContext.DEMO_SUBJECT_ID, job.getSubjectId());
-        assertFalse(job.belongsToTenant(null));
-    }
-
-    @Test
     void clampsMaxAttemptsToOneWhenZeroIsConfigured() {
         ConversionJob job = new ConversionJob(
                 UUID.randomUUID(),

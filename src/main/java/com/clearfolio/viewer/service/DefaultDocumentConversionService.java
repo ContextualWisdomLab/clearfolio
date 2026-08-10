@@ -176,19 +176,19 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      */
     @Override
     public UUID submit(MultipartFile file, PolicyOverrideRequest overrideRequest, TenantContext tenantContext) {
+        if (tenantContext == null) {
+            throw new IllegalArgumentException("tenant context is required");
+        }
         PolicyOverrideRequest effectiveOverride = overrideRequest == null
                 ? PolicyOverrideRequest.none()
                 : overrideRequest;
-        TenantContext effectiveTenant = tenantContext == null
-                ? new TenantContext(TenantContext.DEMO_TENANT_ID, TenantContext.DEMO_SUBJECT_ID, java.util.Set.of())
-                : tenantContext;
         validationService.validateOrThrow(file, effectiveOverride);
 
         String contentHash = contentHash(file);
         ConversionJob job = new ConversionJob(
                 UUID.randomUUID(),
-                effectiveTenant.tenantId(),
-                effectiveTenant.subjectId(),
+                tenantContext.tenantId(),
+                tenantContext.subjectId(),
                 sanitizeFilename(file.getOriginalFilename()),
                 file.getContentType(),
                 contentHash,

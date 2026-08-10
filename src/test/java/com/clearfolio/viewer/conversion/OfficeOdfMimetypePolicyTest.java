@@ -52,6 +52,21 @@ class OfficeOdfMimetypePolicyTest {
         assertEquals(0, providerCalls.get());
     }
 
+    @Test
+    void adapterRejectsOdfMimetypeEntryWithLocalExtraField() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        byte[] source = odfZipWithFirstMimetype(0, 1);
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(source))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source ODF mimetype entry must not use a local extra field", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
     private static OfficeConversionAdapter countingAdapter(AtomicInteger providerCalls) {
         return input -> {
             providerCalls.incrementAndGet();

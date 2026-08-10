@@ -66,8 +66,8 @@ public class ArtifactLinkLedger {
      * @param record issued artifact link record
      */
     public synchronized void recordIssued(ArtifactLinkRecord record) {
-        issuedLinks.put(record.tokenId(), record);
         appendLine(serializeIssued(record));
+        issuedLinks.put(record.tokenId(), record);
     }
 
     /**
@@ -97,18 +97,14 @@ public class ArtifactLinkLedger {
             Instant revokedAt,
             String revokedBy,
             String reason) {
-        boolean[] changed = {false};
-        ArtifactLinkRecord revoked = issuedLinks.computeIfPresent(tokenId, (ignored, current) -> {
-            if (current.isRevoked()) {
-                return current;
-            }
-            changed[0] = true;
-            return current.revoked(revokedAt, revokedBy, reason);
-        });
-        if (changed[0]) {
-            appendLine(serializeRevoked(revoked));
+        ArtifactLinkRecord current = issuedLinks.get(tokenId);
+        if (current == null || current.isRevoked()) {
+            return Optional.ofNullable(current);
         }
-        return Optional.ofNullable(revoked);
+        ArtifactLinkRecord revoked = current.revoked(revokedAt, revokedBy, reason);
+        appendLine(serializeRevoked(revoked));
+        issuedLinks.put(tokenId, revoked);
+        return Optional.of(revoked);
     }
 
     /**
@@ -117,8 +113,8 @@ public class ArtifactLinkLedger {
      * @param event artifact read event
      */
     public synchronized void recordRead(ArtifactReadEvent event) {
-        readEvents.add(event);
         appendLine(serializeRead(event));
+        readEvents.add(event);
     }
 
     /**

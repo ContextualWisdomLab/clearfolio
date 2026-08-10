@@ -15,7 +15,7 @@ import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 
 /**
- * Verifies that the OpenDocument manifest advertises the supported ODF package version.
+ * Verifies the supported OpenDocument manifest version and minimum manifest content.
  */
 class OfficeOdfManifestVersionPolicyTest {
 
@@ -33,6 +33,20 @@ class OfficeOdfManifestVersionPolicyTest {
 
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
         assertEquals("source ODF manifest version is not allowed", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
+    @Test
+    void adapterRejectsManifestWithoutAnyFileEntry() throws IOException {
+        AtomicInteger providerCalls = new AtomicInteger();
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(odfPackageWithoutFileEntry()))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source ODF manifest has no file entries", failure.getMessage());
         assertEquals(0, providerCalls.get());
     }
 
@@ -73,13 +87,24 @@ class OfficeOdfManifestVersionPolicyTest {
     }
 
     private static byte[] odfPackage(String version) throws IOException {
-        byte[] manifest = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        return packageWithManifest(("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                 + "<manifest:manifest xmlns:manifest=\""
                 + MANIFEST_NAMESPACE
                 + "\" manifest:version=\""
                 + version
-                + "\"/>").getBytes(StandardCharsets.UTF_8);
+                + "\">"
+                + "<manifest:file-entry manifest:full-path=\"Pictures/\" manifest:media-type=\"\"/>"
+                + "</manifest:manifest>").getBytes(StandardCharsets.UTF_8));
+    }
 
+    private static byte[] odfPackageWithoutFileEntry() throws IOException {
+        return packageWithManifest(("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                + "<manifest:manifest xmlns:manifest=\""
+                + MANIFEST_NAMESPACE
+                + "\" manifest:version=\"1.4\"/>").getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static byte[] packageWithManifest(byte[] manifest) throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
             CRC32 crc32 = new CRC32();

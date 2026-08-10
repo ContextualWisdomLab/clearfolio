@@ -9,10 +9,12 @@ import java.util.Set;
  * bytes reach a sidecar or remote converter: the declared source format belongs to the
  * current Office conversion candidate set, the leading container signature matches that
  * format family, and ZIP-family candidates contain self-consistent standard single-disk
- * central-directory records and end-of-central-directory framing. Passing this preflight
- * is <strong>not</strong> complete package, macro, embedded-object, archive-expansion,
- * malware, or fidelity qualification. Those deeper controls remain separate
- * sandbox/content-policy acceptance gates.</p>
+ * central-directory records and end-of-central-directory framing. ZIP entry names are
+ * also rejected when they are absolute, contain parent traversal, use backslash path
+ * separators, or contain NUL bytes. Passing this preflight is <strong>not</strong>
+ * complete package, macro, embedded-object, archive-expansion, malware, or fidelity
+ * qualification. Those deeper controls remain separate sandbox/content-policy acceptance
+ * gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -41,6 +43,11 @@ final class OfficeSourceContainerPreflight {
     private static final int ZIP16_SENTINEL = 0xffff;
     private static final long ZIP32_SENTINEL = 0xffff_ffffL;
     private static final int ZIP_ENCRYPTED_FLAG = 0x0001;
+    private static final byte ZIP_PATH_SEPARATOR = (byte) '/';
+    private static final byte ZIP_WINDOWS_PATH_SEPARATOR = (byte) '\\';
+    private static final byte ZIP_NUL = 0;
+    private static final byte ZIP_DOT = (byte) '.';
+    private static final byte ZIP_COLON = (byte) ':';
 
     private OfficeSourceContainerPreflight() {
     }
@@ -51,8 +58,8 @@ final class OfficeSourceContainerPreflight {
      * @param request immutable conversion request containing declared format and source bytes
      * @throws OfficeConversionException when the format is not a current candidate, the
      *         source does not match that format family's required container signature, a
-     *         ZIP-family source has invalid central-directory framing, or a ZIP entry is
-     *         encrypted
+     *         ZIP-family source has invalid central-directory framing, a ZIP entry is
+     *         encrypted, or a ZIP entry path is unsafe
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
         String sourceFormat = request.sourceFormat();
@@ -158,11 +165,53 @@ final class OfficeSourceContainerPreflight {
             if (nextCursor > centralDirectoryEnd) {
                 throw invalidCentralDirectory();
             }
+            requireSafeEntryPath(sourceBytes, cursor + ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH, fileNameLength);
             cursor = (int) nextCursor;
         }
         if (cursor != centralDirectoryEnd) {
             throw invalidCentralDirectory();
         }
+    }
+
+    private static void requireSafeEntryPath(byte[] sourceBytes, int nameOffset, int nameLength) {
+        if (nameLength == 0) {
+            throw unsafeEntryPath();
+        }
+        int nameEnd = nameOffset + nameLength;
+        byte first = sourceBytes[nameOffset];
+        if (first == ZIP_PATH_SEPARATOR || first == ZIP_WINDOWS_PATH_SEPARATOR) {
+            throw unsafeEntryPath();
+        }
+        if (nameLength >= 2 && isAsciiLetter(first) && sourceBytes[nameOffset + 1] == ZIP_COLON) {
+            throw unsafeEntryPath();
+        }
+
+        int segmentStart = nameOffset;
+        for (int cursor = nameOffset; cursor < nameEnd; cursor++) {
+            byte current = sourceBytes[cursor];
+            if (current == ZIP_NUL || current == ZIP_WINDOWS_PATH_SEPARATOR) {
+                throw unsafeEntryPath();
+            }
+            if (current == ZIP_PATH_SEPARATOR) {
+                if (isParentSegment(sourceBytes, segmentStart, cursor)) {
+                    throw unsafeEntryPath();
+                }
+                segmentStart = cursor + 1;
+            }
+        }
+        if (isParentSegment(sourceBytes, segmentStart, nameEnd)) {
+            throw unsafeEntryPath();
+        }
+    }
+
+    private static boolean isParentSegment(byte[] sourceBytes, int start, int end) {
+        return end - start == 2
+                && sourceBytes[start] == ZIP_DOT
+                && sourceBytes[start + 1] == ZIP_DOT;
+    }
+
+    private static boolean isAsciiLetter(byte value) {
+        return (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z');
     }
 
     private static int findEocdOffset(byte[] sourceBytes) {
@@ -231,6 +280,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ZIP central directory is invalid"
+        );
+    }
+
+    private static OfficeConversionException unsafeEntryPath() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.POLICY_DENIED,
+                "source ZIP entry path is unsafe"
         );
     }
 }

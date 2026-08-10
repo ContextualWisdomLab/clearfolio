@@ -18,10 +18,10 @@ import java.util.Set;
  * when they are absolute, contain parent traversal, use backslash path separators, or
  * contain NUL bytes. OpenDocument candidates additionally require the package manifest
  * entry mandated by the ODF package specification and, when a mimetype entry is present,
- * require it to be the first local ZIP entry and stored without compression. Passing this
- * preflight is <strong>not</strong> complete package, macro, embedded-object,
- * archive-expansion, malware, or fidelity qualification. Those deeper controls remain
- * separate sandbox/content-policy acceptance gates.</p>
+ * require it to be the first local ZIP entry, stored without compression, and free of a
+ * local-header extra field. Passing this preflight is <strong>not</strong> complete package,
+ * macro, embedded-object, archive-expansion, malware, or fidelity qualification. Those
+ * deeper controls remain separate sandbox/content-policy acceptance gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -223,6 +223,10 @@ final class OfficeSourceContainerPreflight {
             }
             if (odfMimetypeEntry && compressionMethod != ZIP_STORED_METHOD) {
                 throw compressedOdfMimetype();
+            }
+            if (odfMimetypeEntry
+                    && unsignedShort(sourceBytes, (int) localHeaderOffset + 28) != 0) {
+                throw invalidOdfMimetypeExtraField();
             }
             if (entryNameMatches(
                     sourceBytes,
@@ -471,6 +475,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ODF mimetype entry must be stored without compression"
+        );
+    }
+
+    private static OfficeConversionException invalidOdfMimetypeExtraField() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ODF mimetype entry must not use a local extra field"
         );
     }
 

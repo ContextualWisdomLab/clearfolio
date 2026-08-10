@@ -10,12 +10,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 /**
- * Central-directory metadata regressions for ZIP-family Office candidates.
+ * Local/central-directory metadata regressions for ZIP-family Office candidates.
  *
- * <p>The pre-provider boundary must not trust the EOCD entry count or a leading
- * central-directory signature alone. These tests do not decompress entry data;
- * they require matching local/central metadata with a safe relative entry name
- * and fail closed when a central record advertises ZIP encryption.</p>
+ * <p>The pre-provider boundary must not trust the EOCD entry count or only one of
+ * the duplicated local/central metadata authorities. These tests do not decompress
+ * entry data; they require matching local/central metadata with a safe relative
+ * entry name and fail closed when either record advertises ZIP encryption.</p>
  */
 class OfficeSourceCentralDirectoryPolicyTest {
 
@@ -34,6 +34,22 @@ class OfficeSourceCentralDirectoryPolicyTest {
         AtomicInteger providerCalls = new AtomicInteger();
         byte[] source = oneEntryZip(1, 1);
         putUnsignedShort(source, CENTRAL_DIRECTORY_OFFSET + 8, 0x0001);
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(source))
+        );
+
+        assertEquals(OfficeConversionFailureCode.PASSWORD_PROTECTED, failure.failureCode());
+        assertEquals("source ZIP entry is encrypted", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
+    @Test
+    void adapterRejectsEncryptedLocalHeaderWhenCentralDirectoryLooksUnencrypted() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        byte[] source = oneEntryZip(1, 1);
+        putUnsignedShort(source, LOCAL_HEADER_OFFSET + 6, 0x0001);
 
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,

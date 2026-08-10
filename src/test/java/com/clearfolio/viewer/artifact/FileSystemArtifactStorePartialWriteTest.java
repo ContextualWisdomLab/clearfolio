@@ -75,4 +75,34 @@ class FileSystemArtifactStorePartialWriteTest {
         assertEquals(1, error.getCause().getSuppressed().length);
         assertTrue(Files.exists(root.resolve(docId + ".pdf").resolve("retained")));
     }
+
+    @Test
+    void metadataRollbackFailureStillAttemptsPdfCleanup() throws Exception {
+        Path root = temporaryDirectory.resolve("independent-rollback");
+        UUID docId = UUID.randomUUID();
+        Path pdfPath = root.resolve(docId + ".pdf");
+        Path metadataPath = root.resolve(docId + ".meta.properties");
+        FileSystemArtifactStore store = new FileSystemArtifactStore(
+                root,
+                (path, bytes) -> {
+                    if (path.equals(pdfPath)) {
+                        Files.write(path, bytes);
+                        return;
+                    }
+                    Files.createDirectory(metadataPath);
+                    Files.writeString(metadataPath.resolve("retained"), "evidence");
+                    throw new IOException("metadata disk full");
+                },
+                Files::readAllBytes
+        );
+
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> store.putPdf(docId, "%PDF-1.7\nindependent-rollback".getBytes(StandardCharsets.UTF_8))
+        );
+
+        assertEquals(1, error.getCause().getSuppressed().length);
+        assertTrue(Files.exists(metadataPath.resolve("retained")));
+        assertTrue(Files.notExists(pdfPath));
+    }
 }

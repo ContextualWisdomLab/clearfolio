@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -24,12 +25,7 @@ class BuyerOpenApiRouteContractTest {
 
     @Test
     void openApiDescribesProtectedMainConversionJobDeleteRoute() throws IOException {
-        Object parsed;
-        try (Reader reader = Files.newBufferedReader(OPENAPI_PATH)) {
-            parsed = new Yaml().load(reader);
-        }
-
-        Map<?, ?> root = assertInstanceOf(Map.class, parsed);
+        Map<?, ?> root = loadOpenApi();
         Map<?, ?> paths = assertInstanceOf(Map.class, root.get("paths"));
         Map<?, ?> jobPath = assertInstanceOf(Map.class, paths.get("/api/v1/convert/jobs/{jobId}"));
         Map<?, ?> deleteOperation = assertInstanceOf(Map.class, jobPath.get("delete"));
@@ -43,5 +39,41 @@ class BuyerOpenApiRouteContractTest {
         assertTrue(responses.containsKey("401"));
         assertTrue(responses.containsKey("403"));
         assertTrue(responses.containsKey("404"));
+    }
+
+    @Test
+    void openApiDescribesProtectedMainSignedArtifactByteRoute() throws IOException {
+        Map<?, ?> root = loadOpenApi();
+        Map<?, ?> paths = assertInstanceOf(Map.class, root.get("paths"));
+        Map<?, ?> artifactPath = assertInstanceOf(Map.class, paths.get("/artifacts/{docId}.pdf"));
+        Map<?, ?> getOperation = assertInstanceOf(Map.class, artifactPath.get("get"));
+
+        assertEquals("getPdfArtifact", getOperation.get("operationId"));
+        assertNotNull(getOperation.get("parameters"));
+        assertInstanceOf(List.class, getOperation.get("security"));
+
+        Map<?, ?> responses = assertInstanceOf(Map.class, getOperation.get("responses"));
+        for (String status : List.of("200", "206", "401", "403", "404", "416")) {
+            assertTrue(responses.containsKey(status), "missing artifact response " + status);
+        }
+
+        Map<?, ?> components = assertInstanceOf(Map.class, root.get("components"));
+        Map<?, ?> securitySchemes = assertInstanceOf(Map.class, components.get("securitySchemes"));
+        Map<?, ?> queryScheme = assertInstanceOf(Map.class, securitySchemes.get("artifactTokenQuery"));
+        assertEquals("apiKey", queryScheme.get("type"));
+        assertEquals("query", queryScheme.get("in"));
+        assertEquals("artifactToken", queryScheme.get("name"));
+
+        Map<?, ?> bearerScheme = assertInstanceOf(Map.class, securitySchemes.get("artifactTokenBearer"));
+        assertEquals("http", bearerScheme.get("type"));
+        assertEquals("bearer", bearerScheme.get("scheme"));
+    }
+
+    private static Map<?, ?> loadOpenApi() throws IOException {
+        Object parsed;
+        try (Reader reader = Files.newBufferedReader(OPENAPI_PATH)) {
+            parsed = new Yaml().load(reader);
+        }
+        return assertInstanceOf(Map.class, parsed);
     }
 }

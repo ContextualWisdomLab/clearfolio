@@ -70,6 +70,7 @@ public final class FileSystemArtifactStore implements ArtifactStore {
             bytesWriter.write(pdfPath(docId), copy);
             bytesWriter.write(metadataPath(docId), metadataBytes(docId, copy));
         } catch (IOException ex) {
+            rollbackPartialWrite(docId, ex);
             throw new IllegalStateException("failed to persist artifact for docId " + docId, ex);
         }
         cache.put(docId, copy);
@@ -109,6 +110,15 @@ public final class FileSystemArtifactStore implements ArtifactStore {
             throw new IllegalStateException("failed to delete artifact for docId " + docId, ex);
         } finally {
             cache.remove(docId);
+        }
+    }
+
+    private void rollbackPartialWrite(UUID docId, IOException writeFailure) {
+        try {
+            Files.deleteIfExists(metadataPath(docId));
+            Files.deleteIfExists(pdfPath(docId));
+        } catch (IOException rollbackFailure) {
+            writeFailure.addSuppressed(rollbackFailure);
         }
     }
 

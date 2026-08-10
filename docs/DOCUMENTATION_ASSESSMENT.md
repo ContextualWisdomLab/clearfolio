@@ -21,9 +21,12 @@ Former descendants are not automatically current because their old ancestry and 
 - PR #271: recurring OpenCode product loop and early-stop execution contract, clean `ACTIVE_PR`;
 - PR #276: malformed artifact-token structural rejection, clean `ACTIVE_PR`;
 - PR #313: production HMAC key-readiness guard, clean `ACTIVE_PR`;
-- PR #318: bounded external-company branding removal, clean `ACTIVE_PR`.
+- PR #318: bounded external-company branding removal, clean `ACTIVE_PR`;
+- current #264: nested-safe accessible asynchronous controls, clean `ACTIVE_PR` with dependency-free Node integration evidence;
+- current #295: liveness/readiness separation, clean `ACTIVE_PR`;
+- current #340: deterministic single logging runtime binding, clean `ACTIVE_PR` with `spring-jcl` retained and standalone `commons-logging` excluded.
 
-PR #264, PR #268, and PR #295 still require deliberate clean reconciliation before their historical source evidence can become current-base acceptance. No predecessor review or check transfers automatically.
+PR #264 and PR #295 have been rebuilt on the protected baseline and are current-base active work. **Only #268 remains unreconciled** among the former #270 descendants listed here; its historical source/check evidence is not current acceptance. No predecessor review or check transfers automatically.
 
 ## Conversation decision coverage
 
@@ -127,13 +130,13 @@ Documentation is sufficient only when it exposes rather than hides open work:
 - issue #315 / PR #316: one complete **versioned API** and standalone+naruon compatibility; bounded OpenAPI integrity is not completeness;
 - issue #317 / PR #318: truthful **production workspace** and session bootstrap instead of buyer-demo authority; branding cleanup is not a workspace;
 - issue #319 / PR #313: runtime **credential registry** rather than environment-backed runtime secret authority; key readiness is not source migration;
-- issue #320: one intentional logging runtime bridge and deterministic warning-free startup/SBOM evidence;
+- issue #320 / current #340: one intentional logging runtime bridge and deterministic warning-free startup/SBOM evidence;
 - issue #321: observable CODEOWNERS and independent human reviewer route; advisory bots are not counted approval;
 - issue #322 / PR #323: viewer generation safety; stale DOM publication is partially addressed, while active PDF.js cancellation/destruction and broader parity remain;
-- issue #324 / PR #325: robust light/dark focus appearance with executable contrast and geometry evidence;
+- issue #324 / current #334: robust light/dark focus appearance with executable contrast and geometry evidence;
 - issue #326: push analytics tenant isolation into repository queries after PR #268's scoped API;
-- issue #327 / PR #328: terminal-outcome conversion success rate;
-- issue #329 / PR #330: fail-closed finite and domain-valid KPI ledger evidence;
+- issue #327 / current #338: terminal-outcome conversion success rate;
+- issue #329 / current #339: fail-closed finite and domain-valid KPI ledger evidence;
 - issue #331: scheduler **execution receipt**, failure envelope, resumable checkpoint, and budget continuation evidence.
 
 These gaps demonstrate why `DESIGN_SUFFICIENT` is not product, release, acquisition, or commercial completion.
@@ -141,10 +144,10 @@ These gaps demonstrate why `DESIGN_SUFFICIENT` is not product, release, acquisit
 ## Material source-of-truth drift found and repaired on the branch
 
 1. Exact-head drift: PR prose can retain predecessor SHAs; live GitHub state is authoritative.
-2. Security maturity drift: PR #270 is now implemented on main; its former descendants still require current-base reconciliation.
+2. Security maturity drift: PR #270 is now implemented on main; its former descendants require deliberate current-base reconciliation rather than inherited evidence.
 3. Conversion drift: non-PDF placeholder output is not production Office fidelity.
 4. Durability drift: file-backed artifacts and ledgers do not make conversion-job state a distributed durable queue.
-5. Availability drift: separate readiness remains active PR #295 until cleanly reconciled and integrated.
+5. Availability drift: separate readiness is current #295 on the protected baseline and remains `ACTIVE_PR` until integrated.
 6. Automation drift: central maintenance, local OpenCode work, external scheduling, counted human review, and model/advisory evidence are separate authorities.
 7. Scheduler evidence drift: activation or a generic scheduled-task error is not an execution receipt, root-cause verdict, or repository completion. Issue #331 and ADR-0012 model the missing evidence as conceptual/external rather than fake application persistence.
 8. Release drift: green individual PRs do not prove one integrated protected release artifact.
@@ -153,10 +156,10 @@ These gaps demonstrate why `DESIGN_SUFFICIENT` is not product, release, acquisit
 11. Workspace drift: issue #317 is the production workspace; PR #318 is bounded branding work.
 12. Credential drift: issue #319 is runtime authority migration; PR #313 is key readiness only.
 13. Viewer drift: issue #322 requires operation-generation ownership and active cancellation; PR #323 is only the first stale-publication slice.
-14. Accessibility drift: one mixed focus color is not robust light/dark focus evidence; issue #324 and PR #325 own the current slice.
+14. Accessibility drift: one mixed focus color is not robust light/dark focus evidence; issue #324 and current #334 own the current slice.
 15. Analytics isolation drift: global materialization plus application filtering is weaker than a tenant-scoped repository query; issue #326 owns adoption after PR #268.
-16. KPI semantic drift: in-flight work must not count as failed conversion outcomes; issue #327 and PR #328 own the denominator correction.
-17. KPI integrity drift: parseable NaN, infinity, or out-of-range values are invalid buyer evidence; issue #329 and PR #330 own fail-closed replay validation.
+16. KPI semantic drift: in-flight work must not count as failed conversion outcomes; issue #327 and current #338 own the denominator correction.
+17. KPI integrity drift: parseable NaN, infinity, or out-of-range values are invalid buyer evidence; issue #329 and current #339 own fail-closed replay validation.
 18. Governance drift: protected merge requires a counted write-authorized human approval; central `.github#772`, not broader bot authority, owns provisioning.
 
 ## Canonical documentation graph on PR #305

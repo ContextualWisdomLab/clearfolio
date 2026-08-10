@@ -306,6 +306,11 @@ paths:
                 format: binary
         "206":
           description: Requested single byte range of the PDF artifact.
+          headers:
+            Content-Range:
+              description: Returned byte range and complete PDF length as `bytes start-end/total`.
+              schema:
+                type: string
           content:
             application/pdf:
               schema:
@@ -319,6 +324,11 @@ paths:
           description: Conversion job or PDF artifact is absent or unavailable.
         "416":
           description: Range is malformed or unsatisfiable for the current PDF bytes.
+          headers:
+            Content-Range:
+              description: Complete PDF length as `bytes */total`.
+              schema:
+                type: string
   /api/v1/analytics/kpi-snapshot:
     get:
       tags:

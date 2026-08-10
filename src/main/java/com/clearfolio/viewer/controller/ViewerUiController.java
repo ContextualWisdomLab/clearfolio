@@ -129,7 +129,7 @@ public class ViewerUiController {
 
                     <footer class="app-footer" role="contentinfo">
                       <div class="app-footer__inner">
-                        <small>Copyright (c) 2026 by HYOSUNG. All rights reserved.</small>
+                        <small>Clearfolio Viewer · Apache-2.0</small>
                       </div>
                     </footer>
 
@@ -317,7 +317,7 @@ public class ViewerUiController {
 
                     <footer class="app-footer" role="contentinfo">
                       <div class="app-footer__inner">
-                        <small>Copyright (c) 2026 by HYOSUNG. All rights reserved.</small>
+                        <small>Clearfolio Viewer · Apache-2.0</small>
                       </div>
                     </footer>
 

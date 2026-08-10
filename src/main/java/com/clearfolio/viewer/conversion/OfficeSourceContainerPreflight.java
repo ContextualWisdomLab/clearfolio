@@ -135,10 +135,7 @@ final class OfficeSourceContainerPreflight {
 
             int flags = unsignedShort(sourceBytes, cursor + 8);
             if ((flags & ZIP_ENCRYPTED_FLAG) != 0) {
-                throw new OfficeConversionException(
-                        OfficeConversionFailureCode.PASSWORD_PROTECTED,
-                        "source ZIP entry is encrypted"
-                );
+                throw encryptedZipEntry();
             }
 
             long compressedSize = unsignedInt(sourceBytes, cursor + 20);
@@ -191,6 +188,10 @@ final class OfficeSourceContainerPreflight {
     ) {
         if (localHeaderOffset > centralDirectoryOffset - ZIP_LOCAL_FILE_HEADER_MINIMUM_LENGTH) {
             throw invalidLocalHeader();
+        }
+        int localFlags = unsignedShort(sourceBytes, localHeaderOffset + 6);
+        if ((localFlags & ZIP_ENCRYPTED_FLAG) != 0) {
+            throw encryptedZipEntry();
         }
         int localNameLength = unsignedShort(sourceBytes, localHeaderOffset + 26);
         int localExtraFieldLength = unsignedShort(sourceBytes, localHeaderOffset + 28);
@@ -299,6 +300,13 @@ final class OfficeSourceContainerPreflight {
                         | (Byte.toUnsignedInt(sourceBytes[offset + 1]) << 8)
                         | (Byte.toUnsignedInt(sourceBytes[offset + 2]) << 16)
                         | (Byte.toUnsignedInt(sourceBytes[offset + 3]) << 24)
+        );
+    }
+
+    private static OfficeConversionException encryptedZipEntry() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.PASSWORD_PROTECTED,
+                "source ZIP entry is encrypted"
         );
     }
 

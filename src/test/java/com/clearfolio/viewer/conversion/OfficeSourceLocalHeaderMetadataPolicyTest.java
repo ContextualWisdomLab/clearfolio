@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 /**
- * Verifies duplicated ZIP local-header size metadata before an Office provider is invoked.
+ * Verifies duplicated ZIP local-header metadata before an Office provider is invoked.
  */
 class OfficeSourceLocalHeaderMetadataPolicyTest {
 
@@ -26,6 +26,22 @@ class OfficeSourceLocalHeaderMetadataPolicyTest {
         AtomicInteger providerCalls = new AtomicInteger();
         byte[] source = oneEntryStoredZip();
         putUnsignedInt(source, 18, 1L);
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(source))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source ZIP local header does not match central directory", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
+    @Test
+    void adapterRejectsDataDescriptorFlagMismatchBetweenLocalAndCentralRecords() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        byte[] source = oneEntryStoredZip();
+        putUnsignedShort(source, CENTRAL_OFFSET + 8, 0x0008);
 
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,

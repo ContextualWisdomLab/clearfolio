@@ -82,7 +82,12 @@ public class ConversionJob {
     }
 
     /**
-     * Creates a conversion job with tenant and subject ownership metadata.
+     * Creates a conversion job with explicit tenant and subject ownership metadata.
+     *
+     * <p>This authority-bearing constructor fails closed when tenant or subject
+     * claims are absent. Development callers that intentionally use demo
+     * authority must use one of the convenience constructors that supplies the
+     * demo identities explicitly.</p>
      *
      * @param jobId job identifier
      * @param tenantId tenant isolation boundary
@@ -104,8 +109,8 @@ public class ConversionJob {
             int maxAttempts
     ) {
         this.jobId = jobId;
-        this.tenantId = normalizeOrDefault(tenantId, DEFAULT_TENANT_ID);
-        this.subjectId = normalizeOrDefault(subjectId, DEFAULT_SUBJECT_ID);
+        this.tenantId = requireAuthority(tenantId, "tenantId");
+        this.subjectId = requireAuthority(subjectId, "subjectId");
         this.originalFileName = sanitize(originalFileName);
         this.contentType = sanitize(contentType);
         this.contentHash = contentHash;
@@ -123,6 +128,14 @@ public class ConversionJob {
             return null;
         }
         return value.replace("\u0000", "");
+    }
+
+    private String requireAuthority(String value, String fieldName) {
+        String sanitized = sanitize(value);
+        if (sanitized == null || sanitized.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " must not be blank");
+        }
+        return sanitized.strip();
     }
 
     private String normalizeOrDefault(String value, String fallback) {

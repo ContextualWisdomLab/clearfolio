@@ -14,14 +14,15 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The pre-provider boundary must not trust the EOCD entry count or a leading
  * central-directory signature alone. These tests do not decompress entry data;
- * they only require structurally present central records with a safe relative
- * entry name and fail closed when a record advertises ZIP encryption.</p>
+ * they require matching local/central metadata with a safe relative entry name
+ * and fail closed when a central record advertises ZIP encryption.</p>
  */
 class OfficeSourceCentralDirectoryPolicyTest {
 
     private static final byte[] SAFE_ENTRY_NAME = "content.xml".getBytes(StandardCharsets.UTF_8);
     private static final int LOCAL_HEADER_OFFSET = 0;
-    private static final int CENTRAL_DIRECTORY_OFFSET = 4;
+    private static final int LOCAL_HEADER_FIXED_LENGTH = 30;
+    private static final int CENTRAL_DIRECTORY_OFFSET = LOCAL_HEADER_FIXED_LENGTH + SAFE_ENTRY_NAME.length;
     private static final int CENTRAL_DIRECTORY_FIXED_LENGTH = 46;
     private static final int CENTRAL_DIRECTORY_RECORD_LENGTH =
             CENTRAL_DIRECTORY_FIXED_LENGTH + SAFE_ENTRY_NAME.length;
@@ -89,6 +90,16 @@ class OfficeSourceCentralDirectoryPolicyTest {
     private static byte[] oneEntryZip(int entriesOnDisk, int totalEntries) {
         byte[] bytes = new byte[EOCD_OFFSET + EOCD_LENGTH];
         putSignature(bytes, LOCAL_HEADER_OFFSET, 0x04034b50L);
+        putUnsignedShort(bytes, LOCAL_HEADER_OFFSET + 4, 20);
+        putUnsignedShort(bytes, LOCAL_HEADER_OFFSET + 26, SAFE_ENTRY_NAME.length);
+        System.arraycopy(
+                SAFE_ENTRY_NAME,
+                0,
+                bytes,
+                LOCAL_HEADER_OFFSET + LOCAL_HEADER_FIXED_LENGTH,
+                SAFE_ENTRY_NAME.length
+        );
+
         putSignature(bytes, CENTRAL_DIRECTORY_OFFSET, 0x02014b50L);
         putUnsignedShort(bytes, CENTRAL_DIRECTORY_OFFSET + 28, SAFE_ENTRY_NAME.length);
         putUnsignedInt(bytes, CENTRAL_DIRECTORY_OFFSET + 42, LOCAL_HEADER_OFFSET);

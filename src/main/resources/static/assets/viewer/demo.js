@@ -148,12 +148,15 @@ function renderHistory(history = loadHistory()) {
         const btn = e.currentTarget;
         const initialChildren = Array.from(btn.childNodes);
         btn.disabled = true;
+        btn.setAttribute("aria-busy", "true");
         btn.textContent = "Loading...";
         openJobDetail(job).finally(() => {
           btn.replaceChildren(...initialChildren);
           btn.disabled = false;
+          btn.removeAttribute("aria-busy");
         });
       }));
+
       actionsCell.appendChild(createActionButton("Status JSON", () => {
         void openJsonDocument(job.statusUrl, "Clearfolio status JSON");
       }));
@@ -299,6 +302,7 @@ async function retryActiveJob() {
   const jobId = activeJobDetail.jobId;
   const initialChildren = Array.from(el.retryJobBtn.childNodes);
   el.retryJobBtn.disabled = true;
+  el.retryJobBtn.setAttribute("aria-busy", "true");
   el.retryJobBtn.textContent = "Retrying...";
   setStatus("Requesting operator retry...");
 
@@ -340,6 +344,7 @@ async function retryActiveJob() {
   } finally {
     el.retryJobBtn.replaceChildren(...initialChildren);
     el.retryJobBtn.disabled = false;
+    el.retryJobBtn.removeAttribute("aria-busy");
   }
 }
 
@@ -414,6 +419,7 @@ async function refreshKpis() {
 async function refreshKpiEvidence() {
   const initialChildren = Array.from(el.refreshEvidenceBtn.childNodes);
   el.refreshEvidenceBtn.disabled = true;
+  el.refreshEvidenceBtn.setAttribute("aria-busy", "true");
   el.refreshEvidenceBtn.textContent = "Refreshing...";
 
   try {
@@ -429,12 +435,14 @@ async function refreshKpiEvidence() {
   } finally {
     el.refreshEvidenceBtn.replaceChildren(...initialChildren);
     el.refreshEvidenceBtn.disabled = false;
+    el.refreshEvidenceBtn.removeAttribute("aria-busy");
   }
 }
 
 async function loadDemoData() {
   const initialChildren = Array.from(el.loadDemoDataBtn.childNodes);
   el.loadDemoDataBtn.disabled = true;
+  el.loadDemoDataBtn.setAttribute("aria-busy", "true");
   el.loadDemoDataBtn.textContent = "Loading...";
   setStatus("Loading seeded buyer-demo story...");
 
@@ -460,6 +468,7 @@ async function loadDemoData() {
   } finally {
     el.loadDemoDataBtn.replaceChildren(...initialChildren);
     el.loadDemoDataBtn.disabled = false;
+    el.loadDemoDataBtn.removeAttribute("aria-busy");
   }
 }
 
@@ -507,6 +516,7 @@ async function submitDocument(event) {
 
   const initialChildren = Array.from(el.submitBtn.childNodes);
   el.submitBtn.disabled = true;
+  el.submitBtn.setAttribute("aria-busy", "true");
   el.submitBtn.textContent = "Submitting...";
   setStatus("Submitting document...");
 
@@ -552,6 +562,7 @@ async function submitDocument(event) {
   } finally {
     el.submitBtn.replaceChildren(...initialChildren);
     el.submitBtn.disabled = false;
+    el.submitBtn.removeAttribute("aria-busy");
   }
 }
 

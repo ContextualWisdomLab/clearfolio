@@ -32,7 +32,7 @@ class BuyerOpenApiRouteContractTest {
 
         assertEquals("deleteConversionJob", deleteOperation.get("operationId"));
         assertTrue(String.valueOf(deleteOperation.get("description")).contains("job:delete"));
-        assertNotNull(deleteOperation.get("parameters"));
+        assertHasRequiredPathParameter(root, deleteOperation, "jobId");
 
         Map<?, ?> responses = assertInstanceOf(Map.class, deleteOperation.get("responses"));
         assertTrue(responses.containsKey("204"));
@@ -85,6 +85,38 @@ class BuyerOpenApiRouteContractTest {
         Map<?, ?> jsonContent = assertInstanceOf(Map.class, content.get("application/json"));
         Map<?, ?> schema = assertInstanceOf(Map.class, jsonContent.get("schema"));
         assertEquals("#/components/schemas/HealthResponse", schema.get("$ref"));
+    }
+
+    private static void assertHasRequiredPathParameter(
+            Map<?, ?> root,
+            Map<?, ?> operation,
+            String expectedName
+    ) {
+        List<?> parameters = assertInstanceOf(List.class, operation.get("parameters"));
+        assertTrue(
+                parameters.stream()
+                        .map(parameter -> resolveParameter(root, parameter))
+                        .anyMatch(parameter -> expectedName.equals(parameter.get("name"))
+                                && "path".equals(parameter.get("in"))
+                                && Boolean.TRUE.equals(parameter.get("required"))),
+                "missing required path parameter " + expectedName
+        );
+    }
+
+    private static Map<?, ?> resolveParameter(Map<?, ?> root, Object parameterValue) {
+        Map<?, ?> parameter = assertInstanceOf(Map.class, parameterValue);
+        Object reference = parameter.get("$ref");
+        if (reference == null) {
+            return parameter;
+        }
+
+        String prefix = "#/components/parameters/";
+        String referenceText = assertInstanceOf(String.class, reference);
+        assertTrue(referenceText.startsWith(prefix), "unsupported parameter reference " + referenceText);
+
+        Map<?, ?> components = assertInstanceOf(Map.class, root.get("components"));
+        Map<?, ?> componentParameters = assertInstanceOf(Map.class, components.get("parameters"));
+        return assertInstanceOf(Map.class, componentParameters.get(referenceText.substring(prefix.length())));
     }
 
     private static Map<?, ?> loadOpenApi() throws IOException {

@@ -29,11 +29,44 @@ class KpiSnapshotResponseTest {
         assertNull(response.p95TimeToPreviewMs());
     }
 
+    @Test
+    void conversionSuccessRateUsesOnlyTerminalOutcomes() {
+        KpiSnapshotResponse response = KpiSnapshotResponse.from(List.of(
+                job(ConversionJobStatus.SUCCEEDED),
+                job(ConversionJobStatus.SUCCEEDED),
+                job(ConversionJobStatus.FAILED),
+                job(ConversionJobStatus.SUBMITTED),
+                job(ConversionJobStatus.PROCESSING)
+        ));
+
+        assertEquals(5, response.totalJobs());
+        assertEquals(1, response.submittedJobs());
+        assertEquals(1, response.processingJobs());
+        assertEquals(2, response.succeededJobs());
+        assertEquals(1, response.failedJobs());
+        assertEquals(2.0 / 3.0, response.conversionSuccessRate(), 1.0e-12);
+    }
+
+    @Test
+    void conversionSuccessRateIsZeroUntilOneJobReachesATerminalOutcome() {
+        KpiSnapshotResponse response = KpiSnapshotResponse.from(List.of(
+                job(ConversionJobStatus.SUBMITTED),
+                job(ConversionJobStatus.PROCESSING)
+        ));
+
+        assertEquals(0.0, response.conversionSuccessRate());
+    }
+
     private ConversionJob succeededJob(Instant startedAt, Instant completedAt) {
-        ConversionJob job = mock(ConversionJob.class);
-        when(job.getStatus()).thenReturn(ConversionJobStatus.SUCCEEDED);
+        ConversionJob job = job(ConversionJobStatus.SUCCEEDED);
         when(job.getStartedAt()).thenReturn(startedAt);
         when(job.getCompletedAt()).thenReturn(completedAt);
+        return job;
+    }
+
+    private ConversionJob job(ConversionJobStatus status) {
+        ConversionJob job = mock(ConversionJob.class);
+        when(job.getStatus()).thenReturn(status);
         when(job.isDeadLettered()).thenReturn(false);
         return job;
     }

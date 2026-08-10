@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-10 - 관리자 API의 Broken Access Control 및 교차 테넌트 데이터 유출 방지 (Enforce Authentication and Tenant Isolation in Admin API)
+**Vulnerability:** `AdminController`의 엔드포인트들에 인증 및 인가 검증이 누락되어 있었습니다. 공격자가 어떠한 자격 증명이나 적절한 권한 없이도 모든 테넌트의 변환 작업(Conversion Job)을 조회, 삭제, 재시도할 수 있어 Broken Access Control (BAC) 및 교차 테넌트 데이터 유출이 발생할 수 있었습니다.
+**Learning:** 관리자 컨트롤러는 일반 컨트롤러와 동일하게 강력한 인증 및 테넌트 격리 메커니즘을 적용해야 합니다. 경로에 "admin"이 포함되어 있다고 해서 엔드포인트가 본질적으로 보호된다고 가정해서는 안 되며, 보안 필터나 액세스 서비스(예: `TenantAccessService`)와 명시적으로 통합해야 합니다. 또한, 작업 흐름(예: 재시도 시 `operatorId`)에 기록될 때 프라이버시를 보호하기 위해 원본 사용자 ID는 가명화(pseudonymize)되어야 합니다.
+**Prevention:** 관리자 엔드포인트에는 항상 `TenantAccessService`(또는 동등한 컨텍스트 검증기)를 주입하고, 호출자가 명시적인 관리자 권한(예: `JOB_DELETE`)을 가지고 있는지 확인하며, 리소스에 접근하기 전에 소유권(`job.belongsToTenant(...)`)을 확인하여 테넌트 격리를 강제해야 합니다.

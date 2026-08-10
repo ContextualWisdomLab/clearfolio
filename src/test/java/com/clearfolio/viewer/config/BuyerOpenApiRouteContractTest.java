@@ -69,6 +69,24 @@ class BuyerOpenApiRouteContractTest {
         assertEquals("bearer", bearerScheme.get("scheme"));
     }
 
+    @Test
+    void openApiDescribesUnauthenticatedProtectedMainLivenessRoute() throws IOException {
+        Map<?, ?> root = loadOpenApi();
+        Map<?, ?> paths = assertInstanceOf(Map.class, root.get("paths"));
+        Map<?, ?> healthPath = assertInstanceOf(Map.class, paths.get("/healthz"));
+        Map<?, ?> getOperation = assertInstanceOf(Map.class, healthPath.get("get"));
+
+        assertEquals("getHealthz", getOperation.get("operationId"));
+        assertEquals(List.of(), getOperation.get("security"));
+
+        Map<?, ?> responses = assertInstanceOf(Map.class, getOperation.get("responses"));
+        Map<?, ?> okResponse = assertInstanceOf(Map.class, responses.get("200"));
+        Map<?, ?> content = assertInstanceOf(Map.class, okResponse.get("content"));
+        Map<?, ?> jsonContent = assertInstanceOf(Map.class, content.get("application/json"));
+        Map<?, ?> schema = assertInstanceOf(Map.class, jsonContent.get("schema"));
+        assertEquals("#/components/schemas/HealthResponse", schema.get("$ref"));
+    }
+
     private static Map<?, ?> loadOpenApi() throws IOException {
         Object parsed;
         try (Reader reader = Files.newBufferedReader(OPENAPI_PATH)) {

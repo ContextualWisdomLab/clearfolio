@@ -11,9 +11,9 @@ import java.util.Set;
  * format family, and ZIP-family candidates contain self-consistent standard single-disk
  * local-header, central-directory, and end-of-central-directory framing. ZIP entries are
  * limited to the current Stored/Deflate compression qualification boundary, Stored entry
- * sizes must be internally consistent, local and central size metadata must agree when a
- * data descriptor is not in use, advertised compressed bytes cannot extend beyond the
- * local-data area before the central directory, and entry names are rejected when they
+ * sizes must be internally consistent, local and central data-descriptor flags and size
+ * metadata must agree where applicable, advertised compressed bytes cannot extend beyond
+ * the local-data area before the central directory, and entry names are rejected when they
  * are absolute, contain parent traversal, use backslash path separators, or contain NUL
  * bytes. Passing this preflight is <strong>not</strong> complete package, macro,
  * embedded-object, archive-expansion, malware, or fidelity qualification. Those deeper
@@ -66,8 +66,8 @@ final class OfficeSourceContainerPreflight {
      * @throws OfficeConversionException when the format is not a current candidate, the
      *         source does not match that format family's required container signature, a
      *         ZIP-family source has invalid local/central-directory framing, has inconsistent
-     *         Stored entry sizes or duplicated size metadata, advertises compressed bytes
-     *         beyond its local-data region, uses a ZIP compression method outside the current
+     *         Stored entry sizes or duplicated metadata, advertises compressed bytes beyond
+     *         its local-data region, uses a ZIP compression method outside the current
      *         Stored/Deflate qualification boundary, contains an encrypted entry, or has an
      *         unsafe ZIP entry path
      */
@@ -230,8 +230,12 @@ final class OfficeSourceContainerPreflight {
                 || localHeaderMetadataEnd > centralDirectoryOffset) {
             throw invalidLocalHeader();
         }
-        boolean usesDataDescriptor = ((centralFlags | localFlags) & ZIP_DATA_DESCRIPTOR_FLAG) != 0;
-        if (!usesDataDescriptor) {
+        boolean centralUsesDataDescriptor = (centralFlags & ZIP_DATA_DESCRIPTOR_FLAG) != 0;
+        boolean localUsesDataDescriptor = (localFlags & ZIP_DATA_DESCRIPTOR_FLAG) != 0;
+        if (centralUsesDataDescriptor != localUsesDataDescriptor) {
+            throw invalidLocalHeader();
+        }
+        if (!centralUsesDataDescriptor) {
             long localCompressedSize = unsignedInt(sourceBytes, localHeaderOffset + 18);
             long localUncompressedSize = unsignedInt(sourceBytes, localHeaderOffset + 22);
             if (localCompressedSize != centralCompressedSize

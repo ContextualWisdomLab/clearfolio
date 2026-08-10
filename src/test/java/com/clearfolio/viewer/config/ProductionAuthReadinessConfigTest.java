@@ -18,6 +18,15 @@ class ProductionAuthReadinessConfigTest {
     }
 
     @Test
+    void productionReadinessFailsClosedForNullTenantClaimsSecret() {
+        assertThatThrownBy(() -> new ProductionAuthReadinessConfig(
+                        null,
+                        "stable-artifact-token-secret"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("production profile requires clearfolio.tenant-claims.hmac-secret");
+    }
+
+    @Test
     void productionProfileFailsWithShortSignedTenantClaimsSecret() {
         productionRunner()
                 .withPropertyValues(

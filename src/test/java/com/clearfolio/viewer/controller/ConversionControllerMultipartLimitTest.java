@@ -3,31 +3,32 @@ package com.clearfolio.viewer.controller;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+import java.util.HexFormat;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
-import java.nio.charset.StandardCharsets;
-import java.util.HexFormat;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
 
+import com.clearfolio.viewer.artifact.ArtifactLinkService;
+import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
-import com.clearfolio.viewer.artifact.ArtifactLinkService;
-import com.clearfolio.viewer.artifact.InMemoryArtifactStore;
 import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
@@ -46,10 +47,14 @@ import com.clearfolio.viewer.service.PolicyOverrideRequest;
         properties = {
                 "conversion.max-upload-size-bytes=1024",
                 "spring.codec.max-in-memory-size=2048",
-                "conversion.policy-override-secret=test-secret"
+                "conversion.policy-override-secret=0123456789abcdef0123456789abcdef",
+                "conversion.audit-pseudonym-secret=fedcba9876543210fedcba9876543210"
         }
 )
 class ConversionControllerMultipartLimitTest {
+
+    private static final String POLICY_OVERRIDE_KEY =
+            "0123456789abcdef0123456789abcdef";
 
     @SpringBootConfiguration
     @EnableAutoConfiguration
@@ -98,7 +103,7 @@ class ConversionControllerMultipartLimitTest {
                     repository,
                     validationService,
                     conversionWorker,
-                    new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
+                    new InMemoryArtifactStore(),
                     conversionProperties
             );
         }
@@ -157,7 +162,7 @@ class ConversionControllerMultipartLimitTest {
 
     @Test
     void submitAcceptsBlockedExtensionWhenPolicyOverrideHeadersAreValid() {
-        String validSignature = generateSignature("approver-99", "hwp", "test-secret");
+        String validSignature = generateSignature("approver-99", "hwp", POLICY_OVERRIDE_KEY);
         submit("contract.hwp", "hello".getBytes(), "true", validSignature, "approver-99")
                 .expectStatus().isAccepted()
                 .expectBody()

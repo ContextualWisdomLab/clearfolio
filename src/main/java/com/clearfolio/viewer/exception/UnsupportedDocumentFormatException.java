@@ -7,6 +7,7 @@ public class UnsupportedDocumentFormatException extends IllegalArgumentException
 
     private static final long serialVersionUID = 1L;
 
+    /** Blocked extension supplied to the constructor. */
     private final String extension;
 
     /**

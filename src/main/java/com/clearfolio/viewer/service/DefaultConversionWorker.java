@@ -28,9 +28,11 @@ import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
  * Default background worker that executes conversion jobs with retry backoff.
  *
  * <p>PDF uploads are served passthrough: the original bytes seeded into the
- * artifact store at submit time become the artifact unchanged. Non-PDF sources
- * still produce a placeholder preview PDF because real document conversion
- * (docx, hwp, and similar formats) remains future work.
+ * artifact store at submit time become the artifact unchanged. Sources that
+ * require transformation are delegated to the configured
+ * {@link PdfArtifactGenerator}. The production application selects a qualified
+ * converter boundary; when no such adapter is available it fails closed rather
+ * than marking a metadata-only placeholder PDF as successful conversion.
  */
 @Component
 public class DefaultConversionWorker implements ConversionWorker {
@@ -54,6 +56,8 @@ public class DefaultConversionWorker implements ConversionWorker {
      * @param repository conversion job repository
      * @param stateStore conversion job lifecycle state store
      * @param conversionExecutor asynchronous conversion executor
+     * @param artifactStore generated and passthrough PDF artifact store
+     * @param pdfArtifactGenerator qualified transformed-format generator or fail-closed boundary
      * @param conversionProperties conversion configuration values
      */
     @Autowired
@@ -218,11 +222,7 @@ public class DefaultConversionWorker implements ConversionWorker {
     }
 
     private String failureReason(Throwable error) {
-        String message = error.getMessage();
-        if (message == null || message.isBlank()) {
-            return "conversion failed: " + error.getClass().getSimpleName();
-        }
-        return "conversion failed: " + message;
+        return "conversion failed: " + error.getClass().getSimpleName();
     }
 
     private void onFailure(ConversionJob job, String reason) {

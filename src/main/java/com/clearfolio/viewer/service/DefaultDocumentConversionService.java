@@ -102,6 +102,15 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         );
     }
 
+    /**
+     * Creates the conversion service with repository-backed lifecycle transitions
+     * and an isolated in-memory artifact store for legacy or test wiring.
+     *
+     * @param repository conversion job repository and optional lifecycle-state source
+     * @param validationService document validation service
+     * @param conversionWorker asynchronous conversion worker
+     * @param conversionProperties conversion configuration values
+     */
     public DefaultDocumentConversionService(
             ConversionJobRepository repository,
             DocumentValidationService validationService,
@@ -116,6 +125,16 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         );
     }
 
+    /**
+     * Creates the conversion service with repository-backed lifecycle transitions
+     * and the supplied artifact store.
+     *
+     * @param repository conversion job repository and optional lifecycle-state source
+     * @param validationService document validation service
+     * @param conversionWorker asynchronous conversion worker
+     * @param artifactStore artifact store used for PDF passthrough and deletion
+     * @param conversionProperties conversion configuration values
+     */
     public DefaultDocumentConversionService(
             ConversionJobRepository repository,
             DocumentValidationService validationService,
@@ -220,7 +239,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         try {
             artifactStore.deletePdf(jobId);
         } catch (Exception ex) {
-            log.warn("Failed to delete artifact for job {}", jobId, ex);
+            log.warn("Artifact deletion failed failureType={}", ex.getClass().getSimpleName());
         }
         repository.deleteById(jobId);
     }

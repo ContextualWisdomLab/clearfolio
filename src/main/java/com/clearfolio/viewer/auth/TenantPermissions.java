@@ -31,6 +31,11 @@ public final class TenantPermissions {
     public static final String VIEWER_READ = "viewer:read";
 
     /**
+     * Permission required to read generated document artifact bytes.
+     */
+    public static final String ARTIFACT_READ = "artifact:read";
+
+    /**
      * Permission required to create signed artifact links.
      */
     public static final String ARTIFACT_LINK_CREATE = "artifact-link:create";

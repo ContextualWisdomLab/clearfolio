@@ -12,7 +12,9 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +30,8 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.reactive.function.BodyInserters;
 
+import com.clearfolio.viewer.api.ArtifactLinkRequest;
+import com.clearfolio.viewer.api.ArtifactLinkResponse;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
@@ -46,6 +50,7 @@ class ConversionControllerTest {
 
     private DocumentConversionService conversionService;
     private InMemoryArtifactStore artifactStore;
+    private ArtifactLinkService artifactLinkService;
 
     private ConversionController controller;
 
@@ -53,16 +58,58 @@ class ConversionControllerTest {
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
         artifactStore = new InMemoryArtifactStore();
+        artifactLinkService = new ArtifactLinkService(artifactStore, "test-secret");
         controller = new ConversionController(
                 conversionService,
                 new TenantAccessService(),
-                new ArtifactLinkService(artifactStore, "test-secret"),
+                artifactLinkService,
                 artifactStore,
                 DataSize.ofBytes(262_144L)
         );
         webTestClient = WebTestClient.bindToController(
                 controller
-        ).controllerAdvice(new ApiExceptionHandler()).build();
+        ).controllerAdvice(new ApiExceptionHandler())
+                .configureClient()
+                .filter((request, next) -> {
+                    if (!request.url().getPath().endsWith("/download")) {
+                        return next.exchange(request);
+                    }
+                    org.springframework.web.reactive.function.client.ClientRequest.Builder builder =
+                            org.springframework.web.reactive.function.client.ClientRequest.from(request)
+                                    .header(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID)
+                                    .header(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID)
+                                    .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.ARTIFACT_READ);
+                    String[] pathSegments = request.url().getPath().split("/");
+                    if (pathSegments.length >= 2) {
+                        try {
+                            UUID jobId = UUID.fromString(pathSegments[pathSegments.length - 2]);
+                            Optional<ConversionJob> job = conversionService.getJob(jobId);
+                            if (job.isPresent()
+                                    && job.get().getStatus() == ConversionJobStatus.SUCCEEDED
+                                    && artifactStore.getPdf(jobId).isPresent()) {
+                                ArtifactLinkResponse link = artifactLinkService.createLink(
+                                        job.get(),
+                                        directDownloadTenantContext(),
+                                        ArtifactLinkRequest.viewerPreview()
+                                );
+                                String marker = ArtifactLinkService.ARTIFACT_TOKEN_PARAM + "=";
+                                int markerIndex = link.artifactUrl().indexOf(marker);
+                                String token = link.artifactUrl().substring(markerIndex + marker.length());
+                                builder.url(URI.create(
+                                        request.url().toString()
+                                                + "?"
+                                                + ArtifactLinkService.ARTIFACT_TOKEN_PARAM
+                                                + "="
+                                                + token
+                                ));
+                            }
+                        } catch (IllegalArgumentException ignored) {
+                            // Let the controller exercise its own malformed or missing-resource response.
+                        }
+                    }
+                    return next.exchange(builder.build());
+                })
+                .build();
     }
 
     @Test
@@ -793,7 +840,6 @@ class ConversionControllerTest {
         // artifactStore deletion is verified in service tests
     }
 
-
     @Test
     void deleteJobReturnsNotFoundForCrossTenantAccess() {
         UUID jobId = UUID.randomUUID();
@@ -854,6 +900,14 @@ class ConversionControllerTest {
         return request
                 .body(BodyInserters.fromMultipartData(builder.build()))
                 .exchange();
+    }
+
+    private static TenantContext directDownloadTenantContext() {
+        return new TenantContext(
+                TenantContext.DEMO_TENANT_ID,
+                TenantContext.DEMO_SUBJECT_ID,
+                Set.of(TenantPermissions.ARTIFACT_READ)
+        );
     }
 
     private static void addAllPermissions(HttpHeaders headers) {

@@ -55,7 +55,7 @@ function makeElement(tagName = "div") {
   };
 }
 
-(async () => {
+function makeHarness() {
   const elements = new Map();
   const ids = [
     "doc-meta",
@@ -113,7 +113,20 @@ function makeElement(tagName = "div") {
     { filename: viewerPath },
   );
 
+  return { context, elements };
+}
+
+async function flushMicrotasks(turns = 8) {
+  for (let index = 0; index < turns; index += 1) {
+    await Promise.resolve();
+  }
+}
+
+async function activeRenderCancellationIsPropagated() {
+  const { context, elements } = makeHarness();
   let resolveRender;
+  let renderCancelCalls = 0;
+  let documentDestroyCalls = 0;
   const renderPromise = new Promise(resolve => {
     resolveRender = resolve;
   });
@@ -125,11 +138,19 @@ function makeElement(tagName = "div") {
           return { width: 100 * scale, height: 200 * scale };
         },
         render() {
-          return { promise: renderPromise };
+          return {
+            promise: renderPromise,
+            cancel() {
+              renderCancelCalls += 1;
+              resolveRender();
+            },
+          };
         },
       };
     },
-    async destroy() {},
+    async destroy() {
+      documentDestroyCalls += 1;
+    },
   };
   context.__pdfJs = {
     GlobalWorkerOptions: {},
@@ -148,19 +169,94 @@ function makeElement(tagName = "div") {
     controller.signal,
   );
 
-  // Let getDocument/getPage reach the deliberately unresolved render promise.
-  await Promise.resolve();
-  await Promise.resolve();
+  await flushMicrotasks();
   controller.abort();
-  resolveRender();
+  await flushMicrotasks();
+  const cancelCallsObservedOnAbort = renderCancelCalls;
+  if (renderCancelCalls === 0) {
+    resolveRender();
+  }
   await rendering;
 
-  const preview = elements.get("preview");
   assert.equal(
-    preview.children.length,
+    cancelCallsObservedOnAbort,
+    1,
+    "aborting an active PDF render must call RenderTask.cancel() immediately",
+  );
+  assert.equal(documentDestroyCalls, 1, "the loaded PDF document must be destroyed exactly once");
+  assert.equal(
+    elements.get("preview").children.length,
     0,
     "a superseded PDF render must not publish canvas or metadata",
   );
+}
+
+async function loadingCancellationIsPropagated() {
+  const { context, elements } = makeHarness();
+  let resolveLoading;
+  let loadingDestroyCalls = 0;
+  let documentDestroyCalls = 0;
+  const pdfDocument = {
+    numPages: 1,
+    async getPage() {
+      throw new Error("aborted loading must not request a page");
+    },
+    async destroy() {
+      documentDestroyCalls += 1;
+    },
+  };
+  const loadingPromise = new Promise(resolve => {
+    resolveLoading = resolve;
+  });
+  const loadingTask = {
+    promise: loadingPromise,
+    async destroy() {
+      loadingDestroyCalls += 1;
+      resolveLoading(pdfDocument);
+    },
+  };
+  context.__pdfJs = {
+    GlobalWorkerOptions: {},
+    getDocument() {
+      return loadingTask;
+    },
+  };
+  vm.runInContext(
+    "pdfJsModulePromise = Promise.resolve(globalThis.__pdfJs);",
+    context,
+  );
+
+  const controller = new AbortController();
+  const rendering = context.__viewerTest.renderPdfInline(
+    "/artifacts/document.pdf",
+    controller.signal,
+  );
+
+  await flushMicrotasks();
+  controller.abort();
+  await flushMicrotasks();
+  const destroyCallsObservedOnAbort = loadingDestroyCalls;
+  if (loadingDestroyCalls === 0) {
+    resolveLoading(pdfDocument);
+  }
+  await rendering;
+
+  assert.equal(
+    destroyCallsObservedOnAbort,
+    1,
+    "aborting PDF loading must call PDFDocumentLoadingTask.destroy() immediately",
+  );
+  assert.equal(documentDestroyCalls, 1, "a loaded proxy produced during cancellation must be destroyed");
+  assert.equal(
+    elements.get("preview").children.length,
+    0,
+    "an aborted loading task must not publish preview DOM",
+  );
+}
+
+(async () => {
+  await activeRenderCancellationIsPropagated();
+  await loadingCancellationIsPropagated();
 })().catch(error => {
   console.error(error.stack || String(error));
   process.exitCode = 1;
@@ -168,8 +264,8 @@ function makeElement(tagName = "div") {
 """
 
 
-def test_superseded_pdf_render_does_not_publish() -> None:
-    """Abort an in-flight render and require zero stale DOM publication."""
+def test_pdfjs_tasks_receive_abort_cancellation() -> None:
+    """Abort in-flight PDF.js work and require active resource cancellation."""
 
     node = shutil.which("node")
     assert node is not None, "Node.js is required for the viewer runtime regression"

@@ -16,8 +16,9 @@ import org.junit.jupiter.api.Test;
  * the duplicated local/central metadata authorities. These tests do not decompress
  * entry data; they require matching local/central metadata with a safe relative
  * entry name and fail closed when either record advertises ZIP encryption, the
- * duplicated compression-method metadata disagrees, or the agreed compression
- * method falls outside the current Stored/Deflate qualification boundary.</p>
+ * duplicated compression-method metadata disagrees, the agreed compression
+ * method falls outside the current Stored/Deflate qualification boundary, or a
+ * central-directory entry claims compressed bytes outside the local data region.</p>
  */
 class OfficeSourceCentralDirectoryPolicyTest {
 
@@ -94,6 +95,23 @@ class OfficeSourceCentralDirectoryPolicyTest {
 
         assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
         assertEquals("source ZIP compression method is not allowed", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
+    @Test
+    void adapterRejectsCompressedSizeThatExtendsBeyondLocalDataRegion() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        byte[] source = oneEntryZip(1, 1);
+        putUnsignedInt(source, CENTRAL_DIRECTORY_OFFSET + 20, 1L);
+        putUnsignedInt(source, CENTRAL_DIRECTORY_OFFSET + 24, 1L);
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(source))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source ZIP entry data exceeds local data region", failure.getMessage());
         assertEquals(0, providerCalls.get());
     }
 

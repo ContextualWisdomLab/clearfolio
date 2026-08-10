@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.UUID;
@@ -41,7 +42,7 @@ class AdminControllerDeleteTenantBoundaryTest {
                 .exchange()
                 .expectStatus().isUnauthorized();
 
-        verify(conversionService, never()).deleteJob(jobId);
+        verifyNoInteractions(conversionService);
     }
 
     @Test
@@ -54,7 +55,7 @@ class AdminControllerDeleteTenantBoundaryTest {
                 .exchange()
                 .expectStatus().isForbidden();
 
-        verify(conversionService, never()).deleteJob(jobId);
+        verifyNoInteractions(conversionService);
     }
 
     @Test

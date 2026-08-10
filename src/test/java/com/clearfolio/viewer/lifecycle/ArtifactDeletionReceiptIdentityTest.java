@@ -109,5 +109,19 @@ class ArtifactDeletionReceiptIdentityTest {
                         () -> new ArtifactDeletionReceiptIdentity(
                                 REQUEST_ID, "tenant-example", JOB_ID, "0".repeat(63), "audit-v1:abc", REQUESTED_AT))
                         .getMessage());
+        assertEquals(
+                "artifactChecksum must be a lowercase SHA-256 digest",
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> new ArtifactDeletionReceiptIdentity(
+                                REQUEST_ID, "tenant-example", JOB_ID, " " + CHECKSUM, "audit-v1:abc", REQUESTED_AT))
+                        .getMessage());
+        assertEquals(
+                "artifactChecksum must be a lowercase SHA-256 digest",
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> new ArtifactDeletionReceiptIdentity(
+                                REQUEST_ID, "tenant-example", JOB_ID, CHECKSUM + " ", "audit-v1:abc", REQUESTED_AT))
+                        .getMessage());
     }
 }

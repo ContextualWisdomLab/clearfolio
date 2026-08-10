@@ -207,10 +207,10 @@ public class ApiExceptionHandler {
         URI requestUri = exchange.getRequest().getURI();
         String path = requestUri == null ? "" : requestUri.getRawPath();
         LOGGER.error(
-                "Unexpected error on path={} traceId={}",
+                "Unexpected error on path={} traceId={} failureType={}",
                 sanitizeForLog(path),
                 sanitizeForLog(traceId),
-                ex
+                ex.getClass().getSimpleName()
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiErrorResponse(

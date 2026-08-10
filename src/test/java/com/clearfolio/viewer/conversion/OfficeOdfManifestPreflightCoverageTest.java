@@ -33,12 +33,19 @@ class OfficeOdfManifestPreflightCoverageTest {
     @Test
     void malformedZipFramingFailsClosedBeforeXmlParsing() {
         assertInvalid(new byte[] {0x01}, "source ODF manifest is invalid");
+        assertInvalid(new byte[22], "source ODF manifest is invalid");
+
+        byte[] badCommentLength = eocdOnly(1, 0L);
+        putUnsignedShort(badCommentLength, 20, 1);
+        assertInvalid(badCommentLength, "source ODF manifest is invalid");
 
         byte[] hugeCentralOffset = eocdOnly(1, 0x8000_0000L);
         assertInvalid(hugeCentralOffset, "source ODF manifest is invalid");
 
         byte[] missingCentralHeader = eocdOnly(1, 0L);
         assertInvalid(missingCentralHeader, "source ODF manifest is invalid");
+
+        assertInvalid(centralHeaderTooNearEnd(), "source ODF manifest is invalid");
     }
 
     @Test
@@ -57,6 +64,16 @@ class OfficeOdfManifestPreflightCoverageTest {
         byte[] outOfBoundsLocalOffset = base.clone();
         putUnsignedInt(outOfBoundsLocalOffset, central + 42, base.length);
         assertInvalid(outOfBoundsLocalOffset, "source ODF manifest is invalid");
+
+        byte[] localMetadataPastSource = base.clone();
+        int local = findSignature(localMetadataPastSource, 0x04034b50L);
+        putUnsignedShort(localMetadataPastSource, local + 28, 0xffff);
+        assertInvalid(localMetadataPastSource, "source ODF manifest is invalid");
+
+        byte[] sameLengthManifestNameMismatch = base.clone();
+        int nameOffset = central + 46;
+        sameLengthManifestNameMismatch[nameOffset + MANIFEST_NAME.length() - 1] = (byte) 'L';
+        assertInvalid(sameLengthManifestNameMismatch, "source ODF manifest is invalid");
     }
 
     @Test
@@ -102,18 +119,47 @@ class OfficeOdfManifestPreflightCoverageTest {
         int compressedSize = (int) unsignedInt(corrupt, central + 20);
         Arrays.fill(corrupt, dataOffset, dataOffset + compressedSize, (byte) 0x7f);
         assertInvalid(corrupt, "source ODF manifest is invalid");
+
+        byte[] truncated = valid.clone();
+        long validCompressedSize = unsignedInt(truncated, central + 20);
+        putUnsignedInt(truncated, central + 20, validCompressedSize - 1L);
+        assertInvalid(truncated, "source ODF manifest is invalid");
+
+        byte[] oversizedExpandedDeclaration = valid.clone();
+        long validUncompressedSize = unsignedInt(oversizedExpandedDeclaration, central + 24);
+        putUnsignedInt(oversizedExpandedDeclaration, central + 24, validUncompressedSize + 1L);
+        assertInvalid(oversizedExpandedDeclaration, "source ODF manifest is invalid");
+
+        byte[] trailingCompressedByte = valid.clone();
+        putUnsignedInt(trailingCompressedByte, central + 20, validCompressedSize + 1L);
+        assertInvalid(trailingCompressedByte, "source ODF manifest is invalid");
+
+        assertInvalid(deflatedManifestPackage(new byte[0]), "source ODF manifest is invalid");
     }
 
     @Test
     void manifestXmlRequiresQualifiedRootAndFilePath() throws IOException {
         assertInvalid(storedManifestPackage(("<manifest xmlns=\"urn:wrong\"/>")
                 .getBytes(StandardCharsets.UTF_8)), "source ODF manifest is invalid");
+        assertInvalid(storedManifestPackage(("<manifest:not-manifest xmlns:manifest=\"" + NS
+                + "\" manifest:version=\"1.4\"/>").getBytes(StandardCharsets.UTF_8)),
+                "source ODF manifest is invalid");
         assertInvalid(storedManifestPackage(validManifest(
                 "<manifest:file-entry manifest:media-type=\"text/xml\"/>")),
                 "source ODF manifest is invalid");
         assertInvalid(storedManifestPackage(validManifest(
                 "<manifest:file-entry manifest:full-path=\"\"/>")),
                 "source ODF manifest is invalid");
+    }
+
+    @Test
+    void nonManifestNamespaceAndMetadataEntriesDoNotBecomeOrdinaryInventory() throws IOException {
+        String body = "<other:file-entry xmlns:other=\"urn:wrong\" other:full-path=\"ignored.xml\"/>"
+                + "<manifest:file-entry manifest:full-path=\"META-INF/documentsignatures.xml\"/>"
+                + "<manifest:file-entry manifest:full-path=\"Pictures/\"/>";
+        byte[] source = packageWithMetadataAndDirectory(validManifest(body));
+
+        assertDoesNotThrow(() -> OfficeOdfManifestPreflight.requireQualifiedManifest(request("odt", source)));
     }
 
     @Test
@@ -248,6 +294,16 @@ class OfficeOdfManifestPreflightCoverageTest {
         return output.toByteArray();
     }
 
+    private static byte[] packageWithMetadataAndDirectory(byte[] manifest) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(output)) {
+            writeStored(zip, MANIFEST_NAME, manifest);
+            writeStored(zip, "META-INF/documentsignatures.xml", "signature".getBytes(StandardCharsets.UTF_8));
+            writeStored(zip, "Pictures/", new byte[0]);
+        }
+        return output.toByteArray();
+    }
+
     private static void writeStored(ZipOutputStream zip, String name, byte[] payload) throws IOException {
         CRC32 crc32 = new CRC32();
         crc32.update(payload);
@@ -267,6 +323,18 @@ class OfficeOdfManifestPreflightCoverageTest {
         putUnsignedShort(bytes, 8, entryCount);
         putUnsignedShort(bytes, 10, entryCount);
         putUnsignedInt(bytes, 16, centralOffset);
+        return bytes;
+    }
+
+    private static byte[] centralHeaderTooNearEnd() {
+        byte[] bytes = new byte[80];
+        int centralOffset = 50;
+        int eocdOffset = bytes.length - 22;
+        putUnsignedInt(bytes, centralOffset, 0x02014b50L);
+        putUnsignedInt(bytes, eocdOffset, 0x06054b50L);
+        putUnsignedShort(bytes, eocdOffset + 8, 1);
+        putUnsignedShort(bytes, eocdOffset + 10, 1);
+        putUnsignedInt(bytes, eocdOffset + 16, centralOffset);
         return bytes;
     }
 

@@ -19,7 +19,7 @@ security:
   - clearfolioTenantHeaders: []
 tags:
   - name: Conversion
-    description: Document intake, status polling, and retry operations.
+    description: Document intake, status polling, deletion, and retry operations.
   - name: Viewer
     description: Viewer bootstrap operations that return signed artifact URLs.
   - name: ArtifactLinks
@@ -92,6 +92,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConversionJobStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Conversion
+      operationId: deleteConversionJob
+      summary: Delete a conversion job and generated artifacts.
+      description: Requires `job:delete`; missing and cross-tenant jobs are hidden.
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/SubjectId"
+        - $ref: "#/components/parameters/Permissions"
+        - $ref: "#/components/parameters/ClaimsIssuedAt"
+        - $ref: "#/components/parameters/ClaimsSignature"
+      responses:
+        "204":
+          description: Conversion job and generated artifacts deleted.
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -340,7 +362,7 @@ components:
         The gateway must sign this canonical form, not the raw string.
       schema:
         type: string
-      example: job:create,job:read,viewer:read,artifact-link:create,analytics:read
+      example: job:create,job:read,job:delete,viewer:read,artifact-link:create,analytics:read
     ClaimsIssuedAt:
       name: X-Clearfolio-Claims-Issued-At
       in: header

@@ -159,7 +159,9 @@ class OfficeOdfManifestPreflightCoverageTest {
         assertInvalid(storedManifestPackage("<manifest:manifest".getBytes(StandardCharsets.UTF_8)),
                 "source ODF manifest is invalid");
         String dtd = "<!DOCTYPE manifest:manifest [<!ENTITY x SYSTEM \"file:///etc/passwd\">]>"
-                + validManifest("<manifest:file-entry manifest:full-path=\"Pictures/\"/>");
+                + new String(validManifest(
+                        "<manifest:file-entry manifest:full-path=\"Pictures/\"/>"),
+                        StandardCharsets.UTF_8);
         assertInvalid(storedManifestPackage(dtd.getBytes(StandardCharsets.UTF_8)),
                 "source ODF manifest is invalid");
     }

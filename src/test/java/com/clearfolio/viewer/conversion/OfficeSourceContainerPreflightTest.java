@@ -28,8 +28,10 @@ class OfficeSourceContainerPreflightTest {
             (byte) 0xd0, (byte) 0xcf, 0x11, (byte) 0xe0,
             (byte) 0xa1, (byte) 0xb1, 0x1a, (byte) 0xe1
     };
+    private static final byte[] SAFE_ENTRY_NAME = "content.xml".getBytes(StandardCharsets.UTF_8);
     private static final int CENTRAL_OFFSET = 8;
-    private static final int CENTRAL_RECORD_LENGTH = 46;
+    private static final int CENTRAL_FIXED_LENGTH = 46;
+    private static final int CENTRAL_RECORD_LENGTH = CENTRAL_FIXED_LENGTH + SAFE_ENTRY_NAME.length;
     private static final int EOCD_OFFSET = CENTRAL_OFFSET + CENTRAL_RECORD_LENGTH;
     private static final int EOCD_LENGTH = 22;
 
@@ -258,7 +260,9 @@ class OfficeSourceContainerPreflightTest {
         bytes[CENTRAL_OFFSET + 1] = 0x4b;
         bytes[CENTRAL_OFFSET + 2] = 0x01;
         bytes[CENTRAL_OFFSET + 3] = 0x02;
+        putUnsignedShort(bytes, CENTRAL_OFFSET + 28, SAFE_ENTRY_NAME.length);
         putUnsignedInt(bytes, CENTRAL_OFFSET + 42, 0L);
+        System.arraycopy(SAFE_ENTRY_NAME, 0, bytes, CENTRAL_OFFSET + CENTRAL_FIXED_LENGTH, SAFE_ENTRY_NAME.length);
         bytes[EOCD_OFFSET] = 0x50;
         bytes[EOCD_OFFSET + 1] = 0x4b;
         bytes[EOCD_OFFSET + 2] = 0x05;

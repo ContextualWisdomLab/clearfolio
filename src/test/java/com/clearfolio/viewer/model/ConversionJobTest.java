@@ -55,6 +55,8 @@ class ConversionJobTest {
         assertEquals(TenantContext.DEMO_TENANT_ID, job.getTenantId());
         assertEquals(TenantContext.DEMO_SUBJECT_ID, job.getSubjectId());
         assertTrue(job.belongsToTenant(TenantContext.DEMO_TENANT_ID));
+        assertFalse(job.belongsToTenant(null));
+        assertFalse(job.belongsToTenant(" \u0000 "));
     }
 
     @Test

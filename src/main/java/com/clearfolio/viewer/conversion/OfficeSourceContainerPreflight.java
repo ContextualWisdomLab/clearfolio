@@ -9,8 +9,9 @@ import java.util.Set;
  * bytes reach a sidecar or remote converter: the declared source format belongs to the
  * current Office conversion candidate set, the leading container signature matches that
  * format family, and ZIP-family candidates contain self-consistent standard single-disk
- * local-header, central-directory, and end-of-central-directory framing. ZIP entry names
- * are also rejected when they are absolute, contain parent traversal, use backslash path
+ * local-header, central-directory, and end-of-central-directory framing. ZIP entries are
+ * limited to the current Stored/Deflate compression qualification boundary, and entry
+ * names are rejected when they are absolute, contain parent traversal, use backslash path
  * separators, or contain NUL bytes. Passing this preflight is <strong>not</strong>
  * complete package, macro, embedded-object, archive-expansion, malware, or fidelity
  * qualification. Those deeper controls remain separate sandbox/content-policy acceptance
@@ -44,6 +45,8 @@ final class OfficeSourceContainerPreflight {
     private static final int ZIP16_SENTINEL = 0xffff;
     private static final long ZIP32_SENTINEL = 0xffff_ffffL;
     private static final int ZIP_ENCRYPTED_FLAG = 0x0001;
+    private static final int ZIP_STORED_METHOD = 0;
+    private static final int ZIP_DEFLATED_METHOD = 8;
     private static final byte ZIP_PATH_SEPARATOR = (byte) '/';
     private static final byte ZIP_WINDOWS_PATH_SEPARATOR = (byte) '\\';
     private static final byte ZIP_NUL = 0;
@@ -59,8 +62,9 @@ final class OfficeSourceContainerPreflight {
      * @param request immutable conversion request containing declared format and source bytes
      * @throws OfficeConversionException when the format is not a current candidate, the
      *         source does not match that format family's required container signature, a
-     *         ZIP-family source has invalid local/central-directory framing, a ZIP entry is
-     *         encrypted, or a ZIP entry path is unsafe
+     *         ZIP-family source has invalid local/central-directory framing, uses a ZIP
+     *         compression method outside the current Stored/Deflate qualification boundary,
+     *         contains an encrypted entry, or has an unsafe ZIP entry path
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
         String sourceFormat = request.sourceFormat();
@@ -138,6 +142,9 @@ final class OfficeSourceContainerPreflight {
                 throw encryptedZipEntry();
             }
             int compressionMethod = unsignedShort(sourceBytes, cursor + 10);
+            if (!isAllowedCompressionMethod(compressionMethod)) {
+                throw unsupportedCompressionMethod();
+            }
 
             long compressedSize = unsignedInt(sourceBytes, cursor + 20);
             long uncompressedSize = unsignedInt(sourceBytes, cursor + 24);
@@ -211,6 +218,10 @@ final class OfficeSourceContainerPreflight {
                 throw invalidLocalHeader();
             }
         }
+    }
+
+    private static boolean isAllowedCompressionMethod(int compressionMethod) {
+        return compressionMethod == ZIP_STORED_METHOD || compressionMethod == ZIP_DEFLATED_METHOD;
     }
 
     private static void requireSafeEntryPath(byte[] sourceBytes, int nameOffset, int nameLength) {
@@ -334,6 +345,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ZIP local header does not match central directory"
+        );
+    }
+
+    private static OfficeConversionException unsupportedCompressionMethod() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.POLICY_DENIED,
+                "source ZIP compression method is not allowed"
         );
     }
 

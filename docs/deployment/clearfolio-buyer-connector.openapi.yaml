@@ -5,7 +5,7 @@ info:
   description: >
     Import seed for a buyer-owned gateway or Power Platform custom connector.
     This spec reflects the current Clearfolio Viewer JSON API contract and the
-    buyer-demo signed-header scaffold. It is not a production OIDC/JWT profile.
+    signed tenant-header scaffold. It is not a production OIDC/JWT profile.
   license:
     name: Apache-2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
@@ -321,14 +321,14 @@ components:
       required: true
       schema:
         type: string
-      example: buyer-demo
+      example: tenant-example
     SubjectId:
       name: X-Clearfolio-Subject-Id
       in: header
       required: true
       schema:
         type: string
-      example: buyer-demo-operator
+      example: operator-example
     Permissions:
       name: X-Clearfolio-Permissions
       in: header

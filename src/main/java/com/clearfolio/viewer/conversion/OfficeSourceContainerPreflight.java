@@ -1,6 +1,7 @@
 package com.clearfolio.viewer.conversion;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -18,10 +19,11 @@ import java.util.Set;
  * when they are absolute, contain parent traversal, use backslash path separators, or
  * contain NUL bytes. OpenDocument candidates additionally require the package manifest
  * entry mandated by the ODF package specification and, when a mimetype entry is present,
- * require it to be the first local ZIP entry, stored without compression, and free of a
- * local-header extra field. Passing this preflight is <strong>not</strong> complete package,
- * macro, embedded-object, archive-expansion, malware, or fidelity qualification. Those
- * deeper controls remain separate sandbox/content-policy acceptance gates.</p>
+ * require it to be the first local ZIP entry, stored without compression, free of a
+ * local-header extra field, and equal to the media type implied by the declared ODF format.
+ * Passing this preflight is <strong>not</strong> complete package, macro, embedded-object,
+ * archive-expansion, malware, or fidelity qualification. Those deeper controls remain
+ * separate sandbox/content-policy acceptance gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -33,6 +35,11 @@ final class OfficeSourceContainerPreflight {
     );
     private static final Set<String> COMPOUND_FILE_FORMATS = Set.of(
             "doc", "xls", "ppt"
+    );
+    private static final Map<String, byte[]> ODF_MIMETYPE_BY_FORMAT = Map.of(
+            "odt", "application/vnd.oasis.opendocument.text".getBytes(StandardCharsets.US_ASCII),
+            "ods", "application/vnd.oasis.opendocument.spreadsheet".getBytes(StandardCharsets.US_ASCII),
+            "odp", "application/vnd.oasis.opendocument.presentation".getBytes(StandardCharsets.US_ASCII)
     );
     private static final byte[] ODF_MANIFEST_ENTRY_NAME =
             "META-INF/manifest.xml".getBytes(StandardCharsets.UTF_8);
@@ -88,7 +95,7 @@ final class OfficeSourceContainerPreflight {
 
         if (ZIP_PACKAGE_FORMATS.contains(sourceFormat)) {
             requireSignature(sourceBytes, ZIP_LOCAL_FILE_HEADER);
-            requireStandardZipFraming(sourceBytes, ODF_PACKAGE_FORMATS.contains(sourceFormat));
+            requireStandardZipFraming(sourceBytes, sourceFormat);
             return;
         }
         if (COMPOUND_FILE_FORMATS.contains(sourceFormat)) {
@@ -110,7 +117,7 @@ final class OfficeSourceContainerPreflight {
         }
     }
 
-    private static void requireStandardZipFraming(byte[] sourceBytes, boolean requireOdfManifest) {
+    private static void requireStandardZipFraming(byte[] sourceBytes, String sourceFormat) {
         int eocdOffset = findEocdOffset(sourceBytes);
         if (eocdOffset < 0 || !isStandardSingleDiskEocd(sourceBytes, eocdOffset)) {
             throw invalidZipFraming();
@@ -132,12 +139,14 @@ final class OfficeSourceContainerPreflight {
                 || !matchesAt(sourceBytes, (int) centralDirectoryOffset, ZIP_CENTRAL_DIRECTORY_HEADER)) {
             throw invalidZipFraming();
         }
+        boolean requireOdfManifest = ODF_PACKAGE_FORMATS.contains(sourceFormat);
         requireCentralDirectoryRecords(
                 sourceBytes,
                 (int) centralDirectoryOffset,
                 (int) centralDirectoryEnd,
                 entryCount,
-                requireOdfManifest
+                requireOdfManifest,
+                ODF_MIMETYPE_BY_FORMAT.get(sourceFormat)
         );
     }
 
@@ -146,7 +155,8 @@ final class OfficeSourceContainerPreflight {
             int centralDirectoryOffset,
             int centralDirectoryEnd,
             int entryCount,
-            boolean requireOdfManifest
+            boolean requireOdfManifest,
+            byte[] expectedOdfMimetype
     ) {
         int cursor = centralDirectoryOffset;
         boolean odfManifestFound = false;
@@ -227,6 +237,11 @@ final class OfficeSourceContainerPreflight {
             if (odfMimetypeEntry
                     && unsignedShort(sourceBytes, (int) localHeaderOffset + 28) != 0) {
                 throw invalidOdfMimetypeExtraField();
+            }
+            if (odfMimetypeEntry
+                    && (compressedSize != expectedOdfMimetype.length
+                    || !matchesAt(sourceBytes, (int) localDataOffset, expectedOdfMimetype))) {
+                throw invalidOdfMimetypePayload();
             }
             if (entryNameMatches(
                     sourceBytes,
@@ -482,6 +497,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ODF mimetype entry must not use a local extra field"
+        );
+    }
+
+    private static OfficeConversionException invalidOdfMimetypePayload() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ODF mimetype does not match declared format"
         );
     }
 

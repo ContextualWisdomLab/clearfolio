@@ -211,7 +211,11 @@ public class KpiSnapshotLedger {
 
     private static double rate(String field) {
         try {
-            return Double.parseDouble(field);
+            double value = Double.parseDouble(field);
+            if (!Double.isFinite(value) || value < 0.0 || value > 1.0) {
+                throw invalidLine();
+            }
+            return value;
         } catch (NumberFormatException ex) {
             throw invalidLine(ex);
         }
@@ -222,7 +226,11 @@ public class KpiSnapshotLedger {
             return null;
         }
         try {
-            return Long.parseLong(field);
+            long value = Long.parseLong(field);
+            if (value < 0L) {
+                throw invalidLine();
+            }
+            return value;
         } catch (NumberFormatException ex) {
             throw invalidLine(ex);
         }

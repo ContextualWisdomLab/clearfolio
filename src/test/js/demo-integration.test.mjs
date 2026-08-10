@@ -1,71 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-class MockTextNode {
-  constructor(text) {
-    this.type = "text";
-    this.textContent = String(text);
-  }
-}
-
-class MockElement {
-  constructor(tagName = "div") {
-    this.tagName = tagName.toUpperCase();
-    this.attributes = new Map();
-    this.childNodes = [];
-    this.listeners = new Map();
-    this.disabled = false;
-    this.hidden = false;
-    this.className = "";
-    this.type = "";
-    this.href = "";
-    this.target = "";
-    this.rel = "";
-    this.files = [];
-  }
-
-  get textContent() {
-    return this.childNodes.map(node => node.textContent).join("");
-  }
-
-  set textContent(value) {
-    const text = String(value);
-    this.childNodes = text === "" ? [] : [new MockTextNode(text)];
-  }
-
-  appendChild(node) {
-    this.childNodes.push(node);
-    return node;
-  }
-
-  append(...nodes) {
-    this.childNodes.push(...nodes);
-  }
-
-  replaceChildren(...nodes) {
-    this.childNodes = nodes;
-  }
-
-  addEventListener(type, listener) {
-    this.listeners.set(type, listener);
-  }
-
-  setAttribute(name, value) {
-    this.attributes.set(name, String(value));
-  }
-
-  getAttribute(name) {
-    return this.attributes.has(name) ? this.attributes.get(name) : null;
-  }
-
-  removeAttribute(name) {
-    this.attributes.delete(name);
-  }
-
-  focus() {}
-
-  reset() {}
-}
+import { MockElement } from "./mock-dom.mjs";
 
 const elementIds = [
   "upload-form",
@@ -194,12 +130,16 @@ test("the executable demo renders inert actions and blocks repeated status activ
   globalThis.window.open = () => popup;
 
   let resolveStatusFetch;
+  let statusFetchCount = 0;
   globalThis.fetch = () => new Promise(resolve => {
+    statusFetchCount += 1;
     resolveStatusFetch = resolve;
   });
 
-  statusButton.listeners.get("click")({ currentTarget: statusButton });
+  statusButton.dispatchEvent({ type: "click" });
+  statusButton.dispatchEvent({ type: "click" });
 
+  assert.equal(statusFetchCount, 1);
   assert.equal(statusButton.disabled, true);
   assert.equal(statusButton.textContent, "Loading status JSON...");
   assert.equal(statusButton.getAttribute("aria-busy"), "true");

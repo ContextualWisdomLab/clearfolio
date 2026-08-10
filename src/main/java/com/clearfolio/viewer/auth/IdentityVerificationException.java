@@ -30,6 +30,9 @@ public final class IdentityVerificationException extends RuntimeException {
         UNAVAILABLE
     }
 
+    /**
+     * Low-cardinality verifier failure retained for caller routing.
+     */
     private final FailureKind failureKind;
 
     /**

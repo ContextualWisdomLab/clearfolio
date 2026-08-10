@@ -10,13 +10,13 @@ import java.util.Set;
  * current Office conversion candidate set, the leading container signature matches that
  * format family, and ZIP-family candidates contain self-consistent standard single-disk
  * local-header, central-directory, and end-of-central-directory framing. ZIP entries are
- * limited to the current Stored/Deflate compression qualification boundary, advertised
- * compressed bytes cannot extend beyond the local-data area before the central directory,
- * and entry names are rejected when they are absolute, contain parent traversal, use
- * backslash path separators, or contain NUL bytes. Passing this preflight is
- * <strong>not</strong> complete package, macro, embedded-object, archive-expansion,
- * malware, or fidelity qualification. Those deeper controls remain separate
- * sandbox/content-policy acceptance gates.</p>
+ * limited to the current Stored/Deflate compression qualification boundary, Stored entry
+ * sizes must be internally consistent, advertised compressed bytes cannot extend beyond
+ * the local-data area before the central directory, and entry names are rejected when
+ * they are absolute, contain parent traversal, use backslash path separators, or contain
+ * NUL bytes. Passing this preflight is <strong>not</strong> complete package, macro,
+ * embedded-object, archive-expansion, malware, or fidelity qualification. Those deeper
+ * controls remain separate sandbox/content-policy acceptance gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -63,10 +63,10 @@ final class OfficeSourceContainerPreflight {
      * @param request immutable conversion request containing declared format and source bytes
      * @throws OfficeConversionException when the format is not a current candidate, the
      *         source does not match that format family's required container signature, a
-     *         ZIP-family source has invalid local/central-directory framing, advertises
-     *         compressed bytes beyond its local-data region, uses a ZIP compression method
-     *         outside the current Stored/Deflate qualification boundary, contains an
-     *         encrypted entry, or has an unsafe ZIP entry path
+     *         ZIP-family source has invalid local/central-directory framing, has inconsistent
+     *         Stored entry sizes, advertises compressed bytes beyond its local-data region,
+     *         uses a ZIP compression method outside the current Stored/Deflate qualification
+     *         boundary, contains an encrypted entry, or has an unsafe ZIP entry path
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
         String sourceFormat = request.sourceFormat();
@@ -163,6 +163,9 @@ final class OfficeSourceContainerPreflight {
                     || localHeaderOffset >= centralDirectoryOffset
                     || !matchesAt(sourceBytes, (int) localHeaderOffset, ZIP_LOCAL_FILE_HEADER)) {
                 throw invalidCentralDirectory();
+            }
+            if (compressionMethod == ZIP_STORED_METHOD && compressedSize != uncompressedSize) {
+                throw inconsistentStoredEntrySizes();
             }
 
             long recordLength = (long) ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH
@@ -351,6 +354,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ZIP local header does not match central directory"
+        );
+    }
+
+    private static OfficeConversionException inconsistentStoredEntrySizes() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ZIP stored entry sizes are inconsistent"
         );
     }
 

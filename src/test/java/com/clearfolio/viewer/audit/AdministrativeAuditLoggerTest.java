@@ -173,7 +173,7 @@ class AdministrativeAuditLoggerTest {
     }
 
     private static CapturingAppender attachAppender() {
-        Logger logger = (Logger) LogManager.getLogger(AdministrativeAuditLogger.class);
+        Logger logger = LogManager.getLogger(AdministrativeAuditLogger.class);
         CapturingAppender appender = new CapturingAppender(logger);
         appender.start();
         logger.addAppender(appender);

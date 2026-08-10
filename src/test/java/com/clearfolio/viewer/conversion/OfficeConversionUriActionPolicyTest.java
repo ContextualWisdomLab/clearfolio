@@ -66,6 +66,16 @@ class OfficeConversionUriActionPolicyTest {
     }
 
     @Test
+    void adapterRejectsOpaqueHttpsUriAction() throws IOException {
+        assertPolicyDenied(pdfWithUri("https:example.invalid/report"));
+    }
+
+    @Test
+    void adapterRejectsHttpUriWithoutAuthority() throws IOException {
+        assertPolicyDenied(pdfWithUri("http:/report"));
+    }
+
+    @Test
     void adapterRejectsMalformedUriAction() throws IOException {
         assertPolicyDenied(pdfWithUri("https://example.invalid/has space"));
     }

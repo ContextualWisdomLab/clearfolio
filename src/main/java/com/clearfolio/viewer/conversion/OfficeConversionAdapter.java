@@ -34,14 +34,15 @@ public interface OfficeConversionAdapter {
      *
      * <p>Before provider invocation, Clearfolio requires the declared source
      * format to be a current Office conversion candidate and requires its leading
-     * container signature to match the declared format family. This common
-     * preflight is intentionally narrower than complete archive, macro, OLE,
-     * malware, or fidelity qualification, which remain sandbox/content-policy
-     * responsibilities. After provider execution, the result must be present,
-     * source-bound, tied to the exact qualified adapter/runtime, request
-     * generation and policy, within request-bound byte/page publication ceilings,
-     * and parseable as a non-empty, unencrypted PDF without prohibited active
-     * content.</p>
+     * container signature to match the declared format family. ODF candidates
+     * additionally pass bounded, non-networked manifest parsing and root media-type
+     * validation. This common preflight is intentionally narrower than complete
+     * archive, macro, OLE, malware, or fidelity qualification, which remain
+     * sandbox/content-policy responsibilities. After provider execution, the
+     * result must be present, source-bound, tied to the exact qualified
+     * adapter/runtime, request generation and policy, within request-bound
+     * byte/page publication ceilings, and parseable as a non-empty, unencrypted
+     * PDF without prohibited active content.</p>
      *
      * @param request immutable tenant-, generation-, and adapter-bound conversion request
      * @return verified PDF result with source, request, and adapter provenance
@@ -52,6 +53,7 @@ public interface OfficeConversionAdapter {
      */
     default OfficeConversionResult convert(OfficeConversionRequest request) {
         OfficeSourceContainerPreflight.requireQualifiedContainer(request);
+        OfficeOdfManifestPreflight.requireQualifiedManifest(request);
         OfficeConversionResult result = performConversion(request);
         if (result == null) {
             throw new OfficeConversionException(

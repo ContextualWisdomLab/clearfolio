@@ -23,7 +23,7 @@ tags:
   - name: Viewer
     description: Viewer bootstrap operations that return signed artifact URLs.
   - name: ArtifactLinks
-    description: Signed artifact-link creation, revocation, and read evidence.
+    description: Signed artifact-link creation, revocation, byte delivery, and read evidence.
   - name: Analytics
     description: Tenant-scoped KPI snapshot and export evidence operations.
 paths:
@@ -221,7 +221,7 @@ paths:
       tags:
         - ArtifactLinks
       operationId: revokeArtifactLink
-      summary: Revoke a previously issued artifact link.
+      summary: Revoke a previously issued signed artifact link.
       description: Requires `artifact-link:revoke`; intended for operators.
       parameters:
         - $ref: "#/components/parameters/TokenId"
@@ -276,6 +276,47 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /artifacts/{docId}.pdf:
+    get:
+      tags:
+        - ArtifactLinks
+      operationId: getPdfArtifact
+      summary: Read a converted PDF through a signed artifact token.
+      description: >
+        Serves bytes only for a succeeded conversion with an issued, unexpired,
+        unrevoked, document/tenant/checksum-bound artifact token. The token may
+        be supplied either as the `artifactToken` query parameter or as a Bearer
+        credential. At most one `bytes` range is accepted and verified reads are
+        recorded by the server.
+      security:
+        - artifactTokenQuery: []
+        - artifactTokenBearer: []
+      parameters:
+        - $ref: "#/components/parameters/DocId"
+        - $ref: "#/components/parameters/Range"
+      responses:
+        "200":
+          description: Full PDF artifact.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: Requested single byte range of the PDF artifact.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: Signed artifact token is missing, malformed, expired, or otherwise unauthorized.
+        "403":
+          description: Signed artifact token is revoked or otherwise forbidden.
+        "404":
+          description: Conversion job or PDF artifact is absent or unavailable.
+        "416":
+          description: Range is malformed or unsatisfiable for the current PDF bytes.
   /api/v1/analytics/kpi-snapshot:
     get:
       tags:
@@ -336,6 +377,16 @@ components:
         Buyer gateway supplies the full signed Clearfolio tenant header set.
         The signature alone is not enough without tenant, subject, permissions,
         and issued-at headers.
+    artifactTokenQuery:
+      type: apiKey
+      in: query
+      name: artifactToken
+      description: Short-lived Clearfolio artifact token issued for this document.
+    artifactTokenBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: ClearfolioArtifactToken
+      description: Short-lived Clearfolio artifact token supplied as an Authorization bearer credential.
   parameters:
     TenantId:
       name: X-Clearfolio-Tenant-Id
@@ -422,6 +473,13 @@ components:
       name: tokenId
       in: path
       required: true
+      schema:
+        type: string
+    Range:
+      name: Range
+      in: header
+      required: false
+      description: Optional single HTTP byte range, for example `bytes=0-1023`.
       schema:
         type: string
   responses:

@@ -8,14 +8,13 @@ import java.util.Set;
  * Creates deterministic test-only Office source bytes for conversion-boundary tests.
  *
  * <p>ZIP-family fixtures contain only enough framing to satisfy the common source
- * preflight: a local-file signature, deterministic marker bytes, one fixed-length
- * central-directory record, and a self-consistent standard single-disk
- * end-of-central-directory record. Legacy fixtures contain only the compound-file
- * family signature plus marker bytes. These are <strong>not</strong> valid complete
- * OOXML, ODF, or compound-file documents and must never be used as fidelity,
- * archive-structure, macro, malware, or production converter fixtures. Real
- * document-fidelity qualification uses separate authorized or redistributable Office
- * fixtures.</p>
+ * preflight: a local-file signature, deterministic marker bytes, one central-directory
+ * record with a safe relative entry name, and a self-consistent standard single-disk
+ * end-of-central-directory record. Legacy fixtures contain only the compound-file family
+ * signature plus marker bytes. These are <strong>not</strong> valid complete OOXML, ODF,
+ * or compound-file documents and must never be used as fidelity, archive-structure,
+ * macro, malware, or production converter fixtures. Real document-fidelity qualification
+ * uses separate authorized or redistributable Office fixtures.</p>
  */
 final class OfficeConversionTestSource {
 
@@ -38,7 +37,8 @@ final class OfficeConversionTestSource {
             (byte) 0xd0, (byte) 0xcf, 0x11, (byte) 0xe0,
             (byte) 0xa1, (byte) 0xb1, 0x1a, (byte) 0xe1
     };
-    private static final int ZIP_CENTRAL_DIRECTORY_RECORD_LENGTH = 46;
+    private static final byte[] ZIP_SAFE_ENTRY_NAME = "content.xml".getBytes(StandardCharsets.UTF_8);
+    private static final int ZIP_CENTRAL_DIRECTORY_FIXED_LENGTH = 46;
     private static final int ZIP_EOCD_LENGTH = 22;
 
     private OfficeConversionTestSource() {
@@ -71,7 +71,8 @@ final class OfficeConversionTestSource {
     static byte[] zipPackage(String marker) {
         byte[] markerBytes = marker.getBytes(StandardCharsets.UTF_8);
         int centralDirectoryOffset = ZIP_LOCAL_FILE_HEADER.length + markerBytes.length;
-        int eocdOffset = centralDirectoryOffset + ZIP_CENTRAL_DIRECTORY_RECORD_LENGTH;
+        int centralDirectoryLength = ZIP_CENTRAL_DIRECTORY_FIXED_LENGTH + ZIP_SAFE_ENTRY_NAME.length;
+        int eocdOffset = centralDirectoryOffset + centralDirectoryLength;
         byte[] bytes = new byte[eocdOffset + ZIP_EOCD_LENGTH];
 
         System.arraycopy(ZIP_LOCAL_FILE_HEADER, 0, bytes, 0, ZIP_LOCAL_FILE_HEADER.length);
@@ -83,7 +84,15 @@ final class OfficeConversionTestSource {
                 centralDirectoryOffset,
                 ZIP_CENTRAL_DIRECTORY_HEADER.length
         );
+        putUnsignedShort(bytes, centralDirectoryOffset + 28, ZIP_SAFE_ENTRY_NAME.length);
         putUnsignedInt(bytes, centralDirectoryOffset + 42, 0L);
+        System.arraycopy(
+                ZIP_SAFE_ENTRY_NAME,
+                0,
+                bytes,
+                centralDirectoryOffset + ZIP_CENTRAL_DIRECTORY_FIXED_LENGTH,
+                ZIP_SAFE_ENTRY_NAME.length
+        );
         System.arraycopy(
                 ZIP_END_OF_CENTRAL_DIRECTORY,
                 0,
@@ -93,7 +102,7 @@ final class OfficeConversionTestSource {
         );
         putUnsignedShort(bytes, eocdOffset + 8, 1);
         putUnsignedShort(bytes, eocdOffset + 10, 1);
-        putUnsignedInt(bytes, eocdOffset + 12, ZIP_CENTRAL_DIRECTORY_RECORD_LENGTH);
+        putUnsignedInt(bytes, eocdOffset + 12, centralDirectoryLength);
         putUnsignedInt(bytes, eocdOffset + 16, centralDirectoryOffset);
         putUnsignedShort(bytes, eocdOffset + 20, 0);
         return bytes;

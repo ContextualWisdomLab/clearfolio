@@ -1,5 +1,7 @@
 package com.clearfolio.viewer.controller;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -19,6 +21,7 @@ import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
+import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
 
 class AnalyticsTenantQueryBoundaryTest {
 
@@ -37,16 +40,7 @@ class AnalyticsTenantQueryBoundaryTest {
 
     @Test
     void kpiSnapshotUsesStorageScopedTenantQueryInsteadOfGlobalInventory() {
-        ConversionJob tenantJob = new ConversionJob(
-                UUID.randomUUID(),
-                "tenant-a",
-                "operator-a",
-                "tenant-a.docx",
-                "application/octet-stream",
-                "tenant-a-hash",
-                42L,
-                3
-        );
+        ConversionJob tenantJob = tenantJob("tenant-a", "operator-a", "tenant-a.docx", "tenant-a-hash");
         when(repository.findAllByTenantId("tenant-a")).thenReturn(List.of(tenantJob));
 
         webTestClient.get()
@@ -72,6 +66,37 @@ class AnalyticsTenantQueryBoundaryTest {
 
         verify(repository, never()).findAllByTenantId("tenant-a");
         verify(repository, never()).findAll();
+    }
+
+    @Test
+    void inMemoryScopedQueryFailsClosedForMissingTenantAndReturnsOnlyOwnedJobs() {
+        InMemoryConversionJobRepository inMemoryRepository = new InMemoryConversionJobRepository();
+        ConversionJob tenantAJob = tenantJob("tenant-a", "operator-a", "tenant-a.docx", "hash-a");
+        ConversionJob tenantBJob = tenantJob("tenant-b", "operator-b", "tenant-b.docx", "hash-b");
+        inMemoryRepository.save(tenantAJob);
+        inMemoryRepository.save(tenantBJob);
+
+        assertTrue(inMemoryRepository.findAllByTenantId(null).isEmpty());
+        assertTrue(inMemoryRepository.findAllByTenantId(" ").isEmpty());
+        assertEquals(List.of(tenantAJob), inMemoryRepository.findAllByTenantId(" tenant-a "));
+    }
+
+    private static ConversionJob tenantJob(
+            String tenantId,
+            String subjectId,
+            String fileName,
+            String contentHash
+    ) {
+        return new ConversionJob(
+                UUID.randomUUID(),
+                tenantId,
+                subjectId,
+                fileName,
+                "application/octet-stream",
+                contentHash,
+                42L,
+                3
+        );
     }
 
     private static void addAnalyticsAuth(HttpHeaders headers) {

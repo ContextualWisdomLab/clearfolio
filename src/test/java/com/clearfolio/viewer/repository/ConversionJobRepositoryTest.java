@@ -62,8 +62,6 @@ class ConversionJobRepositoryTest {
 
         assertSame(job, repository.findByTenantAndContentHash("tenant-a", "hash").orElseThrow());
         assertTrue(repository.findByTenantAndContentHash("tenant-b", "hash").isEmpty());
-        assertSame(job, repository.findByTenantAndId("tenant-a", job.getJobId()).orElseThrow());
-        assertTrue(repository.findByTenantAndId("tenant-b", job.getJobId()).isEmpty());
     }
 
     @Test

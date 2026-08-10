@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -15,6 +17,18 @@ import org.junit.jupiter.api.Test;
  * Enforces the OpenDocument META-INF package namespace before provider invocation.
  */
 class OfficeOdfMetaInfPolicyTest {
+
+    private static final byte[] MANIFEST_XML = (
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                    + "<manifest:manifest "
+                    + "xmlns:manifest=\"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0\" "
+                    + "manifest:version=\"1.4\"/>"
+    ).getBytes(StandardCharsets.UTF_8);
+    private static final byte[] SIGNATURE_XML = (
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                    + "<dsig:document-signatures "
+                    + "xmlns:dsig=\"urn:oasis:names:tc:opendocument:xmlns:digitalsignature:1.0\"/>"
+    ).getBytes(StandardCharsets.UTF_8);
 
     @Test
     void adapterRejectsUnexpectedMetaInfEntryBeforeProviderInvocation() throws IOException {
@@ -75,15 +89,29 @@ class OfficeOdfMetaInfPolicyTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
             for (String entryName : entryNames) {
+                byte[] payload = payloadFor(entryName);
+                CRC32 crc32 = new CRC32();
+                crc32.update(payload);
                 ZipEntry entry = new ZipEntry(entryName);
                 entry.setMethod(ZipEntry.STORED);
-                entry.setSize(0L);
-                entry.setCompressedSize(0L);
-                entry.setCrc(0L);
+                entry.setSize(payload.length);
+                entry.setCompressedSize(payload.length);
+                entry.setCrc(crc32.getValue());
                 zip.putNextEntry(entry);
+                zip.write(payload);
                 zip.closeEntry();
             }
         }
         return output.toByteArray();
+    }
+
+    private static byte[] payloadFor(String entryName) {
+        if ("META-INF/manifest.xml".equals(entryName)) {
+            return MANIFEST_XML;
+        }
+        if (entryName.contains("signatures")) {
+            return SIGNATURE_XML;
+        }
+        return new byte[0];
     }
 }

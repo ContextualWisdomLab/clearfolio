@@ -22,9 +22,10 @@ import javax.xml.stream.XMLStreamReader;
  * methods, entry-name safety, duplicated local/central metadata, required manifest presence,
  * and optional {@code mimetype} placement. This second boundary extracts only the manifest
  * payload, bounds its expanded size, parses it as non-validating namespace-aware XML with
- * DTD and external-entity support disabled, requires the OpenDocument 1.4 manifest version,
- * binds ordinary ZIP files to exactly one manifest entry, and enforces the ODF root media-type
- * contract. It intentionally does not attempt full Relax NG manifest-schema validation.</p>
+ * DTD and external-entity support disabled, requires the OpenDocument 1.4 manifest version
+ * and at least one manifest file entry, binds ordinary ZIP files to exactly one manifest entry,
+ * and enforces the ODF root media-type contract. It intentionally does not attempt full Relax
+ * NG manifest-schema validation.</p>
  */
 final class OfficeOdfManifestPreflight {
 
@@ -64,9 +65,9 @@ final class OfficeOdfManifestPreflight {
      *
      * @param request immutable conversion request that already passed common container preflight
      * @throws OfficeConversionException when the manifest cannot be safely extracted or parsed,
-     *         does not advertise the supported OpenDocument manifest version, ordinary package-file
-     *         inventory is inconsistent, or the root-document media type disagrees with the package
-     *         {@code mimetype}
+     *         does not advertise the supported OpenDocument manifest version or any file entry,
+     *         ordinary package-file inventory is inconsistent, or the root-document media type
+     *         disagrees with the package {@code mimetype}
      */
     static void requireQualifiedManifest(OfficeConversionRequest request) {
         String expectedMediaType = ODF_MIMETYPE_BY_FORMAT.get(request.sourceFormat());
@@ -211,6 +212,7 @@ final class OfficeOdfManifestPreflight {
         });
 
         boolean rootElementSeen = false;
+        int manifestFileEntryCount = 0;
         String rootDocumentMediaType = null;
         Map<String, Integer> ordinaryManifestEntryCounts = new HashMap<>();
         try (ByteArrayInputStream input = new ByteArrayInputStream(manifestBytes)) {
@@ -239,6 +241,7 @@ final class OfficeOdfManifestPreflight {
                             || !"file-entry".equals(reader.getLocalName())) {
                         continue;
                     }
+                    manifestFileEntryCount++;
 
                     String fullPath = reader.getAttributeValue(MANIFEST_NAMESPACE, "full-path");
                     if (fullPath == null || fullPath.isEmpty()) {
@@ -267,6 +270,9 @@ final class OfficeOdfManifestPreflight {
 
         if (!rootElementSeen) {
             throw invalidManifest();
+        }
+        if (manifestFileEntryCount == 0) {
+            throw missingManifestFileEntry();
         }
         if (mimetypeFound && rootDocumentMediaType == null) {
             throw missingManifestRootEntry();
@@ -345,6 +351,13 @@ final class OfficeOdfManifestPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ODF manifest version is not allowed"
+        );
+    }
+
+    private static OfficeConversionException missingManifestFileEntry() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ODF manifest has no file entries"
         );
     }
 

@@ -17,7 +17,7 @@ import com.clearfolio.viewer.model.ConversionJobStatus;
  * @param succeededJobs jobs with a ready preview artifact
  * @param failedJobs jobs in failed state
  * @param deadLetteredJobs failed jobs that exhausted retry handling
- * @param conversionSuccessRate succeeded jobs divided by total jobs
+ * @param conversionSuccessRate succeeded jobs divided by terminal succeeded/failed jobs
  * @param p95TimeToPreviewMs p95 processing time for succeeded jobs with timestamps
  */
 public record KpiSnapshotResponse(
@@ -64,7 +64,8 @@ public record KpiSnapshotResponse(
         }
 
         int total = jobs.size();
-        double successRate = total == 0 ? 0.0 : (double) succeeded / total;
+        int terminal = succeeded + failed;
+        double successRate = terminal == 0 ? 0.0 : (double) succeeded / terminal;
         return new KpiSnapshotResponse(
                 total,
                 submitted,

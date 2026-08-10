@@ -1,6 +1,7 @@
 package com.clearfolio.viewer.conversion;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -15,15 +16,16 @@ import java.util.Set;
  * limited to the current Stored/Deflate compression qualification boundary, Stored entry
  * sizes must be internally consistent, local and central data-descriptor flags plus CRC
  * and size metadata must agree where applicable, advertised compressed bytes cannot extend
- * beyond the local-data area before the central directory, and entry names are rejected
- * when they are absolute, contain parent traversal, use backslash path separators, or
- * contain NUL bytes. OpenDocument candidates additionally require the package manifest,
- * restrict META-INF content to the manifest plus signature-named entries, and, when a
- * mimetype entry is present, require it to be the first local ZIP entry, stored without
- * compression, free of a local-header extra field, and equal to the media type implied by
- * the declared ODF format. Passing this preflight is <strong>not</strong> complete package,
- * macro, embedded-object, archive-expansion, malware, or fidelity qualification. Those
- * deeper controls remain separate sandbox/content-policy acceptance gates.</p>
+ * beyond the local-data area before the central directory, duplicate raw entry names are
+ * rejected, and entry names are rejected when they are absolute, contain parent traversal,
+ * use backslash path separators, or contain NUL bytes. OpenDocument candidates additionally
+ * require the package manifest, restrict META-INF content to the manifest plus
+ * signature-named entries, and, when a mimetype entry is present, require it to be the
+ * first local ZIP entry, stored without compression, free of a local-header extra field,
+ * and equal to the media type implied by the declared ODF format. Passing this preflight
+ * is <strong>not</strong> complete package, macro, embedded-object, archive-expansion,
+ * malware, or fidelity qualification. Those deeper controls remain separate
+ * sandbox/content-policy acceptance gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -88,10 +90,11 @@ final class OfficeSourceContainerPreflight {
      * @throws OfficeConversionException when the format is not a current candidate, the
      *         source does not match that format family's required container signature, a
      *         ZIP-family source has invalid local/central-directory framing, has inconsistent
-     *         Stored entry sizes or duplicated metadata, advertises compressed bytes beyond
-     *         its local-data region, uses a ZIP compression method outside the current
-     *         Stored/Deflate qualification boundary, contains an encrypted entry, has an
-     *         unsafe ZIP entry path, or an ODF candidate violates required package structure
+     *         Stored entry sizes or duplicated metadata, contains duplicate raw entry names,
+     *         advertises compressed bytes beyond its local-data region, uses a ZIP compression
+     *         method outside the current Stored/Deflate qualification boundary, contains an
+     *         encrypted entry, has an unsafe ZIP entry path, or an ODF candidate violates
+     *         required package structure
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
         String sourceFormat = request.sourceFormat();
@@ -164,6 +167,7 @@ final class OfficeSourceContainerPreflight {
     ) {
         int cursor = centralDirectoryOffset;
         boolean odfManifestFound = false;
+        Set<String> rawEntryNames = new HashSet<>();
         for (int entryIndex = 0; entryIndex < entryCount; entryIndex++) {
             if (cursor > centralDirectoryEnd - ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH
                     || !matchesAt(sourceBytes, cursor, ZIP_CENTRAL_DIRECTORY_HEADER)) {
@@ -209,6 +213,15 @@ final class OfficeSourceContainerPreflight {
                 throw invalidCentralDirectory();
             }
             int centralNameOffset = cursor + ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH;
+            String rawEntryName = new String(
+                    sourceBytes,
+                    centralNameOffset,
+                    fileNameLength,
+                    StandardCharsets.ISO_8859_1
+            );
+            if (!rawEntryNames.add(rawEntryName)) {
+                throw duplicateEntryName();
+            }
             long localDataOffset = requireMatchingLocalHeaderMetadata(
                     sourceBytes,
                     (int) localHeaderOffset,
@@ -533,6 +546,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ZIP entry data exceeds local data region"
+        );
+    }
+
+    private static OfficeConversionException duplicateEntryName() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ZIP contains duplicate entry name"
         );
     }
 

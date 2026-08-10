@@ -35,6 +35,13 @@ public class ApiExceptionHandler {
     private long configuredMaxUploadSize = 5242880L;
 
     /**
+     * Creates the exception handler registered by Spring WebFlux controller advice.
+     */
+    public ApiExceptionHandler() {
+        // Spring injects the configured upload limit after constructing this stateless handler.
+    }
+
+    /**
      * Handles blocked or unsupported document format requests.
      *
      * @param ex thrown format exception
@@ -156,7 +163,7 @@ public class ApiExceptionHandler {
                         resolveTraceId(exchange),
                         Map.of(
                                 "parameter", ex.getName(),
-                                "value", String.valueOf(ex.getValue())
+                                "value", safeTypeMismatchValue(ex.getValue())
                         )
                 ));
     }
@@ -200,10 +207,10 @@ public class ApiExceptionHandler {
         URI requestUri = exchange.getRequest().getURI();
         String path = requestUri == null ? "" : requestUri.getRawPath();
         LOGGER.error(
-                "Unexpected error on path={} traceId={}",
+                "Unexpected error on path={} traceId={} failureType={}",
                 sanitizeForLog(path),
                 sanitizeForLog(traceId),
-                ex
+                ex.getClass().getSimpleName()
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiErrorResponse(
@@ -235,6 +242,10 @@ public class ApiExceptionHandler {
             return Integer.toString(code);
         }
         return resolved.name();
+    }
+
+    private String safeTypeMismatchValue(Object rejectedValue) {
+        return rejectedValue == null ? "null" : "[redacted]";
     }
 
     private String sanitizeForLog(final String value) {

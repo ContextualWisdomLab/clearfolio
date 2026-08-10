@@ -16,6 +16,13 @@ public class InMemoryArtifactStore implements ArtifactStore {
     private final ConcurrentHashMap<UUID, byte[]> pdfByDocId = new ConcurrentHashMap<>();
 
     /**
+     * Creates an empty process-local artifact store.
+     */
+    public InMemoryArtifactStore() {
+        // The concurrent map is initialized eagerly so the store is immediately thread-safe.
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override

@@ -295,7 +295,7 @@ class DefaultConversionWorkerTest {
             assertEquals(2, job.getMaxAttempts());
             assertEquals(ConversionJobStatus.FAILED, job.getStatus());
             assertTrue(job.isDeadLettered());
-            assertEquals("conversion failed: boom", job.getStatusMessage());
+            assertEquals("conversion failed: IllegalStateException", job.getStatusMessage());
         } finally {
             executor.shutdownNow();
             executor.awaitTermination(1, TimeUnit.SECONDS);
@@ -839,7 +839,7 @@ class DefaultConversionWorkerTest {
 
         assertEquals(ConversionJobStatus.FAILED, job.getStatus());
         assertTrue(job.isDeadLettered());
-        assertEquals("conversion failed: boom-error", job.getStatusMessage());
+        assertEquals("conversion failed: AssertionError", job.getStatusMessage());
     }
 
     @Test
@@ -951,7 +951,7 @@ class DefaultConversionWorkerTest {
         assertThrows(TestVirtualMachineError.class, () -> invokeProcess(worker, jobId));
         assertEquals(ConversionJobStatus.FAILED, job.getStatus());
         assertTrue(job.isDeadLettered());
-        assertEquals("conversion failed: vm-boom", job.getStatusMessage());
+        assertEquals("conversion failed: TestVirtualMachineError", job.getStatusMessage());
     }
 
     @Test

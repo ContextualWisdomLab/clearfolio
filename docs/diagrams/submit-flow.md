@@ -64,7 +64,7 @@ sequenceDiagram
     V->>P: getBlockedExtensions()
     alt Override headers valid
       V-->>V: validate override=true + token + approver
-      V-->>V: emit audit-safe log(extension, approver, tokenFingerprint)
+      V-->>V: emit audit-safe log(extension, approverFingerprint, tokenFingerprint)
       V-->>Svc: validation ok
     else Override missing/invalid
       V-->>Svc: UnsupportedDocumentFormatException or IllegalArgumentException
@@ -93,6 +93,8 @@ sequenceDiagram
     end
   end
 ```
+
+`approverFingerprint` is the versioned, domain-separated keyed audit pseudonym. The raw approver identifier is accepted only as validation input and is never emitted by the audit-safe log.
 
 ## Exception paths covered
 

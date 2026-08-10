@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+  # Every pull request target, including immutable stack branches, receives the
+  # same exact-head, synthetic-merge, and buyer-readiness acceptance evidence.
+  pull_request: {}
 
 permissions:
   contents: read
@@ -17,14 +18,87 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact checked-out revision
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
       - name: Use preinstalled Temurin JDK 21
         # Uses the runner image's bundled JDK instead of actions/setup-java to
         # keep every workflow dependency hash-pinned (Scorecard Pinned-Dependencies).
         run: |
           echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
           echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
-      - name: Run tests
-        run: mvn -B --no-transfer-progress test
+      - name: Run tests and coverage acceptance gates
+        shell: bash
+        run: |
+          if ! mvn -B --no-transfer-progress verify; then
+            if [[ -f target/site/jacoco/jacoco.csv ]]; then
+              echo "::group::JaCoCo CSV diagnostics"
+              cat target/site/jacoco/jacoco.csv
+              echo "::endgroup::"
+            fi
+            if [[ -f target/site/jacoco/jacoco.xml ]]; then
+              echo "::group::JaCoCo uncovered line diagnostics"
+              python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          report = Path("target/site/jacoco/jacoco.xml")
+          root = ET.parse(report).getroot()
+          gaps = []
+          for package in root.findall("package"):
+              package_name = package.get("name", "")
+              for source_file in package.findall("sourcefile"):
+                  source_name = source_file.get("name", "")
+                  source_path = f"{package_name}/{source_name}" if package_name else source_name
+                  for line in source_file.findall("line"):
+                      missed_instructions = int(line.get("mi", "0"))
+                      missed_branches = int(line.get("mb", "0"))
+                      if missed_instructions or missed_branches:
+                          gaps.append(
+                              (
+                                  source_path,
+                                  int(line.get("nr", "0")),
+                                  missed_instructions,
+                                  missed_branches,
+                              )
+                          )
+
+          for source_path, line_number, missed_instructions, missed_branches in gaps:
+              print(
+                  f"{source_path}:{line_number}: "
+                  f"missed_instructions={missed_instructions} "
+                  f"missed_branches={missed_branches}"
+              )
+          PY
+              echo "::endgroup::"
+            fi
+            exit 1
+          fi
+          python3 scripts/verify_maven_test_reports.py
+
+  merge-compatibility:
+    name: Maven merge compatibility
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Verify merge revision
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Use preinstalled Temurin JDK 21
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
+      - name: Verify merged result
+        run: |
+          mvn -B --no-transfer-progress verify
+          python3 scripts/verify_maven_test_reports.py
 
   script-checks:
     name: Buyer-readiness script tests
@@ -33,6 +107,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact checked-out revision
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'

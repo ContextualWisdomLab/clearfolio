@@ -6,8 +6,6 @@ import java.io.OutputStream;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-import org.springframework.stereotype.Component;
-
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -18,9 +16,15 @@ import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import com.clearfolio.viewer.model.ConversionJob;
 
 /**
- * PDF artifact generator backed by Apache PDFBox.
+ * Development and test placeholder PDF generator backed by Apache PDFBox.
+ *
+ * <p>This class deliberately is not a Spring component. Its one-page metadata
+ * output is useful for deterministic low-level tests and development fixtures,
+ * but it is not document conversion and must never be selected by the
+ * production application context as evidence of Office-format fidelity.
+ * Production runtime wiring uses a qualified conversion adapter or fails
+ * closed until one is configured.</p>
  */
-@Component
 public class PdfBoxArtifactGenerator implements PdfArtifactGenerator {
 
     @FunctionalInterface
@@ -31,7 +35,7 @@ public class PdfBoxArtifactGenerator implements PdfArtifactGenerator {
     private final OutputTargetFactory outputTargetFactory;
 
     /**
-     * Creates a PDF generator that writes to an in-memory buffer.
+     * Creates a placeholder generator that writes to an in-memory buffer.
      */
     public PdfBoxArtifactGenerator() {
         this(OutputTarget::inMemory);
@@ -42,7 +46,10 @@ public class PdfBoxArtifactGenerator implements PdfArtifactGenerator {
     }
 
     /**
-     * {@inheritDoc}
+     * Generates a deterministic metadata-only placeholder for development and tests.
+     *
+     * @param job conversion job whose metadata is rendered
+     * @return placeholder PDF bytes; never evidence of source-document fidelity
      */
     @Override
     public byte[] generatePdf(ConversionJob job) {

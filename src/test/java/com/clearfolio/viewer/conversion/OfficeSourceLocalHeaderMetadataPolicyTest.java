@@ -53,6 +53,22 @@ class OfficeSourceLocalHeaderMetadataPolicyTest {
         assertEquals(0, providerCalls.get());
     }
 
+    @Test
+    void adapterRejectsLocalCrcMismatchWithoutDataDescriptor() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        byte[] source = oneEntryStoredZip();
+        putUnsignedInt(source, 14, 1L);
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(source))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source ZIP local header does not match central directory", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
     private static OfficeConversionAdapter countingAdapter(AtomicInteger providerCalls) {
         return input -> {
             providerCalls.incrementAndGet();

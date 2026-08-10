@@ -78,7 +78,8 @@ class OfficeOdfManifestInventoryPolicyTest {
         String fileEntry = listContentXml
                 ? "<manifest:file-entry manifest:full-path=\"content.xml\" "
                         + "manifest:media-type=\"text/xml\"/>"
-                : "";
+                : "<manifest:file-entry manifest:full-path=\"Pictures/\" "
+                        + "manifest:media-type=\"\"/>";
         byte[] manifest = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                 + "<manifest:manifest xmlns:manifest=\""
                 + MANIFEST_NAMESPACE

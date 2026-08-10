@@ -15,8 +15,9 @@ import org.junit.jupiter.api.Test;
  * <p>The pre-provider boundary must not trust the EOCD entry count or only one of
  * the duplicated local/central metadata authorities. These tests do not decompress
  * entry data; they require matching local/central metadata with a safe relative
- * entry name and fail closed when either record advertises ZIP encryption or the
- * duplicated compression-method metadata disagrees.</p>
+ * entry name and fail closed when either record advertises ZIP encryption, the
+ * duplicated compression-method metadata disagrees, or the agreed compression
+ * method falls outside the current Stored/Deflate qualification boundary.</p>
  */
 class OfficeSourceCentralDirectoryPolicyTest {
 
@@ -76,6 +77,23 @@ class OfficeSourceCentralDirectoryPolicyTest {
 
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
         assertEquals("source ZIP local header does not match central directory", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
+    @Test
+    void adapterRejectsUnsupportedCompressionMethodBeforeProviderInvocation() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        byte[] source = oneEntryZip(1, 1);
+        putUnsignedShort(source, LOCAL_HEADER_OFFSET + 8, 12);
+        putUnsignedShort(source, CENTRAL_DIRECTORY_OFFSET + 10, 12);
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(source))
+        );
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("source ZIP compression method is not allowed", failure.getMessage());
         assertEquals(0, providerCalls.get());
     }
 

@@ -15,13 +15,13 @@ import org.junit.jupiter.api.Test;
  *
  * <p>These tests deliberately cover only the common pre-conversion authority:
  * candidate format qualification, declared-format/container-family agreement,
- * and bounded ZIP central-directory framing. They do not treat passing this
- * preflight as complete safety, Office-package, archive-expansion, macro,
+ * and bounded ZIP local/central-directory framing. They do not treat passing
+ * this preflight as complete safety, Office-package, archive-expansion, macro,
  * malware, or fidelity qualification.</p>
  */
 class OfficeSourceContainerPreflightTest {
 
-    private static final byte[] ZIP_LOCAL_HEADER = new byte[] {
+    private static final byte[] ZIP_SIGNATURE_PREFIX = new byte[] {
             0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00
     };
     private static final byte[] COMPOUND_FILE_HEADER = new byte[] {
@@ -29,7 +29,8 @@ class OfficeSourceContainerPreflightTest {
             (byte) 0xa1, (byte) 0xb1, 0x1a, (byte) 0xe1
     };
     private static final byte[] SAFE_ENTRY_NAME = "content.xml".getBytes(StandardCharsets.UTF_8);
-    private static final int CENTRAL_OFFSET = 8;
+    private static final int LOCAL_FIXED_LENGTH = 30;
+    private static final int CENTRAL_OFFSET = LOCAL_FIXED_LENGTH + SAFE_ENTRY_NAME.length;
     private static final int CENTRAL_FIXED_LENGTH = 46;
     private static final int CENTRAL_RECORD_LENGTH = CENTRAL_FIXED_LENGTH + SAFE_ENTRY_NAME.length;
     private static final int EOCD_OFFSET = CENTRAL_OFFSET + CENTRAL_RECORD_LENGTH;
@@ -89,13 +90,13 @@ class OfficeSourceContainerPreflightTest {
 
     @Test
     void adapterRejectsZipPrefixWithoutCentralDirectoryFramingBeforeProviderInvocation() {
-        assertMalformedZipBeforeProvider(ZIP_LOCAL_HEADER);
+        assertMalformedZipBeforeProvider(ZIP_SIGNATURE_PREFIX);
     }
 
     @Test
     void adapterRejectsLongZipCandidateWithoutEocdBeforeProviderInvocation() {
         byte[] bytes = new byte[40];
-        System.arraycopy(ZIP_LOCAL_HEADER, 0, bytes, 0, ZIP_LOCAL_HEADER.length);
+        System.arraycopy(ZIP_SIGNATURE_PREFIX, 0, bytes, 0, ZIP_SIGNATURE_PREFIX.length);
         assertMalformedZipBeforeProvider(bytes);
     }
 
@@ -255,7 +256,14 @@ class OfficeSourceContainerPreflightTest {
 
     private static byte[] framedZip() {
         byte[] bytes = new byte[EOCD_OFFSET + EOCD_LENGTH];
-        System.arraycopy(ZIP_LOCAL_HEADER, 0, bytes, 0, ZIP_LOCAL_HEADER.length);
+        bytes[0] = 0x50;
+        bytes[1] = 0x4b;
+        bytes[2] = 0x03;
+        bytes[3] = 0x04;
+        putUnsignedShort(bytes, 4, 20);
+        putUnsignedShort(bytes, 26, SAFE_ENTRY_NAME.length);
+        System.arraycopy(SAFE_ENTRY_NAME, 0, bytes, LOCAL_FIXED_LENGTH, SAFE_ENTRY_NAME.length);
+
         bytes[CENTRAL_OFFSET] = 0x50;
         bytes[CENTRAL_OFFSET + 1] = 0x4b;
         bytes[CENTRAL_OFFSET + 2] = 0x01;
@@ -263,6 +271,7 @@ class OfficeSourceContainerPreflightTest {
         putUnsignedShort(bytes, CENTRAL_OFFSET + 28, SAFE_ENTRY_NAME.length);
         putUnsignedInt(bytes, CENTRAL_OFFSET + 42, 0L);
         System.arraycopy(SAFE_ENTRY_NAME, 0, bytes, CENTRAL_OFFSET + CENTRAL_FIXED_LENGTH, SAFE_ENTRY_NAME.length);
+
         bytes[EOCD_OFFSET] = 0x50;
         bytes[EOCD_OFFSET + 1] = 0x4b;
         bytes[EOCD_OFFSET + 2] = 0x05;

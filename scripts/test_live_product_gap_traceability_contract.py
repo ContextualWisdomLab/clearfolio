@@ -110,6 +110,30 @@ class LiveProductGapTraceabilityContractTest(unittest.TestCase):
             with self.subTest(document="assessment", required=required):
                 self.assertIn(required, assessment)
 
+    def test_traceability_tracks_current_tenant_query_reconciliation(self) -> None:
+        """Require issue #326 to point at its current list and identifier query slices."""
+
+        traceability = read_text("docs/TRACEABILITY.md")
+        assessment = read_text("docs/DOCUMENTATION_ASSESSMENT.md")
+
+        for required in (
+            "issue #326",
+            "current `active_pr` #342",
+            "draft #361",
+            "storage-scoped tenant query",
+        ):
+            with self.subTest(document="traceability", required=required):
+                self.assertIn(required, traceability)
+
+        for required in (
+            "issue #326",
+            "#342",
+            "draft #361",
+            "storage-scoped tenant query",
+        ):
+            with self.subTest(document="assessment", required=required):
+                self.assertIn(required, assessment)
+
     def test_assessment_exposes_current_api_workspace_and_credential_gaps(self) -> None:
         """Require the fitness assessment to expose current executable product/security gaps."""
 

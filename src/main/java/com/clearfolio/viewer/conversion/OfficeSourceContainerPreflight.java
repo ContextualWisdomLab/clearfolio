@@ -17,7 +17,8 @@ import java.util.Set;
  * beyond the local-data area before the central directory, and entry names are rejected
  * when they are absolute, contain parent traversal, use backslash path separators, or
  * contain NUL bytes. OpenDocument candidates additionally require the package manifest
- * entry mandated by the ODF package specification. Passing this preflight is
+ * entry mandated by the ODF package specification and, when a mimetype entry is present,
+ * require it to be the first local ZIP entry. Passing this preflight is
  * <strong>not</strong> complete package, macro, embedded-object, archive-expansion,
  * malware, or fidelity qualification. Those deeper controls remain separate
  * sandbox/content-policy acceptance gates.</p>
@@ -35,6 +36,8 @@ final class OfficeSourceContainerPreflight {
     );
     private static final byte[] ODF_MANIFEST_ENTRY_NAME =
             "META-INF/manifest.xml".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] ODF_MIMETYPE_ENTRY_NAME =
+            "mimetype".getBytes(StandardCharsets.UTF_8);
     private static final byte[] ZIP_LOCAL_FILE_HEADER = new byte[] {
             0x50, 0x4b, 0x03, 0x04
     };
@@ -77,7 +80,7 @@ final class OfficeSourceContainerPreflight {
      *         Stored entry sizes or duplicated metadata, advertises compressed bytes beyond
      *         its local-data region, uses a ZIP compression method outside the current
      *         Stored/Deflate qualification boundary, contains an encrypted entry, has an
-     *         unsafe ZIP entry path, or an ODF candidate omits its required package manifest
+     *         unsafe ZIP entry path, or an ODF candidate violates required package structure
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
         String sourceFormat = request.sourceFormat();
@@ -208,6 +211,11 @@ final class OfficeSourceContainerPreflight {
                 throw invalidEntryDataRange();
             }
             requireSafeEntryPath(sourceBytes, centralNameOffset, fileNameLength);
+            if (requireOdfManifest
+                    && entryNameMatches(sourceBytes, centralNameOffset, fileNameLength, ODF_MIMETYPE_ENTRY_NAME)
+                    && localHeaderOffset != 0L) {
+                throw invalidOdfMimetypePlacement();
+            }
             if (entryNameMatches(
                     sourceBytes,
                     centralNameOffset,
@@ -441,6 +449,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ODF package manifest is missing"
+        );
+    }
+
+    private static OfficeConversionException invalidOdfMimetypePlacement() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ODF mimetype entry must be first"
         );
     }
 

@@ -120,6 +120,8 @@ class OfficeSourceCentralDirectoryPolicyTest {
     void adapterRejectsCompressedSizeThatExtendsBeyondLocalDataRegion() {
         AtomicInteger providerCalls = new AtomicInteger();
         byte[] source = oneEntryZip(1, 1);
+        putUnsignedInt(source, LOCAL_HEADER_OFFSET + 18, 1L);
+        putUnsignedInt(source, LOCAL_HEADER_OFFSET + 22, 1L);
         putUnsignedInt(source, CENTRAL_DIRECTORY_OFFSET + 20, 1L);
         putUnsignedInt(source, CENTRAL_DIRECTORY_OFFSET + 24, 1L);
 

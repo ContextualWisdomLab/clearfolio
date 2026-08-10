@@ -6,66 +6,7 @@ import {
   createLink,
   setBusyState
 } from "../../main/resources/static/assets/viewer/dom-utils.js";
-
-class MockTextNode {
-  constructor(text) {
-    this.type = "text";
-    this.textContent = text;
-  }
-}
-
-class MockElement {
-  constructor(tagName) {
-    this.tagName = tagName.toUpperCase();
-    this.attributes = new Map();
-    this.childNodes = [];
-    this.listeners = new Map();
-    this.disabled = false;
-    this.type = "";
-    this.className = "";
-    this.href = "";
-    this.target = "";
-    this.rel = "";
-  }
-
-  get textContent() {
-    return this.childNodes.map(node => node.textContent).join("");
-  }
-
-  set textContent(value) {
-    this.childNodes = [new MockTextNode(String(value))];
-  }
-
-  setAttribute(name, value) {
-    this.attributes.set(name, String(value));
-  }
-
-  getAttribute(name) {
-    return this.attributes.has(name) ? this.attributes.get(name) : null;
-  }
-
-  removeAttribute(name) {
-    this.attributes.delete(name);
-  }
-
-  addEventListener(name, listener) {
-    this.listeners.set(name, listener);
-  }
-
-  dispatchEvent(event) {
-    event.currentTarget = this;
-    this.listeners.get(event.type)(event);
-  }
-
-  appendChild(node) {
-    this.childNodes.push(node);
-    return node;
-  }
-
-  replaceChildren(...nodes) {
-    this.childNodes = nodes;
-  }
-}
+import { MockElement, MockTextNode } from "./mock-dom.mjs";
 
 globalThis.document = {
   createElement(tagName) {

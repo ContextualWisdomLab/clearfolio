@@ -137,6 +137,7 @@ final class OfficeSourceContainerPreflight {
             if ((flags & ZIP_ENCRYPTED_FLAG) != 0) {
                 throw encryptedZipEntry();
             }
+            int compressionMethod = unsignedShort(sourceBytes, cursor + 10);
 
             long compressedSize = unsignedInt(sourceBytes, cursor + 20);
             long uncompressedSize = unsignedInt(sourceBytes, cursor + 24);
@@ -164,12 +165,13 @@ final class OfficeSourceContainerPreflight {
                 throw invalidCentralDirectory();
             }
             int centralNameOffset = cursor + ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH;
-            requireMatchingLocalHeaderName(
+            requireMatchingLocalHeaderMetadata(
                     sourceBytes,
                     (int) localHeaderOffset,
                     centralDirectoryOffset,
                     centralNameOffset,
-                    fileNameLength
+                    fileNameLength,
+                    compressionMethod
             );
             requireSafeEntryPath(sourceBytes, centralNameOffset, fileNameLength);
             cursor = (int) nextCursor;
@@ -179,12 +181,13 @@ final class OfficeSourceContainerPreflight {
         }
     }
 
-    private static void requireMatchingLocalHeaderName(
+    private static void requireMatchingLocalHeaderMetadata(
             byte[] sourceBytes,
             int localHeaderOffset,
             int centralDirectoryOffset,
             int centralNameOffset,
-            int centralNameLength
+            int centralNameLength,
+            int centralCompressionMethod
     ) {
         if (localHeaderOffset > centralDirectoryOffset - ZIP_LOCAL_FILE_HEADER_MINIMUM_LENGTH) {
             throw invalidLocalHeader();
@@ -193,11 +196,14 @@ final class OfficeSourceContainerPreflight {
         if ((localFlags & ZIP_ENCRYPTED_FLAG) != 0) {
             throw encryptedZipEntry();
         }
+        int localCompressionMethod = unsignedShort(sourceBytes, localHeaderOffset + 8);
         int localNameLength = unsignedShort(sourceBytes, localHeaderOffset + 26);
         int localExtraFieldLength = unsignedShort(sourceBytes, localHeaderOffset + 28);
         long localNameOffset = (long) localHeaderOffset + ZIP_LOCAL_FILE_HEADER_MINIMUM_LENGTH;
         long localHeaderMetadataEnd = localNameOffset + localNameLength + localExtraFieldLength;
-        if (localNameLength != centralNameLength || localHeaderMetadataEnd > centralDirectoryOffset) {
+        if (localCompressionMethod != centralCompressionMethod
+                || localNameLength != centralNameLength
+                || localHeaderMetadataEnd > centralDirectoryOffset) {
             throw invalidLocalHeader();
         }
         for (int index = 0; index < centralNameLength; index++) {

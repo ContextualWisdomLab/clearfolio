@@ -22,7 +22,9 @@ class OfficeOdfMetaInfPolicyTest {
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                     + "<manifest:manifest "
                     + "xmlns:manifest=\"urn:oasis:names:tc:opendocument:xmlns:manifest:1.0\" "
-                    + "manifest:version=\"1.4\"/>"
+                    + "manifest:version=\"1.4\">"
+                    + "<manifest:file-entry manifest:full-path=\"Pictures/\" manifest:media-type=\"\"/>"
+                    + "</manifest:manifest>"
     ).getBytes(StandardCharsets.UTF_8);
     private static final byte[] SIGNATURE_XML = (
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"

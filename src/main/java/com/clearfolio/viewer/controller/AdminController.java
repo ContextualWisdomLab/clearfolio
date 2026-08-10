@@ -4,17 +4,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.api.AdminJobListResponse;
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
@@ -26,14 +31,20 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 public class AdminController {
 
     private final DocumentConversionService conversionService;
+    private final TenantAccessService tenantAccessService;
 
     /**
      * Creates a controller for admin operations.
      *
      * @param conversionService conversion service
+     * @param tenantAccessService tenant authorization service
      */
-    public AdminController(DocumentConversionService conversionService) {
+    public AdminController(
+            DocumentConversionService conversionService,
+            TenantAccessService tenantAccessService
+    ) {
         this.conversionService = conversionService;
+        this.tenantAccessService = tenantAccessService;
     }
 
     /**
@@ -60,14 +71,21 @@ public class AdminController {
     }
 
     /**
-     * Deletes a conversion job.
+     * Deletes a conversion job owned by the authenticated tenant.
      *
      * @param jobId conversion job identifier
+     * @param headers tenant and permission claim headers
      * @return no content on success
      */
     @DeleteMapping("/api/v1/admin/convert/jobs/{jobId}")
-    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId) {
-        conversionService.deleteJob(jobId);
+    public ResponseEntity<Void> deleteJob(
+            @PathVariable UUID jobId,
+            @RequestHeader HttpHeaders headers
+    ) {
+        TenantContext context = tenantAccessService.require(headers, TenantPermissions.JOB_DELETE);
+        if (!conversionService.deleteJob(jobId, context)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
         return ResponseEntity.noContent().build();
     }
 

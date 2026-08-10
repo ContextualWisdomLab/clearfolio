@@ -84,7 +84,7 @@ class AnalyticsControllerTest {
                 .jsonPath("$.succeededJobs").isEqualTo(1)
                 .jsonPath("$.failedJobs").isEqualTo(1)
                 .jsonPath("$.deadLetteredJobs").isEqualTo(1)
-                .jsonPath("$.conversionSuccessRate").value(value -> assertEquals(0.25, (Double) value))
+                .jsonPath("$.conversionSuccessRate").value(value -> assertEquals(0.5, (Double) value))
                 .jsonPath("$.p95TimeToPreviewMs").value(value -> {
                     assertNotNull(value);
                     assertTrue(((Number) value).longValue() >= 0L);

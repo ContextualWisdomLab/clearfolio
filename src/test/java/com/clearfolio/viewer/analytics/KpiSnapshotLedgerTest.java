@@ -82,7 +82,13 @@ class KpiSnapshotLedgerTest {
         assertInvalidLedger(snapshotLine().replace(NOW.toString(), "not-instant"));
         assertInvalidLedger(snapshotLine().replace("\t2\t", "\tnot-int\t"));
         assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\tnot-rate\t"));
+        assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\tNaN\t"));
+        assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\tInfinity\t"));
+        assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\t-Infinity\t"));
+        assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\t-0.01\t"));
+        assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\t1.01\t"));
         assertInvalidLedger(snapshotLine().replace("\t123", "\tnot-long"));
+        assertInvalidLedger(snapshotLine().replace("\t123", "\t-1"));
         assertInvalidLedger(snapshotLine().replace(encoded("tenant-a"), "!"));
     }
 

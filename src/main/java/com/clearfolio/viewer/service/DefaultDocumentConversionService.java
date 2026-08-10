@@ -239,7 +239,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         try {
             artifactStore.deletePdf(jobId);
         } catch (Exception ex) {
-            log.warn("Failed to delete artifact for job {}", jobId, ex);
+            log.warn("Artifact deletion failed failureType={}", ex.getClass().getSimpleName());
         }
         repository.deleteById(jobId);
     }

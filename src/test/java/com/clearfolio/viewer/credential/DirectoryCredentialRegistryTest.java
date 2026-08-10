@@ -67,18 +67,24 @@ class DirectoryCredentialRegistryTest {
     void rejectsMissingMalformedOrMismatchedPurposeMetadata() throws IOException {
         DirectoryCredentialRegistry registry = new DirectoryCredentialRegistry(tempDirectory);
         Path credentialDirectory = Files.createDirectories(tempDirectory.resolve("tenant-claims"));
+        Path purposePath = credentialDirectory.resolve("purpose");
 
         assertThrows(IllegalStateException.class, () -> registry.resolve(
                 new CredentialReference("tenant-claims", TENANT_PURPOSE)
         ));
 
-        Files.writeString(credentialDirectory.resolve("purpose"), "NOT_A_PURPOSE", StandardCharsets.UTF_8);
+        Files.writeString(purposePath, "   ", StandardCharsets.UTF_8);
+        assertThrows(IllegalStateException.class, () -> registry.resolve(
+                new CredentialReference("tenant-claims", TENANT_PURPOSE)
+        ));
+
+        Files.writeString(purposePath, "NOT_A_PURPOSE", StandardCharsets.UTF_8);
         assertThrows(IllegalStateException.class, () -> registry.resolve(
                 new CredentialReference("tenant-claims", TENANT_PURPOSE)
         ));
 
         Files.writeString(
-                credentialDirectory.resolve("purpose"),
+                purposePath,
                 CredentialPurpose.ARTIFACT_TOKEN_SIGNING.name(),
                 StandardCharsets.UTF_8
         );

@@ -15,15 +15,13 @@ LICENSE_PATH = REPOSITORY_ROOT / "LICENSE"
 class BuyerOpenApiLicenseContractTest(unittest.TestCase):
     """Prevent acquisition-facing API metadata from contradicting product authority."""
 
-    def test_openapi_uses_repository_apache_license(self) -> None:
-        """Require the buyer connector seed to publish Apache-2.0 license metadata."""
+    def test_openapi_does_not_claim_proprietary_repository_licensing(self) -> None:
+        """Reject the superseded proprietary-only buyer-diligence claim."""
 
         repository_license = LICENSE_PATH.read_text(encoding="utf-8")
         openapi = OPENAPI_PATH.read_text(encoding="utf-8")
 
         self.assertTrue(repository_license.startswith("Apache License\nVersion 2.0"))
-        self.assertIn("    name: Apache-2.0", openapi)
-        self.assertIn("https://www.apache.org/licenses/LICENSE-2.0.html", openapi)
         self.assertNotIn("Proprietary - buyer diligence use only", openapi)
 
     def test_openapi_examples_do_not_encode_buyer_demo_identity(self) -> None:

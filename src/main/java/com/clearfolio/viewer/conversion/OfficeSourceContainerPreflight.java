@@ -18,10 +18,10 @@ import java.util.Set;
  * when they are absolute, contain parent traversal, use backslash path separators, or
  * contain NUL bytes. OpenDocument candidates additionally require the package manifest
  * entry mandated by the ODF package specification and, when a mimetype entry is present,
- * require it to be the first local ZIP entry. Passing this preflight is
- * <strong>not</strong> complete package, macro, embedded-object, archive-expansion,
- * malware, or fidelity qualification. Those deeper controls remain separate
- * sandbox/content-policy acceptance gates.</p>
+ * require it to be the first local ZIP entry and stored without compression. Passing this
+ * preflight is <strong>not</strong> complete package, macro, embedded-object,
+ * archive-expansion, malware, or fidelity qualification. Those deeper controls remain
+ * separate sandbox/content-policy acceptance gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -211,10 +211,18 @@ final class OfficeSourceContainerPreflight {
                 throw invalidEntryDataRange();
             }
             requireSafeEntryPath(sourceBytes, centralNameOffset, fileNameLength);
-            if (requireOdfManifest
-                    && entryNameMatches(sourceBytes, centralNameOffset, fileNameLength, ODF_MIMETYPE_ENTRY_NAME)
-                    && localHeaderOffset != 0L) {
+            boolean odfMimetypeEntry = requireOdfManifest
+                    && entryNameMatches(
+                            sourceBytes,
+                            centralNameOffset,
+                            fileNameLength,
+                            ODF_MIMETYPE_ENTRY_NAME
+                    );
+            if (odfMimetypeEntry && localHeaderOffset != 0L) {
                 throw invalidOdfMimetypePlacement();
+            }
+            if (odfMimetypeEntry && compressionMethod != ZIP_STORED_METHOD) {
+                throw compressedOdfMimetype();
             }
             if (entryNameMatches(
                     sourceBytes,
@@ -456,6 +464,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ODF mimetype entry must be first"
+        );
+    }
+
+    private static OfficeConversionException compressedOdfMimetype() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ODF mimetype entry must be stored without compression"
         );
     }
 

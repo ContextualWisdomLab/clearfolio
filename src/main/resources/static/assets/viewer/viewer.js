@@ -150,28 +150,7 @@ async function renderPdfInline(path, abortSignal) {
     url: resolvedPath,
     withCredentials: true,
   });
-  const cancelLoading = () => {
-    if (typeof loadingTask.destroy === "function") {
-      void Promise.resolve(loadingTask.destroy()).catch(() => {});
-    }
-  };
-  abortSignal?.addEventListener("abort", cancelLoading, { once: true });
-  if (abortSignal?.aborted) {
-    cancelLoading();
-  }
-
-  let pdfDocument;
-  try {
-    pdfDocument = await loadingTask.promise;
-  } catch (error) {
-    if (abortSignal?.aborted) {
-      return false;
-    }
-    throw error;
-  } finally {
-    abortSignal?.removeEventListener("abort", cancelLoading);
-  }
-
+  const pdfDocument = await loadingTask.promise;
   try {
     if (abortSignal?.aborted) {
       return false;
@@ -200,30 +179,7 @@ async function renderPdfInline(path, abortSignal) {
     canvas.setAttribute("role", "img");
     canvas.setAttribute("aria-label", `Rendered first page of a ${pdfDocument.numPages}-page PDF`);
 
-    const renderTask = page.render({ canvasContext: context, viewport });
-    const cancelRender = () => {
-      if (typeof renderTask.cancel === "function") {
-        try {
-          renderTask.cancel();
-        } catch (_error) {
-          // Cancellation is best-effort; the abort fence below still blocks stale publication.
-        }
-      }
-    };
-    abortSignal?.addEventListener("abort", cancelRender, { once: true });
-    if (abortSignal?.aborted) {
-      cancelRender();
-    }
-    try {
-      await renderTask.promise;
-    } catch (error) {
-      if (abortSignal?.aborted) {
-        return false;
-      }
-      throw error;
-    } finally {
-      abortSignal?.removeEventListener("abort", cancelRender);
-    }
+    await page.render({ canvasContext: context, viewport }).promise;
     if (abortSignal?.aborted) {
       return false;
     }

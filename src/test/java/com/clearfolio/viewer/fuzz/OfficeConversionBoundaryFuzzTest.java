@@ -45,6 +45,8 @@ final class OfficeConversionBoundaryFuzzTest {
                 UUID.fromString("cd348e0e-bd83-433a-a7d0-818d297b98af"),
                 1L,
                 format,
+                "fuzz-sentinel",
+                "1",
                 "fuzz-policy",
                 "fuzz-trace",
                 sourceBytes

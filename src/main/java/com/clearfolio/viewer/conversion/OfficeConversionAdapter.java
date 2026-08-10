@@ -285,10 +285,12 @@ public interface OfficeConversionAdapter {
         try {
             URI uri = new URI(uriString.getString());
             String scheme = uri.getScheme();
-            return scheme != null
-                    && ("http".equalsIgnoreCase(scheme)
-                    || "https".equalsIgnoreCase(scheme)
-                    || "mailto".equalsIgnoreCase(scheme));
+            if ("mailto".equalsIgnoreCase(scheme)) {
+                return true;
+            }
+            boolean webScheme = "http".equalsIgnoreCase(scheme)
+                    || "https".equalsIgnoreCase(scheme);
+            return webScheme && !uri.isOpaque() && uri.getHost() != null;
         } catch (URISyntaxException ex) {
             return false;
         }

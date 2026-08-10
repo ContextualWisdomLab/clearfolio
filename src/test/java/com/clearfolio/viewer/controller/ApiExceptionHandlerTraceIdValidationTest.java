@@ -2,10 +2,17 @@ package com.clearfolio.viewer.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.web.server.ServerWebExchange;
 
 import com.clearfolio.viewer.api.ApiErrorResponse;
 
@@ -31,6 +38,27 @@ class ApiExceptionHandlerTraceIdValidationTest {
 
         assertNotEquals("../../tenant-secret", body.traceId());
         assertEquals(exchange.getRequest().getId(), body.traceId());
+    }
+
+    @Test
+    void unsafeClientAndServerTraceIdsFallBackToGeneratedUuid() {
+        String unsafeClientTraceId = "../../tenant-secret";
+        String unsafeRequestId = "../unsafe-server-request";
+        ServerWebExchange exchange = mock(ServerWebExchange.class);
+        ServerHttpRequest request = mock(ServerHttpRequest.class);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Trace-Id", unsafeClientTraceId);
+        when(exchange.getRequest()).thenReturn(request);
+        when(request.getHeaders()).thenReturn(headers);
+        when(request.getId()).thenReturn(unsafeRequestId);
+
+        ApiErrorResponse body = handler
+                .handleBadRequest(new IllegalArgumentException("bad request"), exchange)
+                .getBody();
+
+        assertNotEquals(unsafeClientTraceId, body.traceId());
+        assertNotEquals(unsafeRequestId, body.traceId());
+        assertEquals(UUID.fromString(body.traceId()).toString(), body.traceId());
     }
 
     @Test

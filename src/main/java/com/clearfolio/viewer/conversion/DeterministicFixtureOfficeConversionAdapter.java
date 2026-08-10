@@ -6,10 +6,10 @@ import java.util.stream.Collectors;
 /**
  * Deterministic offline Office conversion adapter backed by exact request fixtures.
  *
- * <p>This adapter is a contract and fidelity test implementation, not a production
- * Office renderer. It returns only pre-registered PDF bytes for the exact immutable
- * request binding and therefore cannot silently accept a stale tenant, job,
- * lifecycle generation, format, policy, correlation identity, or source digest.</p>
+ * <p>This adapter is a contract oracle, not evidence of Office rendering fidelity and
+ * not a production Office renderer. It returns only pre-registered PDF bytes for the
+ * exact immutable request binding and therefore cannot silently accept a stale tenant,
+ * job, lifecycle generation, format, policy, correlation identity, or source digest.</p>
  */
 public final class DeterministicFixtureOfficeConversionAdapter implements OfficeConversionAdapter {
 

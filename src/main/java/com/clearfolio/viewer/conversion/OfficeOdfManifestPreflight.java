@@ -1,8 +1,12 @@
 package com.clearfolio.viewer.conversion;
 
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -18,8 +22,9 @@ import javax.xml.stream.XMLStreamReader;
  * methods, entry-name safety, duplicated local/central metadata, required manifest presence,
  * and optional {@code mimetype} placement. This second boundary extracts only the manifest
  * payload, bounds its expanded size, parses it as non-validating namespace-aware XML with
- * DTD and external-entity support disabled, and enforces the ODF root media-type contract.
- * It intentionally does not attempt full Relax NG manifest-schema validation.</p>
+ * DTD and external-entity support disabled, binds ordinary ZIP files to exactly one manifest
+ * entry, and enforces the ODF root media-type contract. It intentionally does not attempt
+ * full Relax NG manifest-schema validation.</p>
  */
 final class OfficeOdfManifestPreflight {
 
@@ -30,10 +35,12 @@ final class OfficeOdfManifestPreflight {
     );
     private static final String MANIFEST_NAMESPACE =
             "urn:oasis:names:tc:opendocument:xmlns:manifest:1.0";
+    private static final String MANIFEST_ENTRY_PATH = "META-INF/manifest.xml";
+    private static final String MIMETYPE_ENTRY_PATH = "mimetype";
     private static final byte[] MANIFEST_ENTRY_NAME =
-            "META-INF/manifest.xml".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            MANIFEST_ENTRY_PATH.getBytes(StandardCharsets.UTF_8);
     private static final byte[] MIMETYPE_ENTRY_NAME =
-            "mimetype".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            MIMETYPE_ENTRY_PATH.getBytes(StandardCharsets.UTF_8);
     private static final byte[] ZIP_CENTRAL_DIRECTORY_HEADER = new byte[] {
             0x50, 0x4b, 0x01, 0x02
     };
@@ -52,11 +59,12 @@ final class OfficeOdfManifestPreflight {
     }
 
     /**
-     * Validates the ODF manifest root entry when the request is an ODF package candidate.
+     * Validates the ODF manifest when the request is an ODF package candidate.
      *
      * @param request immutable conversion request that already passed common container preflight
      * @throws OfficeConversionException when the manifest cannot be safely extracted or parsed,
-     *         or when its root-document media type disagrees with the package {@code mimetype}
+     *         ordinary package-file inventory is inconsistent, or the root-document media type
+     *         disagrees with the package {@code mimetype}
      */
     static void requireQualifiedManifest(OfficeConversionRequest request) {
         String expectedMediaType = ODF_MIMETYPE_BY_FORMAT.get(request.sourceFormat());
@@ -66,7 +74,12 @@ final class OfficeOdfManifestPreflight {
 
         LocatedEntries entries = locateEntries(request.sourceBytes());
         byte[] manifestBytes = extractManifest(request.sourceBytes(), entries.manifestEntry());
-        requireManifestContract(manifestBytes, entries.mimetypeFound(), expectedMediaType);
+        requireManifestContract(
+                manifestBytes,
+                entries.mimetypeFound(),
+                expectedMediaType,
+                entries.ordinaryPackageFiles()
+        );
     }
 
     private static LocatedEntries locateEntries(byte[] sourceBytes) {
@@ -82,6 +95,7 @@ final class OfficeOdfManifestPreflight {
         int cursor = (int) centralOffsetLong;
         ManifestEntry manifestEntry = null;
         boolean mimetypeFound = false;
+        Set<String> ordinaryPackageFiles = new HashSet<>();
 
         for (int index = 0; index < entryCount; index++) {
             if (!matchesAt(sourceBytes, cursor, ZIP_CENTRAL_DIRECTORY_HEADER)
@@ -101,10 +115,10 @@ final class OfficeOdfManifestPreflight {
                 throw invalidManifest();
             }
 
+            String entryName = new String(sourceBytes, nameOffset, fileNameLength, StandardCharsets.UTF_8);
             if (entryNameMatches(sourceBytes, nameOffset, fileNameLength, MIMETYPE_ENTRY_NAME)) {
                 mimetypeFound = true;
-            }
-            if (entryNameMatches(sourceBytes, nameOffset, fileNameLength, MANIFEST_ENTRY_NAME)) {
+            } else if (entryNameMatches(sourceBytes, nameOffset, fileNameLength, MANIFEST_ENTRY_NAME)) {
                 int localOffset = (int) localHeaderOffset;
                 if (localOffset > sourceBytes.length - ZIP_LOCAL_HEADER_FIXED_LENGTH) {
                     throw invalidManifest();
@@ -124,13 +138,15 @@ final class OfficeOdfManifestPreflight {
                         uncompressedSize,
                         (int) dataOffset
                 );
+            } else if (!entryName.startsWith("META-INF/") && !entryName.endsWith("/")) {
+                ordinaryPackageFiles.add(entryName);
             }
             cursor = (int) nextCursor;
         }
         if (manifestEntry == null) {
             throw invalidManifest();
         }
-        return new LocatedEntries(manifestEntry, mimetypeFound);
+        return new LocatedEntries(manifestEntry, mimetypeFound, Set.copyOf(ordinaryPackageFiles));
     }
 
     private static byte[] extractManifest(byte[] sourceBytes, ManifestEntry entry) {
@@ -182,7 +198,8 @@ final class OfficeOdfManifestPreflight {
     private static void requireManifestContract(
             byte[] manifestBytes,
             boolean mimetypeFound,
-            String expectedMediaType
+            String expectedMediaType,
+            Set<String> ordinaryPackageFiles
     ) {
         XMLInputFactory factory = XMLInputFactory.newFactory();
         factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
@@ -193,6 +210,7 @@ final class OfficeOdfManifestPreflight {
 
         boolean rootElementSeen = false;
         String rootDocumentMediaType = null;
+        Map<String, Integer> ordinaryManifestEntryCounts = new HashMap<>();
         try (ByteArrayInputStream input = new ByteArrayInputStream(manifestBytes)) {
             XMLStreamReader reader = factory.createXMLStreamReader(input);
             try {
@@ -211,13 +229,27 @@ final class OfficeOdfManifestPreflight {
                             throw invalidManifest();
                         }
                     }
-                    if (MANIFEST_NAMESPACE.equals(reader.getNamespaceURI())
-                            && "file-entry".equals(reader.getLocalName())
-                            && "/".equals(reader.getAttributeValue(MANIFEST_NAMESPACE, "full-path"))) {
+                    if (!MANIFEST_NAMESPACE.equals(reader.getNamespaceURI())
+                            || !"file-entry".equals(reader.getLocalName())) {
+                        continue;
+                    }
+
+                    String fullPath = reader.getAttributeValue(MANIFEST_NAMESPACE, "full-path");
+                    if (fullPath == null || fullPath.isEmpty()) {
+                        throw invalidManifest();
+                    }
+                    if ("/".equals(fullPath)) {
                         if (rootDocumentMediaType != null) {
                             throw invalidManifest();
                         }
                         rootDocumentMediaType = reader.getAttributeValue(MANIFEST_NAMESPACE, "media-type");
+                        continue;
+                    }
+                    if (MANIFEST_ENTRY_PATH.equals(fullPath) || MIMETYPE_ENTRY_PATH.equals(fullPath)) {
+                        throw manifestInventoryMismatch();
+                    }
+                    if (!fullPath.startsWith("META-INF/") && !fullPath.endsWith("/")) {
+                        ordinaryManifestEntryCounts.merge(fullPath, 1, Integer::sum);
                     }
                 }
             } finally {
@@ -238,6 +270,10 @@ final class OfficeOdfManifestPreflight {
         }
         if (rootDocumentMediaType != null && !expectedMediaType.equals(rootDocumentMediaType)) {
             throw manifestMediaTypeMismatch();
+        }
+        if (!ordinaryManifestEntryCounts.keySet().equals(ordinaryPackageFiles)
+                || ordinaryManifestEntryCounts.values().stream().anyMatch(count -> count != 1)) {
+            throw manifestInventoryMismatch();
         }
     }
 
@@ -327,6 +363,13 @@ final class OfficeOdfManifestPreflight {
         );
     }
 
+    private static OfficeConversionException manifestInventoryMismatch() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ODF manifest does not match package file inventory"
+        );
+    }
+
     private record ManifestEntry(
             int compressionMethod,
             long compressedSize,
@@ -335,6 +378,10 @@ final class OfficeOdfManifestPreflight {
     ) {
     }
 
-    private record LocatedEntries(ManifestEntry manifestEntry, boolean mimetypeFound) {
+    private record LocatedEntries(
+            ManifestEntry manifestEntry,
+            boolean mimetypeFound,
+            Set<String> ordinaryPackageFiles
+    ) {
     }
 }

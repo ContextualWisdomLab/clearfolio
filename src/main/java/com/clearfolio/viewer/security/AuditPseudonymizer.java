@@ -21,6 +21,9 @@ public final class AuditPseudonymizer {
     private static final String HMAC_SHA_256 = "HmacSHA256";
     private static final String DEFAULT_KEY_VERSION = "v1";
     private static final String APPROVER_DOMAIN = "clearfolio:audit-approver:v1";
+    private static final String ADMIN_ACTOR_DOMAIN = "clearfolio:audit-admin-actor:v1";
+    private static final String ADMIN_TENANT_DOMAIN = "clearfolio:audit-admin-tenant:v1";
+    private static final String ADMIN_JOB_DOMAIN = "clearfolio:audit-admin-job:v1";
     private static final int FINGERPRINT_BYTES = 16;
     private static final int MIN_SECRET_BYTES = 32;
     private static final int MAX_KEY_VERSION_LENGTH = 32;
@@ -39,6 +42,63 @@ public final class AuditPseudonymizer {
      */
     public AuditPseudonymizer(String secret, String keyVersion) {
         this(secret, keyVersion, APPROVER_DOMAIN);
+    }
+
+    /**
+     * Creates a pseudonymizer for administrative actor identifiers.
+     *
+     * @param secret dedicated audit pseudonym secret; when configured, it must
+     *               contain at least 32 UTF-8 bytes; null or blank disables
+     *               correlation and produces the fixed unavailable marker
+     * @param keyVersion non-sensitive key-rotation identifier; null selects
+     *                   {@code v1}
+     * @return actor-domain pseudonymizer
+     * @throws IllegalArgumentException when a configured secret is shorter than
+     *                                  32 UTF-8 bytes, or when the key version is
+     *                                  empty, longer than 32 characters, or
+     *                                  contains characters outside letters,
+     *                                  digits, period, underscore, and hyphen
+     */
+    public static AuditPseudonymizer forAdministrativeActor(String secret, String keyVersion) {
+        return new AuditPseudonymizer(secret, keyVersion, ADMIN_ACTOR_DOMAIN);
+    }
+
+    /**
+     * Creates a pseudonymizer for administrative tenant identifiers.
+     *
+     * @param secret dedicated audit pseudonym secret; when configured, it must
+     *               contain at least 32 UTF-8 bytes; null or blank disables
+     *               correlation and produces the fixed unavailable marker
+     * @param keyVersion non-sensitive key-rotation identifier; null selects
+     *                   {@code v1}
+     * @return tenant-domain pseudonymizer
+     * @throws IllegalArgumentException when a configured secret is shorter than
+     *                                  32 UTF-8 bytes, or when the key version is
+     *                                  empty, longer than 32 characters, or
+     *                                  contains characters outside letters,
+     *                                  digits, period, underscore, and hyphen
+     */
+    public static AuditPseudonymizer forAdministrativeTenant(String secret, String keyVersion) {
+        return new AuditPseudonymizer(secret, keyVersion, ADMIN_TENANT_DOMAIN);
+    }
+
+    /**
+     * Creates a pseudonymizer for administrative conversion-job identifiers.
+     *
+     * @param secret dedicated audit pseudonym secret; when configured, it must
+     *               contain at least 32 UTF-8 bytes; null or blank disables
+     *               correlation and produces the fixed unavailable marker
+     * @param keyVersion non-sensitive key-rotation identifier; null selects
+     *                   {@code v1}
+     * @return job-domain pseudonymizer
+     * @throws IllegalArgumentException when a configured secret is shorter than
+     *                                  32 UTF-8 bytes, or when the key version is
+     *                                  empty, longer than 32 characters, or
+     *                                  contains characters outside letters,
+     *                                  digits, period, underscore, and hyphen
+     */
+    public static AuditPseudonymizer forAdministrativeJob(String secret, String keyVersion) {
+        return new AuditPseudonymizer(secret, keyVersion, ADMIN_JOB_DOMAIN);
     }
 
     /**

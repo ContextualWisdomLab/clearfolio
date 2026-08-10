@@ -132,7 +132,7 @@ final class OfficeOdfManifestPreflight {
                         + ZIP_LOCAL_HEADER_FIXED_LENGTH
                         + localNameLength
                         + localExtraLength;
-                if (dataOffset > Integer.MAX_VALUE) {
+                if (dataOffset > sourceBytes.length) {
                     throw invalidManifest();
                 }
                 manifestEntry = new ManifestEntry(
@@ -156,7 +156,7 @@ final class OfficeOdfManifestPreflight {
         if (entry.uncompressedSize() > MAX_MANIFEST_BYTES) {
             throw manifestTooLarge();
         }
-        if (entry.compressedSize() > Integer.MAX_VALUE || entry.uncompressedSize() > Integer.MAX_VALUE) {
+        if (entry.compressedSize() > Integer.MAX_VALUE) {
             throw invalidManifest();
         }
         int compressedSize = (int) entry.compressedSize();
@@ -207,9 +207,6 @@ final class OfficeOdfManifestPreflight {
         XMLInputFactory factory = XMLInputFactory.newFactory();
         factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
         factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
-        factory.setXMLResolver((publicId, systemId, baseUri, namespace) -> {
-            throw new XMLStreamException("external XML resolution is disabled");
-        });
 
         boolean rootElementSeen = false;
         int manifestFileEntryCount = 0;
@@ -220,7 +217,7 @@ final class OfficeOdfManifestPreflight {
             try {
                 while (reader.hasNext()) {
                     int event = reader.next();
-                    if (event == XMLStreamConstants.DTD || event == XMLStreamConstants.ENTITY_REFERENCE) {
+                    if (event == XMLStreamConstants.DTD) {
                         throw invalidManifest();
                     }
                     if (event != XMLStreamConstants.START_ELEMENT) {
@@ -268,9 +265,6 @@ final class OfficeOdfManifestPreflight {
             throw invalidManifest();
         }
 
-        if (!rootElementSeen) {
-            throw invalidManifest();
-        }
         if (manifestFileEntryCount == 0) {
             throw missingManifestFileEntry();
         }
@@ -315,7 +309,7 @@ final class OfficeOdfManifestPreflight {
     }
 
     private static boolean matchesAt(byte[] sourceBytes, int offset, byte[] expected) {
-        if (offset < 0 || offset > sourceBytes.length - expected.length) {
+        if (offset > sourceBytes.length - expected.length) {
             return false;
         }
         for (int index = 0; index < expected.length; index++) {

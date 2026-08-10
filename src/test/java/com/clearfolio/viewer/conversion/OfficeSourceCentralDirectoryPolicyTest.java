@@ -3,6 +3,7 @@ package com.clearfolio.viewer.conversion;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -13,14 +14,17 @@ import org.junit.jupiter.api.Test;
  *
  * <p>The pre-provider boundary must not trust the EOCD entry count or a leading
  * central-directory signature alone. These tests do not decompress entry data;
- * they only require structurally present central records and fail closed when a
- * record advertises ZIP encryption.</p>
+ * they only require structurally present central records with a safe relative
+ * entry name and fail closed when a record advertises ZIP encryption.</p>
  */
 class OfficeSourceCentralDirectoryPolicyTest {
 
+    private static final byte[] SAFE_ENTRY_NAME = "content.xml".getBytes(StandardCharsets.UTF_8);
     private static final int LOCAL_HEADER_OFFSET = 0;
     private static final int CENTRAL_DIRECTORY_OFFSET = 4;
-    private static final int CENTRAL_DIRECTORY_RECORD_LENGTH = 46;
+    private static final int CENTRAL_DIRECTORY_FIXED_LENGTH = 46;
+    private static final int CENTRAL_DIRECTORY_RECORD_LENGTH =
+            CENTRAL_DIRECTORY_FIXED_LENGTH + SAFE_ENTRY_NAME.length;
     private static final int EOCD_OFFSET = CENTRAL_DIRECTORY_OFFSET + CENTRAL_DIRECTORY_RECORD_LENGTH;
     private static final int EOCD_LENGTH = 22;
 
@@ -86,7 +90,15 @@ class OfficeSourceCentralDirectoryPolicyTest {
         byte[] bytes = new byte[EOCD_OFFSET + EOCD_LENGTH];
         putSignature(bytes, LOCAL_HEADER_OFFSET, 0x04034b50L);
         putSignature(bytes, CENTRAL_DIRECTORY_OFFSET, 0x02014b50L);
+        putUnsignedShort(bytes, CENTRAL_DIRECTORY_OFFSET + 28, SAFE_ENTRY_NAME.length);
         putUnsignedInt(bytes, CENTRAL_DIRECTORY_OFFSET + 42, LOCAL_HEADER_OFFSET);
+        System.arraycopy(
+                SAFE_ENTRY_NAME,
+                0,
+                bytes,
+                CENTRAL_DIRECTORY_OFFSET + CENTRAL_DIRECTORY_FIXED_LENGTH,
+                SAFE_ENTRY_NAME.length
+        );
         putSignature(bytes, EOCD_OFFSET, 0x06054b50L);
         putUnsignedShort(bytes, EOCD_OFFSET + 8, entriesOnDisk);
         putUnsignedShort(bytes, EOCD_OFFSET + 10, totalEntries);

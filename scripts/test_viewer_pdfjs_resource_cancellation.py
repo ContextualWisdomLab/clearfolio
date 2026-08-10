@@ -80,7 +80,9 @@ function createViewerContext() {
 
 async function assertRenderTaskIsCancelled(context) {
   let resolveRender;
+  let markRenderStarted;
   const renderPromise = new Promise(resolve => { resolveRender = resolve; });
+  const renderStarted = new Promise(resolve => { markRenderStarted = resolve; });
   let cancelCalls = 0;
   let documentDestroyCalls = 0;
   const renderTask = {
@@ -92,7 +94,10 @@ async function assertRenderTaskIsCancelled(context) {
     async getPage() {
       return {
         getViewport({ scale }) { return { width: 100 * scale, height: 200 * scale }; },
-        render() { return renderTask; },
+        render() {
+          markRenderStarted();
+          return renderTask;
+        },
       };
     },
     async destroy() { documentDestroyCalls += 1; },
@@ -110,9 +115,7 @@ async function assertRenderTaskIsCancelled(context) {
     "/artifacts/document.pdf",
     controller.signal,
   );
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  await renderStarted;
   controller.abort();
 
   assert.equal(cancelCalls, 1, "supersession must actively cancel the current PDF.js RenderTask");
@@ -122,11 +125,14 @@ async function assertRenderTaskIsCancelled(context) {
 }
 
 async function assertLoadingTaskIsDestroyed(context) {
+  let markLoadingStarted;
+  const loadingStarted = new Promise(resolve => { markLoadingStarted = resolve; });
   let loadingDestroyCalls = 0;
   const neverSettles = new Promise(() => {});
   context.__pdfJs = {
     GlobalWorkerOptions: {},
     getDocument() {
+      markLoadingStarted();
       return {
         promise: neverSettles,
         destroy() { loadingDestroyCalls += 1; return Promise.resolve(); },
@@ -140,8 +146,7 @@ async function assertLoadingTaskIsDestroyed(context) {
     "/artifacts/document.pdf",
     controller.signal,
   );
-  await Promise.resolve();
-  await Promise.resolve();
+  await loadingStarted;
   controller.abort();
   await Promise.resolve();
 

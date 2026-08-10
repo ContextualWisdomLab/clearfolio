@@ -65,10 +65,11 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
      * @param tenantId tenant claim
      * @param subjectId subject claim
      * @param permissions permission claims
+     * @throws IllegalArgumentException when tenant or subject authority is absent
      */
     public TenantContext {
-        tenantId = sanitize(tenantId);
-        subjectId = sanitize(subjectId);
+        tenantId = requireAuthority(tenantId, "tenantId");
+        subjectId = requireAuthority(subjectId, "subjectId");
         permissions = permissions == null
                 ? Set.of()
                 : Collections.unmodifiableSet(new LinkedHashSet<>(permissions));
@@ -126,6 +127,14 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
                 .filter(value -> value != null)
                 .forEach(parsed::add);
         return parsed;
+    }
+
+    private static String requireAuthority(String value, String claimName) {
+        String sanitized = sanitize(value);
+        if (sanitized == null) {
+            throw new IllegalArgumentException(claimName + " is required");
+        }
+        return sanitized;
     }
 
     private static String sanitize(String value) {

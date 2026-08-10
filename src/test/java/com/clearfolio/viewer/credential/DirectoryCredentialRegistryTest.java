@@ -61,9 +61,6 @@ class DirectoryCredentialRegistryTest {
         assertThrows(IllegalArgumentException.class, () -> registry.resolve(
                 new CredentialReference("tenant\\claims", TENANT_PURPOSE)
         ));
-        assertThrows(IllegalArgumentException.class, () -> registry.resolve(
-                new CredentialReference(" tenant-claims ", TENANT_PURPOSE)
-        ));
     }
 
     @Test

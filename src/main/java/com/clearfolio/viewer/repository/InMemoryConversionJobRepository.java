@@ -134,6 +134,20 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
      * {@inheritDoc}
      */
     @Override
+    public List<ConversionJob> findAllByTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return List.of();
+        }
+        String normalizedTenantId = tenantId.strip();
+        return jobs.values().stream()
+                .filter(job -> job.belongsToTenant(normalizedTenantId))
+                .toList();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void deleteById(UUID jobId) {
         ConversionJob removed = jobs.remove(jobId);
         if (removed != null && removed.getContentHash() != null && !removed.getContentHash().isBlank()) {

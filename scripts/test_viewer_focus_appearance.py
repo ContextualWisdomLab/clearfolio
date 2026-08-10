@@ -17,7 +17,7 @@ MINIMUM_BAND_WIDTH_PX = 2.0
 
 @dataclass(frozen=True)
 class FocusBand:
-    """Describe one solid focus-indicator band."""
+    """Describe one solid, independently visible focus-indicator band."""
 
     width_px: float
     color_hex: str
@@ -108,8 +108,24 @@ def _resolve_focus_color(css: str, expression: str) -> str:
     raise AssertionError(f"unsupported focus color expression: {value}")
 
 
+def _outline_offset_px(block: str) -> float:
+    """Return the non-negative outline offset that exposes an inner shadow band."""
+
+    match = re.search(
+        r"outline-offset\s*:\s*([+-]?[0-9.]+)px\s*;",
+        block,
+        re.IGNORECASE,
+    )
+    if match is None:
+        raise AssertionError("focus-visible must define an outline-offset")
+    offset = float(match.group(1))
+    if offset < 0.0:
+        raise AssertionError("focus-visible outline-offset must not be negative")
+    return offset
+
+
 def _focus_bands(css: str) -> list[FocusBand]:
-    """Return independently visible solid bands from the focus-visible rule."""
+    """Return non-overlapping solid bands visible in the focus-visible rule."""
 
     block = _focus_block(css)
     outlines = re.findall(
@@ -130,7 +146,10 @@ def _focus_bands(css: str) -> list[FocusBand]:
         re.IGNORECASE,
     )
     if shadow_match is not None:
-        bands.append(FocusBand(float(shadow_match.group(1)), shadow_match.group(2).lower()))
+        shadow_spread = float(shadow_match.group(1))
+        exposed_shadow_width = min(shadow_spread, _outline_offset_px(block))
+        if exposed_shadow_width > 0.0:
+            bands.append(FocusBand(exposed_shadow_width, shadow_match.group(2).lower()))
     return bands
 
 
@@ -159,6 +178,22 @@ class ViewerFocusAppearanceTest(unittest.TestCase):
                         f"bands={bands}"
                     ),
                 )
+
+    def test_focus_band_parser_does_not_double_count_overlapping_shadow(self) -> None:
+        """Count only shadow pixels exposed before an overlapping outline begins."""
+
+        css = """
+        :focus-visible {
+          outline: 3px solid #000000;
+          outline-offset: 1px;
+          box-shadow: 0 0 0 3px #ffffff;
+        }
+        """
+
+        self.assertEqual(
+            [FocusBand(3.0, "#000000"), FocusBand(1.0, "#ffffff")],
+            _focus_bands(css),
+        )
 
 
 if __name__ == "__main__":

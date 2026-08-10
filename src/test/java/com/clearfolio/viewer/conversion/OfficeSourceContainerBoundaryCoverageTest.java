@@ -153,7 +153,7 @@ class OfficeSourceContainerBoundaryCoverageTest {
                 () -> OfficeSourceContainerPreflight.requireQualifiedContainer(request("odt", source))
         );
 
-        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
         assertEquals("source ODF META-INF entry is not allowed", failure.getMessage());
     }
 

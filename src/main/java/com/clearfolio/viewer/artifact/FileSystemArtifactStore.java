@@ -114,9 +114,13 @@ public final class FileSystemArtifactStore implements ArtifactStore {
     }
 
     private void rollbackPartialWrite(UUID docId, IOException writeFailure) {
+        deletePartialFile(metadataPath(docId), writeFailure);
+        deletePartialFile(pdfPath(docId), writeFailure);
+    }
+
+    private static void deletePartialFile(Path path, IOException writeFailure) {
         try {
-            Files.deleteIfExists(metadataPath(docId));
-            Files.deleteIfExists(pdfPath(docId));
+            Files.deleteIfExists(path);
         } catch (IOException rollbackFailure) {
             writeFailure.addSuppressed(rollbackFailure);
         }

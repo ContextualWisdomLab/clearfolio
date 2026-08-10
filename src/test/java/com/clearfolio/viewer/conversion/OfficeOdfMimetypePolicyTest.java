@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 /**
- * Enforces deterministic placement and storage rules for an optional OpenDocument mimetype entry.
+ * Enforces deterministic placement, storage, and media-type rules for an optional OpenDocument mimetype entry.
  */
 class OfficeOdfMimetypePolicyTest {
 
@@ -19,6 +19,8 @@ class OfficeOdfMimetypePolicyTest {
     private static final byte[] MIMETYPE_NAME = "mimetype".getBytes(StandardCharsets.UTF_8);
     private static final byte[] ODT_MIMETYPE =
             "application/vnd.oasis.opendocument.text".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] ODS_MIMETYPE =
+            "application/vnd.oasis.opendocument.spreadsheet".getBytes(StandardCharsets.US_ASCII);
     private static final int LOCAL_HEADER_LENGTH = 30;
     private static final int CENTRAL_HEADER_LENGTH = 46;
 
@@ -40,7 +42,7 @@ class OfficeOdfMimetypePolicyTest {
     @Test
     void adapterRejectsOdfMimetypeEntryWhenCompressed() {
         AtomicInteger providerCalls = new AtomicInteger();
-        byte[] source = odfZipWithFirstMimetype(8, 0);
+        byte[] source = odfZipWithFirstMimetype(8, 0, ODT_MIMETYPE);
 
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
@@ -55,7 +57,7 @@ class OfficeOdfMimetypePolicyTest {
     @Test
     void adapterRejectsOdfMimetypeEntryWithLocalExtraField() {
         AtomicInteger providerCalls = new AtomicInteger();
-        byte[] source = odfZipWithFirstMimetype(0, 1);
+        byte[] source = odfZipWithFirstMimetype(0, 1, ODT_MIMETYPE);
 
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
@@ -64,6 +66,21 @@ class OfficeOdfMimetypePolicyTest {
 
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
         assertEquals("source ODF mimetype entry must not use a local extra field", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
+    @Test
+    void adapterRejectsOdfMimetypeEntryThatDoesNotMatchDeclaredFormat() {
+        AtomicInteger providerCalls = new AtomicInteger();
+        byte[] source = odfZipWithFirstMimetype(0, 0, ODS_MIMETYPE);
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(source))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source ODF mimetype does not match declared format", failure.getMessage());
         assertEquals(0, providerCalls.get());
     }
 
@@ -114,10 +131,14 @@ class OfficeOdfMimetypePolicyTest {
         return bytes;
     }
 
-    private static byte[] odfZipWithFirstMimetype(int compressionMethod, int localExtraFieldLength) {
+    private static byte[] odfZipWithFirstMimetype(
+            int compressionMethod,
+            int localExtraFieldLength,
+            byte[] mimetypePayload
+    ) {
         int mimetypeLocalOffset = 0;
         int mimetypeDataOffset = LOCAL_HEADER_LENGTH + MIMETYPE_NAME.length + localExtraFieldLength;
-        int manifestLocalOffset = mimetypeDataOffset + ODT_MIMETYPE.length;
+        int manifestLocalOffset = mimetypeDataOffset + mimetypePayload.length;
         int centralOffset = manifestLocalOffset + LOCAL_HEADER_LENGTH + MANIFEST_NAME.length;
         int mimetypeCentralLength = CENTRAL_HEADER_LENGTH + MIMETYPE_NAME.length;
         int manifestCentralOffset = centralOffset + mimetypeCentralLength;
@@ -131,10 +152,10 @@ class OfficeOdfMimetypePolicyTest {
                 mimetypeLocalOffset,
                 MIMETYPE_NAME,
                 compressionMethod,
-                ODT_MIMETYPE.length,
+                mimetypePayload.length,
                 localExtraFieldLength
         );
-        System.arraycopy(ODT_MIMETYPE, 0, bytes, mimetypeDataOffset, ODT_MIMETYPE.length);
+        System.arraycopy(mimetypePayload, 0, bytes, mimetypeDataOffset, mimetypePayload.length);
         writeLocalHeader(bytes, manifestLocalOffset, MANIFEST_NAME, 0, 0, 0);
         writeCentralHeader(
                 bytes,
@@ -142,8 +163,8 @@ class OfficeOdfMimetypePolicyTest {
                 MIMETYPE_NAME,
                 mimetypeLocalOffset,
                 compressionMethod,
-                ODT_MIMETYPE.length,
-                ODT_MIMETYPE.length
+                mimetypePayload.length,
+                mimetypePayload.length
         );
         writeCentralHeader(bytes, manifestCentralOffset, MANIFEST_NAME, manifestLocalOffset, 0, 0, 0);
 

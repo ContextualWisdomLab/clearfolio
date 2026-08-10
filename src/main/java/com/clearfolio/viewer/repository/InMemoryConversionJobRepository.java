@@ -2,12 +2,12 @@ package com.clearfolio.viewer.repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.stereotype.Repository;
 
@@ -16,6 +16,11 @@ import com.clearfolio.viewer.model.ConversionJobStatus;
 
 /**
  * In-memory repository implementation for conversion job persistence.
+ *
+ * <p>Once stored, a job identifier remains reserved for the lifetime of this
+ * repository instance. Deletion removes the live job and secondary index but
+ * does not make the identifier reusable. That prevents delayed asynchronous
+ * work from resolving an old identifier to a different job or tenant.</p>
  */
 @Repository
 public class InMemoryConversionJobRepository implements ConversionJobRepository, ConversionJobStateStore {
@@ -27,10 +32,13 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     private static final String EVENT_JOB_SUCCEEDED = "conversion.job.succeeded";
     private static final String EVENT_JOB_FAILED = "conversion.job.failed";
     private static final String EVENT_RETRY_ACCEPTED = "conversion.retry.accepted";
+    private static final String IDENTIFIER_COLLISION_MESSAGE = "Conversion job identifier collision.";
 
     private final ConcurrentHashMap<UUID, ConversionJob> jobs = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, UUID> jobsByTenantAndContentHash = new ConcurrentHashMap<>();
+    private final Set<UUID> reservedJobIdentifiers = ConcurrentHashMap.newKeySet();
     private final ConcurrentLinkedQueue<ConversionJobLifecycleEvent> lifecycleEvents = new ConcurrentLinkedQueue<>();
+    private final Object jobIndexLock = new Object();
 
     /**
      * Creates an empty thread-safe process-local job repository and lifecycle ledger.
@@ -44,11 +52,26 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
      */
     @Override
     public ConversionJob save(ConversionJob job) {
-        jobs.put(job.getJobId(), job);
-        if (job.getContentHash() != null && !job.getContentHash().isBlank()) {
-            jobsByTenantAndContentHash.putIfAbsent(contentKey(job.getTenantId(), job.getContentHash()), job.getJobId());
+        Objects.requireNonNull(job, "job");
+        synchronized (jobIndexLock) {
+            UUID jobId = Objects.requireNonNull(job.getJobId(), "job.jobId");
+            ConversionJob existing = jobs.get(jobId);
+            if (existing == job) {
+                return existing;
+            }
+            rejectReservedIdentifier(jobId, existing);
+
+            String contentHash = job.getContentHash();
+            reservedJobIdentifiers.add(jobId);
+            jobs.put(jobId, job);
+            if (contentHash != null && !contentHash.isBlank()) {
+                jobsByTenantAndContentHash.putIfAbsent(
+                        contentKey(job.getTenantId(), contentHash),
+                        jobId
+                );
+            }
+            return job;
         }
-        return job;
     }
 
     /**
@@ -56,37 +79,36 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
      */
     @Override
     public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
-        String contentHash = candidate.getContentHash();
-        if (contentHash == null || contentHash.isBlank()) {
-            save(candidate);
+        Objects.requireNonNull(candidate, "candidate");
+        synchronized (jobIndexLock) {
+            UUID candidateJobId = Objects.requireNonNull(candidate.getJobId(), "candidate.jobId");
+            ConversionJob existingById = jobs.get(candidateJobId);
+            if (existingById == candidate) {
+                appendLifecycleEvent(existingById, EVENT_DEDUPE_HIT, null);
+                return new ConversionJobRepository.FindOrStoreResult(existingById, false);
+            }
+            rejectReservedIdentifier(candidateJobId, existingById);
+
+            String contentHash = candidate.getContentHash();
+            if (contentHash == null || contentHash.isBlank()) {
+                storeNewCandidate(candidate);
+                appendLifecycleEvent(candidate, EVENT_SUBMITTED, null);
+                return new ConversionJobRepository.FindOrStoreResult(candidate, true);
+            }
+
+            String contentIndexKey = contentKey(candidate.getTenantId(), contentHash);
+            UUID existingJobId = jobsByTenantAndContentHash.get(contentIndexKey);
+            ConversionJob existingByContent = existingJobId == null ? null : jobs.get(existingJobId);
+            if (existingByContent != null) {
+                appendLifecycleEvent(existingByContent, EVENT_DEDUPE_HIT, null);
+                return new ConversionJobRepository.FindOrStoreResult(existingByContent, false);
+            }
+
+            storeNewCandidate(candidate);
+            jobsByTenantAndContentHash.put(contentIndexKey, candidateJobId);
             appendLifecycleEvent(candidate, EVENT_SUBMITTED, null);
             return new ConversionJobRepository.FindOrStoreResult(candidate, true);
         }
-
-        String contentKey = contentKey(candidate.getTenantId(), contentHash);
-        AtomicBoolean created = new AtomicBoolean(false);
-        AtomicReference<ConversionJob> canonical = new AtomicReference<>();
-        jobsByTenantAndContentHash.compute(
-                contentKey,
-                (key, existingJobId) -> {
-                    if (existingJobId != null) {
-                        ConversionJob existing = jobs.get(existingJobId);
-                        if (existing != null) {
-                            canonical.set(existing);
-                            return existingJobId;
-                        }
-                    }
-
-                    jobs.put(candidate.getJobId(), candidate);
-                    created.set(true);
-                    canonical.set(candidate);
-                    return candidate.getJobId();
-                }
-        );
-
-        ConversionJob storedJob = canonical.get();
-        appendLifecycleEvent(storedJob, created.get() ? EVENT_SUBMITTED : EVENT_DEDUPE_HIT, null);
-        return new ConversionJobRepository.FindOrStoreResult(canonical.get(), created.get());
     }
 
     /**
@@ -149,9 +171,14 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
      */
     @Override
     public void deleteById(UUID jobId) {
-        ConversionJob removed = jobs.remove(jobId);
-        if (removed != null && removed.getContentHash() != null && !removed.getContentHash().isBlank()) {
-            jobsByTenantAndContentHash.remove(contentKey(removed.getTenantId(), removed.getContentHash()), jobId);
+        synchronized (jobIndexLock) {
+            ConversionJob removed = jobs.remove(jobId);
+            if (removed != null && removed.getContentHash() != null && !removed.getContentHash().isBlank()) {
+                jobsByTenantAndContentHash.remove(
+                        contentKey(removed.getTenantId(), removed.getContentHash()),
+                        jobId
+                );
+            }
         }
     }
 
@@ -255,6 +282,19 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
 
         appendLifecycleEvent(job.get(), EVENT_RETRY_ACCEPTED, statusBefore);
         return true;
+    }
+
+    private void storeNewCandidate(ConversionJob candidate) {
+        UUID jobId = Objects.requireNonNull(candidate.getJobId(), "candidate.jobId");
+        rejectReservedIdentifier(jobId, jobs.get(jobId));
+        reservedJobIdentifiers.add(jobId);
+        jobs.put(jobId, candidate);
+    }
+
+    private void rejectReservedIdentifier(UUID jobId, ConversionJob existing) {
+        if (existing != null || reservedJobIdentifiers.contains(jobId)) {
+            throw new IllegalStateException(IDENTIFIER_COLLISION_MESSAGE);
+        }
     }
 
     private String contentKey(String tenantId, String contentHash) {

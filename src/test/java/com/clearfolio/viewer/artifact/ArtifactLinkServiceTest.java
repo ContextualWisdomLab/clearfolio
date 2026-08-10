@@ -512,6 +512,90 @@ class ArtifactLinkServiceTest {
         );
     }
 
+@Test
+    void verifyReadTokenRejectsExtraFields() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        String token = tokenFrom(service.createLink(job, tenantContext(), null));
+
+        // Add an extra field to the payload
+        int lastDot = token.lastIndexOf('.');
+        String payload = token.substring(0, lastDot);
+        String malformedPayload = payload + ".extra";
+        String malformedToken = malformedPayload + "." + hmac(malformedPayload);
+
+        assertTokenStatus(
+                HttpStatus.UNAUTHORIZED,
+                () -> service.verifyReadToken(docId, job, sampleBytes(), malformedToken)
+        );
+    }
+
+    @Test
+    void verifyReadTokenRejectsMissingFields() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        String token = tokenFrom(service.createLink(job, tenantContext(), null));
+
+        // Remove a field from the payload
+        String[] parts = token.split("\\.");
+        String malformedPayload = String.join(".", java.util.Arrays.copyOf(parts, 9));
+        String malformedToken = malformedPayload + "." + hmac(malformedPayload);
+
+        assertTokenStatus(
+                HttpStatus.UNAUTHORIZED,
+                () -> service.verifyReadToken(docId, job, sampleBytes(), malformedToken)
+        );
+    }
+
+    @Test
+    void verifyReadTokenRejectsNoDots() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+
+        assertTokenStatus(
+                HttpStatus.UNAUTHORIZED,
+                () -> service.verifyReadToken(docId, job, sampleBytes(), "nodotsheretoken")
+        );
+    }
+
+    @Test
+    void verifyReadTokenRejectsEmptySignature() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        String token = tokenFrom(service.createLink(job, tenantContext(), null));
+
+        int lastDot = token.lastIndexOf('.');
+        String malformedToken = token.substring(0, lastDot + 1);
+
+        assertTokenStatus(
+                HttpStatus.UNAUTHORIZED,
+                () -> service.verifyReadToken(docId, job, sampleBytes(), malformedToken)
+        );
+    }
+
+@Test
+    void verifyReadTokenRejectsExtraFields2() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        String token = tokenFrom(service.createLink(job, tenantContext(), null));
+
+        int lastDot = token.lastIndexOf('.');
+        String payload = token.substring(0, lastDot);
+        String malformedPayload = payload + ".extra";
+        String expectedSignature = hmac(malformedPayload);
+        String malformedToken = malformedPayload + "." + expectedSignature;
+
+        assertTokenStatus(
+                HttpStatus.UNAUTHORIZED,
+                () -> service.verifyReadToken(docId, job, sampleBytes(), malformedToken)
+        );
+    }
+
     @Test
     void createLinkThrowsWhenSha256DigestIsUnavailable() {
         UUID docId = UUID.randomUUID();

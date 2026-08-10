@@ -49,12 +49,15 @@ public record ArtifactDeletionReceiptIdentity(
     }
 
     private static String requireSha256(String value) {
-        String normalized = requireBoundedText(value, "artifactChecksum");
-        if (!SHA_256_PATTERN.matcher(normalized).matches()) {
+        String checksum = Objects.requireNonNull(value, "artifactChecksum");
+        if (checksum.isBlank()) {
+            throw new IllegalArgumentException("artifactChecksum must not be blank");
+        }
+        if (!SHA_256_PATTERN.matcher(checksum).matches()) {
             throw new IllegalArgumentException(
                     "artifactChecksum must be a lowercase SHA-256 digest");
         }
-        return normalized;
+        return checksum;
     }
 
     private static String requireBoundedText(String value, String fieldName) {

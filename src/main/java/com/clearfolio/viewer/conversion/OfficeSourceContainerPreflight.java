@@ -9,8 +9,8 @@ import java.util.Set;
  * bytes reach a sidecar or remote converter: the declared source format belongs to the
  * current Office conversion candidate set, the leading container signature matches that
  * format family, and ZIP-family candidates contain self-consistent standard single-disk
- * central-directory records and end-of-central-directory framing. ZIP entry names are
- * also rejected when they are absolute, contain parent traversal, use backslash path
+ * local-header, central-directory, and end-of-central-directory framing. ZIP entry names
+ * are also rejected when they are absolute, contain parent traversal, use backslash path
  * separators, or contain NUL bytes. Passing this preflight is <strong>not</strong>
  * complete package, macro, embedded-object, archive-expansion, malware, or fidelity
  * qualification. Those deeper controls remain separate sandbox/content-policy acceptance
@@ -38,6 +38,7 @@ final class OfficeSourceContainerPreflight {
             (byte) 0xa1, (byte) 0xb1, 0x1a, (byte) 0xe1
     };
     private static final int ZIP_EOCD_MINIMUM_LENGTH = 22;
+    private static final int ZIP_LOCAL_FILE_HEADER_MINIMUM_LENGTH = 30;
     private static final int ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH = 46;
     private static final int ZIP_MAXIMUM_COMMENT_LENGTH = 65_535;
     private static final int ZIP16_SENTINEL = 0xffff;
@@ -58,7 +59,7 @@ final class OfficeSourceContainerPreflight {
      * @param request immutable conversion request containing declared format and source bytes
      * @throws OfficeConversionException when the format is not a current candidate, the
      *         source does not match that format family's required container signature, a
-     *         ZIP-family source has invalid central-directory framing, a ZIP entry is
+     *         ZIP-family source has invalid local/central-directory framing, a ZIP entry is
      *         encrypted, or a ZIP entry path is unsafe
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
@@ -165,11 +166,43 @@ final class OfficeSourceContainerPreflight {
             if (nextCursor > centralDirectoryEnd) {
                 throw invalidCentralDirectory();
             }
-            requireSafeEntryPath(sourceBytes, cursor + ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH, fileNameLength);
+            int centralNameOffset = cursor + ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH;
+            requireMatchingLocalHeaderName(
+                    sourceBytes,
+                    (int) localHeaderOffset,
+                    centralDirectoryOffset,
+                    centralNameOffset,
+                    fileNameLength
+            );
+            requireSafeEntryPath(sourceBytes, centralNameOffset, fileNameLength);
             cursor = (int) nextCursor;
         }
         if (cursor != centralDirectoryEnd) {
             throw invalidCentralDirectory();
+        }
+    }
+
+    private static void requireMatchingLocalHeaderName(
+            byte[] sourceBytes,
+            int localHeaderOffset,
+            int centralDirectoryOffset,
+            int centralNameOffset,
+            int centralNameLength
+    ) {
+        if (localHeaderOffset > centralDirectoryOffset - ZIP_LOCAL_FILE_HEADER_MINIMUM_LENGTH) {
+            throw invalidLocalHeader();
+        }
+        int localNameLength = unsignedShort(sourceBytes, localHeaderOffset + 26);
+        int localExtraFieldLength = unsignedShort(sourceBytes, localHeaderOffset + 28);
+        long localNameOffset = (long) localHeaderOffset + ZIP_LOCAL_FILE_HEADER_MINIMUM_LENGTH;
+        long localHeaderMetadataEnd = localNameOffset + localNameLength + localExtraFieldLength;
+        if (localNameLength != centralNameLength || localHeaderMetadataEnd > centralDirectoryOffset) {
+            throw invalidLocalHeader();
+        }
+        for (int index = 0; index < centralNameLength; index++) {
+            if (sourceBytes[(int) localNameOffset + index] != sourceBytes[centralNameOffset + index]) {
+                throw invalidLocalHeader();
+            }
         }
     }
 
@@ -280,6 +313,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ZIP central directory is invalid"
+        );
+    }
+
+    private static OfficeConversionException invalidLocalHeader() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ZIP local header does not match central directory"
         );
     }
 

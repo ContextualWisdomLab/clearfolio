@@ -53,7 +53,7 @@ class ArtifactControllerTest {
         when(conversionService.getJob(docId)).thenReturn(Optional.empty());
 
         webTestClient.get()
-                .uri("/artifacts/{docId}.pdf", docId)
+                .uri("/artifacts/{docId}.pdf?artifactToken=opaque-present-token", docId)
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -72,7 +72,7 @@ class ArtifactControllerTest {
         when(conversionService.getJob(docId)).thenReturn(Optional.of(job));
 
         webTestClient.get()
-                .uri("/artifacts/{docId}.pdf", docId)
+                .uri("/artifacts/{docId}.pdf?artifactToken=opaque-present-token", docId)
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -84,7 +84,7 @@ class ArtifactControllerTest {
         when(conversionService.getJob(docId)).thenReturn(Optional.of(job));
 
         webTestClient.get()
-                .uri("/artifacts/{docId}.pdf", docId)
+                .uri("/artifacts/{docId}.pdf?artifactToken=opaque-present-token", docId)
                 .exchange()
                 .expectStatus().isNotFound();
     }

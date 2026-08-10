@@ -136,6 +136,11 @@ public class ArtifactController {
             @RequestParam(value = ArtifactLinkService.ARTIFACT_TOKEN_PARAM, required = false) String queryToken,
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
             @RequestHeader(value = "X-Request-Id", required = false) String traceId) {
+        String token = ArtifactLinkService.resolveToken(queryToken, authorizationHeader);
+        if (token == null) {
+            return Mono.just(ArtifactHttpResponse.tokenFailure(HttpStatus.UNAUTHORIZED));
+        }
+
         Optional<ConversionJob> job = conversionService.getJob(docId);
         if (job.isEmpty() || job.get().getStatus() != ConversionJobStatus.SUCCEEDED) {
             return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
@@ -147,7 +152,6 @@ public class ArtifactController {
         }
 
         byte[] pdfBytes = stored.get();
-        String token = ArtifactLinkService.resolveToken(queryToken, authorizationHeader);
         ArtifactTokenClaims claims;
         try {
             claims = artifactLinkService.verifyReadToken(docId, job.get(), pdfBytes, token);

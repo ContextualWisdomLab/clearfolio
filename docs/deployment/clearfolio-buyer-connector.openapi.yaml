@@ -26,6 +26,8 @@ tags:
     description: Signed artifact-link creation, revocation, byte delivery, and read evidence.
   - name: Analytics
     description: Tenant-scoped KPI snapshot and export evidence operations.
+  - name: Operations
+    description: Operational endpoints intentionally exposed without tenant identity.
 paths:
   /api/v1/convert/jobs:
     post:
@@ -367,6 +369,24 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /healthz:
+    get:
+      tags:
+        - Operations
+      operationId: getHealthz
+      summary: Check process liveness.
+      description: >
+        Returns only the static process-liveness payload shipped on protected main.
+        This endpoint intentionally requires no tenant identity and does not claim
+        dependency or traffic readiness.
+      security: []
+      responses:
+        "200":
+          description: Process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
 components:
   securitySchemes:
     clearfolioTenantHeaders:
@@ -514,6 +534,16 @@ components:
           schema:
             $ref: "#/components/schemas/ApiErrorResponse"
   schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
     SubmitConversionResponse:
       type: object
       required:

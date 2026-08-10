@@ -50,9 +50,9 @@ public class AnalyticsController {
     @GetMapping("/api/v1/analytics/kpi-snapshot")
     public KpiSnapshotResponse kpiSnapshot(@RequestHeader HttpHeaders headers) {
         TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ANALYTICS_READ);
-        KpiSnapshotResponse snapshot = KpiSnapshotResponse.from(repository.findAll().stream()
-                .filter(job -> job.belongsToTenant(tenantContext.tenantId()))
-                .toList());
+        KpiSnapshotResponse snapshot = KpiSnapshotResponse.from(
+                repository.findAllByTenantId(tenantContext.tenantId())
+        );
         snapshotLedger.recordSnapshot(tenantContext, snapshot);
         return snapshot;
     }

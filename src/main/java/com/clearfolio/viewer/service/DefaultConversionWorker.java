@@ -222,11 +222,7 @@ public class DefaultConversionWorker implements ConversionWorker {
     }
 
     private String failureReason(Throwable error) {
-        String message = error.getMessage();
-        if (message == null || message.isBlank()) {
-            return "conversion failed: " + error.getClass().getSimpleName();
-        }
-        return "conversion failed: " + message;
+        return "conversion failed: " + error.getClass().getSimpleName();
     }
 
     private void onFailure(ConversionJob job, String reason) {

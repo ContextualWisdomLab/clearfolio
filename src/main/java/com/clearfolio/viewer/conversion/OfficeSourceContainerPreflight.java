@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.conversion;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 /**
@@ -15,18 +16,25 @@ import java.util.Set;
  * and size metadata must agree where applicable, advertised compressed bytes cannot extend
  * beyond the local-data area before the central directory, and entry names are rejected
  * when they are absolute, contain parent traversal, use backslash path separators, or
- * contain NUL bytes. Passing this preflight is <strong>not</strong> complete package,
- * macro, embedded-object, archive-expansion, malware, or fidelity qualification. Those
- * deeper controls remain separate sandbox/content-policy acceptance gates.</p>
+ * contain NUL bytes. OpenDocument candidates additionally require the package manifest
+ * entry mandated by the ODF package specification. Passing this preflight is
+ * <strong>not</strong> complete package, macro, embedded-object, archive-expansion,
+ * malware, or fidelity qualification. Those deeper controls remain separate
+ * sandbox/content-policy acceptance gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
     private static final Set<String> ZIP_PACKAGE_FORMATS = Set.of(
             "docx", "xlsx", "pptx", "odt", "ods", "odp"
     );
+    private static final Set<String> ODF_PACKAGE_FORMATS = Set.of(
+            "odt", "ods", "odp"
+    );
     private static final Set<String> COMPOUND_FILE_FORMATS = Set.of(
             "doc", "xls", "ppt"
     );
+    private static final byte[] ODF_MANIFEST_ENTRY_NAME =
+            "META-INF/manifest.xml".getBytes(StandardCharsets.UTF_8);
     private static final byte[] ZIP_LOCAL_FILE_HEADER = new byte[] {
             0x50, 0x4b, 0x03, 0x04
     };
@@ -68,8 +76,8 @@ final class OfficeSourceContainerPreflight {
      *         ZIP-family source has invalid local/central-directory framing, has inconsistent
      *         Stored entry sizes or duplicated metadata, advertises compressed bytes beyond
      *         its local-data region, uses a ZIP compression method outside the current
-     *         Stored/Deflate qualification boundary, contains an encrypted entry, or has an
-     *         unsafe ZIP entry path
+     *         Stored/Deflate qualification boundary, contains an encrypted entry, has an
+     *         unsafe ZIP entry path, or an ODF candidate omits its required package manifest
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
         String sourceFormat = request.sourceFormat();
@@ -77,7 +85,7 @@ final class OfficeSourceContainerPreflight {
 
         if (ZIP_PACKAGE_FORMATS.contains(sourceFormat)) {
             requireSignature(sourceBytes, ZIP_LOCAL_FILE_HEADER);
-            requireStandardZipFraming(sourceBytes);
+            requireStandardZipFraming(sourceBytes, ODF_PACKAGE_FORMATS.contains(sourceFormat));
             return;
         }
         if (COMPOUND_FILE_FORMATS.contains(sourceFormat)) {
@@ -99,7 +107,7 @@ final class OfficeSourceContainerPreflight {
         }
     }
 
-    private static void requireStandardZipFraming(byte[] sourceBytes) {
+    private static void requireStandardZipFraming(byte[] sourceBytes, boolean requireOdfManifest) {
         int eocdOffset = findEocdOffset(sourceBytes);
         if (eocdOffset < 0 || !isStandardSingleDiskEocd(sourceBytes, eocdOffset)) {
             throw invalidZipFraming();
@@ -125,7 +133,8 @@ final class OfficeSourceContainerPreflight {
                 sourceBytes,
                 (int) centralDirectoryOffset,
                 (int) centralDirectoryEnd,
-                entryCount
+                entryCount,
+                requireOdfManifest
         );
     }
 
@@ -133,9 +142,11 @@ final class OfficeSourceContainerPreflight {
             byte[] sourceBytes,
             int centralDirectoryOffset,
             int centralDirectoryEnd,
-            int entryCount
+            int entryCount,
+            boolean requireOdfManifest
     ) {
         int cursor = centralDirectoryOffset;
+        boolean odfManifestFound = false;
         for (int entryIndex = 0; entryIndex < entryCount; entryIndex++) {
             if (cursor > centralDirectoryEnd - ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH
                     || !matchesAt(sourceBytes, cursor, ZIP_CENTRAL_DIRECTORY_HEADER)) {
@@ -197,10 +208,21 @@ final class OfficeSourceContainerPreflight {
                 throw invalidEntryDataRange();
             }
             requireSafeEntryPath(sourceBytes, centralNameOffset, fileNameLength);
+            if (entryNameMatches(
+                    sourceBytes,
+                    centralNameOffset,
+                    fileNameLength,
+                    ODF_MANIFEST_ENTRY_NAME
+            )) {
+                odfManifestFound = true;
+            }
             cursor = (int) nextCursor;
         }
         if (cursor != centralDirectoryEnd) {
             throw invalidCentralDirectory();
+        }
+        if (requireOdfManifest && !odfManifestFound) {
+            throw missingOdfManifest();
         }
     }
 
@@ -254,6 +276,23 @@ final class OfficeSourceContainerPreflight {
             }
         }
         return localHeaderMetadataEnd;
+    }
+
+    private static boolean entryNameMatches(
+            byte[] sourceBytes,
+            int nameOffset,
+            int nameLength,
+            byte[] expectedName
+    ) {
+        if (nameLength != expectedName.length) {
+            return false;
+        }
+        for (int index = 0; index < expectedName.length; index++) {
+            if (sourceBytes[nameOffset + index] != expectedName[index]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isAllowedCompressionMethod(int compressionMethod) {
@@ -395,6 +434,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ZIP entry data exceeds local data region"
+        );
+    }
+
+    private static OfficeConversionException missingOdfManifest() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ODF package manifest is missing"
         );
     }
 

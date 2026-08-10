@@ -11,13 +11,13 @@ import java.util.Set;
  * format family, and ZIP-family candidates contain self-consistent standard single-disk
  * local-header, central-directory, and end-of-central-directory framing. ZIP entries are
  * limited to the current Stored/Deflate compression qualification boundary, Stored entry
- * sizes must be internally consistent, local and central data-descriptor flags and size
- * metadata must agree where applicable, advertised compressed bytes cannot extend beyond
- * the local-data area before the central directory, and entry names are rejected when they
- * are absolute, contain parent traversal, use backslash path separators, or contain NUL
- * bytes. Passing this preflight is <strong>not</strong> complete package, macro,
- * embedded-object, archive-expansion, malware, or fidelity qualification. Those deeper
- * controls remain separate sandbox/content-policy acceptance gates.</p>
+ * sizes must be internally consistent, local and central data-descriptor flags plus CRC
+ * and size metadata must agree where applicable, advertised compressed bytes cannot extend
+ * beyond the local-data area before the central directory, and entry names are rejected
+ * when they are absolute, contain parent traversal, use backslash path separators, or
+ * contain NUL bytes. Passing this preflight is <strong>not</strong> complete package,
+ * macro, embedded-object, archive-expansion, malware, or fidelity qualification. Those
+ * deeper controls remain separate sandbox/content-policy acceptance gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -151,6 +151,7 @@ final class OfficeSourceContainerPreflight {
                 throw unsupportedCompressionMethod();
             }
 
+            long crc32 = unsignedInt(sourceBytes, cursor + 16);
             long compressedSize = unsignedInt(sourceBytes, cursor + 20);
             long uncompressedSize = unsignedInt(sourceBytes, cursor + 24);
             int fileNameLength = unsignedShort(sourceBytes, cursor + 28);
@@ -188,6 +189,7 @@ final class OfficeSourceContainerPreflight {
                     fileNameLength,
                     flags,
                     compressionMethod,
+                    crc32,
                     compressedSize,
                     uncompressedSize
             );
@@ -210,6 +212,7 @@ final class OfficeSourceContainerPreflight {
             int centralNameLength,
             int centralFlags,
             int centralCompressionMethod,
+            long centralCrc32,
             long centralCompressedSize,
             long centralUncompressedSize
     ) {
@@ -236,9 +239,11 @@ final class OfficeSourceContainerPreflight {
             throw invalidLocalHeader();
         }
         if (!centralUsesDataDescriptor) {
+            long localCrc32 = unsignedInt(sourceBytes, localHeaderOffset + 14);
             long localCompressedSize = unsignedInt(sourceBytes, localHeaderOffset + 18);
             long localUncompressedSize = unsignedInt(sourceBytes, localHeaderOffset + 22);
-            if (localCompressedSize != centralCompressedSize
+            if (localCrc32 != centralCrc32
+                    || localCompressedSize != centralCompressedSize
                     || localUncompressedSize != centralUncompressedSize) {
                 throw invalidLocalHeader();
             }

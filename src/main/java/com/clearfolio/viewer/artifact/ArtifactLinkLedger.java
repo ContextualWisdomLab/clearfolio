@@ -2,6 +2,8 @@ package com.clearfolio.viewer.artifact;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +12,7 @@ import java.time.DateTimeException;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,6 +40,7 @@ public class ArtifactLinkLedger {
     private final ConcurrentMap<String, ArtifactLinkRecord> issuedLinks = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<ArtifactReadEvent> readEvents = new ConcurrentLinkedQueue<>();
     private final Path ledgerPath;
+    private final DurableLineAppender durableLineAppender;
 
     /**
      * Creates an in-memory artifact link ledger.
@@ -56,7 +60,12 @@ public class ArtifactLinkLedger {
     }
 
     ArtifactLinkLedger(Path ledgerPath) {
+        this(ledgerPath, ArtifactLinkLedger::appendDurably);
+    }
+
+    ArtifactLinkLedger(Path ledgerPath, DurableLineAppender durableLineAppender) {
         this.ledgerPath = ledgerPath;
+        this.durableLineAppender = Objects.requireNonNull(durableLineAppender, "durableLineAppender");
         load();
     }
 
@@ -224,17 +233,24 @@ public class ArtifactLinkLedger {
             return;
         }
         try {
-            Files.createDirectories(ledgerPath.toAbsolutePath().getParent());
-            Files.writeString(
-                    ledgerPath,
-                    line + System.lineSeparator(),
-                    StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.APPEND
-            );
+            durableLineAppender.append(ledgerPath, line + System.lineSeparator());
         } catch (IOException ex) {
             throw new IllegalStateException("artifact link ledger cannot be written", ex);
+        }
+    }
+
+    private static void appendDurably(Path ledgerPath, String line) throws IOException {
+        Files.createDirectories(ledgerPath.toAbsolutePath().getParent());
+        try (FileChannel channel = FileChannel.open(
+                ledgerPath,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.APPEND)) {
+            ByteBuffer bytes = StandardCharsets.UTF_8.encode(line);
+            while (bytes.hasRemaining()) {
+                channel.write(bytes);
+            }
+            channel.force(true);
         }
     }
 
@@ -348,5 +364,10 @@ public class ArtifactLinkLedger {
 
     private static IllegalStateException invalidLine(Throwable cause) {
         return new IllegalStateException("artifact link ledger contains an invalid line", cause);
+    }
+
+    @FunctionalInterface
+    interface DurableLineAppender {
+        void append(Path ledgerPath, String line) throws IOException;
     }
 }

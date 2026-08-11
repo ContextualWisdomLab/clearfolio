@@ -64,6 +64,18 @@ class ArtifactStorePropertiesTest {
     }
 
     @Test
+    void setModeRejectsNulCorruptedKnownMode() {
+        ArtifactStoreProperties properties = new ArtifactStoreProperties();
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> properties.setMode("file\u0000system")
+        );
+
+        assertEquals(ArtifactStoreProperties.MODE_FILESYSTEM, properties.getMode());
+    }
+
+    @Test
     void setRootDirFallsBackToDefaultForNullAndBlankValues() {
         ArtifactStoreProperties properties = new ArtifactStoreProperties();
 

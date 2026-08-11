@@ -228,6 +228,10 @@ final class OfficeSourceContainerPreflight {
             if (!rawEntryNames.add(rawEntryName)) {
                 throw duplicateEntryName();
             }
+            if ("vbaProject.bin".equalsIgnoreCase(
+                    rawEntryName.substring(rawEntryName.lastIndexOf('/') + 1))) {
+                throw prohibitedOfficeActiveContent();
+            }
             long localDataOffset = requireMatchingLocalHeaderMetadata(
                     sourceBytes,
                     (int) localHeaderOffset,
@@ -566,6 +570,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ZIP contains duplicate entry name"
+        );
+    }
+
+    private static OfficeConversionException prohibitedOfficeActiveContent() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source Office package contains prohibited active content"
         );
     }
 

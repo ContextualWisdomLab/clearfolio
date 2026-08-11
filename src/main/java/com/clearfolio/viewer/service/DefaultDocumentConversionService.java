@@ -217,6 +217,17 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * {@inheritDoc}
      */
     @Override
+    public Optional<ConversionJob> getJob(UUID jobId, TenantContext tenantContext) {
+        if (jobId == null || tenantContext == null) {
+            return Optional.empty();
+        }
+        return repository.findByTenantAndId(tenantContext.tenantId(), jobId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean deleteJob(UUID jobId, TenantContext tenantContext) {
         if (tenantContext == null) {
             return false;

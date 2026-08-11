@@ -16,6 +16,9 @@ public enum ConversionExecutionEventType {
     /** The conversion attempt completed successfully. */
     SUCCEEDED,
 
+    /** The conversion attempt failed but is eligible for a controlled retry. */
+    RETRYABLE_FAILED,
+
     /** The conversion attempt reached a terminal failure. */
     TERMINAL_FAILED
 }

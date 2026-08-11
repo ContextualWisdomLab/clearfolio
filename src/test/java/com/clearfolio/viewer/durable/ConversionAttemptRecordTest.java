@@ -62,6 +62,29 @@ class ConversionAttemptRecordTest {
     }
 
     @Test
+    void failedTerminalAttemptCannotAuthorizeArtifactPublication() {
+        UUID jobId = UUID.randomUUID();
+        UUID leaseId = UUID.randomUUID();
+        Instant claimedAt = Instant.parse("2026-08-11T02:00:00Z");
+        ConversionAttemptRecord claimed = ConversionAttemptRecord.claim(
+                UUID.randomUUID(),
+                jobId,
+                3L,
+                1,
+                leaseId,
+                claimedAt
+        );
+
+        assertTrue(claimed.authorizes(jobId, 3L, leaseId));
+        assertTrue(claimed.finish(ConversionAttemptState.SUCCEEDED, claimedAt.plusSeconds(1L))
+                .authorizes(jobId, 3L, leaseId));
+        assertFalse(claimed.finish(ConversionAttemptState.RETRYABLE_FAILED, claimedAt.plusSeconds(1L))
+                .authorizes(jobId, 3L, leaseId));
+        assertFalse(claimed.finish(ConversionAttemptState.TERMINAL_FAILED, claimedAt.plusSeconds(1L))
+                .authorizes(jobId, 3L, leaseId));
+    }
+
+    @Test
     void terminalOutcomeIsMonotonicAndExactReplayIsIdempotent() {
         Instant claimedAt = Instant.parse("2026-08-11T02:00:00Z");
         Instant finishedAt = claimedAt.plusSeconds(7L);
@@ -133,10 +156,16 @@ class ConversionAttemptRecordTest {
         assertThrows(NullPointerException.class, () -> record.finish(null, claimedAt));
         assertThrows(NullPointerException.class,
                 () -> record.finish(ConversionAttemptState.SUCCEEDED, null));
-        assertThrows(IllegalArgumentException.class,
-                () -> record.finish(ConversionAttemptState.CLAIMED, claimedAt));
-        assertThrows(IllegalArgumentException.class,
-                () -> record.finish(ConversionAttemptState.SUCCEEDED, claimedAt.minusNanos(1L)));
+        assertEquals(
+                "terminalState must be terminal",
+                assertThrows(IllegalArgumentException.class,
+                        () -> record.finish(ConversionAttemptState.CLAIMED, claimedAt)).getMessage()
+        );
+        assertEquals(
+                "completionTime must not precede claimedAt",
+                assertThrows(IllegalArgumentException.class,
+                        () -> record.finish(ConversionAttemptState.SUCCEEDED, claimedAt.minusNanos(1L))).getMessage()
+        );
     }
 
     @Test
@@ -154,13 +183,25 @@ class ConversionAttemptRecordTest {
                 () -> ConversionAttemptRecord.claim(attemptId, jobId, 1L, 1, null, claimedAt));
         assertThrows(NullPointerException.class,
                 () -> ConversionAttemptRecord.claim(attemptId, jobId, 1L, 1, leaseId, null));
-        assertThrows(IllegalArgumentException.class,
-                () -> ConversionAttemptRecord.claim(attemptId, jobId, 0L, 1, leaseId, claimedAt));
-        assertThrows(IllegalArgumentException.class,
-                () -> ConversionAttemptRecord.claim(attemptId, jobId, -1L, 1, leaseId, claimedAt));
-        assertThrows(IllegalArgumentException.class,
-                () -> ConversionAttemptRecord.claim(attemptId, jobId, 1L, 0, leaseId, claimedAt));
-        assertThrows(IllegalArgumentException.class,
-                () -> ConversionAttemptRecord.claim(attemptId, jobId, 1L, -1, leaseId, claimedAt));
+        assertEquals(
+                "generation must be positive",
+                assertThrows(IllegalArgumentException.class,
+                        () -> ConversionAttemptRecord.claim(attemptId, jobId, 0L, 1, leaseId, claimedAt)).getMessage()
+        );
+        assertEquals(
+                "generation must be positive",
+                assertThrows(IllegalArgumentException.class,
+                        () -> ConversionAttemptRecord.claim(attemptId, jobId, -1L, 1, leaseId, claimedAt)).getMessage()
+        );
+        assertEquals(
+                "attempt must be positive",
+                assertThrows(IllegalArgumentException.class,
+                        () -> ConversionAttemptRecord.claim(attemptId, jobId, 1L, 0, leaseId, claimedAt)).getMessage()
+        );
+        assertEquals(
+                "attempt must be positive",
+                assertThrows(IllegalArgumentException.class,
+                        () -> ConversionAttemptRecord.claim(attemptId, jobId, 1L, -1, leaseId, claimedAt)).getMessage()
+        );
     }
 }

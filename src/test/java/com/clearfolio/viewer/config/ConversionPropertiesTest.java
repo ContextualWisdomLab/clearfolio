@@ -51,6 +51,9 @@ class ConversionPropertiesTest {
                 IllegalArgumentException.class,
                 () -> properties.setRetryBackoffMultiplier(Double.NEGATIVE_INFINITY)
         );
+
+        properties.setRetryBackoffMultiplier(0.5);
+        assertEquals(1.0, properties.getRetryBackoffMultiplier());
     }
 
     @Test

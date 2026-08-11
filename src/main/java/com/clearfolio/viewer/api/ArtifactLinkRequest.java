@@ -1,5 +1,7 @@
 package com.clearfolio.viewer.api;
 
+import java.util.Set;
+
 /**
  * Request payload for issuing a short-lived artifact access link.
  *
@@ -12,6 +14,22 @@ public record ArtifactLinkRequest(
         Integer ttlSeconds,
         String viewerSessionId
 ) {
+
+    private static final Set<String> SUPPORTED_PURPOSES = Set.of(
+            "viewer-preview",
+            "download",
+            "integration"
+    );
+
+    /**
+     * Validates an explicit purpose against the documented API values.
+     */
+    public ArtifactLinkRequest {
+        if (purpose != null && !purpose.isBlank()
+                && !SUPPORTED_PURPOSES.contains(purpose.strip())) {
+            throw new IllegalArgumentException("artifact link purpose is unsupported");
+        }
+    }
 
     /**
      * Creates the default viewer-preview request.

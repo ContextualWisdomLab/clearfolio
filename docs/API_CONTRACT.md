@@ -1,7 +1,7 @@
 # Clearfolio API and Integration Contract
 
 Status: Canonical API authority index
-Baseline: protected `main` at `f3cc09a9838f0f88c81a2ceae22138fab80a2edb`
+Baseline: protected `main` at `55d7ae8647208e301f282350f076eeddaba61d11`
 
 This document is an index and compatibility contract. Source controllers and versioned OpenAPI artifacts remain executable schema authority. Active-PR behavior is labelled explicitly.
 
@@ -29,7 +29,7 @@ This document is an index and compatibility contract. Source controllers and ver
 | `POST /api/v1/viewer/artifact-links/{tokenId}/revoke` | artifact-link-revoke permission + tenant-bound token record | `IMPLEMENTED_ON_MAIN` |
 | `GET /api/v1/viewer/{docId}/artifact-read-events` | audit-read permission + tenant scope | `IMPLEMENTED_ON_MAIN` |
 | `GET /artifacts/{docId}.pdf` | signed artifact token; token scope/doc/tenant/checksum/expiry/ledger/revocation | `IMPLEMENTED_ON_MAIN`; zero or one Range; controlled read audit |
-| `GET /api/v1/convert/jobs/{jobId}/download` | tenant `artifact:read` + same tenant + signed artifact delivery | signed-delivery alignment `ACTIVE_PR` #270; permission-only behavior is not accepted final contract |
+| `GET /api/v1/convert/jobs/{jobId}/download` | tenant `artifact:read` + same tenant + signed artifact delivery | `IMPLEMENTED_ON_MAIN`; protected-main #270 requires signed artifact token verification, zero-or-one Range handling, checksum binding and verified-read audit |
 | admin list/retry/delete surfaces | signed tenant claims + least-privilege admin permission + tenant-scoped service contract | stronger contract `ACTIVE_PR` #268 |
 | `GET /healthz` | orchestration probe | protected-main health surface; liveness semantic target `ACTIVE_PR` #295 |
 | `GET /readyz` | orchestration traffic-readiness probe | `ACTIVE_PR` #295 only; not protected-main behavior |
@@ -78,6 +78,10 @@ Authorization status can intentionally distinguish:
 - invalid range → range-not-satisfiable.
 
 ## Versioning and compatibility
+
+Protected `main` currently identifies its shipped HTTP contract through the `/api/v1/**` path namespace. It does **not** yet implement a separate request/response API-version negotiation header.
+
+PR #379 is `ACTIVE_PR` evidence for a bounded negotiation contract and must not be represented as shipped until protected merge. Its proposed behavior keeps existing `/api/v1/**` callers backward compatible when `X-Clearfolio-Api-Version` is absent or blank, accepts an explicit exact `v1`, declares the current `v1` version on API responses, and rejects any explicitly unsupported version with a controlled error before controller dispatch. The exact active-PR head and its checks/reviews remain non-transferable evidence and must be revalidated before maturity changes.
 
 Breaking changes include removing/renaming public endpoints or fields, changing tenant/permission semantics in a way that makes previously authorized data inaccessible without a security reason/migration, changing lifecycle state meanings, changing artifact-token claim interpretation, or changing error semantics relied on by clients.
 

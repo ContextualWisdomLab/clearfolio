@@ -84,6 +84,21 @@ class PolicyOverrideRequestTest {
     }
 
     @Test
+    void toStringNormalizesNonWhitespaceIsoControlsInPrintableOverrideFlag() {
+        PolicyOverrideRequest request = PolicyOverrideRequest.of(
+                "tr\u001bue\u0000",
+                "secret-token",
+                "sensitive-user"
+        );
+
+        String rendered = request.toString();
+
+        assertTrue(rendered.contains("policyOverride='tr_ue_'"));
+        assertFalse(rendered.contains("\u001b"));
+        assertFalse(rendered.contains("\u0000"));
+    }
+
+    @Test
     void toStringHandlesNullPrintableHeaderWithoutRevealingIdentityState() {
         String rendered = PolicyOverrideRequest.none().toString();
 

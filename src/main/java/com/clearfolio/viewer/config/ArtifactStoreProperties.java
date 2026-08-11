@@ -95,6 +95,9 @@ public class ArtifactStoreProperties {
         if (value == null) {
             return "";
         }
-        return value.replace("\u0000", "").strip().toLowerCase(Locale.ROOT);
+        if (value.indexOf('\u0000') >= 0) {
+            throw new IllegalArgumentException("unsupported artifact store mode: contains NUL");
+        }
+        return value.strip().toLowerCase(Locale.ROOT);
     }
 }

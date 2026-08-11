@@ -123,7 +123,7 @@ class OfficeConversionResidualCoverageTest {
                 () -> OfficeSourceContainerPreflight.requireQualifiedContainer(request("odt", source))
         );
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
-        assertEquals("source ODF mimetype payload is invalid", failure.getMessage());
+        assertEquals("source ODF mimetype does not match declared format", failure.getMessage());
     }
 
     @Test

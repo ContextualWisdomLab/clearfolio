@@ -42,6 +42,26 @@ class OfficeOoxmlExternalRelationshipPolicyTest {
     }
 
     @Test
+    void adapterRejectsRootExternalRelationshipBeforeProvider() throws Exception {
+        AtomicInteger providerCalls = new AtomicInteger();
+        byte[] source = docxWithRelationshipAtPath(
+                "_rels/.rels",
+                "<Relationship Id=\"rId1\" "
+                        + "Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" "
+                        + "Target=\"https://example.test/document.xml\" TargetMode=\"External\"/>"
+        );
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(source))
+        );
+
+        assertEquals(OfficeConversionFailureCode.POLICY_DENIED, failure.failureCode());
+        assertEquals("source Office package contains an external relationship", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
+    @Test
     void adapterAllowsInternalRelationshipToReachProvider() throws Exception {
         AtomicInteger providerCalls = new AtomicInteger();
         byte[] source = docxWithRelationship(
@@ -132,7 +152,15 @@ class OfficeOoxmlExternalRelationshipPolicyTest {
     }
 
     private static byte[] docxWithRelationship(String relationshipElement) throws IOException {
-        return docxWithRelationshipXml(
+        return docxWithRelationshipAtPath("word/_rels/document.xml.rels", relationshipElement);
+    }
+
+    private static byte[] docxWithRelationshipAtPath(
+            String path,
+            String relationshipElement
+    ) throws IOException {
+        return docxWithRelationshipXmlAtPath(
+                path,
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                         + "<Relationships xmlns=\"" + RELATIONSHIP_NAMESPACE + "\">"
                         + relationshipElement
@@ -141,9 +169,13 @@ class OfficeOoxmlExternalRelationshipPolicyTest {
     }
 
     private static byte[] docxWithRelationshipXml(String xml) throws IOException {
+        return docxWithRelationshipXmlAtPath("word/_rels/document.xml.rels", xml);
+    }
+
+    private static byte[] docxWithRelationshipXmlAtPath(String path, String xml) throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
-            zip.putNextEntry(new ZipEntry("word/_rels/document.xml.rels"));
+            zip.putNextEntry(new ZipEntry(path));
             zip.write(xml.getBytes(StandardCharsets.UTF_8));
             zip.closeEntry();
         }

@@ -28,13 +28,10 @@ import javax.xml.stream.XMLStreamReader;
 final class OfficeOoxmlRelationshipPreflight {
 
     private static final Set<String> OOXML_FORMATS = Set.of("docx", "xlsx", "pptx");
-    private static final Pattern RELATIONSHIP_PART = Pattern.compile("(?:^|.*/)_rels/[^/]+\\.rels");
+    private static final Pattern RELATIONSHIP_PART = Pattern.compile("(?:^|.*/)_rels/[^/]*\\.rels");
     private static final String RELATIONSHIP_NAMESPACE =
             "http://schemas.openxmlformats.org/package/2006/relationships";
     private static final QName RELATIONSHIP_ELEMENT = new QName(RELATIONSHIP_NAMESPACE, "Relationship");
-    private static final byte[] ZIP_CENTRAL_DIRECTORY_HEADER = new byte[] {
-            0x50, 0x4b, 0x01, 0x02
-    };
     private static final byte[] ZIP_END_OF_CENTRAL_DIRECTORY = new byte[] {
             0x50, 0x4b, 0x05, 0x06
     };

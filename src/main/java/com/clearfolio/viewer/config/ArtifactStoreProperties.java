@@ -42,15 +42,24 @@ public class ArtifactStoreProperties {
     }
 
     /**
-     * Sets the artifact store mode; blank or null values fall back to the
-     * disk-backed default, and any value other than {@link #MODE_IN_MEMORY}
-     * selects the disk-backed store.
+     * Sets the artifact store mode. Blank or null values fall back to the
+     * disk-backed default; unsupported non-blank modes are rejected so a
+     * deployment cannot silently persist artifacts to a different store than
+     * the operator intended.
      *
      * @param mode artifact store mode
+     * @throws IllegalArgumentException when a non-blank mode is unsupported
      */
     public void setMode(String mode) {
         String sanitized = sanitize(mode);
-        this.mode = sanitized.isEmpty() ? MODE_FILESYSTEM : sanitized;
+        if (sanitized.isEmpty()) {
+            this.mode = MODE_FILESYSTEM;
+            return;
+        }
+        if (!MODE_FILESYSTEM.equals(sanitized) && !MODE_IN_MEMORY.equals(sanitized)) {
+            throw new IllegalArgumentException("unsupported artifact store mode: " + sanitized);
+        }
+        this.mode = sanitized;
     }
 
     /**

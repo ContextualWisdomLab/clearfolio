@@ -24,6 +24,7 @@ import com.clearfolio.viewer.audit.AdministrativeAuditLogger.Action;
 import com.clearfolio.viewer.audit.AdministrativeAuditLogger.Outcome;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.config.ConversionProperties;
+import com.clearfolio.viewer.security.AuditPseudonymizer;
 
 class AdministrativeAuditLoggerTest {
 
@@ -111,6 +112,24 @@ class AdministrativeAuditLoggerTest {
     }
 
     @Test
+    void separatesAdministrativeDomainsForIdenticalIdentifierValues() {
+        String sharedIdentifier = "11111111-1111-1111-1111-111111111111";
+        String actorFingerprint = AuditPseudonymizer
+                .forAdministrativeActor(AUDIT_SECRET, "v2")
+                .fingerprint(sharedIdentifier);
+        String tenantFingerprint = AuditPseudonymizer
+                .forAdministrativeTenant(AUDIT_SECRET, "v2")
+                .fingerprint(sharedIdentifier);
+        String jobFingerprint = AuditPseudonymizer
+                .forAdministrativeJob(AUDIT_SECRET, "v2")
+                .fingerprint(sharedIdentifier);
+
+        assertNotEquals(actorFingerprint, tenantFingerprint);
+        assertNotEquals(actorFingerprint, jobFingerprint);
+        assertNotEquals(tenantFingerprint, jobFingerprint);
+    }
+
+    @Test
     void usesExplicitAbsentAndUnavailableMarkers() {
         AdministrativeAuditLogger unavailableLogger = configuredLogger("", "v9");
         HttpHeaders presentHeaders = new HttpHeaders();
@@ -161,6 +180,7 @@ class AdministrativeAuditLoggerTest {
     private static String fieldValue(String message, String fieldName) {
         String prefix = fieldName + "=";
         int start = message.indexOf(prefix);
+        assertTrue(start >= 0, "missing field " + fieldName + " in: " + message);
         int end = message.indexOf(' ', start);
         return message.substring(start + prefix.length(), end < 0 ? message.length() : end);
     }
@@ -174,7 +194,7 @@ class AdministrativeAuditLoggerTest {
 
     private static CapturingAppender attachAppender() {
         Logger logger = (Logger) LogManager.getLogger(AdministrativeAuditLogger.class);
-        CapturingAppender appender = new CapturingAppender(logger);
+        CapturingAppender appender = new CapturingAppender(logger, logger.getLevel());
         appender.start();
         logger.addAppender(appender);
         logger.setLevel(Level.INFO);
@@ -184,9 +204,10 @@ class AdministrativeAuditLoggerTest {
     private static final class CapturingAppender extends AbstractAppender {
 
         private final Logger logger;
+        private final Level previousLevel;
         private final List<String> messages = new ArrayList<>();
 
-        private CapturingAppender(Logger logger) {
+        private CapturingAppender(Logger logger, Level previousLevel) {
             super(
                     "administrative-audit-test-appender",
                     null,
@@ -195,6 +216,7 @@ class AdministrativeAuditLoggerTest {
                     null
             );
             this.logger = logger;
+            this.previousLevel = previousLevel;
         }
 
         @Override
@@ -213,6 +235,7 @@ class AdministrativeAuditLoggerTest {
 
         private void closeAndDetach() {
             logger.removeAppender(this);
+            logger.setLevel(previousLevel);
             stop();
         }
     }

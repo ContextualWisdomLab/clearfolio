@@ -1,6 +1,7 @@
 package com.clearfolio.viewer.config;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -58,11 +59,15 @@ public final class ApiVersionWebFilter implements WebFilter {
         }
 
         exchange.getResponse().getHeaders().set(VERSION_HEADER, CURRENT_VERSION);
-        String requestedVersion = exchange.getRequest().getHeaders().getFirst(VERSION_HEADER);
-        if (requestedVersion == null
-                || requestedVersion.isBlank()
-                || CURRENT_VERSION.equals(requestedVersion)) {
+        List<String> requestedVersions = exchange.getRequest().getHeaders().get(VERSION_HEADER);
+        if (requestedVersions == null) {
             return chain.filter(exchange);
+        }
+        if (requestedVersions.size() == 1) {
+            String requestedVersion = requestedVersions.get(0);
+            if (requestedVersion.isBlank() || CURRENT_VERSION.equals(requestedVersion)) {
+                return chain.filter(exchange);
+            }
         }
 
         exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);

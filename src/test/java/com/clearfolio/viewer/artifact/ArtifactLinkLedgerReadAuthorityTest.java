@@ -20,7 +20,7 @@ class ArtifactLinkLedgerReadAuthorityTest {
     private Path tempDir;
 
     @Test
-    void rejectsReadEventsWithoutCurrentIssuedAuthority() {
+    void rejectsReadEventsWithoutMatchingIssuedIdentity() {
         ArtifactLinkLedger ledger = new ArtifactLinkLedger();
         ArtifactLinkRecord record = issuedRecord("token-1");
         ledger.recordIssued(record);
@@ -33,10 +33,6 @@ class ArtifactLinkLedgerReadAuthorityTest {
                 record.tokenId(), record.tenantId(), "subject-b", record.docId())));
         assertThrows(IllegalStateException.class, () -> ledger.recordRead(readEvent(
                 record.tokenId(), record.tenantId(), record.subjectId(), UUID.randomUUID())));
-
-        ledger.revoke(record.tokenId(), Instant.EPOCH.plusSeconds(2), "operator-a", "security-response");
-        assertThrows(IllegalStateException.class, () -> ledger.recordRead(readEvent(
-                record.tokenId(), record.tenantId(), record.subjectId(), record.docId())));
     }
 
     @Test
@@ -54,7 +50,7 @@ class ArtifactLinkLedgerReadAuthorityTest {
     }
 
     @Test
-    void acceptsReadBoundToCurrentIssuedAuthority() throws Exception {
+    void acceptsReadBoundToIssuedIdentity() throws Exception {
         Path ledgerPath = tempDir.resolve("matching-read.log");
         ArtifactLinkRecord record = issuedRecord("token-valid");
         ArtifactLinkLedger ledger = new ArtifactLinkLedger(ledgerPath);

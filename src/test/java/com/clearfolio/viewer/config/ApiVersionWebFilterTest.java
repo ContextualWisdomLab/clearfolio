@@ -85,6 +85,29 @@ class ApiVersionWebFilterTest {
     }
 
     @Test
+    void conflictingDuplicateVersionHeadersFailClosedBeforeControllerDispatch() {
+        ApiVersionWebFilter filter = new ApiVersionWebFilter();
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/convert/jobs")
+                        .header(ApiVersionWebFilter.VERSION_HEADER, ApiVersionWebFilter.CURRENT_VERSION, "v2")
+        );
+        AtomicBoolean invoked = new AtomicBoolean();
+
+        filter.filter(exchange, current -> {
+            invoked.set(true);
+            return Mono.empty();
+        }).block();
+
+        assertThat(invoked).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(exchange.getResponse().getHeaders().getFirst(ApiVersionWebFilter.VERSION_HEADER))
+                .isEqualTo(ApiVersionWebFilter.CURRENT_VERSION);
+        assertThat(exchange.getResponse().getBodyAsString().block())
+                .contains("\"errorCode\":\"UNSUPPORTED_API_VERSION\"")
+                .doesNotContain("v2");
+    }
+
+    @Test
     void unsupportedVersionFailsClosedBeforeControllerDispatch() {
         ApiVersionWebFilter filter = new ApiVersionWebFilter();
         MockServerWebExchange exchange = MockServerWebExchange.from(

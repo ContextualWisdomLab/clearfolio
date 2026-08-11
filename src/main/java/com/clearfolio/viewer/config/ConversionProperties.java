@@ -169,8 +169,12 @@ public class ConversionProperties {
      * Sets the retry backoff multiplier used for exponential delays.
      *
      * @param retryBackoffMultiplier retry backoff multiplier
+     * @throws IllegalArgumentException when the configured value is NaN or infinite
      */
     public void setRetryBackoffMultiplier(double retryBackoffMultiplier) {
+        if (!Double.isFinite(retryBackoffMultiplier)) {
+            throw new IllegalArgumentException("retry backoff multiplier must be finite");
+        }
         this.retryBackoffMultiplier = Math.max(1.0, retryBackoffMultiplier);
     }
 

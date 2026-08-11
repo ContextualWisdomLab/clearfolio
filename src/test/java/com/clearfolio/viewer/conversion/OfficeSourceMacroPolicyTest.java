@@ -19,11 +19,20 @@ class OfficeSourceMacroPolicyTest {
 
     @Test
     void adapterRejectsVbaProjectBeforeProvider() throws Exception {
+        assertProhibitedActiveContent("word/vbaProject.bin");
+    }
+
+    @Test
+    void adapterRejectsEmbeddedBinaryPartBeforeProvider() throws Exception {
+        assertProhibitedActiveContent("word/embeddings/oleObject1.bin");
+    }
+
+    private static void assertProhibitedActiveContent(String entryName) throws Exception {
         AtomicInteger providerCalls = new AtomicInteger();
 
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
-                () -> countingAdapter(providerCalls).convert(request(docxWithVbaProject()))
+                () -> countingAdapter(providerCalls).convert(request(docxWithEntry(entryName)))
         );
 
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
@@ -58,10 +67,10 @@ class OfficeSourceMacroPolicyTest {
         );
     }
 
-    private static byte[] docxWithVbaProject() throws IOException {
+    private static byte[] docxWithEntry(String entryName) throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
-            zip.putNextEntry(new ZipEntry("word/vbaProject.bin"));
+            zip.putNextEntry(new ZipEntry(entryName));
             zip.write(new byte[] {1, 2, 3});
             zip.closeEntry();
         }

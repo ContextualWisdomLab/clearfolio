@@ -99,10 +99,13 @@ final class ArtifactHttpResponse {
      * @return controlled token failure response
      */
     static ResponseEntity<byte[]> tokenFailure(HttpStatus status) {
-        return ResponseEntity.status(status)
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(status)
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .header(CONTENT_TYPE_OPTIONS, "nosniff")
-                .build();
+                .header(CONTENT_TYPE_OPTIONS, "nosniff");
+        if (status == HttpStatus.UNAUTHORIZED) {
+            builder.header(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+        }
+        return builder.build();
     }
 
     private static ResponseEntity.BodyBuilder decorateRangeHeaders(

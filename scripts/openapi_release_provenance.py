@@ -9,7 +9,7 @@ import os
 import re
 import stat
 from pathlib import Path
-from typing import Mapping, object
+from typing import Mapping
 
 
 CONTRACT_RELATIVE_PATH = Path("docs/deployment/clearfolio-buyer-connector.openapi.yaml")

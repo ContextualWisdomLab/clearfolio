@@ -14,6 +14,7 @@
 
 ### Changed
 
+- **접근성 개선**: 데모 UI(`demo.js`)에서 동적으로 생성되는 목록의 액션 버튼('Details', 'Status JSON')과 링크('Open viewer')에 파일명을 포함하는 `aria-label` 속성을 추가하여 스크린 리더 사용자를 위한 컨텍스트를 제공하도록 개선했습니다.
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
 - CI가 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하며, 합성 merge revision은 별도 호환성 작업에서 검증하도록 분리했습니다.
 - Maven `verify` 단계에서 JaCoCo production line 및 branch missed count가 각각 0인지 강제하고, 실패 시 누락 위치 진단을 출력하도록 했습니다.

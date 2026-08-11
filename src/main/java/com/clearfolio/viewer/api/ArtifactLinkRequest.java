@@ -15,22 +15,28 @@ public record ArtifactLinkRequest(
         String viewerSessionId
 ) {
 
+    private static final String VIEWER_PREVIEW_PURPOSE = "viewer-preview";
+    private static final String LEGACY_VIEWER_PURPOSE = "viewer";
     private static final Set<String> SUPPORTED_PURPOSES = Set.of(
-            "viewer-preview",
+            VIEWER_PREVIEW_PURPOSE,
             "download",
             "integration"
     );
 
     /**
-     * Validates an explicit purpose against the documented API values.
+     * Canonicalizes legacy/default input and validates the purpose against the
+     * documented values that may be signed into an artifact token.
      *
      * @param purpose caller-visible reason for the artifact link
      * @param ttlSeconds requested token time to live in seconds
      * @param viewerSessionId optional browser viewer session identifier
      */
     public ArtifactLinkRequest {
-        if (purpose != null && !purpose.isBlank()
-                && !SUPPORTED_PURPOSES.contains(purpose.strip())) {
+        purpose = cleanPurpose(purpose);
+        if (LEGACY_VIEWER_PURPOSE.equals(purpose)) {
+            purpose = VIEWER_PREVIEW_PURPOSE;
+        }
+        if (purpose != null && !SUPPORTED_PURPOSES.contains(purpose)) {
             throw new IllegalArgumentException("artifact link purpose is unsupported");
         }
     }
@@ -41,6 +47,14 @@ public record ArtifactLinkRequest(
      * @return default artifact link request
      */
     public static ArtifactLinkRequest viewerPreview() {
-        return new ArtifactLinkRequest("viewer-preview", null, null);
+        return new ArtifactLinkRequest(VIEWER_PREVIEW_PURPOSE, null, null);
+    }
+
+    private static String cleanPurpose(final String value) {
+        if (value == null) {
+            return null;
+        }
+        String cleaned = value.replace("\u0000", "").strip();
+        return cleaned.isEmpty() ? null : cleaned;
     }
 }

@@ -32,6 +32,11 @@ class OfficeSourceMacroPolicyTest {
         assertProhibitedActiveContent("xl/externalLinks/externalLink1.xml");
     }
 
+    @Test
+    void adapterRejectsActiveXPartBeforeProvider() throws Exception {
+        assertProhibitedActiveContent("xl/activeX/activeX1.xml");
+    }
+
     private static void assertProhibitedActiveContent(String entryName) throws Exception {
         AtomicInteger providerCalls = new AtomicInteger();
 

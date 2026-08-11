@@ -165,6 +165,9 @@ class OfficeConversionResidualCoverageTest {
                 request("docx", oneEntryZip("1x"))
         ));
         assertDoesNotThrow(() -> OfficeSourceContainerPreflight.requireQualifiedContainer(
+                request("docx", oneEntryZip("{x"))
+        ));
+        assertDoesNotThrow(() -> OfficeSourceContainerPreflight.requireQualifiedContainer(
                 request("docx", oneEntryZip("a/.x"))
         ));
     }

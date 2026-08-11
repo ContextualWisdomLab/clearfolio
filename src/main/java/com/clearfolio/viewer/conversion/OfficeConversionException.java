@@ -11,6 +11,9 @@ public final class OfficeConversionException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * Stable typed failure classification used for retry and product error mapping.
+     */
     private final OfficeConversionFailureCode failureCode;
 
     /**

@@ -2,6 +2,7 @@ package com.clearfolio.viewer.api;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,15 @@ class ArtifactLinkRevocationRequestTest {
         );
 
         assertEquals(reason, request.reason());
+    }
+
+    @Test
+    void acceptsMissingReasonForServiceDefaulting() {
+        ArtifactLinkRevocationRequest request = assertDoesNotThrow(
+                () -> new ArtifactLinkRevocationRequest(null)
+        );
+
+        assertNull(request.reason());
     }
 
     @Test

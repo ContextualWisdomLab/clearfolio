@@ -26,28 +26,23 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public class ArtifactLinkLedger {
-
     private static final String ISSUED = "ISSUED";
     private static final String REVOKED = "REVOKED";
     private static final String READ = "READ";
     private static final String NULL_FIELD = "-";
     private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
-
     private final ConcurrentMap<String, ArtifactLinkRecord> issuedLinks = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<ArtifactReadEvent> readEvents = new ConcurrentLinkedQueue<>();
     private final Path ledgerPath;
 
-    /**
-     * Creates an in-memory artifact link ledger.
-     */
+    /** Creates an in-memory artifact link ledger. */
     public ArtifactLinkLedger() {
         this((Path) null);
     }
 
     /**
      * Creates an artifact link ledger with optional file-backed persistence.
-     *
      * @param ledgerPath configured append-only ledger path
      */
     @Autowired
@@ -62,12 +57,6 @@ public class ArtifactLinkLedger {
 
     /**
      * Records an issued artifact link.
-     *
-     * <p>Token identifiers are immutable authorization identities. Reusing an
-     * already-issued identifier is rejected before durable append or process-local
-     * publication so a collision or caller error cannot rebind an existing token
-     * to another tenant, subject, or document.</p>
-     *
      * @param record issued artifact link record
      * @throws IllegalStateException when the token identifier was already issued or durable append fails
      */
@@ -81,7 +70,6 @@ public class ArtifactLinkLedger {
 
     /**
      * Finds an issued artifact link by token identifier.
-     *
      * @param tokenId token identifier
      * @return matching record when present
      */
@@ -94,7 +82,6 @@ public class ArtifactLinkLedger {
 
     /**
      * Marks an issued artifact link as revoked.
-     *
      * @param tokenId token identifier
      * @param revokedAt revocation timestamp
      * @param revokedBy subject requesting revocation
@@ -102,10 +89,7 @@ public class ArtifactLinkLedger {
      * @return updated record when the token exists
      */
     public synchronized Optional<ArtifactLinkRecord> revoke(
-            String tokenId,
-            Instant revokedAt,
-            String revokedBy,
-            String reason) {
+            String tokenId, Instant revokedAt, String revokedBy, String reason) {
         ArtifactLinkRecord current = issuedLinks.get(tokenId);
         if (current == null || current.isRevoked()) {
             return Optional.ofNullable(current);
@@ -118,7 +102,6 @@ public class ArtifactLinkLedger {
 
     /**
      * Records a verified artifact read.
-     *
      * @param event artifact read event
      */
     public synchronized void recordRead(ArtifactReadEvent event) {
@@ -128,7 +111,6 @@ public class ArtifactLinkLedger {
 
     /**
      * Returns read events for a tenant-owned document.
-     *
      * @param tenantId tenant identifier
      * @param docId document identifier
      * @return current matching read events
@@ -147,7 +129,7 @@ public class ArtifactLinkLedger {
         try (Stream<String> lines = Files.lines(ledgerPath, StandardCharsets.UTF_8)) {
             lines.forEach(this::replayLine);
         } catch (java.nio.file.NoSuchFileException ex) {
-            // Ignore missing ledger file
+            // Ignore missing ledger file.
         } catch (IOException | UncheckedIOException ex) {
             throw new IllegalStateException("artifact link ledger cannot be loaded", ex);
         }
@@ -168,21 +150,13 @@ public class ArtifactLinkLedger {
             throw invalidLine();
         }
         ArtifactLinkRecord record = new ArtifactLinkRecord(
-                requiredValue(fields[1]),
-                requiredValue(fields[2]),
-                requiredValue(fields[3]),
-                uuid(fields[4]),
-                requiredValue(fields[5]),
-                requiredValue(fields[6]),
-                requiredValue(fields[7]),
-                value(fields[8]),
-                instant(fields[9]),
-                instant(fields[10]),
-                instant(fields[11]),
-                value(fields[12]),
-                value(fields[13])
-        );
-        issuedLinks.put(record.tokenId(), record);
+                requiredValue(fields[1]), requiredValue(fields[2]), requiredValue(fields[3]),
+                uuid(fields[4]), requiredValue(fields[5]), requiredValue(fields[6]),
+                requiredValue(fields[7]), value(fields[8]), instant(fields[9]),
+                instant(fields[10]), instant(fields[11]), value(fields[12]), value(fields[13]));
+        if (issuedLinks.putIfAbsent(record.tokenId(), record) != null) {
+            throw invalidLine();
+        }
     }
 
     private void replayRevoked(String[] fields) {
@@ -194,11 +168,7 @@ public class ArtifactLinkLedger {
         if (current == null) {
             throw invalidLine();
         }
-        issuedLinks.put(tokenId, current.revoked(
-                instant(fields[2]),
-                value(fields[3]),
-                value(fields[4])
-        ));
+        issuedLinks.put(tokenId, current.revoked(instant(fields[2]), value(fields[3]), value(fields[4])));
     }
 
     private void replayRead(String[] fields) {
@@ -206,15 +176,9 @@ public class ArtifactLinkLedger {
             throw invalidLine();
         }
         readEvents.add(new ArtifactReadEvent(
-                requiredValue(fields[1]),
-                requiredValue(fields[2]),
-                uuid(fields[3]),
-                requiredValue(fields[4]),
-                value(fields[5]),
-                statusCode(fields[6]),
-                value(fields[7]),
-                instant(fields[8])
-        ));
+                requiredValue(fields[1]), requiredValue(fields[2]), uuid(fields[3]),
+                requiredValue(fields[4]), value(fields[5]), statusCode(fields[6]),
+                value(fields[7]), instant(fields[8])));
     }
 
     private void appendLine(String line) {
@@ -223,66 +187,34 @@ public class ArtifactLinkLedger {
         }
         try {
             Files.createDirectories(ledgerPath.toAbsolutePath().getParent());
-            Files.writeString(
-                    ledgerPath,
-                    line + System.lineSeparator(),
-                    StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.APPEND
-            );
+            Files.writeString(ledgerPath, line + System.lineSeparator(), StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND);
         } catch (IOException ex) {
             throw new IllegalStateException("artifact link ledger cannot be written", ex);
         }
     }
 
     private static String serializeIssued(ArtifactLinkRecord record) {
-        return String.join("\t",
-                ISSUED,
-                field(record.tokenId()),
-                field(record.tenantId()),
-                field(record.subjectId()),
-                record.docId().toString(),
-                field(record.scope()),
-                field(record.purpose()),
-                field(record.artifactChecksum()),
-                field(record.viewerSessionId()),
-                field(record.issuedAt()),
-                field(record.expiresAt()),
-                field(record.revokedAt()),
-                field(record.revokedBy()),
-                field(record.revokeReason())
-        );
+        return String.join("\t", ISSUED, field(record.tokenId()), field(record.tenantId()),
+                field(record.subjectId()), record.docId().toString(), field(record.scope()),
+                field(record.purpose()), field(record.artifactChecksum()), field(record.viewerSessionId()),
+                field(record.issuedAt()), field(record.expiresAt()), field(record.revokedAt()),
+                field(record.revokedBy()), field(record.revokeReason()));
     }
 
     private static String serializeRevoked(ArtifactLinkRecord record) {
-        return String.join("\t",
-                REVOKED,
-                field(record.tokenId()),
-                field(record.revokedAt()),
-                field(record.revokedBy()),
-                field(record.revokeReason())
-        );
+        return String.join("\t", REVOKED, field(record.tokenId()), field(record.revokedAt()),
+                field(record.revokedBy()), field(record.revokeReason()));
     }
 
     private static String serializeRead(ArtifactReadEvent event) {
-        return String.join("\t",
-                READ,
-                field(event.tenantId()),
-                field(event.subjectId()),
-                event.docId().toString(),
-                field(event.tokenId()),
-                field(event.rangeRequested()),
-                String.valueOf(event.statusCode()),
-                field(event.traceId()),
-                field(event.readAt())
-        );
+        return String.join("\t", READ, field(event.tenantId()), field(event.subjectId()),
+                event.docId().toString(), field(event.tokenId()), field(event.rangeRequested()),
+                String.valueOf(event.statusCode()), field(event.traceId()), field(event.readAt()));
     }
 
     private static String field(String value) {
-        return value == null
-                ? NULL_FIELD
-                : ENCODER.encodeToString(value.getBytes(StandardCharsets.UTF_8));
+        return value == null ? NULL_FIELD : ENCODER.encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 
     private static String field(Instant instant) {

@@ -63,9 +63,18 @@ public class ArtifactLinkLedger {
     /**
      * Records an issued artifact link.
      *
+     * <p>Token identifiers are immutable authorization identities. Reusing an
+     * already-issued identifier is rejected before durable append or process-local
+     * publication so a collision or caller error cannot rebind an existing token
+     * to another tenant, subject, or document.</p>
+     *
      * @param record issued artifact link record
+     * @throws IllegalStateException when the token identifier was already issued or durable append fails
      */
     public synchronized void recordIssued(ArtifactLinkRecord record) {
+        if (issuedLinks.containsKey(record.tokenId())) {
+            throw new IllegalStateException("artifact token identifier is already issued");
+        }
         appendLine(serializeIssued(record));
         issuedLinks.put(record.tokenId(), record);
     }

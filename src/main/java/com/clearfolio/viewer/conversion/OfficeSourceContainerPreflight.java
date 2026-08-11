@@ -235,7 +235,8 @@ final class OfficeSourceContainerPreflight {
             String normalizedEntryName = rawEntryName.toLowerCase(java.util.Locale.ROOT);
             if ("vbaProject.bin".equalsIgnoreCase(entryBaseName)
                     || normalizedEntryName.contains("/embeddings/")
-                    || normalizedEntryName.contains("/externallinks/")) {
+                    || normalizedEntryName.contains("/externallinks/")
+                    || normalizedEntryName.contains("/activex/")) {
                 throw prohibitedOfficeActiveContent();
             }
             long localDataOffset = requireMatchingLocalHeaderMetadata(

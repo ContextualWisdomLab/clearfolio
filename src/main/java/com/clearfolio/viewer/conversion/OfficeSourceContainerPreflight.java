@@ -17,18 +17,18 @@ import java.util.Set;
  * sizes must be internally consistent, Deflate entries cannot claim non-empty expansion
  * from an empty compressed payload, local and central data-descriptor flags plus CRC and
  * size metadata must agree where applicable, advertised compressed bytes cannot extend
- * beyond the local-data area before the central directory, duplicate raw entry names are
- * rejected, and entry names are rejected when they are absolute, contain parent traversal,
- * use backslash path separators, or contain NUL bytes. Known OOXML active-content and
- * external-resource parts, including VBA projects, embedded objects, and external links,
- * are rejected before provider invocation. OpenDocument candidates additionally require
- * the package manifest, restrict META-INF content to the manifest plus signature-named
- * entries, and, when a mimetype entry is present, require it to be the first local ZIP
- * entry, stored without compression, free of a local-header extra field, and equal to the
- * media type implied by the declared ODF format. Passing this preflight is
- * <strong>not</strong> complete package, macro, embedded-object, external-resource,
- * archive-expansion, malware, or fidelity qualification. Those deeper controls remain
- * separate sandbox/content-policy acceptance gates.</p>
+ * beyond the local-data area before the central directory, duplicate or ASCII-case-equivalent
+ * package part names are rejected, and entry names are rejected when they are absolute,
+ * contain parent traversal, use backslash path separators, or contain NUL bytes. Known
+ * OOXML active-content and external-resource parts, including VBA projects, embedded objects,
+ * external links, and ActiveX content, are rejected before provider invocation. OpenDocument
+ * candidates additionally require the package manifest, restrict META-INF content to the
+ * manifest plus signature-named entries, and, when a mimetype entry is present, require it
+ * to be the first local ZIP entry, stored without compression, free of a local-header extra
+ * field, and equal to the media type implied by the declared ODF format. Passing this
+ * preflight is <strong>not</strong> complete package, macro, embedded-object,
+ * external-resource, archive-expansion, malware, or fidelity qualification. Those deeper
+ * controls remain separate sandbox/content-policy acceptance gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -93,12 +93,12 @@ final class OfficeSourceContainerPreflight {
      * @throws OfficeConversionException when the format is not a current candidate, the
      *         source does not match that format family's required container signature, a
      *         ZIP-family source has invalid local/central-directory framing, has inconsistent
-     *         Stored/Deflate entry sizes or duplicated metadata, contains duplicate raw entry
-     *         names, advertises compressed bytes beyond its local-data region, uses a ZIP
-     *         compression method outside the current Stored/Deflate qualification boundary,
-     *         contains an encrypted entry, has an unsafe ZIP entry path, contains prohibited
-     *         OOXML active content or external-resource parts, or an ODF candidate violates
-     *         required package structure
+     *         Stored/Deflate entry sizes or duplicated metadata, contains duplicate or
+     *         ASCII-case-equivalent package part names, advertises compressed bytes beyond its
+     *         local-data region, uses a ZIP compression method outside the current Stored/Deflate
+     *         qualification boundary, contains an encrypted entry, has an unsafe ZIP entry path,
+     *         contains prohibited OOXML active content or external-resource parts, or an ODF
+     *         candidate violates required package structure
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
         String sourceFormat = request.sourceFormat();
@@ -171,7 +171,7 @@ final class OfficeSourceContainerPreflight {
     ) {
         int cursor = centralDirectoryOffset;
         boolean odfManifestFound = false;
-        Set<String> rawEntryNames = new HashSet<>();
+        Set<String> normalizedEntryNames = new HashSet<>();
         for (int entryIndex = 0; entryIndex < entryCount; entryIndex++) {
             if (cursor > centralDirectoryEnd - ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH
                     || !matchesAt(sourceBytes, cursor, ZIP_CENTRAL_DIRECTORY_HEADER)) {
@@ -228,11 +228,11 @@ final class OfficeSourceContainerPreflight {
                     fileNameLength,
                     StandardCharsets.ISO_8859_1
             );
-            if (!rawEntryNames.add(rawEntryName)) {
+            String normalizedEntryName = rawEntryName.toLowerCase(java.util.Locale.ROOT);
+            if (!normalizedEntryNames.add(normalizedEntryName)) {
                 throw duplicateEntryName();
             }
             String entryBaseName = rawEntryName.substring(rawEntryName.lastIndexOf('/') + 1);
-            String normalizedEntryName = rawEntryName.toLowerCase(java.util.Locale.ROOT);
             if ("vbaProject.bin".equalsIgnoreCase(entryBaseName)
                     || normalizedEntryName.contains("/embeddings/")
                     || normalizedEntryName.contains("/externallinks/")

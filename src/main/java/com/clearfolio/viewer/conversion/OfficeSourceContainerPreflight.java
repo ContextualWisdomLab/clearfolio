@@ -406,9 +406,6 @@ final class OfficeSourceContainerPreflight {
             int nameLength,
             byte[] expectedFragment
     ) {
-        if (nameLength < expectedFragment.length) {
-            return false;
-        }
         int lastStart = nameLength - expectedFragment.length;
         for (int start = 0; start <= lastStart; start++) {
             boolean match = true;

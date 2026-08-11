@@ -146,8 +146,8 @@ class OfficeSourceContainerBoundaryCoverageTest {
     }
 
     @Test
-    void odfMetaInfDirectoryExercisesShortFragmentAndNameComparisons() {
-        byte[] source = oneEntryZip("META-INF/");
+    void odfUnknownMetaInfEntryExercisesShortFragmentAndNameComparisons() {
+        byte[] source = oneEntryZip("META-INF/x");
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
                 () -> OfficeSourceContainerPreflight.requireQualifiedContainer(request("odt", source))

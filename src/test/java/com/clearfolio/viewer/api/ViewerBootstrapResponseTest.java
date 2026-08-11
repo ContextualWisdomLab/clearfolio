@@ -12,19 +12,19 @@ import com.clearfolio.viewer.model.ConversionJob;
 class ViewerBootstrapResponseTest {
 
     @Test
-    void mapsRendererAdapterBySourceExtension() {
+    void reportsOnlyQualifiedPdfRendererAdapter() {
         Map<String, String> expectedMappings = Map.ofEntries(
                 Map.entry("report.pdf", "PDF_JS"),
-                Map.entry("report.doc", "DOCX_PREVIEW"),
-                Map.entry("report.docx", "DOCX_PREVIEW"),
-                Map.entry("report.xls", "SHEET_ADAPTER"),
-                Map.entry("report.xlsx", "SHEET_ADAPTER"),
-                Map.entry("report.csv", "SHEET_ADAPTER"),
-                Map.entry("report.tsv", "SHEET_ADAPTER"),
-                Map.entry("report.ppt", "SLIDE_ADAPTER"),
-                Map.entry("report.pptx", "SLIDE_ADAPTER"),
-                Map.entry("report.md", "TEXT_ADAPTER"),
-                Map.entry("report.txt", "TEXT_ADAPTER"),
+                Map.entry("report.doc", "PDF_JS"),
+                Map.entry("report.docx", "PDF_JS"),
+                Map.entry("report.xls", "PDF_JS"),
+                Map.entry("report.xlsx", "PDF_JS"),
+                Map.entry("report.csv", "PDF_JS"),
+                Map.entry("report.tsv", "PDF_JS"),
+                Map.entry("report.ppt", "PDF_JS"),
+                Map.entry("report.pptx", "PDF_JS"),
+                Map.entry("report.md", "PDF_JS"),
+                Map.entry("report.txt", "PDF_JS"),
                 Map.entry("report.bin", "PDF_JS")
         );
 
@@ -95,7 +95,7 @@ class ViewerBootstrapResponseTest {
         ViewerBootstrapResponse response = ViewerBootstrapResponse.from(job);
 
         assertEquals("docx", response.sourceExtension());
-        assertEquals("DOCX_PREVIEW", response.rendererAdapter());
+        assertEquals("PDF_JS", response.rendererAdapter());
     }
 
     @Test
@@ -105,7 +105,7 @@ class ViewerBootstrapResponseTest {
         ViewerBootstrapResponse response = ViewerBootstrapResponse.from(job);
 
         assertEquals("docx", response.sourceExtension());
-        assertEquals("DOCX_PREVIEW", response.rendererAdapter());
+        assertEquals("PDF_JS", response.rendererAdapter());
     }
 
     private ConversionJob succeededJob(String fileName) {

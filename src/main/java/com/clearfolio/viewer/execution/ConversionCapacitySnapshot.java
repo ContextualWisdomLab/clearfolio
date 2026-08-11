@@ -62,7 +62,8 @@ public record ConversionCapacitySnapshot(
      * @return number of conversion requests that can be accepted before saturation
      */
     public long remainingCapacity() {
-        return (long) (workerCapacity - activeWorkers) + (queueCapacity - queuedJobs);
+        return (long) workerCapacity - activeWorkers
+                + (long) queueCapacity - queuedJobs;
     }
 
     /**

@@ -58,6 +58,10 @@ class IssuerTrustPolicyTest {
         );
         assertThrows(
                 IllegalArgumentException.class,
+                () -> new IssuerTrustPolicy("corp", "https:identity-provider", "clearfolio-api", Set.of("RS256"))
+        );
+        assertThrows(
+                IllegalArgumentException.class,
                 () -> new IssuerTrustPolicy("corp", "https://user@id.example.com", "clearfolio-api", Set.of("RS256"))
         );
         assertThrows(
@@ -99,6 +103,14 @@ class IssuerTrustPolicyTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> new IssuerTrustPolicy("corp", "https://id.example.com", "clearfolio-api", Set.of(" "))
+        );
+
+        Set<String> algorithmsWithNull = new LinkedHashSet<>();
+        algorithmsWithNull.add("RS256");
+        algorithmsWithNull.add(null);
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new IssuerTrustPolicy("corp", "https://id.example.com", "clearfolio-api", algorithmsWithNull)
         );
         assertThrows(
                 IllegalArgumentException.class,

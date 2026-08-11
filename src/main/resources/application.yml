@@ -6,7 +6,9 @@ spring:
     # carried in process environment variables. The environment variable below
     # selects only the bootstrap directory. Mount files named
     # `conversion.policy-override-secret`,
-    # `conversion.audit-pseudonym-secret`, and
+    # `conversion.audit-pseudonym-secret`,
+    # `clearfolio.artifact-token.secret`,
+    # `clearfolio.tenant-claims.hmac-secret`, and
     # `conversion.audit-pseudonym-key-version` in this directory.
     import: "optional:configtree:${CLEARFOLIO_SECRET_CONFIG_DIR:/run/secrets/clearfolio/}"
   codec:

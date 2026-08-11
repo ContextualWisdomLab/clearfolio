@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-11 - [보안 강화] 환경 변수를 통한 시크릿 주입 제거 (Remove Secret Injection via Env)
+**Vulnerability:** `application-buyer-demo.yml`에서 `CLEARFOLIO_ARTIFACT_TOKEN_SECRET` 및 `CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET`와 같은 런타임 시크릿이 환경 변수(env)를 통해 직접 주입되고 있었습니다. 이는 컨테이너 환경 등에서 런타임 환경 변수가 노출될 위험이 있습니다.
+**Learning:** Spring Boot 서비스의 런타임 시크릿은 `application.yml`의 `optional:configtree`와 같이 KV / credential registry를 통해 읽어야 합니다. 환경 변수는 KV를 위한 전송 용도로만 사용되어야 하며, 런타임 소스로서 직접 사용되어서는 안 됩니다.
+**Prevention:** `.yml` 파일에서 런타임 시크릿에 대해 `${ENV_VAR}` 방식의 직접 참조를 피하고, KV 마운트 경로(예: `/run/secrets/clearfolio/`)에서 파일을 읽어들이도록 `application.yml`과 환경을 설정하여 보안을 강화합니다.

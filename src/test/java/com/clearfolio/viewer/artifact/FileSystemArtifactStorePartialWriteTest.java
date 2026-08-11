@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.artifact;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -47,6 +48,33 @@ class FileSystemArtifactStorePartialWriteTest {
         assertTrue(Files.notExists(root.resolve(docId + ".pdf")));
         assertTrue(Files.notExists(root.resolve(docId + ".meta.properties")));
         assertEquals(Optional.empty(), store.getPdf(docId));
+    }
+
+    @Test
+    void failedReplacementPreservesPreviouslyCommittedArtifactAcrossRestart() throws Exception {
+        Path root = temporaryDirectory.resolve("replacement");
+        UUID docId = UUID.randomUUID();
+        byte[] originalPdf = "%PDF-1.7\noriginal".getBytes(StandardCharsets.UTF_8);
+        byte[] replacementPdf = "%PDF-1.7\nreplacement".getBytes(StandardCharsets.UTF_8);
+        new FileSystemArtifactStore(root).putPdf(docId, originalPdf);
+
+        FileSystemArtifactStore failingStore = new FileSystemArtifactStore(
+                root,
+                (path, bytes) -> {
+                    if (path.getFileName().toString().endsWith(".meta.properties")) {
+                        throw new IOException("metadata disk full");
+                    }
+                    Files.write(path, bytes);
+                },
+                Files::readAllBytes
+        );
+
+        assertThrows(IllegalStateException.class, () -> failingStore.putPdf(docId, replacementPdf));
+
+        assertTrue(Files.exists(root.resolve(docId + ".pdf")));
+        assertTrue(Files.exists(root.resolve(docId + ".meta.properties")));
+        FileSystemArtifactStore restartedStore = new FileSystemArtifactStore(root);
+        assertArrayEquals(originalPdf, restartedStore.getPdf(docId).orElseThrow());
     }
 
     @Test

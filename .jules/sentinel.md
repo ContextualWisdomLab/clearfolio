@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-11 - 관리자 엔드포인트 인증 누락
+**Vulnerability:** `AdminController`의 엔드포인트(`/api/v1/admin/convert/jobs` 등)에 어떠한 인가(authorization)나 테넌트 접근 제어(tenant access checks)도 누락되어 있었습니다.
+**Learning:** 명시적인 엔드포인트 수준의 보안 검사가 없는 Spring 컴포넌트는 글로벌 설정에 의존하게 되는데, 이 컨트롤러에 대해서는 해당 설정이 누락되어 있었습니다.
+**Prevention:** 민감한 엔드포인트를 새로 추가할 때는 반드시 `TenantAccessService`를 주입하고 적절한 권한(예: `admin:access`)을 요구하는지 확인해야 합니다.

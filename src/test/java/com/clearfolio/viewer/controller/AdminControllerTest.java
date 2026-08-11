@@ -1,5 +1,7 @@
 package com.clearfolio.viewer.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -8,8 +10,11 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
@@ -17,13 +22,15 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
+    private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService);
+        tenantAccessService = mock(TenantAccessService.class);
+        controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -34,9 +41,11 @@ class AdminControllerTest {
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(tenantAccessService.require(any(), eq("admin:access"))).thenReturn(mock(TenantContext.class));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer dummy")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -52,9 +61,11 @@ class AdminControllerTest {
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(tenantAccessService.require(any(), eq("admin:access"))).thenReturn(mock(TenantContext.class));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer dummy")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -69,9 +80,11 @@ class AdminControllerTest {
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(tenantAccessService.require(any(), eq("admin:access"))).thenReturn(mock(TenantContext.class));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer dummy")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -82,9 +95,11 @@ class AdminControllerTest {
     @Test
     void deleteJobReturnsNoContent() {
         UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(), eq("admin:access"))).thenReturn(mock(TenantContext.class));
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer dummy")
                 .exchange()
                 .expectStatus().isNoContent();
     }
@@ -93,9 +108,11 @@ class AdminControllerTest {
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
+        when(tenantAccessService.require(any(), eq("admin:access"))).thenReturn(mock(TenantContext.class));
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer dummy")
                 .exchange()
                 .expectStatus().isAccepted();
     }
@@ -104,9 +121,11 @@ class AdminControllerTest {
     void retryDeadLetteredReturnsNotFoundWhenNotFound() {
         UUID jobId = UUID.randomUUID();
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
+        when(tenantAccessService.require(any(), eq("admin:access"))).thenReturn(mock(TenantContext.class));
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer dummy")
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -115,9 +134,11 @@ class AdminControllerTest {
     void retryDeadLetteredReturnsConflictWhenNotEligible() {
         UUID jobId = UUID.randomUUID();
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
+        when(tenantAccessService.require(any(), eq("admin:access"))).thenReturn(mock(TenantContext.class));
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer dummy")
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
     }

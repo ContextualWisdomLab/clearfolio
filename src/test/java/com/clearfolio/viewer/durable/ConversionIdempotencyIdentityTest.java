@@ -1,11 +1,22 @@
 package com.clearfolio.viewer.durable;
 
+import static com.clearfolio.viewer.testsupport.SecurityProviderTestSupport.SECURITY_PROVIDERS_LOCK;
+import static com.clearfolio.viewer.testsupport.SecurityProviderTestSupport.sha256ProviderPositions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.jupiter.api.Test;
+import java.security.Security;
+import java.util.Comparator;
+import java.util.List;
 
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.ResourceLock;
+
+import com.clearfolio.viewer.testsupport.SecurityProviderTestSupport.ProviderPosition;
+
+@ResourceLock("java.security.Security.providers")
 class ConversionIdempotencyIdentityTest {
 
     private static final String SOURCE_DIGEST =
@@ -115,6 +126,36 @@ class ConversionIdempotencyIdentityTest {
         assertThrows(IllegalArgumentException.class, () -> identity(
                 "x".repeat(257), SOURCE_DIGEST, "office-policy-v4", "pdf-output-v2"
         ));
+    }
+
+    @Test
+    void canonicalKeyFailsClosedWhenSha256ProviderIsUnavailable() {
+        ConversionIdempotencyIdentity identity = identity(
+                "tenant-a",
+                SOURCE_DIGEST,
+                "office-policy-v4",
+                "pdf-output-v2"
+        );
+
+        synchronized (SECURITY_PROVIDERS_LOCK) {
+            List<ProviderPosition> providers = sha256ProviderPositions();
+            assertFalse(providers.isEmpty());
+            providers.forEach(position -> Security.removeProvider(position.provider().getName()));
+            try {
+                IllegalStateException exception = assertThrows(
+                        IllegalStateException.class,
+                        identity::canonicalKey
+                );
+                assertEquals("SHA-256 digest unavailable", exception.getMessage());
+            } finally {
+                providers.stream()
+                        .sorted(Comparator.comparingInt(ProviderPosition::position))
+                        .forEach(position -> Security.insertProviderAt(
+                                position.provider(),
+                                position.position()
+                        ));
+            }
+        }
     }
 
     private static ConversionIdempotencyIdentity identity(

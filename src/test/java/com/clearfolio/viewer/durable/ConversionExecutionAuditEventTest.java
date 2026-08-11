@@ -43,6 +43,23 @@ class ConversionExecutionAuditEventTest {
     }
 
     @Test
+    void retryableFailureHasDistinctAuditVocabulary() {
+        ConversionExecutionAuditEvent event = ConversionExecutionAuditEvent.create(
+                UUID.randomUUID(),
+                TENANT_FINGERPRINT,
+                JOB_FINGERPRINT,
+                2L,
+                3,
+                ConversionExecutionEventType.RETRYABLE_FAILED,
+                "conversion_retryable_failed",
+                Instant.parse("2026-08-11T02:30:00Z")
+        );
+
+        assertEquals(ConversionExecutionEventType.RETRYABLE_FAILED, event.eventType());
+        assertEquals("conversion_retryable_failed", event.reasonCode());
+    }
+
+    @Test
     void reasonCodeMayBeAbsentWithoutInventingFailureDetail() {
         ConversionExecutionAuditEvent event = ConversionExecutionAuditEvent.create(
                 UUID.randomUUID(),

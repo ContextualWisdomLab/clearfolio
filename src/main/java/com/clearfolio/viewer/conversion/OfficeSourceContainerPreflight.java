@@ -19,14 +19,15 @@ import java.util.Set;
  * size metadata must agree where applicable, advertised compressed bytes cannot extend
  * beyond the local-data area before the central directory, duplicate raw entry names are
  * rejected, and entry names are rejected when they are absolute, contain parent traversal,
- * use backslash path separators, or contain NUL bytes. OpenDocument candidates additionally
- * require the package manifest, restrict META-INF content to the manifest plus
- * signature-named entries, and, when a mimetype entry is present, require it to be the
- * first local ZIP entry, stored without compression, free of a local-header extra field,
- * and equal to the media type implied by the declared ODF format. Passing this preflight
- * is <strong>not</strong> complete package, macro, embedded-object, archive-expansion,
- * malware, or fidelity qualification. Those deeper controls remain separate
- * sandbox/content-policy acceptance gates.</p>
+ * use backslash path separators, or contain NUL bytes. Known OOXML active-content parts,
+ * including VBA projects and embedded-object package paths, are rejected before provider
+ * invocation. OpenDocument candidates additionally require the package manifest, restrict
+ * META-INF content to the manifest plus signature-named entries, and, when a mimetype entry
+ * is present, require it to be the first local ZIP entry, stored without compression, free
+ * of a local-header extra field, and equal to the media type implied by the declared ODF
+ * format. Passing this preflight is <strong>not</strong> complete package, macro,
+ * embedded-object, archive-expansion, malware, or fidelity qualification. Those deeper
+ * controls remain separate sandbox/content-policy acceptance gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -94,8 +95,8 @@ final class OfficeSourceContainerPreflight {
      *         Stored/Deflate entry sizes or duplicated metadata, contains duplicate raw entry
      *         names, advertises compressed bytes beyond its local-data region, uses a ZIP
      *         compression method outside the current Stored/Deflate qualification boundary,
-     *         contains an encrypted entry, has an unsafe ZIP entry path, or an ODF candidate
-     *         violates required package structure
+     *         contains an encrypted entry, has an unsafe ZIP entry path, contains prohibited
+     *         OOXML active content, or an ODF candidate violates required package structure
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
         String sourceFormat = request.sourceFormat();
@@ -228,8 +229,9 @@ final class OfficeSourceContainerPreflight {
             if (!rawEntryNames.add(rawEntryName)) {
                 throw duplicateEntryName();
             }
-            if ("vbaProject.bin".equalsIgnoreCase(
-                    rawEntryName.substring(rawEntryName.lastIndexOf('/') + 1))) {
+            String entryBaseName = rawEntryName.substring(rawEntryName.lastIndexOf('/') + 1);
+            if ("vbaProject.bin".equalsIgnoreCase(entryBaseName)
+                    || rawEntryName.toLowerCase(java.util.Locale.ROOT).contains("/embeddings/")) {
                 throw prohibitedOfficeActiveContent();
             }
             long localDataOffset = requireMatchingLocalHeaderMetadata(

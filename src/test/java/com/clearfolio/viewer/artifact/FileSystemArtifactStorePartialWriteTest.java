@@ -133,4 +133,25 @@ class FileSystemArtifactStorePartialWriteTest {
         assertTrue(Files.exists(metadataPath.resolve("retained")));
         assertTrue(Files.notExists(pdfPath));
     }
+
+    @Test
+    void unreadableExistingArtifactSnapshotFailsClosedBeforeReplacement() throws Exception {
+        Path root = temporaryDirectory.resolve("snapshot-failure");
+        Files.createDirectories(root);
+        UUID docId = UUID.randomUUID();
+        Path pdfPath = root.resolve(docId + ".pdf");
+        Files.createDirectory(pdfPath);
+        Files.writeString(pdfPath.resolve("retained"), "evidence");
+        FileSystemArtifactStore store = new FileSystemArtifactStore(root);
+
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> store.putPdf(docId, "%PDF-1.7\nreplacement".getBytes(StandardCharsets.UTF_8))
+        );
+
+        assertEquals("failed to snapshot existing artifact for docId " + docId, error.getMessage());
+        assertTrue(Files.isDirectory(pdfPath));
+        assertTrue(Files.exists(pdfPath.resolve("retained")));
+        assertTrue(Files.notExists(root.resolve(docId + ".meta.properties")));
+    }
 }

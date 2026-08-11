@@ -66,11 +66,13 @@ public final class FileSystemArtifactStore implements ArtifactStore {
     @Override
     public void putPdf(UUID docId, byte[] pdfBytes) {
         byte[] copy = pdfBytes.clone();
+        byte[] metadata = metadataBytes(docId, copy);
+        ArtifactFilesSnapshot previous = snapshotExistingFiles(docId);
         try {
             bytesWriter.write(pdfPath(docId), copy);
-            bytesWriter.write(metadataPath(docId), metadataBytes(docId, copy));
+            bytesWriter.write(metadataPath(docId), metadata);
         } catch (IOException ex) {
-            rollbackPartialWrite(docId, ex);
+            rollbackPartialWrite(docId, previous, ex);
             throw new IllegalStateException("failed to persist artifact for docId " + docId, ex);
         }
         cache.put(docId, copy);
@@ -113,14 +115,37 @@ public final class FileSystemArtifactStore implements ArtifactStore {
         }
     }
 
-    private void rollbackPartialWrite(UUID docId, IOException writeFailure) {
-        deletePartialFile(metadataPath(docId), writeFailure);
-        deletePartialFile(pdfPath(docId), writeFailure);
+    private ArtifactFilesSnapshot snapshotExistingFiles(UUID docId) {
+        try {
+            return new ArtifactFilesSnapshot(
+                    existingFileBytes(pdfPath(docId)),
+                    existingFileBytes(metadataPath(docId))
+            );
+        } catch (IOException ex) {
+            throw new IllegalStateException("failed to snapshot existing artifact for docId " + docId, ex);
+        }
     }
 
-    private static void deletePartialFile(Path path, IOException writeFailure) {
+    private static byte[] existingFileBytes(Path path) throws IOException {
+        return Files.exists(path) ? Files.readAllBytes(path) : null;
+    }
+
+    private void rollbackPartialWrite(
+            UUID docId,
+            ArtifactFilesSnapshot previous,
+            IOException writeFailure
+    ) {
+        restorePartialFile(pdfPath(docId), previous.pdfBytes(), writeFailure);
+        restorePartialFile(metadataPath(docId), previous.metadataBytes(), writeFailure);
+    }
+
+    private static void restorePartialFile(Path path, byte[] previousBytes, IOException writeFailure) {
         try {
-            Files.deleteIfExists(path);
+            if (previousBytes == null) {
+                Files.deleteIfExists(path);
+            } else {
+                Files.write(path, previousBytes);
+            }
         } catch (IOException rollbackFailure) {
             writeFailure.addSuppressed(rollbackFailure);
         }
@@ -150,5 +175,8 @@ public final class FileSystemArtifactStore implements ArtifactStore {
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }
+    }
+
+    private record ArtifactFilesSnapshot(byte[] pdfBytes, byte[] metadataBytes) {
     }
 }

@@ -63,7 +63,7 @@ public record IssuerTrustPolicy(
         if (!"https".equalsIgnoreCase(parsed.getScheme())) {
             throw new IllegalArgumentException("identity trust issuer must use HTTPS");
         }
-        if (parsed.getHost() == null || parsed.getHost().isBlank()) {
+        if (parsed.getHost() == null) {
             throw new IllegalArgumentException("identity trust issuer must name a host");
         }
         if (parsed.getUserInfo() != null) {

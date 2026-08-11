@@ -46,6 +46,16 @@ class OfficeSourceEntryPathPolicyTest {
     }
 
     @Test
+    void adapterRejectsEmptyPathSegmentBeforeProviderInvocation() {
+        assertUnsafeEntry("word//document.xml");
+    }
+
+    @Test
+    void adapterRejectsDirectoryStyleTrailingSlashBeforeProviderInvocation() {
+        assertUnsafeEntry("word/");
+    }
+
+    @Test
     void adapterRejectsLocalHeaderNameThatDiffersFromCentralDirectoryBeforeProviderInvocation() {
         AtomicInteger providerCalls = new AtomicInteger();
         OfficeConversionAdapter adapter = countingAdapter(providerCalls);

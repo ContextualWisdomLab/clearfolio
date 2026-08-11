@@ -168,9 +168,6 @@ final class OfficeOoxmlRelationshipPreflight {
     }
 
     private static boolean matchesAt(byte[] sourceBytes, int offset, byte[] expected) {
-        if (offset > sourceBytes.length - expected.length) {
-            return false;
-        }
         for (int index = 0; index < expected.length; index++) {
             if (sourceBytes[offset + index] != expected[index]) {
                 return false;

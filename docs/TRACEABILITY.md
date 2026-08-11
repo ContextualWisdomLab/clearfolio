@@ -2,7 +2,7 @@
 
 Status: Canonical traceability index
 Baseline: protected `main` at `55d7ae8647208e301f282350f076eeddaba61d11`
-Assessment date: 2026-08-10
+Assessment date: 2026-08-12
 
 This document maps product and technical requirements to current implementation,
 verification, decisions, and open work. It prevents five recurring errors:
@@ -49,7 +49,7 @@ technical checks pass.
 | Production HMAC key readiness | `ACTIVE_PR`; issue #319 dependency; current #313 | clean current-base `ProductionAuthReadinessConfig` rejects missing/null, undersized, normalized, unstable or purpose-reused signing material | exact-head CI, Security Scan, SAST, fuzz and 100% coverage | SECURITY; THREAT_MODEL; MIGRATION_ROLLBACK |
 | Runtime credential registry | `PLANNED`; issue #319 | protected main still receives tenant-claim and artifact-token HMAC values from environment-backed Spring configuration; #313 is readiness, not authority migration | registry lookup, rotation, restart, replica, least-privilege and no-secret-log tests required | issue #319; AGENTS; SECURITY; THREAT_MODEL |
 | Provider-neutral production identity federation | `PLANNED`; issue #314 | current HMAC-signed gateway claim adapter remains bounded; no complete OIDC/JWT federation is shipped | issuer, audience, algorithm, JWK rotation/outage, tenant mapping and migration tests required | issue #314; PRD; API_CONTRACT; THREAT_MODEL |
-| Immutable job identity and durable deletion receipts | `ACTIVE_PR`; issue #263; historical #268 requires clean reconciliation | former branch contains generation fencing, tombstones, deletion receipts and restart-safe cleanup, but predecessor-base evidence is not current | clean current-base replay, concurrency, crash-tail, fairness, privacy and lifecycle acceptance required | ADR-0004; DATA_MODEL; MIGRATION_ROLLBACK |
+| Immutable job identity and durable deletion receipts | `PARTIAL`; issue #263; #268 `SUPERSEDED`; current #345/#350/#351/#353 | the stale broad descendant was closed after its valuable semantics were decomposed into current bounded lanes for permanent job-id reservation, same-job lifecycle serialization, deletion state vocabulary and immutable deletion-receipt identity; durable receipt persistence and recovery are still not shipped | current-base identity/state/locking tests plus future durable replay, crash-tail, fairness, privacy and lifecycle acceptance | ADR-0004; DATA_MODEL; MIGRATION_ROLLBACK |
 | User-facing tenant-safe deletion journey | `PLANNED`; issue #263 | lower-layer lifecycle work is not yet an integrated protected-main upload/view/download/delete/recovery workflow | idempotent delete, link invalidation, pending/failure/completion UI, restart/recovery and accessibility tests required | issue #263; PRD; API_CONTRACT; RELEASE_ACCEPTANCE |
 | Nested-safe accessible asynchronous controls | `ACTIVE_PR`; current #264 | clean current-base reusable `dom-utils.js` busy-state behavior and a dependency-free Node integration suite preserve nested state, inert repeated activation, focus and restoration semantics | exact-head CI, Security Scan, SAST, fuzz, JavaScript unit/integration and branch-coverage evidence | PRD FR-09; UML viewer flows; issue #263 |
 | Viewer render generation safety | `PARTIAL`; issue #322; current `ACTIVE_PR` #323 | clean current-base first slice suppresses stale canvas, metadata, preview-link and ready-state publication after supersession | behavioral Node late-render regression plus exact-head CI/security/SAST/fuzz | issue #322; UML viewer lifecycle; TEST_STRATEGY |
@@ -65,15 +65,15 @@ technical checks pass.
 | Complete versioned public API/schema and naruon compatibility | `PARTIAL`; issue #315 | current controllers, records, buyer OpenAPI seed and prose contract do not form one complete released machine-readable authority | route/DTO/error/lifecycle/example/version/breaking-change, standalone and naruon consumer tests required | issue #315; API_CONTRACT; ADR-0001; RELEASE_ACCEPTANCE |
 | Buyer OpenAPI license, neutral example and delete-route integrity | `PARTIAL`; issue #315; current `ACTIVE_PR` #316 | bounded integrity slice aligns `info.license` to Apache-2.0, removes demo examples and verifies the required delete path parameter | structured YAML and route contract tests plus exact-head CI/security/SAST/fuzz | issue #315; #316; API_CONTRACT; ACQUISITION_DILIGENCE |
 | Stable unique OpenAPI operation identities | `PARTIAL`; issue #315; current `ACTIVE_PR` #337 | offline standard-library checker requires one non-empty unique `operationId` per HTTP operation | positive current-schema test, missing/duplicate/path-metadata regressions and exact-head CI/security/SAST | issue #315; current `ACTIVE_PR` #337; API_CONTRACT |
-| Analytics storage-level tenant isolation | `PLANNED`; issue #326 | protected-main analytics materializes global `findAll()` results and filters in application code; former #268 scoped API is not yet current-base integrated | hostile global-query seam, scoped repository interaction and two-tenant KPI isolation tests required | issue #326; ADR-0002; THREAT_MODEL |
+| Analytics storage-level tenant isolation | `PARTIAL`; issue #326; current `ACTIVE_PR` #342 with stacked #361/#380 | current-base #342 pushes analytics list isolation into a tenant-scoped repository query; #361/#380 extend fail-closed tenant-scoped identifier lookup through repository/service boundaries, while none of these ACTIVE_PR slices is protected-main behavior yet | hostile global-query seam, scoped repository/service interaction and two-tenant concealment/KPI isolation tests | issue #326; ADR-0002; THREAT_MODEL |
 | Terminal-outcome conversion success rate | `PARTIAL`; issue #327; current `ACTIVE_PR` #338 | clean current-base KPI response and evidence Javadocs use succeeded divided by succeeded plus failed, excluding in-flight work | mixed terminal/in-flight, zero-terminal, controller and exact-head CI/security/SAST/fuzz tests | issue #327; current `ACTIVE_PR` #338; API_CONTRACT; TEST_STRATEGY |
-| Finite and domain-valid persisted KPI evidence | `PARTIAL`; issue #329; current `ACTIVE_PR` #339 | clean current-base ledger rejects NaN, infinities, rates outside `[0,1]` and negative p95 latency without clamping | invalid replay and valid historical round-trip tests plus exact-head CI/security/SAST/fuzz | issue #329; current `ACTIVE_PR` #339; DATA_MODEL; TEST_STRATEGY |
+| Finite and domain-valid persisted KPI evidence | `PARTIAL`; issue #329; current `ACTIVE_PR` #389 | current-base KPI ledger validation rejects NaN, infinities, rates outside `[0,1]` and negative p95 latency without clamping; former #339 is closed historical evidence | invalid replay and valid historical round-trip tests plus exact-head CI/security/SAST/fuzz | issue #329; current `ACTIVE_PR` #389; DATA_MODEL; TEST_STRATEGY |
 | Deterministic single logging runtime binding | `ACTIVE_PR`; issue #320; current #340 | clean current-base exclusion keeps Spring `spring-jcl` as the sole Commons Logging bridge and removes standalone `commons-logging` from the PDFBox path | exact-head CI, Security Scan, SAST, fuzz, runtime provider enumeration and dependency-intent contract | issue #320; OPERABILITY; RELEASE_ACCEPTANCE |
 | Hourly RCA/feasibility product development | `ACTIVE_PR`; current #271 | clean current-base bounded OpenCode workflow, immutable patch, credential-free verification and Draft-only publication | prompt/workflow contract tests, exact-head CI/security/SAST and protected-main operational run after integration | ADR-0008; ADR-0009; ADR-0011 |
 | User-redirection and no-early-stop execution contract | `ACTIVE_PR`; current #271 | actual recurring prompt classifies premature-stop reports, gives prompt repair zero completion credit, rebuilds the live queue, performs same-run substantive work and resets exit sweeps | direct prompt regression and exact-head Buyer-readiness/Maven/merge acceptance | ADR-0009; ADR-0011; hourly operations guide |
 | Scheduler execution receipt and resumable continuation | `PLANNED`; issue #331 | external scheduler exposes no durable phase/action/checkpoint evidence; #271 carries only a bounded repository-local semantic slice | run/admission/queue/action/CAS/privacy/failure/budget-continuation simulations and platform evidence required | issue #331; ADR-0012; DATA_MODEL; UML; OPERABILITY |
 | Qualifying independent formal review route | `PLANNED`; issue #321; organization `.github#772` ownership | protected merge requires at least one approval from a write-authorized independent reviewer; advisory bots are not counted | eligible human-team provisioning, CODEOWNERS assignment, stale-review and permission-loss acceptance required | issue #321; ADR-0007; ADR-0008; repository metadata |
-| Reproducible release, SBOM and provenance | `PARTIAL` | #270 integrated deterministic SBOM/attribution and strict source tests; one complete protected release artifact has not passed integrated fidelity/recovery/review acceptance | release artifact digest, SBOM/provenance, published-schema, rollback and post-publication verification required | ADR-0010; RELEASE_ACCEPTANCE |
+| Reproducible release, SBOM and provenance | `PARTIAL`; current `ACTIVE_PR` #391 and Draft #392 | #270 integrated deterministic SBOM/attribution and strict source tests; #391 binds buyer OpenAPI bytes to a source revision and #392 proposes a read-only tagged acceptance evidence bundle, but neither is protected-main release truth and no complete protected release has passed integrated fidelity/recovery/review acceptance | release artifact/schema digests, exact tag/source binding, SBOM/license/provenance, rollback and post-publication verification required | ADR-0010; RELEASE_ACCEPTANCE; issue #315 |
 | Acquisition, IP and legal diligence | `PARTIAL` | repository license/SBOM/attribution and canonical diligence are inspectable; contributor/IP assignment, FTO, contracts and certification remain external | repository contract tests plus external legal, customer, infrastructure and commercial evidence | ACQUISITION_DILIGENCE; DOCUMENTATION_ASSESSMENT |
 
 ## Current clean replacements and superseded predecessors
@@ -85,11 +85,12 @@ was compared by exact blob or semantic patch and independently reverified:
 | --- | --- | --- | --- |
 | Focus appearance | issue #324; current `ACTIVE_PR` #334 | #325 `SUPERSEDED` | identical two-file behavior rebuilt on protected main and exact-head checks rerun |
 | Terminal KPI denominator | issue #327; current `ACTIVE_PR` #338 | #328 `SUPERSEDED` | all five output blobs are byte-identical on a clean protected-main base |
-| KPI ledger numeric validity | issue #329; current `ACTIVE_PR` #339 | #330 `SUPERSEDED` | same two semantic hunks applied while preserving protected-main ledger changes |
+| KPI ledger numeric validity | issue #329; current `ACTIVE_PR` #389 | #330 `SUPERSEDED`; #339 closed historical evidence | current #389 carries the live bounded invalid-evidence contract; older unmerged heads are not current proof |
 | OpenAPI operation identity | issue #315; current `ACTIVE_PR` #337 | #332 `SUPERSEDED` | identical checker/test blobs; predecessor stale ancestry lacked current report verifier |
 | HMAC readiness | issue #319; current `ACTIVE_PR` #313 | #333 `SUPERSEDED` | duplicate production blob and equivalent focused tests |
 | Availability probes | ADR-0006; current `ACTIVE_PR` #295 | #335 `SUPERSEDED` | duplicate production/test blobs; #295 also retains a scoped operations runbook |
 | Branding boundary | issue #317; current `ACTIVE_PR` #318 | #336 `SUPERSEDED` | both changed blobs were byte-identical |
+| Broad admin/deletion descendant | issues #263/#312 and bounded current successors #341/#342/#345/#350/#351/#353/#361/#363/#380 | #268 `SUPERSEDED` | 139-file conflict-bearing descendant was closed only after its valuable tenant, identity, lifecycle and audit semantics were mapped to current-base or intentionally stacked bounded lanes; old checks/reviews are non-transferable |
 
 A superseded closure is queue hygiene, not proof that the replacement is shipped.
 Each replacement still requires exact-head policy, counted independent approval,
@@ -168,14 +169,3 @@ flowchart TD
     ACQ[docs/ACQUISITION_DILIGENCE.md] --> TRACE
     TRACE --> ASSESS[docs/DOCUMENTATION_ASSESSMENT.md]
 ```
-
-## Update rule
-
-A change to product ownership, public API or lifecycle, tenant/security/identity
-or credential authority, production workspace, viewer generation, accessibility,
-analytics KPI/query/data integrity, persistence or logical entities, conversion
-support/fidelity, durable jobs/backpressure/cancellation, logging runtime,
-review governance, autonomous execution/receipt semantics, acquisition evidence,
-release acceptance, or recovery must update the affected canonical documents in
-the same reviewed change or explicitly explain why there is no documentation
-impact.

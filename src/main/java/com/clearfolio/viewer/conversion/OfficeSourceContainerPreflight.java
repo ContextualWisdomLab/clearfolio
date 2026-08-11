@@ -14,8 +14,9 @@ import java.util.Set;
  * format family, and ZIP-family candidates contain self-consistent standard single-disk
  * local-header, central-directory, and end-of-central-directory framing. ZIP entries are
  * limited to the current Stored/Deflate compression qualification boundary, Stored entry
- * sizes must be internally consistent, local and central data-descriptor flags plus CRC
- * and size metadata must agree where applicable, advertised compressed bytes cannot extend
+ * sizes must be internally consistent, Deflate entries cannot claim non-empty expansion
+ * from an empty compressed payload, local and central data-descriptor flags plus CRC and
+ * size metadata must agree where applicable, advertised compressed bytes cannot extend
  * beyond the local-data area before the central directory, duplicate raw entry names are
  * rejected, and entry names are rejected when they are absolute, contain parent traversal,
  * use backslash path separators, or contain NUL bytes. OpenDocument candidates additionally
@@ -90,11 +91,11 @@ final class OfficeSourceContainerPreflight {
      * @throws OfficeConversionException when the format is not a current candidate, the
      *         source does not match that format family's required container signature, a
      *         ZIP-family source has invalid local/central-directory framing, has inconsistent
-     *         Stored entry sizes or duplicated metadata, contains duplicate raw entry names,
-     *         advertises compressed bytes beyond its local-data region, uses a ZIP compression
-     *         method outside the current Stored/Deflate qualification boundary, contains an
-     *         encrypted entry, has an unsafe ZIP entry path, or an ODF candidate violates
-     *         required package structure
+     *         Stored/Deflate entry sizes or duplicated metadata, contains duplicate raw entry
+     *         names, advertises compressed bytes beyond its local-data region, uses a ZIP
+     *         compression method outside the current Stored/Deflate qualification boundary,
+     *         contains an encrypted entry, has an unsafe ZIP entry path, or an ODF candidate
+     *         violates required package structure
      */
     static void requireQualifiedContainer(OfficeConversionRequest request) {
         String sourceFormat = request.sourceFormat();
@@ -202,6 +203,11 @@ final class OfficeSourceContainerPreflight {
             }
             if (compressionMethod == ZIP_STORED_METHOD && compressedSize != uncompressedSize) {
                 throw inconsistentStoredEntrySizes();
+            }
+            if (compressionMethod == ZIP_DEFLATED_METHOD
+                    && compressedSize == 0L
+                    && uncompressedSize > 0L) {
+                throw inconsistentDeflatedEntrySizes();
             }
 
             long recordLength = (long) ZIP_CENTRAL_DIRECTORY_MINIMUM_LENGTH
@@ -539,6 +545,13 @@ final class OfficeSourceContainerPreflight {
         return new OfficeConversionException(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
                 "source ZIP stored entry sizes are inconsistent"
+        );
+    }
+
+    private static OfficeConversionException inconsistentDeflatedEntrySizes() {
+        return new OfficeConversionException(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source ZIP deflated entry sizes are inconsistent"
         );
     }
 

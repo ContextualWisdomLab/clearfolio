@@ -91,6 +91,21 @@ class OfficeConversionResidualCoverageTest {
     }
 
     @Test
+    void sourceContainerRejectsInBoundsSecondRecordWithMissingSignature() {
+        byte[] base = oneEntryZip("content.xml");
+        int oldEocd = base.length - EOCD_LENGTH;
+        byte[] source = new byte[base.length + CENTRAL_FIXED];
+        System.arraycopy(base, 0, source, 0, oldEocd);
+        int newEocd = oldEocd + CENTRAL_FIXED;
+        System.arraycopy(base, oldEocd, source, newEocd, EOCD_LENGTH);
+        putUnsignedShort(source, newEocd + 8, 2);
+        putUnsignedShort(source, newEocd + 10, 2);
+        putUnsignedInt(source, newEocd + 12, centralRecordLength("content.xml") + CENTRAL_FIXED);
+
+        assertMalformedContainer("docx", source);
+    }
+
+    @Test
     void sourceContainerRejectsUnaccountedCentralDirectoryPadding() {
         byte[] base = oneEntryZip("content.xml");
         int oldEocd = base.length - EOCD_LENGTH;
@@ -139,9 +154,12 @@ class OfficeConversionResidualCoverageTest {
     }
 
     @Test
-    void safePathAcceptsShortAndNonLetterLeadingNames() {
+    void safePathAcceptsShortAndLetterCaseAndNonLetterLeadingNames() {
         assertDoesNotThrow(() -> OfficeSourceContainerPreflight.requireQualifiedContainer(
                 request("docx", oneEntryZip("a"))
+        ));
+        assertDoesNotThrow(() -> OfficeSourceContainerPreflight.requireQualifiedContainer(
+                request("docx", oneEntryZip("Ax"))
         ));
         assertDoesNotThrow(() -> OfficeSourceContainerPreflight.requireQualifiedContainer(
                 request("docx", oneEntryZip("1x"))

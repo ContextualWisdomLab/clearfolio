@@ -76,7 +76,7 @@ class LiveProductGapTraceabilityContractTest(unittest.TestCase):
             "exact-head ci/test evidence | `implemented_on_main`",
             "issue #324; current `active_pr` #334",
             "issue #327; current `active_pr` #338",
-            "issue #329; current `active_pr` #339",
+            "issue #329; current `active_pr` #389",
             "issue #315; current `active_pr` #337",
             "#325",
             "superseded",

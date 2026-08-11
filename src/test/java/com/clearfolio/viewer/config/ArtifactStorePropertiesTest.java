@@ -29,6 +29,17 @@ class ArtifactStorePropertiesTest {
     }
 
     @Test
+    void setModeAcceptsExplicitFilesystemMode() {
+        ArtifactStoreProperties properties = new ArtifactStoreProperties();
+        properties.setMode(ArtifactStoreProperties.MODE_IN_MEMORY);
+
+        properties.setMode("  FILESYSTEM  ");
+
+        assertEquals(ArtifactStoreProperties.MODE_FILESYSTEM, properties.getMode());
+        assertFalse(properties.isInMemoryMode());
+    }
+
+    @Test
     void setModeFallsBackToFilesystemForNullAndBlankValues() {
         ArtifactStoreProperties properties = new ArtifactStoreProperties();
 

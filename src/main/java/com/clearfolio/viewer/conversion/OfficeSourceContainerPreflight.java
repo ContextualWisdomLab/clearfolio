@@ -19,16 +19,17 @@ import java.util.Set;
  * size metadata must agree where applicable, advertised compressed bytes cannot extend
  * beyond the local-data area before the central directory, duplicate or ASCII-case-equivalent
  * package part names are rejected, and entry names are rejected when they are absolute,
- * contain parent traversal, use backslash path separators, or contain NUL bytes. Known
- * OOXML active-content and external-resource parts, including VBA projects, embedded objects,
- * external links, and ActiveX content, are rejected before provider invocation. OpenDocument
- * candidates additionally require the package manifest, restrict META-INF content to the
- * manifest plus signature-named entries, and, when a mimetype entry is present, require it
- * to be the first local ZIP entry, stored without compression, free of a local-header extra
- * field, and equal to the media type implied by the declared ODF format. Passing this
- * preflight is <strong>not</strong> complete package, macro, embedded-object,
- * external-resource, archive-expansion, malware, or fidelity qualification. Those deeper
- * controls remain separate sandbox/content-policy acceptance gates.</p>
+ * contain parent traversal or empty path segments, end with a path separator, use backslash
+ * path separators, or contain NUL bytes. Known OOXML active-content and external-resource
+ * parts, including VBA projects, embedded objects, external links, and ActiveX content, are
+ * rejected before provider invocation. OpenDocument candidates additionally require the
+ * package manifest, restrict META-INF content to the manifest plus signature-named entries,
+ * and, when a mimetype entry is present, require it to be the first local ZIP entry, stored
+ * without compression, free of a local-header extra field, and equal to the media type implied
+ * by the declared ODF format. Passing this preflight is <strong>not</strong> complete package,
+ * macro, embedded-object, external-resource, archive-expansion, malware, or fidelity
+ * qualification. Those deeper controls remain separate sandbox/content-policy acceptance
+ * gates.</p>
  */
 final class OfficeSourceContainerPreflight {
 
@@ -448,13 +449,13 @@ final class OfficeSourceContainerPreflight {
                 throw unsafeEntryPath();
             }
             if (current == ZIP_PATH_SEPARATOR) {
-                if (isParentSegment(sourceBytes, segmentStart, cursor)) {
+                if (cursor == segmentStart || isParentSegment(sourceBytes, segmentStart, cursor)) {
                     throw unsafeEntryPath();
                 }
                 segmentStart = cursor + 1;
             }
         }
-        if (isParentSegment(sourceBytes, segmentStart, nameEnd)) {
+        if (segmentStart == nameEnd || isParentSegment(sourceBytes, segmentStart, nameEnd)) {
             throw unsafeEntryPath();
         }
     }

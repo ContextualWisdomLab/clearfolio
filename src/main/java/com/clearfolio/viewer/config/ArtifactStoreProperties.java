@@ -57,7 +57,7 @@ public class ArtifactStoreProperties {
             return;
         }
         if (!MODE_FILESYSTEM.equals(sanitized) && !MODE_IN_MEMORY.equals(sanitized)) {
-            throw new IllegalArgumentException("unsupported artifact store mode: " + sanitized);
+            throw new IllegalArgumentException("unsupported artifact store mode");
         }
         this.mode = sanitized;
     }

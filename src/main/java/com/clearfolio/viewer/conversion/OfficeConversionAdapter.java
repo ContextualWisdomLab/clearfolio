@@ -27,6 +27,9 @@ import org.apache.pdfbox.pdmodel.PDPage;
 @FunctionalInterface
 public interface OfficeConversionAdapter {
 
+    /**
+     * Maximum number of linked PDF actions inspected before the output fails closed.
+     */
     int MAX_ACTION_CHAIN_DEPTH = 32;
 
     /**

@@ -2,6 +2,7 @@ package com.clearfolio.viewer.durable;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -16,6 +17,10 @@ import java.util.regex.Pattern;
 public final class ConversionDeadLetterRecord {
 
     private static final Pattern REASON_CODE_PATTERN = Pattern.compile("[A-Z][A-Z0-9_]{0,63}");
+    private static final Set<String> REGISTERED_REASON_CODES = Set.of(
+            "CONVERTER_TIMEOUT",
+            "RETRY_EXHAUSTED"
+    );
 
     private final UUID deadLetterId;
     private final UUID jobId;
@@ -47,10 +52,10 @@ public final class ConversionDeadLetterRecord {
      * @param generation positive lifecycle generation that failed
      * @param attempt positive processing attempt that reached terminal failure
      * @param failedAt persisted instant when terminal failure was recorded
-     * @param reasonCode bounded uppercase low-cardinality failure code
+     * @param reasonCode registered bounded uppercase low-cardinality failure code
      * @return immutable dead-letter record
      * @throws NullPointerException when a required identifier, timestamp, or reason is null
-     * @throws IllegalArgumentException when authority or reason-code syntax is invalid
+     * @throws IllegalArgumentException when authority, reason syntax, or reason registration is invalid
      */
     public static ConversionDeadLetterRecord record(
             UUID deadLetterId,
@@ -71,6 +76,9 @@ public final class ConversionDeadLetterRecord {
         }
         if (!REASON_CODE_PATTERN.matcher(requiredReasonCode).matches()) {
             throw new IllegalArgumentException("reasonCode must be a bounded uppercase code");
+        }
+        if (!REGISTERED_REASON_CODES.contains(requiredReasonCode)) {
+            throw new IllegalArgumentException("reasonCode must be registered");
         }
         return new ConversionDeadLetterRecord(
                 requiredDeadLetterId,
@@ -144,7 +152,7 @@ public final class ConversionDeadLetterRecord {
     /**
      * Returns the controlled low-cardinality failure reason.
      *
-     * @return bounded reason code
+     * @return registered bounded reason code
      */
     public String reasonCode() {
         return reasonCode;

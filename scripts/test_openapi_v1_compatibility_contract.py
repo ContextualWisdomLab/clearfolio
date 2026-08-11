@@ -46,6 +46,29 @@ paths:
     }
 
 
+def test_collects_equivalent_yaml_formatting_variants() -> None:
+    """Treat compatible quoted, commented, anchored YAML mappings as the same contract."""
+    source = """\
+openapi: 3.0.3
+paths: # public API surface
+    \"/api/v1/widgets/{widgetId}\":
+        get:
+            operationId: getWidget # stable generated-client identity
+            responses: &widget_responses
+                '200':
+                    description: OK
+                default:
+                    description: Controlled failure
+"""
+
+    assert collect_operations(source) == {
+        "GET /api/v1/widgets/{widgetId}": {
+            "operationId": "getWidget",
+            "responses": ["200", "default"],
+        }
+    }
+
+
 def test_detects_removed_operation_operation_id_change_and_removed_response() -> None:
     """Reject client-visible v1 contract removals while allowing additive changes."""
     baseline = {

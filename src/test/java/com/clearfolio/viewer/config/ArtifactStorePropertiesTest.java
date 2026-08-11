@@ -56,10 +56,10 @@ class ArtifactStorePropertiesTest {
 
         IllegalArgumentException error = assertThrows(
                 IllegalArgumentException.class,
-                () -> properties.setMode("cloud")
+                () -> properties.setMode("cloud://tenant-secret")
         );
 
-        assertEquals("unsupported artifact store mode: cloud", error.getMessage());
+        assertEquals("unsupported artifact store mode", error.getMessage());
         assertEquals(ArtifactStoreProperties.MODE_FILESYSTEM, properties.getMode());
     }
 

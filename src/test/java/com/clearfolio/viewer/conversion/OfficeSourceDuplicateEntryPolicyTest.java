@@ -35,6 +35,21 @@ class OfficeSourceDuplicateEntryPolicyTest {
         assertEquals(0, providerCalls.get());
     }
 
+    @Test
+    void adapterRejectsAsciiCaseEquivalentOpcPartNamesBeforeProviderInvocation() throws IOException {
+        AtomicInteger providerCalls = new AtomicInteger();
+        byte[] source = caseVariantDuplicateNamePackage();
+
+        OfficeConversionException failure = org.junit.jupiter.api.Assertions.assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(source))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source ZIP contains duplicate entry name", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
     private static OfficeConversionAdapter countingAdapter(AtomicInteger providerCalls) {
         return input -> {
             providerCalls.incrementAndGet();
@@ -71,6 +86,15 @@ class OfficeSourceDuplicateEntryPolicyTest {
         byte[] bytes = output.toByteArray();
         replaceAll(bytes, SECOND_NAME, FIRST_NAME);
         return bytes;
+    }
+
+    private static byte[] caseVariantDuplicateNamePackage() throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(output)) {
+            addStoredEmptyEntry(zip, "word/document.xml");
+            addStoredEmptyEntry(zip, "WORD/DOCUMENT.XML");
+        }
+        return output.toByteArray();
     }
 
     private static void addStoredEmptyEntry(ZipOutputStream zip, String entryName) throws IOException {

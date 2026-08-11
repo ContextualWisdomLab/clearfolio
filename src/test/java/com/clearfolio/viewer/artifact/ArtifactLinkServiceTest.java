@@ -595,18 +595,20 @@ class ArtifactLinkServiceTest {
     }
 
     private void assertLedgerMismatch(UnaryOperator<ArtifactLinkRecord> mutation) {
-        ArtifactLinkLedger ledger = new ArtifactLinkLedger();
-        ArtifactLinkService ledgerService = serviceAt(ledger, NOW);
+        ArtifactLinkLedger issuingLedger = new ArtifactLinkLedger();
+        ArtifactLinkService issuingService = serviceAt(issuingLedger, NOW);
         UUID docId = UUID.randomUUID();
         ConversionJob job = succeededJob(docId);
         artifactStore.putPdf(docId, sampleBytes());
-        ArtifactLinkResponse link = ledgerService.createLink(job, tenantContext(), null);
-        ArtifactLinkRecord record = ledger.findByTokenId(link.tokenId()).orElseThrow();
-        ledger.recordIssued(mutation.apply(record));
+        ArtifactLinkResponse link = issuingService.createLink(job, tenantContext(), null);
+        ArtifactLinkRecord record = issuingLedger.findByTokenId(link.tokenId()).orElseThrow();
+        ArtifactLinkLedger verificationLedger = new ArtifactLinkLedger();
+        verificationLedger.recordIssued(mutation.apply(record));
+        ArtifactLinkService verificationService = serviceAt(verificationLedger, NOW);
 
         assertTokenStatus(
                 HttpStatus.FORBIDDEN,
-                () -> ledgerService.verifyReadToken(docId, job, sampleBytes(), tokenFrom(link))
+                () -> verificationService.verifyReadToken(docId, job, sampleBytes(), tokenFrom(link))
         );
     }
 

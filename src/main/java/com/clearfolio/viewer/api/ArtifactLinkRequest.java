@@ -23,6 +23,10 @@ public record ArtifactLinkRequest(
 
     /**
      * Validates an explicit purpose against the documented API values.
+     *
+     * @param purpose caller-visible reason for the artifact link
+     * @param ttlSeconds requested token time to live in seconds
+     * @param viewerSessionId optional browser viewer session identifier
      */
     public ArtifactLinkRequest {
         if (purpose != null && !purpose.isBlank()

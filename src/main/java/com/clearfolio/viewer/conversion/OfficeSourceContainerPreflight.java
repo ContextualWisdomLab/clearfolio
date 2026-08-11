@@ -446,25 +446,15 @@ final class OfficeSourceContainerPreflight {
                 throw unsafeEntryPath();
             }
             if (current == ZIP_PATH_SEPARATOR) {
-                if (cursor == segmentStart
-                        || sourceBytes[cursor - 1] == ZIP_DOT
-                        || isParentSegment(sourceBytes, segmentStart, cursor)) {
+                if (cursor == segmentStart || sourceBytes[cursor - 1] == ZIP_DOT) {
                     throw unsafeEntryPath();
                 }
                 segmentStart = cursor + 1;
             }
         }
-        if (segmentStart == nameEnd
-                || sourceBytes[nameEnd - 1] == ZIP_DOT
-                || isParentSegment(sourceBytes, segmentStart, nameEnd)) {
+        if (segmentStart == nameEnd || sourceBytes[nameEnd - 1] == ZIP_DOT) {
             throw unsafeEntryPath();
         }
-    }
-
-    private static boolean isParentSegment(byte[] sourceBytes, int start, int end) {
-        return end - start == 2
-                && sourceBytes[start] == ZIP_DOT
-                && sourceBytes[start + 1] == ZIP_DOT;
     }
 
     private static boolean isAsciiLetter(byte value) {

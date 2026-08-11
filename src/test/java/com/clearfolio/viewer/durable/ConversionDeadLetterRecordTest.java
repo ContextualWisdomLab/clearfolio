@@ -72,6 +72,8 @@ class ConversionDeadLetterRecordTest {
                 deadLetterId, jobId, 1L, 1, failedAt, "A".repeat(65)));
         assertThrows(IllegalArgumentException.class, () -> ConversionDeadLetterRecord.record(
                 deadLetterId, jobId, 1L, 1, failedAt, "_RETRY"));
+        assertThrows(IllegalArgumentException.class, () -> ConversionDeadLetterRecord.record(
+                deadLetterId, jobId, 1L, 1, failedAt, "TENANT_12345"));
     }
 
     @Test

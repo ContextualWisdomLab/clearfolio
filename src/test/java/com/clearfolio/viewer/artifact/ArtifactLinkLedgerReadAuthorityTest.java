@@ -25,6 +25,9 @@ class ArtifactLinkLedgerReadAuthorityTest {
         ArtifactLinkRecord record = issuedRecord("token-1");
         ledger.recordIssued(record);
 
+        assertThrows(IllegalStateException.class, () -> ledger.recordRead(null));
+        assertThrows(IllegalStateException.class, () -> ledger.recordRead(readEvent(
+                null, record.tenantId(), record.subjectId(), record.docId())));
         assertThrows(IllegalStateException.class, () -> ledger.recordRead(readEvent(
                 "unknown-token", record.tenantId(), record.subjectId(), record.docId())));
         assertThrows(IllegalStateException.class, () -> ledger.recordRead(readEvent(

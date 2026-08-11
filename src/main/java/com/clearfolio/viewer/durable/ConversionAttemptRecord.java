@@ -129,16 +129,24 @@ public final class ConversionAttemptRecord {
     /**
      * Checks whether candidate publication authority matches this exact worker claim.
      *
+     * <p>Failed terminal attempts no longer authorize artifact publication. A
+     * successful terminal attempt remains authorized so persistence of the
+     * success outcome may precede final artifact publication.</p>
+     *
      * @param candidateJobId candidate permanently reserved job identifier
      * @param candidateGeneration candidate lifecycle generation
      * @param candidateLeaseId candidate worker-lease identifier
-     * @return true only when job, generation, and lease all match exactly
+     * @return true only when the attempt may publish and job, generation, and lease all match;
+     *         false when a candidate identifier is null or the attempt failed terminally
      */
     public boolean authorizes(
             UUID candidateJobId,
             long candidateGeneration,
             UUID candidateLeaseId) {
-        return jobId.equals(candidateJobId)
+        boolean publicationState = state == ConversionAttemptState.CLAIMED
+                || state == ConversionAttemptState.SUCCEEDED;
+        return publicationState
+                && jobId.equals(candidateJobId)
                 && generation == candidateGeneration
                 && leaseId.equals(candidateLeaseId);
     }

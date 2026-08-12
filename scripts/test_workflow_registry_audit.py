@@ -231,6 +231,56 @@ class WorkflowRegistryAuditTest(unittest.TestCase):
                 observed_at="2026-08-12T13:00:00Z",
             )
 
+    def test_rejects_malformed_registry_evidence_and_authority(self) -> None:
+        valid_record = {
+            "id": 21,
+            "name": "CI",
+            "path": ".github/workflows/ci.yml",
+            "state": "active",
+        }
+        cases = [
+            (
+                "malformed page",
+                ["not-a-page"],
+                "workflow registry page is malformed",
+            ),
+            (
+                "malformed total count",
+                [{"total_count": True, "workflows": []}],
+                "workflow registry total_count is malformed",
+            ),
+            (
+                "malformed workflows",
+                [{"total_count": 0, "workflows": ()}],
+                "workflow registry workflows are malformed",
+            ),
+            (
+                "malformed record",
+                [{"total_count": 1, "workflows": ["not-a-record"]}],
+                "workflow registry record is malformed",
+            ),
+            (
+                "unsupported state",
+                [{"total_count": 1, "workflows": [{**valid_record, "state": "queued"}]}],
+                "workflow 21 has unsupported state",
+            ),
+            (
+                "unsupported path authority",
+                [{"total_count": 1, "workflows": [{**valid_record, "path": "actions/ci.yml"}]}],
+                "workflow 21 has unsupported path authority",
+            ),
+        ]
+        for label, pages, error_pattern in cases:
+            with self.subTest(label=label):
+                with self.assertRaisesRegex(AuditIncompleteError, error_pattern):
+                    audit_workflow_registry(
+                        pages=pages,
+                        tree_paths={".github/workflows/ci.yml"},
+                        default_branch_sha_before="5" * 40,
+                        default_branch_sha_after="5" * 40,
+                        observed_at="2026-08-12T13:00:00Z",
+                    )
+
     def test_rejects_duplicate_registry_records(self) -> None:
         duplicate = {
             "id": 17,

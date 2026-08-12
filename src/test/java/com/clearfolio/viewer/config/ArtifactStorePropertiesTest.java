@@ -2,6 +2,7 @@ package com.clearfolio.viewer.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,17 @@ class ArtifactStorePropertiesTest {
     }
 
     @Test
+    void setModeAcceptsExplicitFilesystemMode() {
+        ArtifactStoreProperties properties = new ArtifactStoreProperties();
+        properties.setMode(ArtifactStoreProperties.MODE_IN_MEMORY);
+
+        properties.setMode("  FILESYSTEM  ");
+
+        assertEquals(ArtifactStoreProperties.MODE_FILESYSTEM, properties.getMode());
+        assertFalse(properties.isInMemoryMode());
+    }
+
+    @Test
     void setModeFallsBackToFilesystemForNullAndBlankValues() {
         ArtifactStoreProperties properties = new ArtifactStoreProperties();
 
@@ -39,13 +51,28 @@ class ArtifactStorePropertiesTest {
     }
 
     @Test
-    void setModeKeepsUnknownValuesWithoutSelectingInMemory() {
+    void setModeRejectsUnknownStorageModes() {
         ArtifactStoreProperties properties = new ArtifactStoreProperties();
 
-        properties.setMode("cloud");
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> properties.setMode("cloud://tenant-secret")
+        );
 
-        assertEquals("cloud", properties.getMode());
-        assertFalse(properties.isInMemoryMode());
+        assertEquals("unsupported artifact store mode", error.getMessage());
+        assertEquals(ArtifactStoreProperties.MODE_FILESYSTEM, properties.getMode());
+    }
+
+    @Test
+    void setModeRejectsNulCorruptedKnownMode() {
+        ArtifactStoreProperties properties = new ArtifactStoreProperties();
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> properties.setMode("file\u0000system")
+        );
+
+        assertEquals(ArtifactStoreProperties.MODE_FILESYSTEM, properties.getMode());
     }
 
     @Test

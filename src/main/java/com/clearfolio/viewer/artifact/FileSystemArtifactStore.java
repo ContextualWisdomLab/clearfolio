@@ -65,6 +65,7 @@ public final class FileSystemArtifactStore implements ArtifactStore {
      */
     @Override
     public void putPdf(UUID docId, byte[] pdfBytes) {
+        requireDocId(docId);
         byte[] copy = pdfBytes.clone();
         byte[] metadata = metadataBytes(docId, copy);
         ArtifactFilesSnapshot previous = snapshotExistingFiles(docId);
@@ -83,6 +84,7 @@ public final class FileSystemArtifactStore implements ArtifactStore {
      */
     @Override
     public Optional<byte[]> getPdf(UUID docId) {
+        requireDocId(docId);
         byte[] cached = cache.get(docId);
         if (cached != null) {
             return Optional.of(cached.clone());
@@ -105,6 +107,7 @@ public final class FileSystemArtifactStore implements ArtifactStore {
      */
     @Override
     public void deletePdf(UUID docId) {
+        requireDocId(docId);
         try {
             Files.deleteIfExists(pdfPath(docId));
             Files.deleteIfExists(metadataPath(docId));
@@ -152,11 +155,27 @@ public final class FileSystemArtifactStore implements ArtifactStore {
     }
 
     private Path pdfPath(UUID docId) {
-        return rootDir.resolve(docId + PDF_SUFFIX);
+        return resolveArtifactPath(rootDir, docId, PDF_SUFFIX);
     }
 
     private Path metadataPath(UUID docId) {
-        return rootDir.resolve(docId + METADATA_SUFFIX);
+        return resolveArtifactPath(rootDir, docId, METADATA_SUFFIX);
+    }
+
+    static Path resolveArtifactPath(Path configuredRoot, UUID docId, String suffix) {
+        requireDocId(docId);
+        Path normalizedRoot = configuredRoot.toAbsolutePath().normalize();
+        Path candidate = normalizedRoot.resolve(docId + suffix).normalize();
+        if (!candidate.startsWith(normalizedRoot)) {
+            throw new IllegalArgumentException("artifact path must remain within configured root");
+        }
+        return candidate;
+    }
+
+    private static void requireDocId(UUID docId) {
+        if (docId == null) {
+            throw new IllegalArgumentException("docId is required");
+        }
     }
 
     private static byte[] metadataBytes(UUID docId, byte[] pdfBytes) {

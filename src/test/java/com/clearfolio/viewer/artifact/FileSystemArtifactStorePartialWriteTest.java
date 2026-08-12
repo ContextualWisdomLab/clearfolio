@@ -57,6 +57,7 @@ class FileSystemArtifactStorePartialWriteTest {
         byte[] originalPdf = "%PDF-1.7\noriginal".getBytes(StandardCharsets.UTF_8);
         byte[] replacementPdf = "%PDF-1.7\nreplacement".getBytes(StandardCharsets.UTF_8);
         new FileSystemArtifactStore(root).putPdf(docId, originalPdf);
+        byte[] originalMetadata = Files.readAllBytes(root.resolve(docId + ".meta.properties"));
 
         FileSystemArtifactStore failingStore = new FileSystemArtifactStore(
                 root,
@@ -73,6 +74,7 @@ class FileSystemArtifactStorePartialWriteTest {
 
         assertTrue(Files.exists(root.resolve(docId + ".pdf")));
         assertTrue(Files.exists(root.resolve(docId + ".meta.properties")));
+        assertArrayEquals(originalMetadata, Files.readAllBytes(root.resolve(docId + ".meta.properties")));
         FileSystemArtifactStore restartedStore = new FileSystemArtifactStore(root);
         assertArrayEquals(originalPdf, restartedStore.getPdf(docId).orElseThrow());
     }

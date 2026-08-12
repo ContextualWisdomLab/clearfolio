@@ -1,3 +1,5 @@
+import { createActionButton, createLink, setBusyState } from "./dom-utils.js";
+
 const STORAGE_KEY = "clearfolio-demo-history-v1";
 const KPI_ENDPOINT = "/api/v1/analytics/kpi-snapshot";
 const KPI_EXPORTS_ENDPOINT = "/api/v1/analytics/kpi-snapshot-exports";
@@ -81,16 +83,6 @@ function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
   }
 }
 
-function createLink(href, label) {
-  const link = document.createElement("a");
-  link.href = href;
-  link.textContent = label;
-  link.className = "table-link";
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  return link;
-}
-
 async function openJsonDocument(url, title) {
   const popup = window.open("", "_blank");
   if (!popup) {
@@ -108,15 +100,6 @@ async function openJsonDocument(url, title) {
   pre.textContent = res.ok && data
     ? JSON.stringify(data, null, 2)
     : "Unable to load JSON evidence with the current tenant claim.";
-}
-
-function createActionButton(label, onClick) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = label;
-  button.className = "btn btn-secondary btn-compact";
-  button.addEventListener("click", onClick);
-  return button;
 }
 
 function jsonHeaders(extra = {}) {
@@ -146,20 +129,17 @@ function renderHistory(history = loadHistory()) {
     if (job.statusUrl) {
       actionsCell.appendChild(createActionButton("Details", (e) => {
         const btn = e.currentTarget;
-        const initialChildren = Array.from(btn.childNodes);
-        btn.disabled = true;
-        btn.textContent = "Loading...";
-        openJobDetail(job).finally(() => {
-          btn.replaceChildren(...initialChildren);
-          btn.disabled = false;
-        });
-      }));
-      actionsCell.appendChild(createActionButton("Status JSON", () => {
-        void openJsonDocument(job.statusUrl, "Clearfolio status JSON");
-      }));
+        const restore = setBusyState(btn, "Loading...");
+        openJobDetail(job).finally(restore);
+      }, `View details for ${job.fileName || "Document"}`));
+      actionsCell.appendChild(createActionButton("Status JSON", (e) => {
+        const btn = e.currentTarget;
+        const restore = setBusyState(btn, "Loading status JSON...");
+        openJsonDocument(job.statusUrl, "Clearfolio status JSON").finally(restore);
+      }, `View status JSON for ${job.fileName || "Document"}`));
     }
     if (job.jobId) {
-      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer"));
+      actionsCell.appendChild(createLink(`/viewer/${encodeURIComponent(job.jobId)}`, "Open viewer", `Open viewer for ${job.fileName || "Document"}`));
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
@@ -264,7 +244,6 @@ async function openJobDetail(job) {
     setStatus("Seeded job detail loaded.");
     return;
   }
-
   if (!job.statusUrl) {
     return;
   }
@@ -297,9 +276,7 @@ async function retryActiveJob() {
   }
 
   const jobId = activeJobDetail.jobId;
-  const initialChildren = Array.from(el.retryJobBtn.childNodes);
-  el.retryJobBtn.disabled = true;
-  el.retryJobBtn.textContent = "Retrying...";
+  const restore = setBusyState(el.retryJobBtn, "Retrying...");
   setStatus("Requesting operator retry...");
 
   try {
@@ -338,8 +315,7 @@ async function retryActiveJob() {
   } catch (err) {
     setError("Network error while requesting retry. Retry when the service is reachable.");
   } finally {
-    el.retryJobBtn.replaceChildren(...initialChildren);
-    el.retryJobBtn.disabled = false;
+    restore();
   }
 }
 
@@ -412,9 +388,7 @@ async function refreshKpis() {
 }
 
 async function refreshKpiEvidence() {
-  const initialChildren = Array.from(el.refreshEvidenceBtn.childNodes);
-  el.refreshEvidenceBtn.disabled = true;
-  el.refreshEvidenceBtn.textContent = "Refreshing...";
+  const restore = setBusyState(el.refreshEvidenceBtn, "Refreshing...");
 
   try {
     const { res, data } = await fetchJson(KPI_EXPORTS_ENDPOINT);
@@ -427,15 +401,12 @@ async function refreshKpiEvidence() {
   } catch (err) {
     el.kpiExportStatus.textContent = "Snapshot evidence is unavailable while the service is unreachable.";
   } finally {
-    el.refreshEvidenceBtn.replaceChildren(...initialChildren);
-    el.refreshEvidenceBtn.disabled = false;
+    restore();
   }
 }
 
 async function loadDemoData() {
-  const initialChildren = Array.from(el.loadDemoDataBtn.childNodes);
-  el.loadDemoDataBtn.disabled = true;
-  el.loadDemoDataBtn.textContent = "Loading...";
+  const restore = setBusyState(el.loadDemoDataBtn, "Loading...");
   setStatus("Loading seeded buyer-demo story...");
 
   try {
@@ -458,8 +429,7 @@ async function loadDemoData() {
   } catch (err) {
     setError("Unable to load seeded demo story.");
   } finally {
-    el.loadDemoDataBtn.replaceChildren(...initialChildren);
-    el.loadDemoDataBtn.disabled = false;
+    restore();
   }
 }
 
@@ -505,9 +475,7 @@ async function submitDocument(event) {
     return;
   }
 
-  const initialChildren = Array.from(el.submitBtn.childNodes);
-  el.submitBtn.disabled = true;
-  el.submitBtn.textContent = "Submitting...";
+  const restore = setBusyState(el.submitBtn, "Submitting...");
   setStatus("Submitting document...");
 
   try {
@@ -550,8 +518,7 @@ async function submitDocument(event) {
     addFailedHistory(file.name, "FAILED");
     setError("Network error while submitting. Retry when the service is reachable.");
   } finally {
-    el.submitBtn.replaceChildren(...initialChildren);
-    el.submitBtn.disabled = false;
+    restore();
   }
 }
 

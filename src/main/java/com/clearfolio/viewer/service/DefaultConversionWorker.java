@@ -186,7 +186,7 @@ public class DefaultConversionWorker implements ConversionWorker {
         List<ConversionJob> recoverableJobs = repository.findRecoverableJobs(now, staleProcessingBefore);
         recoverableJobs.forEach(job -> {
             if (job.getStatus() == ConversionJobStatus.PROCESSING) {
-                stateStore.scheduleRetry(job.getJobId(), "worker lease expired; retry queued", Instant.now());
+                stateStore.scheduleRetry(job.getJobId(), "worker lease expired; retry queued", now);
             }
             enqueue(job.getJobId());
         });

@@ -39,9 +39,10 @@ public interface OfficeConversionAdapter {
      * format to be a current Office conversion candidate and requires its leading
      * container signature to match the declared format family. ODF candidates
      * additionally pass bounded, non-networked manifest parsing and root media-type
-     * validation. OOXML candidates additionally reject bounded package relationship
-     * parts that delegate resource retrieval outside the package. This common
-     * preflight is intentionally narrower than complete archive, macro, OLE,
+     * validation. OOXML candidates additionally pass bounded, non-networked package
+     * metadata parsing that rejects externally resolved relationships and VBA project
+     * content-type declarations even when the corresponding part is renamed. This
+     * common preflight is intentionally narrower than complete archive, macro, OLE,
      * malware, or fidelity qualification, which remain sandbox/content-policy
      * responsibilities. After provider execution, the result must be present,
      * source-bound, tied to the exact qualified adapter/runtime, request generation

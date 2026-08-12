@@ -41,11 +41,26 @@ def _indent_width(line: str) -> int:
 
 
 def _yaml_scalar(value: str) -> str:
-    """Return the simple scalar form used by repository-owned operationId values."""
+    """Return the simple scalar form used by repository-owned operationId values.
+
+    YAML plain scalars may contain ``#`` as data when it is not preceded by
+    separation whitespace. A separated ``#`` starts a comment and is therefore
+    excluded from the operation identifier. Quoted scalar support remains narrow:
+    the complete trimmed value must be enclosed by one matching quote pair.
+    """
 
     value = value.strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+    if not value:
+        return ""
+
+    if value[0] in {"'", '"'}:
+        if len(value) < 2 or value[-1] != value[0]:
+            raise ValueError("unsupported quoted operationId scalar")
         return value[1:-1]
+
+    for index, character in enumerate(value):
+        if character == "#" and (index == 0 or value[index - 1].isspace()):
+            return value[:index].rstrip()
     return value
 
 
@@ -53,8 +68,9 @@ def inspect_operation_ids(contract: str) -> InspectionResult:
     """Inspect standard HTTP methods under the top-level OpenAPI ``paths`` mapping.
 
     The repository-owned contract keeps path keys at two spaces, method keys at four
-    spaces, and method properties below that level. Path-level metadata such as
-    ``parameters`` or ``$ref`` is ignored because it is not an HTTP operation.
+    spaces, and direct method properties at six spaces. Path-level metadata such as
+    ``parameters`` or ``$ref`` is ignored because it is not an HTTP operation, and
+    nested extension metadata cannot satisfy the direct ``operationId`` contract.
     """
 
     operations: list[tuple[str, str, str | None]] = []
@@ -132,7 +148,7 @@ def inspect_operation_ids(contract: str) -> InspectionResult:
                 current_method = key
             continue
 
-        if current_method is not None and indent > 4 and stripped.startswith("operationId:"):
+        if current_method is not None and indent == 6 and stripped.startswith("operationId:"):
             _, value = stripped.split(":", 1)
             candidate = _yaml_scalar(value)
             current_operation_id = candidate or None

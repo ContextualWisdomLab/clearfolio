@@ -13,6 +13,8 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  */
 class ViewerUiBrandingContractTest {
 
+    private static final String EXPECTED_FOOTER = "<small>Clearfolio Viewer · Apache-2.0</small>";
+
     private WebTestClient webTestClient;
 
     /**
@@ -34,7 +36,7 @@ class ViewerUiBrandingContractTest {
                 .expectStatus().isOk()
                 .expectBody(String.class)
                 .value(body -> {
-                    assertThat(body).contains("Clearfolio Viewer");
+                    assertThat(body).contains(EXPECTED_FOOTER);
                     assertThat(body).doesNotContain("HYOSUNG");
                 });
     }
@@ -50,7 +52,7 @@ class ViewerUiBrandingContractTest {
                 .expectStatus().isOk()
                 .expectBody(String.class)
                 .value(body -> {
-                    assertThat(body).contains("Clearfolio Viewer");
+                    assertThat(body).contains(EXPECTED_FOOTER);
                     assertThat(body).doesNotContain("HYOSUNG");
                 });
     }

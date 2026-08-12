@@ -221,7 +221,7 @@ final class OfficeOoxmlRelationshipPreflight {
         }
         throw metadataFailure(
                 OfficeConversionFailureCode.MALFORMED_INPUT,
-                "source OOXML package metadata is invalid"
+                "source OOXML relationship part is invalid"
         );
     }
 

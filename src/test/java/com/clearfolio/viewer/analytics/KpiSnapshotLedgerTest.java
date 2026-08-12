@@ -97,6 +97,13 @@ class KpiSnapshotLedgerTest {
     }
 
     @Test
+    void acceptsInclusiveKpiNumericBoundaries() throws Exception {
+        assertValidLedger(snapshotLine().replace("\t0.5\t", "\t0.0\t"), 0.0, 123L);
+        assertValidLedger(snapshotLine().replace("\t0.5\t", "\t1.0\t"), 1.0, 123L);
+        assertValidLedger(snapshotLine().replace("\t123", "\t0"), 0.5, 0L);
+    }
+
+    @Test
     void reportsLoadAndWriteFailures() throws Exception {
         Path directory = tempDir.resolve("directory-ledger");
         Files.createDirectory(directory);
@@ -122,6 +129,19 @@ class KpiSnapshotLedgerTest {
                 () -> new KpiSnapshotLedger(ledgerPath, CLOCK)
         );
         assertEquals("kpi snapshot ledger contains an invalid line", error.getMessage());
+    }
+
+    private void assertValidLedger(String line, double expectedRate, Long expectedP95) throws Exception {
+        Path ledgerPath = Files.writeString(
+                tempDir.resolve(UUID.randomUUID() + ".log"),
+                line + System.lineSeparator(),
+                StandardCharsets.UTF_8
+        );
+
+        KpiSnapshotLedger ledger = new KpiSnapshotLedger(ledgerPath, CLOCK);
+        var snapshot = ledger.snapshotsFor("tenant-a").getFirst();
+        assertEquals(expectedRate, snapshot.conversionSuccessRate());
+        assertEquals(expectedP95, snapshot.p95TimeToPreviewMs());
     }
 
     private static TenantContext context(String tenantId) {

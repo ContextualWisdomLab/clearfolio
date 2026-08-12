@@ -105,10 +105,34 @@ class LiveProductGapTraceabilityContractTest(unittest.TestCase):
         for required in (
             "current #264",
             "current #340",
-            "only #268 remains unreconciled",
+            "#268",
+            "superseded",
         ):
             with self.subTest(document="assessment", required=required):
                 self.assertIn(required, assessment)
+        self.assertNotIn("only #268 remains unreconciled", assessment)
+
+    def test_canonical_docs_reject_stale_268_and_direct_download_maturity(self) -> None:
+        """Require shipped direct download and superseded deletion ancestry to be classified truthfully."""
+
+        uml = read_text("docs/UML.md")
+        data_model = read_text("docs/DATA_MODEL.md")
+        assessment = read_text("docs/DOCUMENTATION_ASSESSMENT.md")
+
+        self.assertIn("direct conversion-job download", uml)
+        self.assertIn("`implemented_on_main`", uml)
+        self.assertNotIn("direct conversion-job download alignment is an `active_pr`", uml)
+
+        for document_name, document in (("uml", uml), ("data_model", data_model)):
+            with self.subTest(document=document_name):
+                self.assertIn("#268", document)
+                self.assertIn("superseded", document)
+                self.assertIn("partial", document)
+                self.assertNotIn("`active_pr` #268", document)
+
+        self.assertIn("#268", assessment)
+        self.assertIn("superseded", assessment)
+        self.assertNotIn("only #268 remains unreconciled", assessment)
 
     def test_assessment_exposes_current_api_workspace_and_credential_gaps(self) -> None:
         """Require the fitness assessment to expose current executable product/security gaps."""

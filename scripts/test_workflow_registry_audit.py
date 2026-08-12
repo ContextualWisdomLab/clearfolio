@@ -39,6 +39,43 @@ class WorkflowRegistryAuditTest(unittest.TestCase):
         self.assertEqual(WorkflowClass.PRESENT.value, evidence["workflows"][0]["classification"])
         self.assertTrue(evidence["workflows"][0]["file_present"])
 
+    def test_emits_auditable_pagination_receipt(self) -> None:
+        evidence = audit_workflow_registry(
+            pages=[
+                {
+                    "total_count": 2,
+                    "workflows": [
+                        {
+                            "id": 19,
+                            "name": "CI",
+                            "path": ".github/workflows/ci.yml",
+                            "state": "active",
+                        }
+                    ],
+                },
+                {
+                    "total_count": 2,
+                    "workflows": [
+                        {
+                            "id": 20,
+                            "name": "Fuzz",
+                            "path": ".github/workflows/fuzz.yml",
+                            "state": "active",
+                        }
+                    ],
+                },
+            ],
+            tree_paths={".github/workflows/ci.yml", ".github/workflows/fuzz.yml"},
+            default_branch_sha_before="9" * 40,
+            default_branch_sha_after="9" * 40,
+            observed_at="2026-08-12T13:00:00Z",
+        )
+
+        self.assertEqual(
+            {"expected_total": 2, "page_count": 2, "page_sizes": [1, 1]},
+            evidence["pagination_receipt"],
+        )
+
     def test_classifies_active_repository_path_missing_from_tree_as_orphaned(self) -> None:
         evidence = audit_workflow_registry(
             pages=[

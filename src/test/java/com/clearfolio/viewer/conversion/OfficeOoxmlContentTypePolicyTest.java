@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.conversion;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -29,11 +30,46 @@ class OfficeOoxmlContentTypePolicyTest {
 
         OfficeConversionException failure = assertThrows(
                 OfficeConversionException.class,
-                () -> countingAdapter(providerCalls).convert(request(docxWithVbaContentType()))
+                () -> countingAdapter(providerCalls).convert(request(docxWithContentTypes(
+                        "<Override PartName=\"/word/customPayload.bin\" ContentType=\""
+                                + VBA_PROJECT_CONTENT_TYPE
+                                + "\"/>"
+                )))
         );
 
         assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
         assertEquals("source Office package contains prohibited active content", failure.getMessage());
+        assertEquals(0, providerCalls.get());
+    }
+
+    @Test
+    void adapterAllowsBenignContentTypeDeclarations() throws Exception {
+        AtomicInteger providerCalls = new AtomicInteger();
+
+        assertDoesNotThrow(() -> countingAdapter(providerCalls).convert(request(docxWithContentTypes(
+                "<Override PartName=\"/word/document.xml\" "
+                        + "ContentType=\"application/vnd.openxmlformats-officedocument."
+                        + "wordprocessingml.document.main+xml\"/>"
+        ))));
+
+        assertEquals(1, providerCalls.get());
+    }
+
+    @Test
+    void adapterRejectsMalformedContentTypesPartBeforeProvider() throws Exception {
+        AtomicInteger providerCalls = new AtomicInteger();
+
+        OfficeConversionException failure = assertThrows(
+                OfficeConversionException.class,
+                () -> countingAdapter(providerCalls).convert(request(docxWithRawContentTypes(
+                        ("<Types xmlns=\"" + CONTENT_TYPE_NAMESPACE + "\"><Override").getBytes(
+                                StandardCharsets.UTF_8
+                        )
+                )))
+        );
+
+        assertEquals(OfficeConversionFailureCode.MALFORMED_INPUT, failure.failureCode());
+        assertEquals("source OOXML content types part is invalid", failure.getMessage());
         assertEquals(0, providerCalls.get());
     }
 
@@ -64,18 +100,19 @@ class OfficeOoxmlContentTypePolicyTest {
         );
     }
 
-    private static byte[] docxWithVbaContentType() throws IOException {
+    private static byte[] docxWithContentTypes(String declarations) throws IOException {
         String contentTypes = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                 + "<Types xmlns=\"" + CONTENT_TYPE_NAMESPACE + "\">"
-                + "<Override PartName=\"/word/customPayload.bin\" ContentType=\""
-                + VBA_PROJECT_CONTENT_TYPE
-                + "\"/>"
+                + declarations
                 + "</Types>";
+        return docxWithRawContentTypes(contentTypes.getBytes(StandardCharsets.UTF_8));
+    }
 
+    private static byte[] docxWithRawContentTypes(byte[] contentTypes) throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
             zip.putNextEntry(new ZipEntry("[Content_Types].xml"));
-            zip.write(contentTypes.getBytes(StandardCharsets.UTF_8));
+            zip.write(contentTypes);
             zip.closeEntry();
             zip.putNextEntry(new ZipEntry("word/customPayload.bin"));
             zip.write(new byte[] {1, 2, 3});

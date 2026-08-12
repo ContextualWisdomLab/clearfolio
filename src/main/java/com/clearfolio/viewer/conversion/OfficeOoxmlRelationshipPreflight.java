@@ -16,21 +16,25 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 /**
- * Rejects externally resolved OOXML package relationships before provider invocation.
+ * Rejects unsafe OOXML package metadata before provider invocation.
  *
  * <p>The common container preflight runs first and establishes bounded standard ZIP
  * framing, safe entry names, allowed compression methods, and matching local/central
- * metadata. This second boundary therefore reads only relationship parts identified by
- * the already-validated central directory, caps every expanded relationship part at one
- * MiB, parses XML with DTD and external-entity support disabled, and rejects relationships
- * whose package contract delegates target resolution outside the source package.</p>
+ * metadata. This second boundary therefore reads only security-relevant XML parts
+ * identified by the already-validated central directory, caps every expanded metadata
+ * part at one MiB, parses XML with DTD and external-entity support disabled, rejects
+ * relationships whose package contract delegates target resolution outside the source
+ * package, and rejects VBA project content types even when the underlying package part
+ * has been renamed.</p>
  */
 final class OfficeOoxmlRelationshipPreflight {
 
     private static final Set<String> OOXML_FORMATS = Set.of("docx", "xlsx", "pptx");
     private static final Pattern RELATIONSHIP_PART = Pattern.compile("(?:^|.*/)_rels/[^/]*\\.rels");
+    private static final String CONTENT_TYPES_PART = "[Content_Types].xml";
     private static final String RELATIONSHIP_NAMESPACE =
             "http://schemas.openxmlformats.org/package/2006/relationships";
+    private static final String VBA_PROJECT_CONTENT_TYPE = "application/vnd.ms-office.vbaProject";
     private static final QName RELATIONSHIP_ELEMENT = new QName(RELATIONSHIP_NAMESPACE, "Relationship");
     private static final byte[] ZIP_END_OF_CENTRAL_DIRECTORY = new byte[] {
             0x50, 0x4b, 0x05, 0x06
@@ -40,17 +44,19 @@ final class OfficeOoxmlRelationshipPreflight {
     private static final int ZIP_EOCD_MINIMUM_LENGTH = 22;
     private static final int ZIP_MAXIMUM_COMMENT_LENGTH = 65_535;
     private static final int ZIP_STORED_METHOD = 0;
-    private static final int MAX_RELATIONSHIP_BYTES = 1_048_576;
+    private static final int MAX_PACKAGE_METADATA_BYTES = 1_048_576;
 
     private OfficeOoxmlRelationshipPreflight() {
     }
 
     /**
-     * Rejects external OOXML relationships while leaving non-OOXML formats unchanged.
+     * Rejects external OOXML relationships and VBA project content-type declarations
+     * while leaving non-OOXML formats unchanged.
      *
      * @param request request that already passed the common Office container preflight
-     * @throws OfficeConversionException when a relationship part is oversized, malformed,
-     *         or declares an external target
+     * @throws OfficeConversionException when a security-relevant metadata part is
+     *         oversized or malformed, declares an external target, or declares VBA
+     *         project active content
      */
     static void requireNoExternalRelationships(OfficeConversionRequest request) {
         if (!OOXML_FORMATS.contains(request.sourceFormat())) {
@@ -77,28 +83,44 @@ final class OfficeOoxmlRelationshipPreflight {
                     StandardCharsets.ISO_8859_1
             );
             if (RELATIONSHIP_PART.matcher(entryName).matches()) {
-                byte[] relationshipBytes = extractRelationship(
+                byte[] relationshipBytes = extractMetadataPart(
                         sourceBytes,
                         localHeaderOffset,
                         compressionMethod,
                         compressedSize,
-                        uncompressedSize
+                        uncompressedSize,
+                        "source OOXML relationship part exceeds maximum bytes",
+                        "source OOXML relationship part is invalid"
                 );
                 requireNoExternalRelationship(relationshipBytes);
+            }
+            if (CONTENT_TYPES_PART.equals(entryName)) {
+                byte[] contentTypeBytes = extractMetadataPart(
+                        sourceBytes,
+                        localHeaderOffset,
+                        compressionMethod,
+                        compressedSize,
+                        uncompressedSize,
+                        "source OOXML content types part exceeds maximum bytes",
+                        "source OOXML content types part is invalid"
+                );
+                requireNoProhibitedContentType(contentTypeBytes);
             }
             cursor = nameOffset + fileNameLength + extraFieldLength + fileCommentLength;
         }
     }
 
-    private static byte[] extractRelationship(
+    private static byte[] extractMetadataPart(
             byte[] sourceBytes,
             int localHeaderOffset,
             int compressionMethod,
             long compressedSizeLong,
-            long uncompressedSizeLong
+            long uncompressedSizeLong,
+            String oversizedMessage,
+            String invalidMessage
     ) {
-        if (uncompressedSizeLong > MAX_RELATIONSHIP_BYTES) {
-            throw relationshipTooLarge();
+        if (uncompressedSizeLong > MAX_PACKAGE_METADATA_BYTES) {
+            throw metadataFailure(OfficeConversionFailureCode.POLICY_DENIED, oversizedMessage);
         }
         int compressedSize = Math.toIntExact(compressedSizeLong);
         int uncompressedSize = Math.toIntExact(uncompressedSizeLong);
@@ -120,21 +142,18 @@ final class OfficeOoxmlRelationshipPreflight {
         ); InflaterInputStream input = new InflaterInputStream(compressed, inflater)) {
             byte[] expanded = input.readNBytes(uncompressedSize + 1);
             if (expanded.length != uncompressedSize) {
-                throw invalidRelationshipPart();
+                throw metadataFailure(OfficeConversionFailureCode.MALFORMED_INPUT, invalidMessage);
             }
             return expanded;
         } catch (IOException ex) {
-            throw invalidRelationshipPart();
+            throw metadataFailure(OfficeConversionFailureCode.MALFORMED_INPUT, invalidMessage);
         } finally {
             inflater.end();
         }
     }
 
     private static void requireNoExternalRelationship(byte[] relationshipBytes) {
-        XMLInputFactory factory = XMLInputFactory.newFactory();
-        factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
-        factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
-
+        XMLInputFactory factory = secureXmlInputFactory();
         try (ByteArrayInputStream input = new ByteArrayInputStream(relationshipBytes)) {
             XMLStreamReader reader = factory.createXMLStreamReader(input);
             try {
@@ -150,8 +169,44 @@ final class OfficeOoxmlRelationshipPreflight {
                 reader.close();
             }
         } catch (XMLStreamException | IOException ex) {
-            throw invalidRelationshipPart();
+            throw metadataFailure(
+                    OfficeConversionFailureCode.MALFORMED_INPUT,
+                    "source OOXML relationship part is invalid"
+            );
         }
+    }
+
+    private static void requireNoProhibitedContentType(byte[] contentTypeBytes) {
+        XMLInputFactory factory = secureXmlInputFactory();
+        try (ByteArrayInputStream input = new ByteArrayInputStream(contentTypeBytes)) {
+            XMLStreamReader reader = factory.createXMLStreamReader(input);
+            try {
+                while (reader.hasNext()) {
+                    int event = reader.next();
+                    if (event != XMLStreamConstants.START_ELEMENT) {
+                        continue;
+                    }
+                    String contentType = reader.getAttributeValue(null, "ContentType");
+                    if (VBA_PROJECT_CONTENT_TYPE.equalsIgnoreCase(contentType)) {
+                        throw prohibitedActiveContent();
+                    }
+                }
+            } finally {
+                reader.close();
+            }
+        } catch (XMLStreamException | IOException ex) {
+            throw metadataFailure(
+                    OfficeConversionFailureCode.MALFORMED_INPUT,
+                    "source OOXML content types part is invalid"
+            );
+        }
+    }
+
+    private static XMLInputFactory secureXmlInputFactory() {
+        XMLInputFactory factory = XMLInputFactory.newFactory();
+        factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+        factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+        return factory;
     }
 
     private static int findEocdOffset(byte[] sourceBytes) {
@@ -164,7 +219,10 @@ final class OfficeOoxmlRelationshipPreflight {
                 return offset;
             }
         }
-        throw invalidRelationshipPart();
+        throw metadataFailure(
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source OOXML package metadata is invalid"
+        );
     }
 
     private static boolean matchesAt(byte[] sourceBytes, int offset, byte[] expected) {
@@ -197,17 +255,17 @@ final class OfficeOoxmlRelationshipPreflight {
         );
     }
 
-    private static OfficeConversionException relationshipTooLarge() {
+    private static OfficeConversionException prohibitedActiveContent() {
         return new OfficeConversionException(
-                OfficeConversionFailureCode.POLICY_DENIED,
-                "source OOXML relationship part exceeds maximum bytes"
+                OfficeConversionFailureCode.MALFORMED_INPUT,
+                "source Office package contains prohibited active content"
         );
     }
 
-    private static OfficeConversionException invalidRelationshipPart() {
-        return new OfficeConversionException(
-                OfficeConversionFailureCode.MALFORMED_INPUT,
-                "source OOXML relationship part is invalid"
-        );
+    private static OfficeConversionException metadataFailure(
+            OfficeConversionFailureCode failureCode,
+            String message
+    ) {
+        return new OfficeConversionException(failureCode, message);
     }
 }

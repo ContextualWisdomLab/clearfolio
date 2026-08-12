@@ -1,7 +1,7 @@
 # Clearfolio UML and Architecture Diagrams
 
 Status: Canonical diagram index
-Baseline: protected `main` at `83ec6f7fe2b04bdcd28bf98ec350e41e55730a18`
+Baseline: protected `main` at `55d7ae8647208e301f282350f076eeddaba61d11`
 
 Diagrams are architecture views, not deployment evidence. `ACTIVE_PR` labels identify behavior that is not yet protected-main functionality.
 
@@ -105,7 +105,7 @@ sequenceDiagram
     API-->>Caller: 200 / 206 / 416 or controlled auth failure
 ```
 
-Protected-main `ArtifactController` already follows this authority pattern. Direct conversion-job download alignment is an `ACTIVE_PR` security remediation and must not be described as complete until integrated.
+Protected-main `ArtifactController` already follows this authority pattern. Direct conversion-job download signed-delivery alignment is `IMPLEMENTED_ON_MAIN` on protected `main`; later active work may harden adjacent token/parser or lifecycle boundaries but does not downgrade this shipped maturity.
 
 ## 4. Conversion job state machine
 
@@ -123,7 +123,7 @@ stateDiagram-v2
 
 Dead-letter exhaustion is represented by `FAILED` plus dead-letter evidence rather than a separate public lifecycle enum.
 
-## 5. Durable deletion recovery (`ACTIVE_PR` #268)
+## 5. Durable deletion recovery (`PARTIAL` target; issue #263; #268 `SUPERSEDED`)
 
 ```mermaid
 sequenceDiagram
@@ -152,7 +152,7 @@ sequenceDiagram
     end
 ```
 
-This is target behavior from the active PR, not protected-main evidence.
+This is `PARTIAL` target behavior, not protected-main durable deletion persistence. Historical PR #268 is `SUPERSEDED`; current bounded successor slices such as #341, #342, #345, #350, #351, #353, #361, and #363 preserve individual authorization, isolation, identity, lifecycle, and audit semantics without making the end-to-end receipt/recovery flow `IMPLEMENTED_ON_MAIN`.
 
 ## 6. Liveness/readiness flow (`ACTIVE_PR` #295)
 

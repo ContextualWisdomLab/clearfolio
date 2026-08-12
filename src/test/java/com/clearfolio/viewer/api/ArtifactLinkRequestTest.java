@@ -36,4 +36,14 @@ class ArtifactLinkRequestTest {
 
         assertEquals("artifact link purpose is unsupported", exception.getMessage());
     }
+
+    @Test
+    void rejectsNulCorruptedDocumentedPurposeBeforeSigning() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> new ArtifactLinkRequest("down\u0000load", 300, "viewer-session")
+        );
+
+        assertEquals("artifact link purpose contains NUL", exception.getMessage());
+    }
 }

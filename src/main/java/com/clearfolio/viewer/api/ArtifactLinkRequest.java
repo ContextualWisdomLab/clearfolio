@@ -54,7 +54,10 @@ public record ArtifactLinkRequest(
         if (value == null) {
             return null;
         }
-        String cleaned = value.replace("\u0000", "").strip();
+        if (value.indexOf('\0') >= 0) {
+            throw new IllegalArgumentException("artifact link purpose contains NUL");
+        }
+        String cleaned = value.strip();
         return cleaned.isEmpty() ? null : cleaned;
     }
 }

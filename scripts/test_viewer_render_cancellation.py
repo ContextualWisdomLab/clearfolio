@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import unittest
 from pathlib import Path
 
 
@@ -113,6 +114,10 @@ function makeElement(tagName = "div") {
     { filename: viewerPath },
   );
 
+  let renderStarted;
+  const renderStartedPromise = new Promise(resolve => {
+    renderStarted = resolve;
+  });
   let resolveRender;
   const renderPromise = new Promise(resolve => {
     resolveRender = resolve;
@@ -125,6 +130,7 @@ function makeElement(tagName = "div") {
           return { width: 100 * scale, height: 200 * scale };
         },
         render() {
+          renderStarted();
           return { promise: renderPromise };
         },
       };
@@ -148,12 +154,15 @@ function makeElement(tagName = "div") {
     controller.signal,
   );
 
-  // Let getDocument/getPage reach the deliberately unresolved render promise.
-  await Promise.resolve();
-  await Promise.resolve();
+  // Wait until page.render() starts so the post-render abort boundary is deterministic.
+  await renderStartedPromise;
   controller.abort();
   resolveRender();
-  await rendering;
+  assert.equal(
+    await rendering,
+    false,
+    "an aborted render must report failure",
+  );
 
   const preview = elements.get("preview");
   assert.equal(
@@ -168,19 +177,27 @@ function makeElement(tagName = "div") {
 """
 
 
-def test_superseded_pdf_render_does_not_publish() -> None:
-    """Abort an in-flight render and require zero stale DOM publication."""
+class ViewerRenderCancellationTest(unittest.TestCase):
+    """Validate PDF render supersession behavior through the Node.js harness."""
 
-    node = shutil.which("node")
-    assert node is not None, "Node.js is required for the viewer runtime regression"
+    def test_superseded_pdf_render_does_not_publish(self) -> None:
+        """Abort an in-flight render and require zero stale DOM publication."""
 
-    result = subprocess.run(
-        [node, "-e", NODE_HARNESS, str(VIEWER_SOURCE)],
-        cwd=REPOSITORY_ROOT,
-        capture_output=True,
-        check=False,
-        text=True,
-        timeout=15,
-    )
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "Node.js is required for the viewer runtime regression")
+        assert node is not None
 
-    assert result.returncode == 0, result.stdout + result.stderr
+        result = subprocess.run(
+            [node, "-e", NODE_HARNESS, str(VIEWER_SOURCE)],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=15,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

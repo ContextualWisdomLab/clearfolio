@@ -162,12 +162,12 @@ def audit_workflow_registry(
     seen_ids: set[int] = set()
     classified: list[dict[str, object]] = []
     for raw_record in raw_records:
-        workflow_id = raw_record.get("id")
-        if isinstance(workflow_id, int) and not isinstance(workflow_id, bool):
-            if workflow_id in seen_ids:
-                raise AuditIncompleteError(f"duplicate workflow id {workflow_id}")
-            seen_ids.add(workflow_id)
-        classified.append(_classify_record(raw_record, exact_tree_paths))
+        record = _classify_record(raw_record, exact_tree_paths)
+        workflow_id = record["id"]
+        if workflow_id in seen_ids:
+            raise AuditIncompleteError(f"duplicate workflow id {workflow_id}")
+        seen_ids.add(workflow_id)
+        classified.append(record)
 
     return {
         "default_branch_sha": before,

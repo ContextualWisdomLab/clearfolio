@@ -154,4 +154,43 @@ class FileSystemArtifactStorePartialWriteTest {
         assertTrue(Files.exists(pdfPath.resolve("retained")));
         assertTrue(Files.notExists(root.resolve(docId + ".meta.properties")));
     }
+
+    @Test
+    void nullDocumentIdentityFailsClosedBeforeFilesystemAccess() {
+        Path root = temporaryDirectory.resolve("null-authority");
+        FileSystemArtifactStore store = new FileSystemArtifactStore(root);
+        byte[] pdf = "%PDF-1.7\nnull-authority".getBytes(StandardCharsets.UTF_8);
+
+        IllegalArgumentException putError = assertThrows(
+                IllegalArgumentException.class,
+                () -> store.putPdf(null, pdf)
+        );
+        IllegalArgumentException getError = assertThrows(
+                IllegalArgumentException.class,
+                () -> store.getPdf(null)
+        );
+        IllegalArgumentException deleteError = assertThrows(
+                IllegalArgumentException.class,
+                () -> store.deletePdf(null)
+        );
+
+        assertEquals("docId is required", putError.getMessage());
+        assertEquals("docId is required", getError.getMessage());
+        assertEquals("docId is required", deleteError.getMessage());
+        assertTrue(Files.notExists(root.resolve("null.pdf")));
+        assertTrue(Files.notExists(root.resolve("null.meta.properties")));
+    }
+
+    @Test
+    void artifactPathResolutionRejectsEscapesFromConfiguredRoot() {
+        Path root = temporaryDirectory.resolve("path-confinement");
+        UUID docId = UUID.randomUUID();
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> FileSystemArtifactStore.resolveArtifactPath(root, docId, "/../../outside")
+        );
+
+        assertEquals("artifact path must remain within configured root", error.getMessage());
+    }
 }

@@ -160,6 +160,30 @@ class WorkflowRegistryAuditTest(unittest.TestCase):
                 observed_at="2026-08-12T13:00:00Z",
             )
 
+    def test_fails_closed_when_registry_stream_is_interrupted(self) -> None:
+        def interrupted_pages():
+            yield {
+                "total_count": 2,
+                "workflows": [
+                    {
+                        "id": 18,
+                        "name": "First page before transport failure",
+                        "path": ".github/workflows/ci.yml",
+                        "state": "active",
+                    }
+                ],
+            }
+            raise ConnectionError("simulated transient GitHub API failure")
+
+        with self.assertRaisesRegex(AuditIncompleteError, "workflow registry pages are unavailable"):
+            audit_workflow_registry(
+                pages=interrupted_pages(),
+                tree_paths={".github/workflows/ci.yml"},
+                default_branch_sha_before="4" * 40,
+                default_branch_sha_after="4" * 40,
+                observed_at="2026-08-12T13:00:00Z",
+            )
+
     def test_fails_closed_when_default_branch_moves_during_audit(self) -> None:
         with self.assertRaisesRegex(AuditIncompleteError, "default branch moved during audit"):
             audit_workflow_registry(

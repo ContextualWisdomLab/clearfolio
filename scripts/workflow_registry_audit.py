@@ -58,7 +58,7 @@ def _flatten_pages(pages: Iterable[Mapping[str, Any]]) -> tuple[int, list[Mappin
     """Validate complete GitHub pagination evidence and return its registry records."""
     try:
         page_list = list(pages)
-    except TypeError as error:
+    except Exception as error:
         raise AuditIncompleteError("workflow registry pages are unavailable") from error
     if not page_list:
         raise AuditIncompleteError("workflow registry pages are unavailable")

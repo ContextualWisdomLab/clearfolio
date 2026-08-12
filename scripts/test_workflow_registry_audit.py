@@ -1,0 +1,190 @@
+"""Regression tests for the read-only GitHub Actions workflow registry audit."""
+
+from __future__ import annotations
+
+import unittest
+
+from workflow_registry_audit import (
+    AuditIncompleteError,
+    WorkflowClass,
+    audit_workflow_registry,
+)
+
+
+class WorkflowRegistryAuditTest(unittest.TestCase):
+    """Specify fail-closed classification of GitHub Actions registry records."""
+
+    def test_classifies_present_repository_workflow_by_exact_tree_path(self) -> None:
+        evidence = audit_workflow_registry(
+            pages=[
+                {
+                    "total_count": 1,
+                    "workflows": [
+                        {
+                            "id": 11,
+                            "name": "Historical one-shot-like name",
+                            "path": ".github/workflows/one-shot-looking-but-present.yml",
+                            "state": "active",
+                        }
+                    ],
+                }
+            ],
+            tree_paths={".github/workflows/one-shot-looking-but-present.yml"},
+            default_branch_sha_before="a" * 40,
+            default_branch_sha_after="a" * 40,
+            observed_at="2026-08-12T13:00:00Z",
+        )
+
+        self.assertEqual(1, evidence["workflow_count"])
+        self.assertEqual(WorkflowClass.PRESENT.value, evidence["workflows"][0]["classification"])
+        self.assertTrue(evidence["workflows"][0]["file_present"])
+
+    def test_classifies_active_repository_path_missing_from_tree_as_orphaned(self) -> None:
+        evidence = audit_workflow_registry(
+            pages=[
+                {
+                    "total_count": 1,
+                    "workflows": [
+                        {
+                            "id": 12,
+                            "name": "Old repair",
+                            "path": ".github/workflows/repair-pr-162.yml",
+                            "state": "active",
+                        }
+                    ],
+                }
+            ],
+            tree_paths={".github/workflows/ci.yml"},
+            default_branch_sha_before="b" * 40,
+            default_branch_sha_after="b" * 40,
+            observed_at="2026-08-12T13:00:00Z",
+        )
+
+        record = evidence["workflows"][0]
+        self.assertEqual(WorkflowClass.ORPHANED_DELETED.value, record["classification"])
+        self.assertFalse(record["file_present"])
+
+    def test_disabled_missing_repository_workflow_is_not_active_orphan(self) -> None:
+        evidence = audit_workflow_registry(
+            pages=[
+                {
+                    "total_count": 1,
+                    "workflows": [
+                        {
+                            "id": 13,
+                            "name": "Disabled old repair",
+                            "path": ".github/workflows/old-repair.yml",
+                            "state": "disabled_manually",
+                        }
+                    ],
+                }
+            ],
+            tree_paths=set(),
+            default_branch_sha_before="c" * 40,
+            default_branch_sha_after="c" * 40,
+            observed_at="2026-08-12T13:00:00Z",
+        )
+
+        self.assertEqual(WorkflowClass.DISABLED.value, evidence["workflows"][0]["classification"])
+
+    def test_dynamic_github_owned_workflow_is_separated_from_repository_paths(self) -> None:
+        evidence = audit_workflow_registry(
+            pages=[
+                {
+                    "total_count": 1,
+                    "workflows": [
+                        {
+                            "id": 14,
+                            "name": "Copilot",
+                            "path": "dynamic/copilot-swe-agent/copilot",
+                            "state": "active",
+                        }
+                    ],
+                }
+            ],
+            tree_paths=set(),
+            default_branch_sha_before="d" * 40,
+            default_branch_sha_after="d" * 40,
+            observed_at="2026-08-12T13:00:00Z",
+        )
+
+        record = evidence["workflows"][0]
+        self.assertEqual(WorkflowClass.DYNAMIC_GITHUB_OWNED.value, record["classification"])
+        self.assertIsNone(record["file_present"])
+
+    def test_case_mismatch_does_not_count_as_exact_file_presence(self) -> None:
+        evidence = audit_workflow_registry(
+            pages=[
+                {
+                    "total_count": 1,
+                    "workflows": [
+                        {
+                            "id": 15,
+                            "name": "Case mismatch",
+                            "path": ".github/workflows/CI.yml",
+                            "state": "active",
+                        }
+                    ],
+                }
+            ],
+            tree_paths={".github/workflows/ci.yml"},
+            default_branch_sha_before="e" * 40,
+            default_branch_sha_after="e" * 40,
+            observed_at="2026-08-12T13:00:00Z",
+        )
+
+        record = evidence["workflows"][0]
+        self.assertEqual(WorkflowClass.ORPHANED_DELETED.value, record["classification"])
+        self.assertFalse(record["file_present"])
+
+    def test_fails_closed_when_registry_pagination_is_truncated(self) -> None:
+        with self.assertRaisesRegex(AuditIncompleteError, "workflow registry pagination is incomplete"):
+            audit_workflow_registry(
+                pages=[
+                    {
+                        "total_count": 2,
+                        "workflows": [
+                            {
+                                "id": 16,
+                                "name": "Only first page record",
+                                "path": ".github/workflows/ci.yml",
+                                "state": "active",
+                            }
+                        ],
+                    }
+                ],
+                tree_paths={".github/workflows/ci.yml"},
+                default_branch_sha_before="f" * 40,
+                default_branch_sha_after="f" * 40,
+                observed_at="2026-08-12T13:00:00Z",
+            )
+
+    def test_fails_closed_when_default_branch_moves_during_audit(self) -> None:
+        with self.assertRaisesRegex(AuditIncompleteError, "default branch moved during audit"):
+            audit_workflow_registry(
+                pages=[{"total_count": 0, "workflows": []}],
+                tree_paths=set(),
+                default_branch_sha_before="1" * 40,
+                default_branch_sha_after="2" * 40,
+                observed_at="2026-08-12T13:00:00Z",
+            )
+
+    def test_rejects_malformed_or_duplicate_registry_records(self) -> None:
+        duplicate = {
+            "id": 17,
+            "name": "Duplicate",
+            "path": ".github/workflows/ci.yml",
+            "state": "active",
+        }
+        with self.assertRaisesRegex(AuditIncompleteError, "duplicate workflow id"):
+            audit_workflow_registry(
+                pages=[{"total_count": 2, "workflows": [duplicate, dict(duplicate)]}],
+                tree_paths={".github/workflows/ci.yml"},
+                default_branch_sha_before="3" * 40,
+                default_branch_sha_after="3" * 40,
+                observed_at="2026-08-12T13:00:00Z",
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,5 +1,6 @@
 """Protect bounded artifact-token evidence from unsupported performance claims."""
 
+import unittest
 from pathlib import Path
 
 ARTIFACT_LINK_SERVICE = Path(
@@ -22,39 +23,51 @@ UNSUPPORTED_PERFORMANCE_CLAIMS = (
 )
 
 
-def test_bounded_token_contract_has_no_unbenchmarked_performance_claim() -> None:
-    """Reject unsupported performance claims in production and release evidence."""
-    evidence_sources = {
-        ARTIFACT_LINK_SERVICE: ARTIFACT_LINK_SERVICE.read_text(encoding="utf-8"),
-        ARTIFACT_TOKEN_CLAIMS: ARTIFACT_TOKEN_CLAIMS.read_text(encoding="utf-8"),
-        CHANGELOG: CHANGELOG.read_text(encoding="utf-8"),
-    }
+class ArtifactTokenParserEvidenceTest(unittest.TestCase):
+    """Keep artifact-token evidence executable under standard test discovery."""
 
-    for path, source in evidence_sources.items():
-        for claim in UNSUPPORTED_PERFORMANCE_CLAIMS:
-            assert claim not in source, (
-                "unsupported artifact-token performance claim remains "
-                f"in {path}: {claim!r}"
+    def test_bounded_token_contract_has_no_unbenchmarked_performance_claim(self) -> None:
+        """Reject unsupported performance claims in production and release evidence."""
+        evidence_sources = {
+            ARTIFACT_LINK_SERVICE: ARTIFACT_LINK_SERVICE.read_text(encoding="utf-8"),
+            ARTIFACT_TOKEN_CLAIMS: ARTIFACT_TOKEN_CLAIMS.read_text(encoding="utf-8"),
+            CHANGELOG: CHANGELOG.read_text(encoding="utf-8"),
+        }
+
+        for path, source in evidence_sources.items():
+            for claim in UNSUPPORTED_PERFORMANCE_CLAIMS:
+                self.assertNotIn(
+                    claim,
+                    source,
+                    "unsupported artifact-token performance claim remains "
+                    f"in {path}: {claim!r}",
+                )
+
+    def test_bounded_token_contract_keeps_signed_boundary_regressions(self) -> None:
+        """Require deterministic tests for every malformed signed-payload boundary."""
+        source = BOUNDARY_TEST.read_text(encoding="utf-8")
+        required_tests = (
+            "rejectsDelimiterFreeMalformedToken",
+            "rejectsStructurallyValidTokenWithMismatchedSignature",
+            "rejectsSignedPayloadWithOnlyNineFields",
+            "rejectsSignedPayloadWithElevenFields",
+            "rejectsValidTokenWithTrailingDelimiter",
+            "rejectsSignedPayloadWithAnEmptyRequiredField",
+            "rejectsSignedPayloadWithAWhitespaceOnlyRequiredField",
+            "rejectsSignedPayloadWithMalformedBase64Url",
+            "rejectsSignedPayloadWithNonNumericEpochSecond",
+            "rejectsSignedPayloadWithOutOfRangeEpochSecond",
+            "rejectsSignedPayloadWithMalformedDocumentIdentifier",
+            "rejectsSignedPayloadWithUnsupportedVersion",
+        )
+
+        for test_name in required_tests:
+            self.assertIn(
+                f"void {test_name}()",
+                source,
+                f"missing deterministic signed-boundary regression: {test_name}",
             )
 
 
-def test_bounded_token_contract_keeps_signed_boundary_regressions() -> None:
-    """Require deterministic tests for every malformed signed-payload boundary."""
-    source = BOUNDARY_TEST.read_text(encoding="utf-8")
-    required_tests = (
-        "rejectsSignedPayloadWithOnlyNineFields",
-        "rejectsSignedPayloadWithElevenFields",
-        "rejectsValidTokenWithTrailingDelimiter",
-        "rejectsSignedPayloadWithAnEmptyRequiredField",
-        "rejectsSignedPayloadWithAWhitespaceOnlyRequiredField",
-        "rejectsSignedPayloadWithMalformedBase64Url",
-        "rejectsSignedPayloadWithNonNumericEpochSecond",
-        "rejectsSignedPayloadWithOutOfRangeEpochSecond",
-        "rejectsSignedPayloadWithMalformedDocumentIdentifier",
-        "rejectsSignedPayloadWithUnsupportedVersion",
-    )
-
-    for test_name in required_tests:
-        assert f"void {test_name}()" in source, (
-            f"missing deterministic signed-boundary regression: {test_name}"
-        )
+if __name__ == "__main__":
+    unittest.main()

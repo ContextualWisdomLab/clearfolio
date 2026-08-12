@@ -49,6 +49,30 @@ components: {}
             result.violations,
         )
 
+    def test_inline_comments_do_not_change_duplicate_operation_identity(self) -> None:
+        """YAML comments must not make the same operationId look distinct."""
+
+        contract = """openapi: 3.0.3
+paths:
+  /api/v1/jobs:
+    get:
+      operationId: readJob # first operation
+  /api/v1/items:
+    post:
+      operationId: readJob # second operation
+components: {}
+"""
+
+        result = inspect_operation_ids(contract)
+
+        self.assertIn(
+            ContractViolation(
+                code="duplicate_operation_id",
+                detail="operationId 'readJob' is used by GET /api/v1/jobs and POST /api/v1/items",
+            ),
+            result.violations,
+        )
+
     def test_missing_operation_id_is_rejected(self) -> None:
         """Every path-level HTTP method must declare an explicit operationId."""
 
@@ -57,6 +81,50 @@ paths:
   /api/v1/jobs:
     parameters: []
     get:
+      summary: Read a job
+components: {}
+"""
+
+        result = inspect_operation_ids(contract)
+
+        self.assertIn(
+            ContractViolation(
+                code="missing_operation_id",
+                detail="GET /api/v1/jobs does not declare operationId",
+            ),
+            result.violations,
+        )
+
+    def test_comment_only_operation_id_is_missing(self) -> None:
+        """A comment after an empty scalar must not satisfy the operationId contract."""
+
+        contract = """openapi: 3.0.3
+paths:
+  /api/v1/jobs:
+    get:
+      operationId: # required for generated clients
+components: {}
+"""
+
+        result = inspect_operation_ids(contract)
+
+        self.assertIn(
+            ContractViolation(
+                code="missing_operation_id",
+                detail="GET /api/v1/jobs does not declare operationId",
+            ),
+            result.violations,
+        )
+
+    def test_nested_extension_operation_id_does_not_satisfy_operation(self) -> None:
+        """Only a method's direct operationId property may satisfy the contract."""
+
+        contract = """openapi: 3.0.3
+paths:
+  /api/v1/jobs:
+    get:
+      x-metadata:
+        operationId: nestedOnly
       summary: Read a job
 components: {}
 """

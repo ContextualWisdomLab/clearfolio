@@ -82,13 +82,12 @@ public final class PolicyOverrideRequest {
             return null;
         }
 
-        // ⚡ Bolt: Single-pass string sanitization
-        // Avoids multiple allocations from chained replace() calls.
+        // Replace every ISO control character so the diagnostic cannot inject
+        // terminal escapes or non-printing record separators into log output.
         StringBuilder sb = null;
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
-            boolean needsReplace = c == '\r' || c == '\n' || c == '\t';
-            if (needsReplace) {
+            if (Character.isISOControl(c)) {
                 if (sb == null) {
                     sb = new StringBuilder(value.length());
                     sb.append(value, 0, i);

@@ -1,7 +1,7 @@
 # Clearfolio Data and Domain Model
 
 Status: Canonical logical model
-Baseline: protected `main` at `83ec6f7fe2b04bdcd28bf98ec350e41e55730a18`
+Baseline: protected `main` at `55d7ae8647208e301f282350f076eeddaba61d11`
 
 This document is a logical/ownership model, **not a claim that every entity is stored in PostgreSQL**. Clearfolio currently uses in-memory repository state plus selected filesystem and append-only ledger persistence. Future SQL/object-store work must preserve these domain identities and authority boundaries rather than inventing new semantic IDs during migration.
 
@@ -29,8 +29,8 @@ This document is a logical/ownership model, **not a claim that every entity is s
 | `policy_override` | audit event / request evidence | explicit blocked-format exception intent; raw approval token is not durable audit output |
 | `audit_event` | mixed current event/log/ledger surfaces | purpose-bound audit evidence; identifiers may be pseudonymized but remain personal data |
 | `analytics_snapshot` | runtime + optional `FILE_LEDGER` | buyer/operations snapshot evidence; not a complete durable telemetry model |
-| `deletion_receipt` | `ACTIVE_PR` #268 | generation-bound durable evidence for artifact deletion and cleanup recovery |
-| `lifecycle_generation` | `ACTIVE_PR` #268 logical invariant | prevents stale retry/delete work from acting on a replacement lifecycle |
+| `deletion_receipt` | `CONCEPTUAL` / `PARTIAL` target; issue #263; #268 `SUPERSEDED`; bounded successors #350/#351/#353 | generation-bound durable evidence for artifact deletion and cleanup recovery; no protected-main durable receipt store |
+| `lifecycle_generation` | `CONCEPTUAL` / `PARTIAL` target; issues #263/#312; #268 `SUPERSEDED`; bounded successors #345/#350/#351/#353/#361 | prevents stale retry/delete work from acting on a replacement lifecycle; not protected-main durable fencing |
 | `fidelity_evidence` | `CONCEPTUAL` / `PLANNED` | fixture, expected outcome, renderer version, source/artifact hashes and acceptance result for a supported-format claim |
 | `conversion_engine` | `CONCEPTUAL` / `PLANNED` issue #5 | qualified Office-conversion provider/runtime identity, version, isolation profile, license/SBOM/provenance and support status |
 | `conversion_attempt` | `CONCEPTUAL` / `PLANNED` issue #5 | one immutable job/generation/source-digest/engine/policy-bound conversion execution and typed outcome |
@@ -65,7 +65,7 @@ erDiagram
     conversion_job ||--o{ audit_event : emits
     policy_override ||--o{ audit_event : is_audited_by
     conversion_job ||--o{ analytics_snapshot : contributes_to
-    conversion_job ||--o{ deletion_receipt : "ACTIVE_PR delete evidence"
+    conversion_job ||--o{ deletion_receipt : "PARTIAL target delete evidence"
     conversion_artifact ||--o{ fidelity_evidence : "PLANNED validates"
     conversion_job ||--o{ conversion_attempt : "PLANNED attempts"
     conversion_engine ||--o{ conversion_attempt : "PLANNED executes"
@@ -133,7 +133,7 @@ Validation authority combines signature, expiry, scope, document binding, ledger
 
 A read event is emitted only after token verification and captures controlled audit fields such as token/document identity, range request, response status, trace identifier and read time. It must not record raw authorization headers or token secrets.
 
-## `deletion_receipt` (`ACTIVE_PR`)
+## `deletion_receipt` (`PARTIAL` target; issue #263; #268 `SUPERSEDED`)
 
 The target receipt binds:
 
@@ -145,7 +145,7 @@ The target receipt binds:
 - controlled failure code;
 - cleanup completion evidence.
 
-A failed initial artifact read must not be misrepresented as confirmed absence. Recovery order must be reconstructable from durable evidence rather than process-local cursors.
+Historical PR #268 is superseded. Current bounded successors preserve individual lifecycle primitives, but protected `main` does not yet own a durable deletion-receipt store or the complete restart-recovery sequence. A failed initial artifact read must not be misrepresented as confirmed absence. Recovery order must be reconstructable from durable evidence rather than process-local cursors before this model can become `IMPLEMENTED_ON_MAIN`.
 
 ## `fidelity_evidence` (`PLANNED`)
 

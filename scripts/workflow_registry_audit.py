@@ -54,8 +54,10 @@ def _normalize_tree_paths(tree_paths: Iterable[str]) -> set[str]:
     return paths
 
 
-def _flatten_pages(pages: Iterable[Mapping[str, Any]]) -> tuple[int, list[Mapping[str, Any]]]:
-    """Validate complete GitHub pagination evidence and return its registry records."""
+def _flatten_pages(
+    pages: Iterable[Mapping[str, Any]],
+) -> tuple[int, list[Mapping[str, Any]], dict[str, object]]:
+    """Validate complete pagination and retain a compact auditable page receipt."""
     try:
         page_list = list(pages)
     except Exception as error:
@@ -65,6 +67,7 @@ def _flatten_pages(pages: Iterable[Mapping[str, Any]]) -> tuple[int, list[Mappin
 
     expected_total: int | None = None
     records: list[Mapping[str, Any]] = []
+    page_sizes: list[int] = []
     for page in page_list:
         if not isinstance(page, Mapping):
             raise AuditIncompleteError("workflow registry page is malformed")
@@ -80,11 +83,17 @@ def _flatten_pages(pages: Iterable[Mapping[str, Any]]) -> tuple[int, list[Mappin
             raise AuditIncompleteError("workflow registry pagination total_count changed")
         if any(not isinstance(record, Mapping) for record in workflows):
             raise AuditIncompleteError("workflow registry record is malformed")
+        page_sizes.append(len(workflows))
         records.extend(workflows)
 
     if expected_total is None or len(records) != expected_total:
         raise AuditIncompleteError("workflow registry pagination is incomplete")
-    return expected_total, records
+    receipt: dict[str, object] = {
+        "expected_total": expected_total,
+        "page_count": len(page_list),
+        "page_sizes": page_sizes,
+    }
+    return expected_total, records, receipt
 
 
 def _classify_record(record: Mapping[str, Any], tree_paths: set[str]) -> dict[str, object]:
@@ -144,8 +153,8 @@ def audit_workflow_registry(
         observed_at: Caller-owned observation timestamp recorded with the evidence.
 
     Returns:
-        A JSON-serializable evidence mapping containing the stable revision and each
-        validated workflow identity's classification.
+        A JSON-serializable evidence mapping containing the stable revision, pagination
+        receipt, and each validated workflow identity's classification.
 
     Raises:
         AuditIncompleteError: If pagination, branch identity, registry records, or tree
@@ -157,7 +166,7 @@ def audit_workflow_registry(
         raise AuditIncompleteError("default branch moved during audit")
     observation = _require_text(observed_at, "observation time")
     exact_tree_paths = _normalize_tree_paths(tree_paths)
-    workflow_count, raw_records = _flatten_pages(pages)
+    workflow_count, raw_records, pagination_receipt = _flatten_pages(pages)
 
     seen_ids: set[int] = set()
     classified: list[dict[str, object]] = []
@@ -173,6 +182,7 @@ def audit_workflow_registry(
         "default_branch_sha": before,
         "observed_at": observation,
         "workflow_count": workflow_count,
+        "pagination_receipt": pagination_receipt,
         "active_orphan_count": sum(
             record["classification"] == WorkflowClass.ORPHANED_DELETED.value
             for record in classified

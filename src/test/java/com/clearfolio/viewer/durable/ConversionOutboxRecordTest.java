@@ -60,14 +60,30 @@ class ConversionOutboxRecordTest {
     @Test
     void duplicateDispatchAcknowledgementIsIdempotent() {
         Instant acceptedAt = Instant.parse("2026-08-11T00:00:00Z");
+        Instant firstDispatchedAt = acceptedAt.plusSeconds(1);
         ConversionOutboxRecord dispatched = ConversionOutboxRecord.pending(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
                 1L,
                 acceptedAt
-        ).markDispatched(acceptedAt.plusSeconds(1));
+        ).markDispatched(firstDispatchedAt);
 
         assertSame(dispatched, dispatched.markDispatched(acceptedAt.plusSeconds(2)));
+        assertEquals(firstDispatchedAt, dispatched.dispatchedAt().orElseThrow());
+    }
+
+    @Test
+    void dispatchAtDurableAcceptanceBoundaryIsAccepted() {
+        Instant acceptedAt = Instant.parse("2026-08-11T00:00:00Z");
+        ConversionOutboxRecord dispatched = ConversionOutboxRecord.pending(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                1L,
+                acceptedAt
+        ).markDispatched(acceptedAt);
+
+        assertFalse(dispatched.isPending());
+        assertEquals(acceptedAt, dispatched.dispatchedAt().orElseThrow());
     }
 
     @Test

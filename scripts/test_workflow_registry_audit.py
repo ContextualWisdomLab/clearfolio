@@ -86,6 +86,7 @@ class WorkflowRegistryAuditTest(unittest.TestCase):
         )
 
         self.assertEqual(WorkflowClass.DISABLED.value, evidence["workflows"][0]["classification"])
+        self.assertEqual(0, evidence["active_orphan_count"])
 
     def test_dynamic_github_owned_workflow_is_separated_from_repository_paths(self) -> None:
         evidence = audit_workflow_registry(
@@ -169,7 +170,7 @@ class WorkflowRegistryAuditTest(unittest.TestCase):
                 observed_at="2026-08-12T13:00:00Z",
             )
 
-    def test_rejects_malformed_or_duplicate_registry_records(self) -> None:
+    def test_rejects_duplicate_registry_records(self) -> None:
         duplicate = {
             "id": 17,
             "name": "Duplicate",

@@ -87,6 +87,16 @@ class KpiSnapshotLedgerTest {
     }
 
     @Test
+    void rejectsNonFiniteOrOutOfRangePersistedKpiEvidence() throws Exception {
+        assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\tNaN\t"));
+        assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\tInfinity\t"));
+        assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\t-Infinity\t"));
+        assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\t-0.01\t"));
+        assertInvalidLedger(snapshotLine().replace("\t0.5\t", "\t1.01\t"));
+        assertInvalidLedger(snapshotLine().replace("\t123", "\t-1"));
+    }
+
+    @Test
     void reportsLoadAndWriteFailures() throws Exception {
         Path directory = tempDir.resolve("directory-ledger");
         Files.createDirectory(directory);
@@ -107,7 +117,11 @@ class KpiSnapshotLedgerTest {
                 StandardCharsets.UTF_8
         );
 
-        assertThrows(IllegalStateException.class, () -> new KpiSnapshotLedger(ledgerPath, CLOCK));
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> new KpiSnapshotLedger(ledgerPath, CLOCK)
+        );
+        assertEquals("kpi snapshot ledger contains an invalid line", error.getMessage());
     }
 
     private static TenantContext context(String tenantId) {

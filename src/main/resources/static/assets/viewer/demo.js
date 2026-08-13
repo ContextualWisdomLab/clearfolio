@@ -113,6 +113,7 @@ function jsonHeaders(extra = {}) {
 function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
+  el.clearHistoryBtn.disabled = history.length === 0;
 
   for (const job of history) {
     const row = document.createElement("tr");

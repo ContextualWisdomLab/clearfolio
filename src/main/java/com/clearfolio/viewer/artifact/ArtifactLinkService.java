@@ -332,18 +332,45 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        // Performance optimization: Extract payload and signature using lastIndexOf
+        // to prevent allocating array and garbage strings before HMAC verification.
+        final int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1 || lastDotIndex == token.length() - 1) {
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        String payload = token.substring(0, lastDotIndex);
+        String signature = token.substring(lastDotIndex + 1);
+
         String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                signature.getBytes(StandardCharsets.US_ASCII))) {
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
+        // Parse claims manually to minimize allocations and enforce bounds
+        String[] parts = new String[TOKEN_FIELD_COUNT];
+        int start = 0;
+        for (int i = 0; i < TOKEN_FIELD_COUNT; i++) {
+            if (i == TOKEN_FIELD_COUNT - 1) {
+                if (payload.indexOf('.', start) != -1) {
+                    throw new ArtifactTokenException(
+                            HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                }
+                parts[i] = payload.substring(start);
+            } else {
+                int nextDot = payload.indexOf('.', start);
+                if (nextDot == -1) {
+                    throw new ArtifactTokenException(
+                            HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                }
+                parts[i] = payload.substring(start, nextDot);
+                start = nextDot + 1;
+            }
         }
 
         try {

@@ -85,6 +85,8 @@ class ArtifactLifecycleLockRegistryTest {
         ArtifactLifecycleLockRegistry registry = ArtifactLifecycleLockRegistry.shared();
 
         assertEquals(0, ArtifactLifecycleLockRegistry.class.getConstructors().length);
+        assertFalse(ArtifactLifecycleLockRegistry.class.isAnnotationPresent(
+                org.springframework.stereotype.Component.class));
         assertSame(registry, ArtifactLifecycleLockRegistry.shared());
         assertThrows(NullPointerException.class, () -> registry.withJobLock(null, () -> "unused"));
         assertThrows(NullPointerException.class, () -> registry.withJobLock(UUID.randomUUID(), null));

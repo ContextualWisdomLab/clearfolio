@@ -77,6 +77,22 @@ public interface ConversionJobRepository {
     List<ConversionJob> findAll();
 
     /**
+     * Returns only jobs owned by the supplied tenant.
+     *
+     * <p>The default deliberately fails closed with an empty result instead of
+     * calling {@link #findAll()} and filtering after a global inventory read.
+     * Durable adapters must override this method with a tenant predicate at the
+     * storage query boundary before callers may receive job objects.</p>
+     *
+     * @param tenantId authenticated tenant identifier
+     * @return tenant-owned jobs, or an empty list until the adapter implements
+     *         the scoped query
+     */
+    default List<ConversionJob> findAllByTenantId(String tenantId) {
+        return List.of();
+    }
+
+    /**
      * Finds jobs that should be considered for recovery after worker restart.
      *
      * @param now timestamp used to evaluate due submitted jobs

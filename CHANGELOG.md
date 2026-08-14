@@ -14,6 +14,7 @@
 
 ### Changed
 
+- 커스텀 artifact token 파서를 정규식 기반 분리에서 수동 구분자 탐색으로 변경해 토큰 형식을 유지하면서 정규식 및 배열 할당 오버헤드를 줄였습니다.
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
 - CI가 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하며, 합성 merge revision은 별도 호환성 작업에서 검증하도록 분리했습니다.
 - Maven `verify` 단계에서 JaCoCo production line 및 branch missed count가 각각 0인지 강제하고, 실패 시 누락 위치 진단을 출력하도록 했습니다.
@@ -24,6 +25,7 @@
 
 ### Security
 
+- Artifact link 서명 시크릿을 모든 실행 모드에서 필수로 검증하고, 누락 또는 공백 값에서 프로세스별 무작위 키를 생성하던 폴백을 제거했습니다.
 - `GET /api/v1/convert/jobs/{jobId}/download`가 리소스 조회 전에 전용 `artifact:read` 권한을 검증하고, PDF 저장소 접근 전에 작업의 tenant 소유권을 확인하도록 강화했습니다. `job:read`만으로는 문서 바이트를 읽을 수 없으며, 인증 누락·권한 누락·교차 tenant UUID 접근은 각각 fail closed 처리되고 교차 tenant 요청은 리소스 존재를 숨기는 `404`를 반환합니다.
 - Maven XML 테스트 보고서 검증기는 각 `testsuite`의 `tests`, `skipped`, `failures`, `errors` 속성을 모두 필수 증거로 요구합니다. 누락된 결과 수를 암묵적으로 0으로 간주하지 않고 fail closed 처리하며, 각 속성 누락 회귀 테스트를 추가했습니다.
 - Maven XML 테스트 보고서 검증기는 UTF-8만 허용하고 UTF-8 BOM은 수용하며, NUL 바이트·DTD·엔터티 선언을 파싱 전에 거부합니다. UTF-16 같은 대체 인코딩으로 위험 선언을 바이트 검사에서 숨기는 우회와 외부 엔터티 읽기·엔터티 확장형 서비스 거부를 회귀 테스트로 차단했습니다.
@@ -71,6 +73,3 @@
 - logback-core 신규 권고(GHSA-jhq6-gfmj-v8fx) 대응을 위해 Logback 관리 버전을 `1.5.35`로 고정했습니다.
 - 저장소 보안 정책, Maven/GitHub Actions Dependabot 설정, 기본 CodeQL/중앙 SAST 운영 지침, 다운로드 파일명 정규화 Jazzer fuzz target을 추가해 Scorecard 보안 거버넌스 신호를 보강했습니다.
 
-## [Unreleased]
-- 보안 및 성능 개선: JWT 토큰 파싱 시 정규식 분리를 수동 인덱스 탐색으로 변경하여 메모리 사용량을 최적화하고 ReDoS 취약점 완화.
-- 설정 개선: Spring Boot 설정에서 시크릿 값을 불러올 때 환경변수 폴백을 제거하고 `#{null}`을 사용하여 설정의 안전성 강화.

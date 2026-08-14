@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
@@ -43,22 +44,42 @@ class ArtifactLinkLedgerStatusCodeTest {
     }
 
     private Path writeReadLine(String statusCode) throws Exception {
+        Path ledgerPath = tempDir.resolve(UUID.randomUUID() + ".log");
+        UUID docId = UUID.randomUUID();
+        ArtifactLinkLedger ledger = new ArtifactLinkLedger(ledgerPath);
+        ledger.recordIssued(new ArtifactLinkRecord(
+                "token-1",
+                "tenant-a",
+                "subject-a",
+                docId,
+                ArtifactLinkService.ARTIFACT_READ_SCOPE,
+                "viewer-preview",
+                "checksum",
+                null,
+                Instant.EPOCH,
+                Instant.EPOCH.plusSeconds(300),
+                null,
+                null,
+                null
+        ));
         String line = String.join("\t",
                 "READ",
                 encoded("tenant-a"),
                 encoded("subject-a"),
-                UUID.randomUUID().toString(),
+                docId.toString(),
                 encoded("token-1"),
                 "-",
                 statusCode,
                 encoded("trace-1"),
                 Instant.EPOCH.toString()
         );
-        return Files.writeString(
-                tempDir.resolve(UUID.randomUUID() + ".log"),
+        Files.writeString(
+                ledgerPath,
                 line + System.lineSeparator(),
-                StandardCharsets.UTF_8
+                StandardCharsets.UTF_8,
+                StandardOpenOption.APPEND
         );
+        return ledgerPath;
     }
 
     private static String encoded(String value) {

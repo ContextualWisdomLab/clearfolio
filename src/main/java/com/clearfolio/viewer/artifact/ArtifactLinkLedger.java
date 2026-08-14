@@ -129,8 +129,10 @@ public class ArtifactLinkLedger {
      * Records a verified artifact read.
      *
      * @param event artifact read event
+     * @throws IllegalStateException when the event does not match an issued token authority
      */
     public synchronized void recordRead(ArtifactReadEvent event) {
+        requireReadAuthority(event);
         appendLine(serializeRead(event));
         readEvents.add(event);
     }
@@ -217,7 +219,7 @@ public class ArtifactLinkLedger {
         if (fields.length != 9) {
             throw invalidLine();
         }
-        readEvents.add(new ArtifactReadEvent(
+        ArtifactReadEvent event = new ArtifactReadEvent(
                 requiredValue(fields[1]),
                 requiredValue(fields[2]),
                 uuid(fields[3]),
@@ -226,7 +228,28 @@ public class ArtifactLinkLedger {
                 statusCode(fields[6]),
                 value(fields[7]),
                 instant(fields[8])
-        ));
+        );
+        if (!matchesIssuedAuthority(event)) {
+            throw invalidLine();
+        }
+        readEvents.add(event);
+    }
+
+    private void requireReadAuthority(ArtifactReadEvent event) {
+        if (!matchesIssuedAuthority(event)) {
+            throw new IllegalStateException("artifact read event does not match issued token authority");
+        }
+    }
+
+    private boolean matchesIssuedAuthority(ArtifactReadEvent event) {
+        if (event == null || event.tokenId() == null) {
+            return false;
+        }
+        ArtifactLinkRecord issued = issuedLinks.get(event.tokenId());
+        return issued != null
+                && Objects.equals(issued.tenantId(), event.tenantId())
+                && Objects.equals(issued.subjectId(), event.subjectId())
+                && Objects.equals(issued.docId(), event.docId());
     }
 
     private void appendLine(String line) {

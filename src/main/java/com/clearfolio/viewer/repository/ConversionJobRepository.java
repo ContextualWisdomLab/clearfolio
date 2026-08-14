@@ -61,12 +61,18 @@ public interface ConversionJobRepository {
     /**
      * Finds a conversion job by tenant and identifier.
      *
-     * @param tenantId tenant identifier
+     * <p>The default deliberately fails closed rather than reading a globally
+     * addressable job and applying tenant ownership after retrieval. Durable
+     * adapters must override this method with a tenant predicate at the storage
+     * lookup boundary.</p>
+     *
+     * @param tenantId authenticated tenant identifier
      * @param jobId conversion job identifier
-     * @return matching conversion job when found and owned by the tenant
+     * @return matching tenant-owned job, or empty until the adapter implements
+     *         a storage-scoped lookup
      */
     default Optional<ConversionJob> findByTenantAndId(String tenantId, UUID jobId) {
-        return findById(jobId).filter(job -> job.belongsToTenant(tenantId));
+        return Optional.empty();
     }
 
     /**

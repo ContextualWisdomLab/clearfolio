@@ -52,6 +52,22 @@ public interface DocumentConversionService {
     Optional<ConversionJob> getJob(UUID jobId);
 
     /**
+     * Retrieves a conversion job through a tenant-scoped lookup boundary.
+     *
+     * <p>The default deliberately returns no result rather than performing a
+     * globally addressable lookup followed by an ownership filter. Implementations
+     * backed by tenant-aware storage should override this method and push the tenant
+     * predicate into that storage lookup.</p>
+     *
+     * @param jobId conversion job identifier
+     * @param tenantContext authenticated tenant and subject authority
+     * @return matching tenant-owned job, or empty until scoped lookup is implemented
+     */
+    default Optional<ConversionJob> getJob(UUID jobId, TenantContext tenantContext) {
+        return Optional.empty();
+    }
+
+    /**
      * Retries a dead-lettered conversion job by moving it back to submitted state.
      *
      * @param jobId conversion job identifier

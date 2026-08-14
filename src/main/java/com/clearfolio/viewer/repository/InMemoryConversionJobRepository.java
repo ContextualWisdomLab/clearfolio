@@ -40,16 +40,12 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
     private final ConcurrentLinkedQueue<ConversionJobLifecycleEvent> lifecycleEvents = new ConcurrentLinkedQueue<>();
     private final Object jobIndexLock = new Object();
 
-    /**
-     * Creates an empty thread-safe process-local job repository and lifecycle ledger.
-     */
+    /** Creates an empty thread-safe process-local job repository and lifecycle ledger. */
     public InMemoryConversionJobRepository() {
         // Concurrent collections are initialized eagerly for immediate multi-worker use.
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public ConversionJob save(ConversionJob job) {
         Objects.requireNonNull(job, "job");
@@ -74,9 +70,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
         Objects.requireNonNull(candidate, "candidate");
@@ -111,25 +105,19 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Optional<ConversionJob> findById(UUID jobId) {
         return Optional.ofNullable(jobs.get(jobId));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Optional<ConversionJob> findByContentHash(String contentHash) {
         return findByTenantAndContentHash("buyer-demo", contentHash);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Optional<ConversionJob> findByTenantAndContentHash(String tenantId, String contentHash) {
         if (contentHash == null || contentHash.isBlank()) {
@@ -144,17 +132,24 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         return findById(jobId);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public Optional<ConversionJob> findByTenantAndId(String tenantId, UUID jobId) {
+        if (tenantId == null || tenantId.isBlank() || jobId == null) {
+            return Optional.empty();
+        }
+        String normalizedTenantId = tenantId.strip();
+        return Optional.ofNullable(jobs.get(jobId))
+                .filter(job -> job.belongsToTenant(normalizedTenantId));
+    }
+
+    /** {@inheritDoc} */
     @Override
     public List<ConversionJob> findAll() {
         return List.copyOf(jobs.values());
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public List<ConversionJob> findAllByTenantId(String tenantId) {
         if (tenantId == null || tenantId.isBlank()) {
@@ -166,9 +161,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
                 .toList();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void deleteById(UUID jobId) {
         synchronized (jobIndexLock) {
@@ -207,9 +200,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
                 .toList();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public Optional<ConversionJob> claimForProcessing(UUID jobId, Instant now) {
         Optional<ConversionJob> job = findById(jobId);
@@ -226,9 +217,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         return job;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void scheduleRetry(UUID jobId, String message, Instant retryAt) {
         findById(jobId).ifPresent(job -> {
@@ -238,9 +227,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         });
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void markSucceeded(UUID jobId, String resourcePath, String message) {
         findById(jobId).ifPresent(job -> {
@@ -250,9 +237,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         });
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public void markDeadLettered(UUID jobId, String message) {
         findById(jobId).ifPresent(job -> {
@@ -265,9 +250,7 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
         });
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     public boolean retryDeadLettered(UUID jobId, String operatorId) {
         Optional<ConversionJob> job = findById(jobId);

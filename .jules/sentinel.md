@@ -32,3 +32,7 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## 2026-02-21 - 관리자 엔드포인트 인증 우회 (Admin Controller Authentication Bypass)
+**Vulnerability:** `AdminController`의 엔드포인트(`/api/v1/admin/convert/jobs`, `/api/v1/admin/convert/jobs/{jobId}` 등)에 어떠한 인증 및 인가 로직도 적용되어 있지 않아, 누구나 변환 작업을 조회, 삭제, 재시도할 수 있었습니다.
+**Learning:** 커스텀 권한 부여 흐름(`TenantAccessService` 주입 등)을 사용하는 애플리케이션에서는 개발자가 명시적으로 서비스 호출을 누락할 경우 기본적으로 엔드포인트가 '모두 허용(open by default)' 상태가 되는 위험이 있습니다.
+**Prevention:** 1) 새로운 관리자 컨트롤러를 작성할 때는 반드시 `TenantAccessService`를 주입받아 각 엔드포인트마다 RBAC 권한(`admin:read`, `admin:write`)을 강제해야 합니다. 2) 장기적으로는 아키텍처가 허용한다면 필터나 애노테이션 기반(예: `@PreAuthorize`)의 중앙집중식 보안 모델로 전환하여 '기본 거부(default-deny)' 정책을 구축하는 것이 좋습니다.

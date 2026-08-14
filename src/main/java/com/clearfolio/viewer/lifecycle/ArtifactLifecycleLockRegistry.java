@@ -5,8 +5,6 @@ import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
-import org.springframework.stereotype.Component;
-
 /**
  * Provides fixed-memory, process-local serialization for one document lifecycle.
  *
@@ -20,34 +18,26 @@ import org.springframework.stereotype.Component;
  * provide an equivalent distributed generation fence, object-version
  * precondition, or transactional outbox consumer guarantee.</p>
  */
-@Component
 public final class ArtifactLifecycleLockRegistry {
 
     private static final int DEFAULT_STRIPE_COUNT = 256;
     private static final ArtifactLifecycleLockRegistry SHARED =
-            new ArtifactLifecycleLockRegistry(DEFAULT_STRIPE_COUNT);
+            new ArtifactLifecycleLockRegistry();
 
     private final ReentrantLock[] locks;
 
-    /**
-     * Creates a registry with the default fixed number of lock stripes.
-     */
-    public ArtifactLifecycleLockRegistry() {
-        this(DEFAULT_STRIPE_COUNT);
-    }
-
-    ArtifactLifecycleLockRegistry(int stripeCount) {
-        if (stripeCount <= 0) {
-            throw new IllegalArgumentException("stripeCount must be positive");
-        }
-        this.locks = new ReentrantLock[stripeCount];
-        for (int index = 0; index < stripeCount; index++) {
+    private ArtifactLifecycleLockRegistry() {
+        this.locks = new ReentrantLock[DEFAULT_STRIPE_COUNT];
+        for (int index = 0; index < locks.length; index++) {
             locks[index] = new ReentrantLock();
         }
     }
 
     /**
-     * Returns the process-wide registry used by standalone constructors.
+     * Returns the sole process-wide registry.
+     *
+     * <p>A single construction path prevents Spring injection and standalone
+     * callers from creating disjoint lock domains for the same job identifier.</p>
      *
      * @return shared fixed-memory lifecycle lock registry
      */

@@ -35,76 +35,47 @@ function makeElement(tagName = "div") {
   };
 }
 
-const elementIds = [
-  "upload-form",
-  "file-input",
-  "submit-btn",
-  "demo-status",
-  "demo-error",
-  "demo-error-message",
-  "demo-error-title",
-  "load-demo-data-btn",
-  "history-body",
-  "empty-history",
-  "clear-history-btn",
-  "kpi-total",
-  "kpi-ready",
-  "kpi-success-rate",
-  "kpi-p95",
-  "kpi-export-count",
-  "kpi-export-latest",
-  "kpi-export-subject",
-  "kpi-export-jobs",
-  "kpi-export-status",
-  "refresh-evidence-btn",
-  "recovery-needs-action",
-  "recovery-retry-ready",
-  "recovery-last-action",
-  "recovery-latest-inspected",
-  "recovery-status",
-  "job-detail",
-  "job-detail-caption",
-  "job-detail-body",
-  "retry-job-btn",
-];
-const elements = new Map(elementIds.map(id => [id, makeElement()]));
-
+const elements = new Map([
+  ["history-body", makeElement()],
+  ["empty-history", makeElement()],
+  ["clear-history-btn", makeElement("button")],
+]);
 const context = {
-  URL,
-  URLSearchParams,
   console,
-  localStorage: {
-    getItem() {
-      return null;
-    },
-    setItem() {},
-  },
   document: {
-    getElementById(id) {
-      return elements.get(id) ?? null;
-    },
     createElement(tagName) {
       return makeElement(tagName);
     },
   },
-  window: {
-    location: { origin: "https://viewer.example.test" },
+  el: {
+    historyBody: elements.get("history-body"),
+    emptyHistory: elements.get("empty-history"),
+    clearHistoryBtn: elements.get("clear-history-btn"),
   },
+  createActionButton() {
+    return makeElement("button");
+  },
+  createLink() {
+    return makeElement("a");
+  },
+  setBusyState() {
+    return () => {};
+  },
+  renderRecoveryEvidence() {},
+  openJobDetail() {},
+  openJsonDocument() {},
 };
 context.globalThis = context;
 vm.createContext(context);
 
-let source = fs.readFileSync(process.argv[1], "utf8");
-source = source.replace(
-  /^import .*?;\s*/,
-  "const createActionButton = () => ({}); const createLink = () => ({}); const setBusyState = () => () => {};\n",
-);
-const startupMarker = 'el.form.addEventListener("submit", submitDocument);';
-const startupOffset = source.indexOf(startupMarker);
-assert.notEqual(startupOffset, -1, "demo startup marker must remain discoverable");
-source = source.slice(0, startupOffset);
+const source = fs.readFileSync(process.argv[1], "utf8");
+const functionStart = source.indexOf("function renderHistory(");
+const functionEnd = source.indexOf("\nfunction addDetailRow(", functionStart);
+assert.notEqual(functionStart, -1, "renderHistory must remain discoverable");
+assert.notEqual(functionEnd, -1, "renderHistory must retain a complete top-level boundary");
+const renderHistorySource = source.slice(functionStart, functionEnd);
 vm.runInContext(
-  `${source}\n;globalThis.__test = { renderHistory };`,
+  `${renderHistorySource}\n;globalThis.__test = { renderHistory };`,
   context,
   { filename: process.argv[1] },
 );

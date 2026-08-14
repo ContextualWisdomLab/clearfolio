@@ -336,7 +336,11 @@ public class ArtifactLinkLedger {
 
     private static int statusCode(String field) {
         try {
-            return Integer.parseInt(field);
+            int statusCode = Integer.parseInt(field);
+            if (statusCode < 100 || statusCode > 599) {
+                throw invalidLine();
+            }
+            return statusCode;
         } catch (NumberFormatException ex) {
             throw invalidLine(ex);
         }

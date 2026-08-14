@@ -202,11 +202,12 @@ public class ArtifactLinkLedger {
         }
         String tokenId = requiredValue(fields[1]);
         ArtifactLinkRecord current = issuedLinks.get(tokenId);
-        if (current == null) {
+        Instant revokedAt = instant(fields[2]);
+        if (current == null || current.isRevoked() || revokedAt == null) {
             throw invalidLine();
         }
         issuedLinks.put(tokenId, current.revoked(
-                instant(fields[2]),
+                revokedAt,
                 value(fields[3]),
                 value(fields[4])
         ));

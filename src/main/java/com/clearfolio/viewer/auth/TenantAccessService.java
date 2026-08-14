@@ -94,12 +94,15 @@ public class TenantAccessService {
     }
 
     private void requireSignedClaimsWhenConfigured(HttpHeaders headers, TenantContext context) {
-        if (claimsHmacSecret == null) {
-            return;
-        }
-
         String issuedAt = clean(headers.getFirst(TenantContext.CLAIMS_ISSUED_AT_HEADER));
         String suppliedSignature = clean(headers.getFirst(TenantContext.CLAIMS_SIGNATURE_HEADER));
+
+        if (claimsHmacSecret == null) {
+            if (issuedAt != null || suppliedSignature != null) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "signed auth claims required");
+            }
+            return;
+        }
         if (issuedAt == null || suppliedSignature == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "signed auth claims required");
         }

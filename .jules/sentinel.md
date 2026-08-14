@@ -33,7 +33,7 @@
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
 
-## 2026-08-14 - Require Artifact Signing Credentials
-**Vulnerability:** A missing artifact-token secret generated a process-local random key, so links became unverifiable after restart or across replicas and deployments could start without their required signing credential.
-**Learning:** Removing an empty property default is insufficient when the service constructor still accepts missing values and creates replacement key material.
-**Prevention:** Resolve `clearfolio.artifact-token.secret` from the deployment property sources without a null default and reject null or blank values in every constructor path; never generate artifact-signing keys at runtime.
+## 2026-08-14 - Remove Environment Fallbacks for Secrets
+**Vulnerability:** Runtime configuration secrets were relying on environment variable fallbacks (e.g., `${ENV_VAR:}`). This allowed secrets to silently default to an insecure empty string if the environment variable was omitted, compromising security.
+**Learning:** Hardcoded environment variables bypassed the secure KV configtree loading mechanism, increasing the risk of configuration errors.
+**Prevention:** Removed empty defaults from configuration yaml files and updated `@Value` annotations to correctly handle `#{null}` instead, ensuring strict configtree enforcement.

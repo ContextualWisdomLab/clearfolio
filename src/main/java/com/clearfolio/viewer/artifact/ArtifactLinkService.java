@@ -69,25 +69,25 @@ public class ArtifactLinkService {
     private final SecureRandom secureRandom;
 
     /**
-     * Creates the link service with a required configured HMAC secret.
+     * Creates the link service with an optional configured HMAC secret.
      *
      * @param artifactStore artifact byte store
      * @param artifactLinkLedger issued-link, revocation, and read-audit ledger
-     * @param configuredSecret required deployment HMAC secret
+     * @param configuredSecret optional deployment secret
      */
     @Autowired
     public ArtifactLinkService(
             ArtifactStore artifactStore,
             ArtifactLinkLedger artifactLinkLedger,
-            @Value("${clearfolio.artifact-token.secret}") String configuredSecret) {
+            @Value("${clearfolio.artifact-token.secret:#{null}}") String configuredSecret) {
         this(artifactStore, artifactLinkLedger, configuredSecret, Clock.systemUTC(), new SecureRandom());
     }
 
     /**
-     * Creates the link service with an isolated runtime ledger and required HMAC secret.
+     * Creates the link service with an isolated runtime ledger.
      *
      * @param artifactStore artifact byte store
-     * @param configuredSecret required deployment HMAC secret
+     * @param configuredSecret optional deployment secret
      */
     public ArtifactLinkService(
             ArtifactStore artifactStore,
@@ -111,7 +111,7 @@ public class ArtifactLinkService {
             SecureRandom secureRandom) {
         this.artifactStore = artifactStore;
         this.artifactLinkLedger = artifactLinkLedger;
-        this.signingKey = new SecretKeySpec(secretBytes(configuredSecret), HMAC_SHA_256);
+        this.signingKey = new SecretKeySpec(secretBytes(configuredSecret, secureRandom), HMAC_SHA_256);
         this.clock = clock;
         this.secureRandom = secureRandom;
     }
@@ -466,10 +466,13 @@ public class ArtifactLinkService {
         return new String(URL_DECODER.decode(value), StandardCharsets.UTF_8);
     }
 
-    private static byte[] secretBytes(String configuredSecret) {
-        if (configuredSecret == null || configuredSecret.isBlank()) {
-            throw new IllegalStateException("clearfolio.artifact-token.secret must be configured");
+    private static byte[] secretBytes(String configuredSecret, SecureRandom secureRandom) {
+        if (configuredSecret != null && !configuredSecret.isBlank()) {
+            return configuredSecret.getBytes(StandardCharsets.UTF_8);
         }
-        return configuredSecret.getBytes(StandardCharsets.UTF_8);
+
+        byte[] generated = new byte[32];
+        secureRandom.nextBytes(generated);
+        return generated;
     }
 }

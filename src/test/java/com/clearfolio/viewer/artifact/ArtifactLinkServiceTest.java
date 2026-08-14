@@ -107,33 +107,47 @@ class ArtifactLinkServiceTest {
     }
 
     @Test
-    void rejectsBlankArtifactSigningSecret() {
-        IllegalStateException error = assertThrows(
-                IllegalStateException.class,
-                () -> new ArtifactLinkService(
-                        artifactStore,
-                        " ",
-                        Clock.fixed(NOW, ZoneOffset.UTC),
-                        new FixedSecureRandom()
-                )
+    void createsAndVerifiesTokenWhenSecretIsGeneratedForDemoRuntime() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        ArtifactLinkService generatedSecretService = new ArtifactLinkService(
+                artifactStore,
+                " ",
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                new FixedSecureRandom()
         );
 
-        assertEquals("clearfolio.artifact-token.secret must be configured", error.getMessage());
+        ArtifactLinkResponse response = generatedSecretService.createLink(job, tenantContext(), null);
+
+        assertDoesNotThrow(() -> generatedSecretService.verifyReadToken(
+                docId,
+                job,
+                sampleBytes(),
+                tokenFrom(response)
+        ));
     }
 
     @Test
-    void rejectsMissingArtifactSigningSecret() {
-        IllegalStateException error = assertThrows(
-                IllegalStateException.class,
-                () -> new ArtifactLinkService(
-                        artifactStore,
-                        null,
-                        Clock.fixed(NOW, ZoneOffset.UTC),
-                        new FixedSecureRandom()
-                )
+    void createsAndVerifiesTokenWhenConfiguredSecretIsNull() {
+        UUID docId = UUID.randomUUID();
+        ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        ArtifactLinkService generatedSecretService = new ArtifactLinkService(
+                artifactStore,
+                null,
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                new FixedSecureRandom()
         );
 
-        assertEquals("clearfolio.artifact-token.secret must be configured", error.getMessage());
+        ArtifactLinkResponse response = generatedSecretService.createLink(job, tenantContext(), null);
+
+        assertDoesNotThrow(() -> generatedSecretService.verifyReadToken(
+                docId,
+                job,
+                sampleBytes(),
+                tokenFrom(response)
+        ));
     }
 
     @Test

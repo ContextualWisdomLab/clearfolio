@@ -79,7 +79,7 @@ public class ArtifactLinkService {
     public ArtifactLinkService(
             ArtifactStore artifactStore,
             ArtifactLinkLedger artifactLinkLedger,
-            @Value("${clearfolio.artifact-token.secret:}") String configuredSecret) {
+            @Value("${clearfolio.artifact-token.secret:#{null}}") String configuredSecret) {
         this(artifactStore, artifactLinkLedger, configuredSecret, Clock.systemUTC(), new SecureRandom());
     }
 
@@ -332,22 +332,43 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        final int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1 || lastDotIndex == token.length() - 1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
-        String expectedSignature = hmac(payload);
+        final String payload = token.substring(0, lastDotIndex);
+        final String signature = token.substring(lastDotIndex + 1);
+
+        final String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+                signature.getBytes(StandardCharsets.US_ASCII))) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
+        final String[] parts = new String[TOKEN_FIELD_COUNT];
+        int start = 0;
+        for (int i = 0; i < TOKEN_FIELD_COUNT; i++) {
+            if (i == TOKEN_FIELD_COUNT - 1) {
+                parts[i] = payload.substring(start);
+            } else {
+                final int nextDot = payload.indexOf('.', start);
+                if (nextDot == -1) {
+                    throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                }
+                parts[i] = payload.substring(start, nextDot);
+                start = nextDot + 1;
+            }
+        }
+
+        if (parts[TOKEN_FIELD_COUNT - 1].indexOf('.') != -1) {
+             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
         try {
-            String version = decode(parts[0]);
+            final String version = decode(parts[0]);
             if (!VERSION.equals(version)) {
                 throw new IllegalArgumentException("unsupported artifact token version");
             }

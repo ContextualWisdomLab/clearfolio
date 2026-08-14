@@ -47,7 +47,7 @@ public class TenantAccessService {
      */
     @Autowired
     public TenantAccessService(
-            @Value("${clearfolio.tenant-claims.hmac-secret:}") String claimsHmacSecret,
+            @Value("${clearfolio.tenant-claims.hmac-secret:#{null}}") String claimsHmacSecret,
             @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
         this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
     }

@@ -70,3 +70,7 @@
 - 루트 `LICENSE`와 Maven license metadata를 추가해 Scorecard License alert가 표준 Apache-2.0 파일을 확인할 수 있게 했습니다.
 - logback-core 신규 권고(GHSA-jhq6-gfmj-v8fx) 대응을 위해 Logback 관리 버전을 `1.5.35`로 고정했습니다.
 - 저장소 보안 정책, Maven/GitHub Actions Dependabot 설정, 기본 CodeQL/중앙 SAST 운영 지침, 다운로드 파일명 정규화 Jazzer fuzz target을 추가해 Scorecard 보안 거버넌스 신호를 보강했습니다.
+
+## [Unreleased]
+- 보안 및 성능 개선: JWT 토큰 파싱 시 정규식 분리를 수동 인덱스 탐색으로 변경하여 메모리 사용량을 최적화하고 ReDoS 취약점 완화.
+- 설정 개선: Spring Boot 설정에서 시크릿 값을 불러올 때 환경변수 폴백을 제거하고 `#{null}`을 사용하여 설정의 안전성 강화.

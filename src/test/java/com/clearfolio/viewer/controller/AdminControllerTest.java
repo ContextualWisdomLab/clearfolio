@@ -1,12 +1,15 @@
 package com.clearfolio.viewer.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
-import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -26,11 +29,18 @@ class AdminControllerTest {
     private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
+    private TenantContext tenantContext;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
         tenantAccessService = mock(TenantAccessService.class);
+        tenantContext = new TenantContext(
+                "tenant-1", "admin-1", Set.of(
+                        TenantPermissions.ADMIN_READ,
+                        TenantPermissions.ADMIN_WRITE));
+        when(tenantAccessService.require(any(), anyString()))
+                .thenReturn(tenantContext);
         controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
@@ -41,7 +51,8 @@ class AdminControllerTest {
     void getAllJobsReturnsAllJobsWhenNoFilterProvided() {
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(conversionService.getAllJobs(tenantContext))
+                .thenReturn(Arrays.asList(job1, job2));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
@@ -62,8 +73,8 @@ class AdminControllerTest {
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
         ConversionJob owned = ownedJob("tenant-1", "owned.pdf");
-        ConversionJob other = ownedJob("tenant-2", "other.pdf");
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(owned, other));
+        when(conversionService.getAllJobs(any(TenantContext.class)))
+                .thenReturn(java.util.List.of(owned));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
@@ -83,9 +94,7 @@ class AdminControllerTest {
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
         UUID jobId = UUID.randomUUID();
-        when(conversionService.deleteJob(
-                org.mockito.ArgumentMatchers.eq(jobId),
-                org.mockito.ArgumentMatchers.any(TenantContext.class)))
+        when(conversionService.deleteJob(eq(jobId), any(TenantContext.class)))
                 .thenReturn(false);
 
         webTestClient.delete()
@@ -105,10 +114,9 @@ class AdminControllerTest {
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
         UUID jobId = UUID.randomUUID();
-        when(conversionService.getJob(jobId))
-                .thenReturn(Optional.of(ownedJob("tenant-2", "other.pdf")));
-        when(conversionService.retryDeadLettered(jobId, "admin"))
-                .thenReturn(RetryDeadLetterResult.ACCEPTED);
+        when(conversionService.retryDeadLettered(
+                eq(jobId), eq("admin"), any(TenantContext.class)))
+                .thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -145,7 +153,8 @@ class AdminControllerTest {
         job1.markDeadLettered("failed");
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
 
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(conversionService.getAllJobs(tenantContext))
+                .thenReturn(Arrays.asList(job1, job2));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
@@ -163,7 +172,8 @@ class AdminControllerTest {
         job1.markDeadLettered("failed");
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
 
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(conversionService.getAllJobs(tenantContext))
+                .thenReturn(Arrays.asList(job1, job2));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
@@ -178,6 +188,7 @@ class AdminControllerTest {
     @Test
     void deleteJobReturnsNoContent() {
         UUID jobId = UUID.randomUUID();
+        when(conversionService.deleteJob(jobId, tenantContext)).thenReturn(true);
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
@@ -189,7 +200,8 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
+        when(conversionService.retryDeadLettered(jobId, "admin", tenantContext))
+                .thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -201,7 +213,8 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsNotFoundWhenNotFound() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
+        when(conversionService.retryDeadLettered(jobId, "admin", tenantContext))
+                .thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -213,7 +226,8 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsConflictWhenNotEligible() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
+        when(conversionService.retryDeadLettered(jobId, "admin", tenantContext))
+                .thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")

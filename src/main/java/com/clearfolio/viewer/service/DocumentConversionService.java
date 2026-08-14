@@ -61,6 +61,32 @@ public interface DocumentConversionService {
     RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId);
 
     /**
+     * Retries a dead-lettered conversion job owned by the supplied tenant.
+     *
+     * @param jobId conversion job identifier
+     * @param operatorId operator identifier that triggered the retry
+     * @param tenantContext tenant and subject claims for the retry request
+     * @return retry outcome, or {@link RetryDeadLetterResult#NOT_FOUND} when
+     *         the job is missing or belongs to another tenant
+     */
+    default RetryDeadLetterResult retryDeadLettered(
+            UUID jobId,
+            String operatorId,
+            TenantContext tenantContext) {
+        if (tenantContext == null) {
+            return RetryDeadLetterResult.NOT_FOUND;
+        }
+        Optional<ConversionJob> job = getJob(jobId);
+        if (job.isEmpty()) {
+            return RetryDeadLetterResult.NOT_FOUND;
+        }
+        if (!job.get().belongsToTenant(tenantContext.tenantId())) {
+            return RetryDeadLetterResult.NOT_FOUND;
+        }
+        return retryDeadLettered(jobId, operatorId);
+    }
+
+    /**
      * Deletes a conversion job owned by the supplied tenant context.
      *
      * @param jobId conversion job identifier
@@ -95,4 +121,23 @@ public interface DocumentConversionService {
      * @return an iterable of all conversion jobs
      */
     Iterable<ConversionJob> getAllJobs();
+
+    /**
+     * Returns only conversion jobs owned by the supplied tenant.
+     *
+     * @param tenantContext tenant and subject claims for the list request
+     * @return an iterable containing only jobs owned by that tenant
+     */
+    default Iterable<ConversionJob> getAllJobs(TenantContext tenantContext) {
+        if (tenantContext == null) {
+            return java.util.List.of();
+        }
+        java.util.List<ConversionJob> ownedJobs = new java.util.ArrayList<>();
+        for (ConversionJob job : getAllJobs()) {
+            if (job.belongsToTenant(tenantContext.tenantId())) {
+                ownedJobs.add(job);
+            }
+        }
+        return ownedJobs;
+    }
 }

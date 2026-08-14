@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.api.AdminJobListResponse;
 import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
@@ -58,9 +59,11 @@ public class AdminController {
     public AdminJobListResponse getAllJobs(
             @RequestHeader final HttpHeaders headers,
             @RequestParam(required = false) final Boolean deadLettered) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_READ);
+        TenantContext tenantContext = tenantAccessService.require(
+                headers, TenantPermissions.ADMIN_READ);
 
-        Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
+        Iterable<ConversionJob> allJobs = conversionService.getAllJobs(
+                tenantContext);
 
         if (deadLettered == null) {
             return AdminJobListResponse.from(allJobs);
@@ -86,9 +89,13 @@ public class AdminController {
     public ResponseEntity<Void> deleteJob(
             @RequestHeader final HttpHeaders headers,
             @PathVariable final UUID jobId) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+        TenantContext tenantContext = tenantAccessService.require(
+                headers, TenantPermissions.ADMIN_WRITE);
 
-        conversionService.deleteJob(jobId);
+        if (!conversionService.deleteJob(jobId, tenantContext)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
+        }
         return ResponseEntity.noContent().build();
     }
 
@@ -103,10 +110,11 @@ public class AdminController {
     public ResponseEntity<Void> retryDeadLettered(
             @RequestHeader final HttpHeaders headers,
             @PathVariable final UUID jobId) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+        TenantContext tenantContext = tenantAccessService.require(
+                headers, TenantPermissions.ADMIN_WRITE);
 
         RetryDeadLetterResult res = conversionService.retryDeadLettered(
-                jobId, "admin");
+                jobId, "admin", tenantContext);
         if (res == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND, "job not found");

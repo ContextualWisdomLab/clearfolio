@@ -63,6 +63,10 @@ class AdminControllerTest {
                 .jsonPath("$.jobs.length()").isEqualTo(2)
                 .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf")
                 .jsonPath("$.jobs[1].fileName").isEqualTo("b.pdf");
+
+        verify(tenantAccessService).require(
+                any(org.springframework.http.HttpHeaders.class),
+                eq(TenantPermissions.ADMIN_READ));
     }
 
     @Test
@@ -195,6 +199,10 @@ class AdminControllerTest {
                 .header("X-Clearfolio-Tenant-Id", "tenant-1")
                 .exchange()
                 .expectStatus().isNoContent();
+
+        verify(tenantAccessService).require(
+                any(org.springframework.http.HttpHeaders.class),
+                eq(TenantPermissions.ADMIN_WRITE));
     }
 
     @Test
@@ -208,6 +216,10 @@ class AdminControllerTest {
                 .header("X-Clearfolio-Tenant-Id", "tenant-1")
                 .exchange()
                 .expectStatus().isAccepted();
+
+        verify(tenantAccessService).require(
+                any(org.springframework.http.HttpHeaders.class),
+                eq(TenantPermissions.ADMIN_WRITE));
     }
 
     @Test

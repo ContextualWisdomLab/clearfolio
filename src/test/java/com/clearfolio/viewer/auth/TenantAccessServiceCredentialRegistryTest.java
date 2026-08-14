@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 
 import com.clearfolio.viewer.credential.CredentialPurpose;
-import com.clearfolio.viewer.credential.CredentialReference;
 import com.clearfolio.viewer.credential.CredentialRegistry;
 import com.clearfolio.viewer.credential.CredentialSnapshot;
 
@@ -59,6 +58,56 @@ class TenantAccessServiceCredentialRegistryTest {
         );
 
         assertEquals("tenant claims credential purpose mismatch", exception.getMessage());
+    }
+
+    @Test
+    void registryBackedServiceRejectsWrongCredentialIdentity() {
+        CredentialRegistry registry = reference -> new CredentialSnapshot(
+                "different-credential",
+                "v1",
+                CredentialPurpose.TENANT_CLAIMS_SIGNING,
+                SECRET.getBytes(StandardCharsets.UTF_8)
+        );
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> new TenantAccessService(registry, 300L, Clock.fixed(NOW, ZoneOffset.UTC))
+        );
+
+        assertEquals("tenant claims credential purpose mismatch", exception.getMessage());
+    }
+
+    @Test
+    void registryBackedServiceFailsClosedForMissingAuthority() {
+        assertThrows(
+                NullPointerException.class,
+                () -> new TenantAccessService(
+                        (CredentialRegistry) null,
+                        300L,
+                        Clock.fixed(NOW, ZoneOffset.UTC)
+                )
+        );
+        assertThrows(
+                NullPointerException.class,
+                () -> new TenantAccessService(
+                        reference -> null,
+                        300L,
+                        Clock.fixed(NOW, ZoneOffset.UTC)
+                )
+        );
+        assertThrows(
+                NullPointerException.class,
+                () -> new TenantAccessService(
+                        reference -> new CredentialSnapshot(
+                                reference.credentialName(),
+                                "v1",
+                                CredentialPurpose.TENANT_CLAIMS_SIGNING,
+                                SECRET.getBytes(StandardCharsets.UTF_8)
+                        ),
+                        300L,
+                        null
+                )
+        );
     }
 
     private static HttpHeaders signedHeaders() {

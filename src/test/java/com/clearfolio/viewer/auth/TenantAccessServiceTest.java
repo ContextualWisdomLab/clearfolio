@@ -52,6 +52,28 @@ class TenantAccessServiceTest {
         assertDoesNotThrow(() -> nullSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
     }
 
+
+    @Test
+    void requireRejectsSignatureOrTimestampWhenSecretIsBlankOrNull() {
+        TenantAccessService nullSecret = new TenantAccessService(null, 300L, Clock.fixed(NOW, ZoneOffset.UTC));
+
+        HttpHeaders headersWithIssuedAt = headers(TenantPermissions.JOB_READ);
+        headersWithIssuedAt.add(TenantContext.CLAIMS_ISSUED_AT_HEADER, String.valueOf(NOW.getEpochSecond()));
+
+        HttpHeaders headersWithSignature = headers(TenantPermissions.JOB_READ);
+        headersWithSignature.add(TenantContext.CLAIMS_SIGNATURE_HEADER, "forged-signature");
+
+        assertEquals(HttpStatus.UNAUTHORIZED, assertThrows(
+                ResponseStatusException.class,
+                () -> nullSecret.require(headersWithIssuedAt, TenantPermissions.JOB_READ)
+        ).getStatusCode());
+
+        assertEquals(HttpStatus.UNAUTHORIZED, assertThrows(
+                ResponseStatusException.class,
+                () -> nullSecret.require(headersWithSignature, TenantPermissions.JOB_READ)
+        ).getStatusCode());
+    }
+
     @Test
     void springConstructorSupportsSignedGatewayClaims() {
         TenantAccessService signedService = new TenantAccessService(SECRET, 300L);

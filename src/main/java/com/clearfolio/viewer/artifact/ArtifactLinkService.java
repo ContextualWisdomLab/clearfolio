@@ -333,7 +333,7 @@ public class ArtifactLinkService {
     }
 
     private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
+        String[] parts = token.split("\\.");
         if (parts.length != TOKEN_FIELD_COUNT + 1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }

@@ -115,7 +115,7 @@ public class AdminController {
         );
         RetryDeadLetterResult result = conversionService.retryDeadLettered(
                 jobId,
-                "admin",
+                tenantContext.subjectId(),
                 tenantContext
         );
         if (result == RetryDeadLetterResult.NOT_FOUND) {

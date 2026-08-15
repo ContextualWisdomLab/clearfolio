@@ -9,7 +9,7 @@ class ProductionAuthReadinessConfigTest {
 
     @Test
     void productionProfileFailsWithoutSignedTenantClaimsSecret() {
-        productionRunner().run(context -> assertThat(context.getStartupFailure())
+        productionRunner().withPropertyValues("clearfolio.tenant-claims.hmac-secret=").run(context -> assertThat(context.getStartupFailure())
                 .hasRootCauseMessage("production profile requires clearfolio.tenant-claims.hmac-secret"));
     }
 

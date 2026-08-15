@@ -73,7 +73,7 @@ public class ConversionController {
     public ConversionController(
             DocumentConversionService conversionService,
             TenantAccessService tenantAccessService,
-            ArtifactLinkService artifactLinkService,
+            final ArtifactLinkService artifactLinkService,
             ArtifactStore artifactStore,
             @Value("${spring.codec.max-in-memory-size:262144B}") DataSize maxInMemorySize) {
         this.conversionService = conversionService;

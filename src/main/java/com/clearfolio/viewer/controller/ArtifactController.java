@@ -57,7 +57,7 @@ public class ArtifactController {
     public ArtifactController(
             DocumentConversionService conversionService,
             ArtifactStore artifactStore,
-            ArtifactLinkService artifactLinkService,
+            final ArtifactLinkService artifactLinkService,
             TenantAccessService tenantAccessService) {
         this.conversionService = conversionService;
         this.artifactStore = artifactStore;

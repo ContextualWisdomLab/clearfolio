@@ -77,9 +77,9 @@ public class ArtifactLinkService {
      */
     @Autowired
     public ArtifactLinkService(
-            ArtifactStore artifactStore,
-            ArtifactLinkLedger artifactLinkLedger,
-            @Value("${clearfolio.artifact-token.secret:}") String configuredSecret) {
+            final ArtifactStore artifactStore,
+            final ArtifactLinkLedger artifactLinkLedger,
+            @Value("${clearfolio.artifact-token.secret}") final String configuredSecret) {
         this(artifactStore, artifactLinkLedger, configuredSecret, Clock.systemUTC(), new SecureRandom());
     }
 
@@ -90,13 +90,13 @@ public class ArtifactLinkService {
      * @param configuredSecret optional deployment secret
      */
     public ArtifactLinkService(
-            ArtifactStore artifactStore,
-            String configuredSecret) {
+            final ArtifactStore artifactStore,
+            final String configuredSecret) {
         this(artifactStore, new ArtifactLinkLedger(), configuredSecret, Clock.systemUTC(), new SecureRandom());
     }
 
     ArtifactLinkService(
-            ArtifactStore artifactStore,
+            final ArtifactStore artifactStore,
             String configuredSecret,
             Clock clock,
             SecureRandom secureRandom) {
@@ -104,8 +104,8 @@ public class ArtifactLinkService {
     }
 
     ArtifactLinkService(
-            ArtifactStore artifactStore,
-            ArtifactLinkLedger artifactLinkLedger,
+            final ArtifactStore artifactStore,
+            final ArtifactLinkLedger artifactLinkLedger,
             String configuredSecret,
             Clock clock,
             SecureRandom secureRandom) {

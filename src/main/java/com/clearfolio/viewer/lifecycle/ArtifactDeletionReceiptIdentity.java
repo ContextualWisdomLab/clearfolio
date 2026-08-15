@@ -37,7 +37,8 @@ public record ArtifactDeletionReceiptIdentity(
      * Validates and normalizes one immutable deletion-receipt identity.
      *
      * @throws NullPointerException when an immutable identifier or timestamp is absent
-     * @throws IllegalArgumentException when bounded text is blank/oversized or the artifact digest is not canonical SHA-256
+     * @throws IllegalArgumentException when bounded text is blank, control-corrupted,
+     *         oversized, or the artifact digest is not canonical SHA-256
      */
     public ArtifactDeletionReceiptIdentity {
         requestId = Objects.requireNonNull(requestId, "requestId");
@@ -61,7 +62,11 @@ public record ArtifactDeletionReceiptIdentity(
     }
 
     private static String requireBoundedText(String value, String fieldName) {
-        String normalized = Objects.requireNonNull(value, fieldName).strip();
+        String supplied = Objects.requireNonNull(value, fieldName);
+        if (supplied.codePoints().anyMatch(ArtifactDeletionReceiptIdentity::isDisallowedIdentifierCharacter)) {
+            throw new IllegalArgumentException(fieldName + " must not contain control characters");
+        }
+        String normalized = supplied.strip();
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException(fieldName + " must not be blank");
         }
@@ -69,5 +74,12 @@ public record ArtifactDeletionReceiptIdentity(
             throw new IllegalArgumentException(fieldName + " exceeds the configured bound");
         }
         return normalized;
+    }
+
+    private static boolean isDisallowedIdentifierCharacter(int codePoint) {
+        int characterType = Character.getType(codePoint);
+        return Character.isISOControl(codePoint)
+                || characterType == Character.LINE_SEPARATOR
+                || characterType == Character.PARAGRAPH_SEPARATOR;
     }
 }

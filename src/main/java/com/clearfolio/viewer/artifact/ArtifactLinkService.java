@@ -332,18 +332,36 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        final int signatureIndex = token.lastIndexOf('.');
+        if (signatureIndex == -1 || signatureIndex == token.length() - 1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
-        String expectedSignature = hmac(payload);
+        final String payload = token.substring(0, signatureIndex);
+        final String signature = token.substring(signatureIndex + 1);
+
+        final String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+                signature.getBytes(StandardCharsets.US_ASCII))) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
+        final String[] parts = new String[TOKEN_FIELD_COUNT];
+        int start = 0;
+        for (int i = 0; i < TOKEN_FIELD_COUNT; i++) {
+            if (i == TOKEN_FIELD_COUNT - 1) {
+                parts[i] = payload.substring(start);
+            } else {
+                final int end = payload.indexOf('.', start);
+                if (end == -1) {
+                    throw new ArtifactTokenException(
+                            HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                }
+                parts[i] = payload.substring(start, end);
+                start = end + 1;
+            }
         }
 
         try {

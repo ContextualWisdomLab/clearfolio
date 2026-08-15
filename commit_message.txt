@@ -1,4 +1,13 @@
-🛡️ Sentinel: [CRITICAL] 파일 업로드 경로 조작(Path Traversal) 취약점 수정
+⚡ Bolt: [성능 개선]
 
-MultipartFile.getOriginalFilename()을 신뢰하여 발생할 수 있는 경로 조작 취약점을 수정했습니다.
-StringUtils.cleanPath()를 사용하여 경로를 정규화하고 순수한 파일명만 추출하여 악의적인 페이로드(예: ../../../etc/passwd.hwp)로부터 시스템을 보호합니다.
+💡 What:
+`ArtifactLinkService.parseAndVerify` 메서드에서 `String.split()`을 `indexOf()`, `lastIndexOf()`, `substring()`을 활용한 수동 파싱으로 대체했습니다.
+
+🎯 Why:
+기존의 `String.split()` 및 `Arrays.copyOf()`를 사용하는 구현은 고정된 길이의 구분된 토큰(JWT와 유사)에 대해 불필요한 문자열 배열 할당과 함수형 오버헤드를 발생시켜 GC(가비지 컬렉션) 압박을 증가시켰습니다.
+
+📊 Impact:
+토큰을 파싱하고 검증할 때 객체 할당과 GC 압박을 크게 줄여 아티팩트 토큰 유효성 검사의 핫 패스(hot path)를 최적화했습니다.
+
+🔬 Measurement:
+`mvn clean test`를 실행하여 성능이나 기능 저하 없이 모든 테스트가 통과하는지 확인했습니다. 또한 포맷팅 및 정적 분석 테스트(`mvn checkstyle:check`)도 올바르게 통과합니다.

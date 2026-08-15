@@ -40,23 +40,13 @@ jobs:
 
           path = Path("src/test/java/com/clearfolio/viewer/service/DefaultConversionWorkerTest.java")
           source = path.read_text(encoding="utf-8")
-          old = '''            await(() -> attempts.get() >= 1, 3_000);
-
-            assertEquals(1, attempts.get());
-            assertEquals(1, job.getAttemptCount());
-            assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
-          '''
-          new = '''            await(
+          old = "            await(() -> attempts.get() >= 1, 3_000);"
+          new = """            await(
                     () -> attempts.get() >= 1 && job.getStatus() == ConversionJobStatus.SUCCEEDED,
                     3_000
-            );
-
-            assertEquals(1, attempts.get());
-            assertEquals(1, job.getAttemptCount());
-            assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
-          '''
+            );"""
           if source.count(old) != 1:
-              raise SystemExit("expected retry completion assertion was not found exactly once")
+              raise SystemExit("expected retry completion wait was not found exactly once")
           path.write_text(source.replace(old, new), encoding="utf-8")
           PY
 

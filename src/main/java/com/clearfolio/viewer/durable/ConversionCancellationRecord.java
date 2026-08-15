@@ -11,8 +11,9 @@ import java.util.UUID;
  *
  * <p>A record starts in {@link ConversionCancellationState#REQUESTED}. The
  * first terminal transition wins permanently: either cancellation takes effect
- * or the bound generation completes first. Repeating the winning transition is
- * idempotent, while attempting to rewrite a terminal winner fails closed.</p>
+ * or the bound generation completes first. Only an exact replay of the winning
+ * acknowledgement is idempotent; a contradictory timestamp or opposite
+ * terminal outcome fails closed.</p>
  */
 public final class ConversionCancellationRecord {
 
@@ -83,14 +84,16 @@ public final class ConversionCancellationRecord {
      * Records that cancellation won the race for this generation.
      *
      * @param cancelledAt timestamp when cancellation became terminal
-     * @return terminal cancelled snapshot, or this object when already cancelled
+     * @return terminal cancelled snapshot, or this object for an exact replay
      * @throws NullPointerException when {@code cancelledAt} is null
      * @throws IllegalArgumentException when the terminal timestamp predates the request
-     * @throws IllegalStateException when completion already won the race
+     * @throws IllegalStateException when completion already won or a repeated
+     *         cancellation acknowledgement carries a different timestamp
      */
     public ConversionCancellationRecord markCancelled(Instant cancelledAt) {
         Instant requiredCancelledAt = Objects.requireNonNull(cancelledAt, "cancelledAt");
         if (state == ConversionCancellationState.CANCELLED) {
+            requireExactTerminalReplay(requiredCancelledAt, "cancellation");
             return this;
         }
         if (state != ConversionCancellationState.REQUESTED) {
@@ -104,14 +107,16 @@ public final class ConversionCancellationRecord {
      * Records that job completion won before cancellation became effective.
      *
      * @param completedAt timestamp when completion became terminal
-     * @return terminal completion-won snapshot, or this object when already completed
+     * @return terminal completion-won snapshot, or this object for an exact replay
      * @throws NullPointerException when {@code completedAt} is null
      * @throws IllegalArgumentException when the terminal timestamp predates the request
-     * @throws IllegalStateException when cancellation already won the race
+     * @throws IllegalStateException when cancellation already won or a repeated
+     *         completion acknowledgement carries a different timestamp
      */
     public ConversionCancellationRecord markCompleted(Instant completedAt) {
         Instant requiredCompletedAt = Objects.requireNonNull(completedAt, "completedAt");
         if (state == ConversionCancellationState.COMPLETED_BEFORE_CANCELLATION) {
+            requireExactTerminalReplay(requiredCompletedAt, "completion");
             return this;
         }
         if (state != ConversionCancellationState.REQUESTED) {
@@ -214,6 +219,13 @@ public final class ConversionCancellationRecord {
         );
     }
 
+    private void requireExactTerminalReplay(Instant candidateTimestamp, String acknowledgement) {
+        if (!terminalAt.equals(candidateTimestamp)) {
+            throw new IllegalStateException(
+                    acknowledgement + " acknowledgement does not match terminal timestamp");
+        }
+    }
+
     private void validateTerminalTimestamp(Instant terminalTimestamp) {
         if (terminalTimestamp.isBefore(requestedAt)) {
             throw new IllegalArgumentException("terminal timestamp cannot predate cancellation request");
@@ -221,7 +233,10 @@ public final class ConversionCancellationRecord {
     }
 
     private static String normalizeTenantId(String tenantId) {
-        String normalized = tenantId.replace("\u0000", "").strip();
+        if (tenantId.codePoints().anyMatch(ConversionCancellationRecord::isDisallowedTenantCharacter)) {
+            throw new IllegalArgumentException("tenantId must not contain control characters");
+        }
+        String normalized = tenantId.strip();
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException("tenantId must not be blank");
         }
@@ -229,5 +244,12 @@ public final class ConversionCancellationRecord {
             throw new IllegalArgumentException("tenantId must not exceed 256 characters");
         }
         return normalized;
+    }
+
+    private static boolean isDisallowedTenantCharacter(int codePoint) {
+        int characterType = Character.getType(codePoint);
+        return Character.isISOControl(codePoint)
+                || characterType == Character.LINE_SEPARATOR
+                || characterType == Character.PARAGRAPH_SEPARATOR;
     }
 }

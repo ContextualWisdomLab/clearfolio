@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test;
 
 class ConversionExecutionAuditEventTest {
 
-    private static final String TENANT_FINGERPRINT = "a".repeat(64);
-    private static final String JOB_FINGERPRINT = "b".repeat(64);
+    private static final String TENANT_FINGERPRINT = "v1:" + "a".repeat(32);
+    private static final String JOB_FINGERPRINT = "v1:" + "b".repeat(32);
 
     @Test
     void eventPreservesOnlyPseudonymousExecutionAuthority() {
@@ -89,13 +89,13 @@ class ConversionExecutionAuditEventTest {
         );
 
         assertTrue(event.matchesExecution(JOB_FINGERPRINT, 4L));
-        assertFalse(event.matchesExecution("c".repeat(64), 4L));
+        assertFalse(event.matchesExecution("v1:" + "c".repeat(32), 4L));
         assertFalse(event.matchesExecution(JOB_FINGERPRINT, 5L));
         assertFalse(event.matchesExecution(null, 4L));
     }
 
     @Test
-    void fingerprintsMustBeCanonicalLowercaseSha256Hex() {
+    void fingerprintsMustBeVersionedKeyedAuditPseudonyms() {
         UUID eventId = UUID.randomUUID();
         Instant occurredAt = Instant.parse("2026-08-11T02:30:00Z");
 
@@ -106,13 +106,25 @@ class ConversionExecutionAuditEventTest {
                 eventId, TENANT_FINGERPRINT, null, 1L, 0,
                 ConversionExecutionEventType.ACCEPTED, null, occurredAt));
         assertThrows(IllegalArgumentException.class, () -> ConversionExecutionAuditEvent.create(
-                eventId, "a".repeat(63), JOB_FINGERPRINT, 1L, 0,
+                eventId, "a".repeat(64), JOB_FINGERPRINT, 1L, 0,
                 ConversionExecutionEventType.ACCEPTED, null, occurredAt));
         assertThrows(IllegalArgumentException.class, () -> ConversionExecutionAuditEvent.create(
-                eventId, TENANT_FINGERPRINT, "B".repeat(64), 1L, 0,
+                eventId, "a".repeat(32), JOB_FINGERPRINT, 1L, 0,
                 ConversionExecutionEventType.ACCEPTED, null, occurredAt));
         assertThrows(IllegalArgumentException.class, () -> ConversionExecutionAuditEvent.create(
-                eventId, TENANT_FINGERPRINT, "g".repeat(64), 1L, 0,
+                eventId, TENANT_FINGERPRINT, "v1:" + "B".repeat(32), 1L, 0,
+                ConversionExecutionEventType.ACCEPTED, null, occurredAt));
+        assertThrows(IllegalArgumentException.class, () -> ConversionExecutionAuditEvent.create(
+                eventId, TENANT_FINGERPRINT, "v1:" + "g".repeat(32), 1L, 0,
+                ConversionExecutionEventType.ACCEPTED, null, occurredAt));
+        assertThrows(IllegalArgumentException.class, () -> ConversionExecutionAuditEvent.create(
+                eventId, "unsafe version:" + "a".repeat(32), JOB_FINGERPRINT, 1L, 0,
+                ConversionExecutionEventType.ACCEPTED, null, occurredAt));
+        assertThrows(IllegalArgumentException.class, () -> ConversionExecutionAuditEvent.create(
+                eventId, "v".repeat(33) + ":" + "a".repeat(32), JOB_FINGERPRINT, 1L, 0,
+                ConversionExecutionEventType.ACCEPTED, null, occurredAt));
+        assertThrows(IllegalArgumentException.class, () -> ConversionExecutionAuditEvent.create(
+                eventId, "unavailable:v1", JOB_FINGERPRINT, 1L, 0,
                 ConversionExecutionEventType.ACCEPTED, null, occurredAt));
     }
 

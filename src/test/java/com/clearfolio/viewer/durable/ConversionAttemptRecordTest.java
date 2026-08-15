@@ -41,24 +41,26 @@ class ConversionAttemptRecordTest {
     }
 
     @Test
-    void publicationAuthorityRequiresExactJobGenerationAndLease() {
+    void publicationAuthorityRequiresExactJobGenerationAttemptAndLease() {
         UUID jobId = UUID.randomUUID();
         UUID leaseId = UUID.randomUUID();
         ConversionAttemptRecord record = ConversionAttemptRecord.claim(
                 UUID.randomUUID(),
                 jobId,
                 3L,
-                1,
+                2,
                 leaseId,
                 Instant.parse("2026-08-11T02:00:00Z")
         );
 
-        assertTrue(record.authorizes(jobId, 3L, leaseId));
-        assertFalse(record.authorizes(UUID.randomUUID(), 3L, leaseId));
-        assertFalse(record.authorizes(jobId, 4L, leaseId));
-        assertFalse(record.authorizes(jobId, 3L, UUID.randomUUID()));
-        assertFalse(record.authorizes(null, 3L, leaseId));
-        assertFalse(record.authorizes(jobId, 3L, null));
+        assertTrue(record.authorizes(jobId, 3L, 2, leaseId));
+        assertFalse(record.authorizes(UUID.randomUUID(), 3L, 2, leaseId));
+        assertFalse(record.authorizes(jobId, 4L, 2, leaseId));
+        assertFalse(record.authorizes(jobId, 3L, 1, leaseId));
+        assertFalse(record.authorizes(jobId, 3L, 3, leaseId));
+        assertFalse(record.authorizes(jobId, 3L, 2, UUID.randomUUID()));
+        assertFalse(record.authorizes(null, 3L, 2, leaseId));
+        assertFalse(record.authorizes(jobId, 3L, 2, null));
     }
 
     @Test
@@ -75,13 +77,13 @@ class ConversionAttemptRecordTest {
                 claimedAt
         );
 
-        assertTrue(claimed.authorizes(jobId, 3L, leaseId));
+        assertTrue(claimed.authorizes(jobId, 3L, 1, leaseId));
         assertTrue(claimed.finish(ConversionAttemptState.SUCCEEDED, claimedAt.plusSeconds(1L))
-                .authorizes(jobId, 3L, leaseId));
+                .authorizes(jobId, 3L, 1, leaseId));
         assertFalse(claimed.finish(ConversionAttemptState.RETRYABLE_FAILED, claimedAt.plusSeconds(1L))
-                .authorizes(jobId, 3L, leaseId));
+                .authorizes(jobId, 3L, 1, leaseId));
         assertFalse(claimed.finish(ConversionAttemptState.TERMINAL_FAILED, claimedAt.plusSeconds(1L))
-                .authorizes(jobId, 3L, leaseId));
+                .authorizes(jobId, 3L, 1, leaseId));
     }
 
     @Test

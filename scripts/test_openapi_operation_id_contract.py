@@ -11,10 +11,18 @@ from scripts.openapi_operation_id_contract import ContractViolation, inspect_ope
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 OPENAPI_PATH = REPOSITORY_ROOT / "docs/deployment/clearfolio-buyer-connector.openapi.yaml"
+CI_WORKFLOW = REPOSITORY_ROOT / ".github/workflows/ci.yml"
 
 
 class OpenApiOperationIdContractTest(unittest.TestCase):
     """Keep every shipped HTTP operation addressable by one stable operationId."""
+
+    def test_ci_executes_buyer_readiness_script_contracts(self) -> None:
+        """The operationId contract must remain reachable from exact-head CI."""
+
+        workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("python -m pytest -q scripts", workflow)
 
     def test_current_buyer_contract_has_unique_operation_ids(self) -> None:
         """The repository-owned buyer contract must contain no missing or duplicate IDs."""

@@ -66,6 +66,7 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
      * @param subjectId subject claim
      * @param permissions permission claims
      * @throws IllegalArgumentException when tenant or subject authority is absent
+     *         or control-corrupted
      */
     public TenantContext {
         tenantId = requireAuthority(tenantId, "tenantId");
@@ -79,7 +80,7 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
      * Builds a tenant context from request headers.
      *
      * @param headers request headers
-     * @return tenant context when required claims are present
+     * @return tenant context when required claims are present and control-safe
      */
     public static Optional<TenantContext> fromHeaders(HttpHeaders headers) {
         if (headers == null) {
@@ -130,6 +131,12 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
     }
 
     private static String requireAuthority(String value, String claimName) {
+        if (value == null) {
+            throw new IllegalArgumentException(claimName + " is required");
+        }
+        if (value.codePoints().anyMatch(TenantContext::isDisallowedClaimCharacter)) {
+            throw new IllegalArgumentException(claimName + " must not contain control characters");
+        }
         String sanitized = sanitize(value);
         if (sanitized == null) {
             throw new IllegalArgumentException(claimName + " is required");
@@ -138,13 +145,19 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
     }
 
     private static String sanitize(String value) {
-        if (value == null) {
+        if (value == null
+                || value.codePoints().anyMatch(TenantContext::isDisallowedClaimCharacter)) {
             return null;
         }
 
-        String sanitized = value
-                .replace("\u0000", "")
-                .strip();
+        String sanitized = value.strip();
         return sanitized.isEmpty() ? null : sanitized;
+    }
+
+    private static boolean isDisallowedClaimCharacter(int codePoint) {
+        int characterType = Character.getType(codePoint);
+        return Character.isISOControl(codePoint)
+                || characterType == Character.LINE_SEPARATOR
+                || characterType == Character.PARAGRAPH_SEPARATOR;
     }
 }

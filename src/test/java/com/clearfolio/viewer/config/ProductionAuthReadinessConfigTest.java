@@ -10,10 +10,12 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class ProductionAuthReadinessConfigTest {
 
+    private static final String TENANT_SECRET_32_BYTES = "t".repeat(32);
+    private static final String ARTIFACT_SECRET_32_BYTES = "a".repeat(32);
     private static final String STABLE_ARTIFACT_TOKEN_SECRET =
-            "clearfolio.artifact-token.secret=stable-artifact-token-secret";
-    private static final String MINIMUM_UTF8_TENANT_SECRET = "éééééééé";
-    private static final String MINIMUM_UTF8_ARTIFACT_SECRET = "界界界界界a";
+            "clearfolio.artifact-token.secret=" + ARTIFACT_SECRET_32_BYTES;
+    private static final String MINIMUM_UTF8_TENANT_SECRET = "é".repeat(16);
+    private static final String MINIMUM_UTF8_ARTIFACT_SECRET = "界".repeat(10) + "aa";
 
     @Test
     void productionProfileFailsWithoutSignedTenantClaimsSecret() {
@@ -25,37 +27,37 @@ class ProductionAuthReadinessConfigTest {
     void productionReadinessFailsWhenTenantSecretIsExplicitlyNull() {
         assertThatThrownBy(() -> new ProductionAuthReadinessConfig(
                         null,
-                        "stable-artifact-token-secret"))
+                        ARTIFACT_SECRET_32_BYTES))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("production profile requires clearfolio.tenant-claims.hmac-secret");
     }
 
     @Test
-    void productionProfileFailsWithShortSignedTenantClaimsSecret() {
+    void productionProfileRejectsPreviouslyAcceptedSixteenByteTenantSecret() {
         productionRunner()
                 .withPropertyValues(
-                        "clearfolio.tenant-claims.hmac-secret=short-hmac-key!",
+                        "clearfolio.tenant-claims.hmac-secret=0123456789abcdef",
                         STABLE_ARTIFACT_TOKEN_SECRET)
                 .run(context -> assertThat(context.getStartupFailure())
                         .hasRootCauseMessage(
-                                "production profile requires clearfolio.tenant-claims.hmac-secret with at least 16 UTF-8 bytes"
+                                "production profile requires clearfolio.tenant-claims.hmac-secret with at least 32 UTF-8 bytes"
                         ));
     }
 
     @Test
     void productionReadinessMeasuresEffectiveTenantClaimsKeyAfterSanitization() {
         assertThatThrownBy(() -> new ProductionAuthReadinessConfig(
-                        "               a",
-                        "stable-artifact-token-secret"))
+                        "                               a",
+                        ARTIFACT_SECRET_32_BYTES))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("production profile requires clearfolio.tenant-claims.hmac-secret with at least 16 UTF-8 bytes");
+                .hasMessage("production profile requires clearfolio.tenant-claims.hmac-secret with at least 32 UTF-8 bytes");
     }
 
     @Test
     void productionReadinessRejectsTenantSecretChangedByRuntimeSanitization() {
         assertThatThrownBy(() -> new ProductionAuthReadinessConfig(
-                        " strong-tenant-signing-key ",
-                        "stable-artifact-token-secret"))
+                        " " + TENANT_SECRET_32_BYTES + " ",
+                        ARTIFACT_SECRET_32_BYTES))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage(
                         "production profile requires clearfolio.tenant-claims.hmac-secret without NUL or surrounding whitespace"
@@ -65,8 +67,8 @@ class ProductionAuthReadinessConfigTest {
     @Test
     void productionReadinessRejectsTenantSecretContainingNul() {
         assertThatThrownBy(() -> new ProductionAuthReadinessConfig(
-                        "abcdefghijklmnop\u0000q",
-                        "stable-artifact-token-secret"))
+                        TENANT_SECRET_32_BYTES + "\u0000q",
+                        ARTIFACT_SECRET_32_BYTES))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage(
                         "production profile requires clearfolio.tenant-claims.hmac-secret without NUL or surrounding whitespace"
@@ -76,8 +78,8 @@ class ProductionAuthReadinessConfigTest {
     @Test
     void productionReadinessRejectsWhitespaceOnlyTenantSecret() {
         assertThatThrownBy(() -> new ProductionAuthReadinessConfig(
-                        "                ",
-                        "stable-artifact-token-secret"))
+                        "                                ",
+                        ARTIFACT_SECRET_32_BYTES))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("production profile requires clearfolio.tenant-claims.hmac-secret");
     }
@@ -85,7 +87,7 @@ class ProductionAuthReadinessConfigTest {
     @Test
     void productionProfileFailsWithoutStableArtifactTokenSecret() {
         productionRunner()
-                .withPropertyValues("clearfolio.tenant-claims.hmac-secret=0123456789abcdef")
+                .withPropertyValues("clearfolio.tenant-claims.hmac-secret=" + TENANT_SECRET_32_BYTES)
                 .run(context -> assertThat(context.getStartupFailure())
                         .hasRootCauseMessage("production profile requires clearfolio.artifact-token.secret"));
     }
@@ -93,30 +95,31 @@ class ProductionAuthReadinessConfigTest {
     @Test
     void productionReadinessRejectsWhitespaceOnlyArtifactTokenSecret() {
         assertThatThrownBy(() -> new ProductionAuthReadinessConfig(
-                        "production-secret",
-                        "                "))
+                        TENANT_SECRET_32_BYTES,
+                        "                                "))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("production profile requires clearfolio.artifact-token.secret");
     }
 
     @Test
-    void productionProfileFailsWithShortArtifactTokenSecret() {
+    void productionProfileRejectsPreviouslyAcceptedSixteenByteArtifactSecret() {
         productionRunner()
                 .withPropertyValues(
-                        "clearfolio.tenant-claims.hmac-secret=0123456789abcdef",
-                        "clearfolio.artifact-token.secret=short-art-key!")
+                        "clearfolio.tenant-claims.hmac-secret=" + TENANT_SECRET_32_BYTES,
+                        "clearfolio.artifact-token.secret=0123456789abcdef")
                 .run(context -> assertThat(context.getStartupFailure())
                         .hasRootCauseMessage(
-                                "production profile requires clearfolio.artifact-token.secret with at least 16 UTF-8 bytes"
+                                "production profile requires clearfolio.artifact-token.secret with at least 32 UTF-8 bytes"
                         ));
     }
 
     @Test
     void productionProfileFailsWhenTenantAndArtifactSigningKeysAreReused() {
+        String sharedSecret = "s".repeat(32);
         productionRunner()
                 .withPropertyValues(
-                        "clearfolio.tenant-claims.hmac-secret=shared-signing-secret",
-                        "clearfolio.artifact-token.secret=shared-signing-secret")
+                        "clearfolio.tenant-claims.hmac-secret=" + sharedSecret,
+                        "clearfolio.artifact-token.secret=" + sharedSecret)
                 .run(context -> assertThat(context.getStartupFailure())
                         .hasRootCauseMessage(
                                 "production profile requires distinct tenant-claims and artifact-token HMAC secrets"
@@ -125,16 +128,17 @@ class ProductionAuthReadinessConfigTest {
 
     @Test
     void productionReadinessRejectsPurposeReuseAfterTenantNormalization() {
+        String sharedSecret = "s".repeat(32);
         assertThatThrownBy(() -> new ProductionAuthReadinessConfig(
-                        " shared-signing-secret ",
-                        "shared-signing-secret"))
+                        " " + sharedSecret + " ",
+                        sharedSecret))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("production profile requires distinct tenant-claims and artifact-token HMAC secrets");
     }
 
     @Test
     void productionProfileStartsAtMinimumSignedTenantClaimsSecretLength() {
-        assertThat(MINIMUM_UTF8_TENANT_SECRET.getBytes(StandardCharsets.UTF_8)).hasSize(16);
+        assertThat(MINIMUM_UTF8_TENANT_SECRET.getBytes(StandardCharsets.UTF_8)).hasSize(32);
         productionRunner()
                 .withPropertyValues(
                         "clearfolio.tenant-claims.hmac-secret=" + MINIMUM_UTF8_TENANT_SECRET,
@@ -144,19 +148,19 @@ class ProductionAuthReadinessConfigTest {
 
     @Test
     void productionProfileStartsAtMinimumArtifactTokenSecretLength() {
-        assertThat(MINIMUM_UTF8_ARTIFACT_SECRET.getBytes(StandardCharsets.UTF_8)).hasSize(16);
+        assertThat(MINIMUM_UTF8_ARTIFACT_SECRET.getBytes(StandardCharsets.UTF_8)).hasSize(32);
         productionRunner()
                 .withPropertyValues(
-                        "clearfolio.tenant-claims.hmac-secret=production-secret",
+                        "clearfolio.tenant-claims.hmac-secret=" + TENANT_SECRET_32_BYTES,
                         "clearfolio.artifact-token.secret=" + MINIMUM_UTF8_ARTIFACT_SECRET)
                 .run(context -> assertThat(context.getStartupFailure()).isNull());
     }
 
     @Test
-    void productionProfileStartsWithSignedTenantClaimsSecret() {
+    void productionProfileStartsWithDistinctThirtyTwoByteSigningSecrets() {
         productionRunner()
                 .withPropertyValues(
-                        "clearfolio.tenant-claims.hmac-secret=production-secret",
+                        "clearfolio.tenant-claims.hmac-secret=" + TENANT_SECRET_32_BYTES,
                         STABLE_ARTIFACT_TOKEN_SECRET)
                 .run(context -> assertThat(context.getStartupFailure()).isNull());
     }

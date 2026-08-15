@@ -231,6 +231,36 @@ class WorkflowRegistryAuditTest(unittest.TestCase):
                 observed_at="2026-08-12T13:00:00Z",
             )
 
+    def test_rejects_noncanonical_or_invalid_observation_time(self) -> None:
+        invalid_values = (
+            "now",
+            "2026-08-12T13:00:00+09:00",
+            "2026-13-12T13:00:00Z",
+            "2026-08-12 13:00:00Z",
+            "2026-08-12T13:00:00Z\nforged",
+        )
+        for observed_at in invalid_values:
+            with self.subTest(observed_at=observed_at):
+                with self.assertRaisesRegex(AuditIncompleteError, "observation time must be canonical UTC"):
+                    audit_workflow_registry(
+                        pages=[{"total_count": 0, "workflows": []}],
+                        tree_paths=set(),
+                        default_branch_sha_before="6" * 40,
+                        default_branch_sha_after="6" * 40,
+                        observed_at=observed_at,
+                    )
+
+    def test_accepts_canonical_utc_observation_time_with_fractional_seconds(self) -> None:
+        evidence = audit_workflow_registry(
+            pages=[{"total_count": 0, "workflows": []}],
+            tree_paths=set(),
+            default_branch_sha_before="7" * 40,
+            default_branch_sha_after="7" * 40,
+            observed_at="2026-08-12T13:00:00.123456Z",
+        )
+
+        self.assertEqual("2026-08-12T13:00:00.123456Z", evidence["observed_at"])
+
     def test_rejects_malformed_registry_evidence_and_authority(self) -> None:
         valid_record = {
             "id": 21,

@@ -2,15 +2,17 @@ package com.clearfolio.viewer.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 
 /**
- * Verifies that directly constructed tenant contexts cannot carry absent or
- * control-corrupted authority across internal service boundaries.
+ * Verifies that directly constructed and header-derived tenant contexts cannot
+ * carry absent or control-corrupted authority across service boundaries.
  */
 class TenantContextAuthorityInvariantTest {
 
@@ -76,5 +78,24 @@ class TenantContextAuthorityInvariantTest {
 
             assertEquals("subjectId must not contain control characters", exception.getMessage());
         }
+    }
+
+    @Test
+    void headerParsingRejectsControlCorruptedClaimsAndPermissions() {
+        HttpHeaders controlTenant = headers("tenant\n-a", "subject-a", "job:read");
+        HttpHeaders controlSubject = headers("tenant-a", "subject\u2028-a", "job:read");
+        HttpHeaders controlPermission = headers("tenant-a", "subject-a", "job:\u0000read");
+
+        assertTrue(TenantContext.fromHeaders(controlTenant).isEmpty());
+        assertTrue(TenantContext.fromHeaders(controlSubject).isEmpty());
+        assertTrue(TenantContext.fromHeaders(controlPermission).isEmpty());
+    }
+
+    private static HttpHeaders headers(String tenantId, String subjectId, String permissions) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(TenantContext.TENANT_ID_HEADER, tenantId);
+        headers.set(TenantContext.SUBJECT_ID_HEADER, subjectId);
+        headers.set(TenantContext.PERMISSIONS_HEADER, permissions);
+        return headers;
     }
 }

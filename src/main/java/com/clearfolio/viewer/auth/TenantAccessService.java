@@ -6,6 +6,7 @@ import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Objects;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -17,6 +18,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.clearfolio.viewer.credential.CredentialPurpose;
+import com.clearfolio.viewer.credential.CredentialReference;
+import com.clearfolio.viewer.credential.CredentialRegistry;
+import com.clearfolio.viewer.credential.CredentialSnapshot;
 import com.clearfolio.viewer.model.ConversionJob;
 
 /**
@@ -27,8 +32,12 @@ public class TenantAccessService {
 
     private static final String HMAC_SHA_256 = "HmacSHA256";
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
+    private static final CredentialReference TENANT_CLAIMS_CREDENTIAL = new CredentialReference(
+            "tenant-claims-signing",
+            CredentialPurpose.TENANT_CLAIMS_SIGNING
+    );
 
-    private final String claimsHmacSecret;
+    private final byte[] claimsHmacSecret;
     private final long maxSkewSeconds;
     private final Clock clock;
 
@@ -42,6 +51,11 @@ public class TenantAccessService {
     /**
      * Creates an access service with optional signed gateway claim validation.
      *
+     * <p>This compatibility constructor remains the current Spring wiring until
+     * the credential-registry bootstrap stack is integrated. Production
+     * application wiring must migrate to the registry-backed constructor rather
+     * than treating this property as long-lived secret authority.</p>
+     *
      * @param claimsHmacSecret optional shared gateway HMAC secret
      * @param maxSkewSeconds maximum accepted clock skew in seconds
      */
@@ -52,10 +66,46 @@ public class TenantAccessService {
         this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
     }
 
-    TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {
-        this.claimsHmacSecret = clean(claimsHmacSecret);
+    /**
+     * Creates a verifier from the provider-neutral credential registry.
+     *
+     * <p>The server-owned reference is fixed to tenant-claim signing. The
+     * returned snapshot must bind both the expected logical credential and
+     * purpose before its opaque bytes become verification authority.</p>
+     *
+     * @param credentialRegistry provider-neutral credential authority
+     * @param maxSkewSeconds maximum accepted clock skew in seconds
+     * @param clock verification clock
+     * @throws NullPointerException when registry, clock, or snapshot is absent
+     * @throws IllegalStateException when registry metadata does not match the
+     *         server-owned tenant-claims reference
+     */
+    public TenantAccessService(
+            CredentialRegistry credentialRegistry,
+            long maxSkewSeconds,
+            Clock clock
+    ) {
+        CredentialSnapshot snapshot = Objects.requireNonNull(
+                Objects.requireNonNull(credentialRegistry, "credentialRegistry")
+                        .resolve(TENANT_CLAIMS_CREDENTIAL),
+                "tenant claims credential snapshot"
+        );
+        if (!TENANT_CLAIMS_CREDENTIAL.credentialName().equals(snapshot.credentialId())
+                || snapshot.purpose() != TENANT_CLAIMS_CREDENTIAL.purpose()) {
+            throw new IllegalStateException("tenant claims credential purpose mismatch");
+        }
+        this.claimsHmacSecret = snapshot.secretBytes();
         this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
-        this.clock = clock;
+        this.clock = Objects.requireNonNull(clock, "clock");
+    }
+
+    TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {
+        String cleanedSecret = clean(claimsHmacSecret);
+        this.claimsHmacSecret = cleanedSecret == null
+                ? null
+                : cleanedSecret.getBytes(StandardCharsets.UTF_8);
+        this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
+        this.clock = Objects.requireNonNull(clock, "clock");
     }
 
     /**
@@ -135,6 +185,14 @@ public class TenantAccessService {
      * @return Base64URL HMAC signature
      */
     public static String signClaims(TenantContext context, String issuedAt, String secret) {
+        return signClaims(
+                context,
+                issuedAt,
+                Objects.requireNonNull(secret, "secret").getBytes(StandardCharsets.UTF_8)
+        );
+    }
+
+    private static String signClaims(TenantContext context, String issuedAt, byte[] secret) {
         String payload = String.join("\n",
                 context.tenantId(),
                 context.subjectId(),
@@ -144,10 +202,10 @@ public class TenantAccessService {
         return hmac(payload, secret);
     }
 
-    private static String hmac(String payload, String secret) {
+    private static String hmac(String payload, byte[] secret) {
         try {
             Mac mac = Mac.getInstance(HMAC_SHA_256);
-            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_SHA_256));
+            mac.init(new SecretKeySpec(secret, HMAC_SHA_256));
             return URL_ENCODER.encodeToString(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
         } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("tenant claims signing failed", ex);

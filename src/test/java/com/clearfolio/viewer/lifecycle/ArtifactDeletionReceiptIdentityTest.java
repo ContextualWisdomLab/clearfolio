@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -57,7 +58,7 @@ class ArtifactDeletionReceiptIdentityTest {
     @Test
     void rejectsBlankOrOversizedTenantAndAuditIdentifiers() {
         assertEquals(
-                "tenantId must not be blank",
+                "tenantId must not contain control characters",
                 assertThrows(
                         IllegalArgumentException.class,
                         () -> new ArtifactDeletionReceiptIdentity(
@@ -84,6 +85,53 @@ class ArtifactDeletionReceiptIdentityTest {
                         () -> new ArtifactDeletionReceiptIdentity(
                                 REQUEST_ID, "tenant-example", JOB_ID, CHECKSUM, "a".repeat(257), REQUESTED_AT))
                         .getMessage());
+    }
+
+    @Test
+    void rejectsControlCorruptedTenantAndAuditIdentifiers() {
+        for (String tenantId : List.of(
+                "tenant\u0000-a",
+                "tenant\n-a",
+                "tenant\u001B-a",
+                "tenant\u2028-a"
+        )) {
+            assertEquals(
+                    "tenantId must not contain control characters",
+                    assertThrows(
+                            IllegalArgumentException.class,
+                            () -> new ArtifactDeletionReceiptIdentity(
+                                    REQUEST_ID,
+                                    tenantId,
+                                    JOB_ID,
+                                    CHECKSUM,
+                                    "audit-v1:abc",
+                                    REQUESTED_AT
+                            )
+                    ).getMessage()
+            );
+        }
+
+        for (String auditCorrelationId : List.of(
+                "audit\u0000-v1",
+                "audit\r-v1",
+                "audit\u007F-v1",
+                "audit\u2029-v1"
+        )) {
+            assertEquals(
+                    "auditCorrelationId must not contain control characters",
+                    assertThrows(
+                            IllegalArgumentException.class,
+                            () -> new ArtifactDeletionReceiptIdentity(
+                                    REQUEST_ID,
+                                    "tenant-example",
+                                    JOB_ID,
+                                    CHECKSUM,
+                                    auditCorrelationId,
+                                    REQUESTED_AT
+                            )
+                    ).getMessage()
+            );
+        }
     }
 
     @Test

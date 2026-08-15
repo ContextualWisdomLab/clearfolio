@@ -7,11 +7,15 @@ classification.
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
 import re
 from typing import Any, Final, Iterable, Mapping
 
 _SHA_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[0-9a-f]{40}$")
+_OBSERVED_AT_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
+)
 _REPOSITORY_WORKFLOW_PREFIX: Final[str] = ".github/workflows/"
 _DYNAMIC_WORKFLOW_PREFIX: Final[str] = "dynamic/"
 
@@ -41,6 +45,18 @@ def _require_text(value: object, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise AuditIncompleteError(f"{label} must be a non-empty string")
     return value
+
+
+def _require_observed_at(value: object) -> str:
+    """Return one syntactically and calendrically valid canonical UTC instant."""
+    text = _require_text(value, "observation time")
+    if _OBSERVED_AT_PATTERN.fullmatch(text) is None:
+        raise AuditIncompleteError("observation time must be canonical UTC")
+    try:
+        datetime.fromisoformat(text[:-1] + "+00:00")
+    except ValueError as error:
+        raise AuditIncompleteError("observation time must be canonical UTC") from error
+    return text
 
 
 def _normalize_tree_paths(tree_paths: Iterable[str]) -> set[str]:
@@ -150,21 +166,21 @@ def audit_workflow_registry(
         tree_paths: Exact case-sensitive paths from the protected default-branch tree.
         default_branch_sha_before: Default-branch SHA resolved before evidence collection.
         default_branch_sha_after: Default-branch SHA resolved after evidence collection.
-        observed_at: Caller-owned observation timestamp recorded with the evidence.
+        observed_at: Canonical UTC observation instant recorded with the evidence.
 
     Returns:
         A JSON-serializable evidence mapping containing the stable revision, pagination
         receipt, and each validated workflow identity's classification.
 
     Raises:
-        AuditIncompleteError: If pagination, branch identity, registry records, or tree
-            evidence is incomplete, contradictory, or malformed.
+        AuditIncompleteError: If pagination, branch identity, registry records, tree
+            evidence, or observation time is incomplete, contradictory, or malformed.
     """
     before = _require_sha(default_branch_sha_before, "default branch SHA before audit")
     after = _require_sha(default_branch_sha_after, "default branch SHA after audit")
     if before != after:
         raise AuditIncompleteError("default branch moved during audit")
-    observation = _require_text(observed_at, "observation time")
+    observation = _require_observed_at(observed_at)
     exact_tree_paths = _normalize_tree_paths(tree_paths)
     workflow_count, raw_records, pagination_receipt = _flatten_pages(pages)
 

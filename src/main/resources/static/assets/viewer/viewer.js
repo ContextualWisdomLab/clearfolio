@@ -3,12 +3,6 @@ import { setBusyState } from "./dom-utils.js";
 const POLL_DELAY_MS = 1500;
 const PDF_JS_MODULE_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.mjs";
 const PDF_JS_WORKER_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.worker.mjs";
-const DEMO_AUTH_HEADERS = {
-  "X-Clearfolio-Tenant-Id": "buyer-demo",
-  "X-Clearfolio-Subject-Id": "buyer-demo-operator",
-  "X-Clearfolio-Permissions": "job:read,viewer:read",
-};
-
 const el = {
   docMeta: document.getElementById("doc-meta"),
   liveStatus: document.getElementById("live-status"),
@@ -191,7 +185,6 @@ async function fetchJson(url, signal) {
   const res = await fetch(url, {
     headers: {
       Accept: "application/json",
-      ...DEMO_AUTH_HEADERS,
     },
     credentials: "same-origin",
     signal,

@@ -7,10 +7,10 @@ import java.util.UUID;
 /**
  * Immutable durable evidence for one generation-fenced conversion attempt.
  *
- * <p>The record binds one attempt to the exact job generation and worker lease
- * that claimed it. A terminal outcome is monotonic: an exact replay is
- * idempotent, while a different outcome or completion timestamp is rejected so
- * stale workers cannot rewrite already-recorded execution evidence.</p>
+ * <p>The record binds one attempt to the exact job generation, attempt number,
+ * and worker lease that claimed it. A terminal outcome is monotonic: an exact
+ * replay is idempotent, while a different outcome or completion timestamp is
+ * rejected so stale workers cannot rewrite already-recorded execution evidence.</p>
  */
 public final class ConversionAttemptRecord {
 
@@ -131,23 +131,29 @@ public final class ConversionAttemptRecord {
      *
      * <p>Failed terminal attempts no longer authorize artifact publication. A
      * successful terminal attempt remains authorized so persistence of the
-     * success outcome may precede final artifact publication.</p>
+     * success outcome may precede final artifact publication. The attempt number
+     * is an explicit fence: another attempt under the same job, generation, and
+     * lease cannot reuse this record's publication authority.</p>
      *
      * @param candidateJobId candidate permanently reserved job identifier
      * @param candidateGeneration candidate lifecycle generation
+     * @param candidateAttempt candidate positive attempt sequence number
      * @param candidateLeaseId candidate worker-lease identifier
-     * @return true only when the attempt may publish and job, generation, and lease all match;
-     *         false when a candidate identifier is null or the attempt failed terminally
+     * @return true only when the attempt may publish and all immutable execution
+     *         coordinates match; false when a candidate identifier is null or
+     *         the attempt failed terminally
      */
     public boolean authorizes(
             UUID candidateJobId,
             long candidateGeneration,
+            int candidateAttempt,
             UUID candidateLeaseId) {
         boolean publicationState = state == ConversionAttemptState.CLAIMED
                 || state == ConversionAttemptState.SUCCEEDED;
         return publicationState
                 && jobId.equals(candidateJobId)
                 && generation == candidateGeneration
+                && attempt == candidateAttempt
                 && leaseId.equals(candidateLeaseId);
     }
 

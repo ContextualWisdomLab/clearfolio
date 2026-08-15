@@ -83,10 +83,38 @@ class KpiSnapshotLedgerTest {
     }
 
     @Test
+    void migratesEmptyLegacySnapshotToZeroTerminalRate() throws Exception {
+        Path ledgerPath = Files.writeString(
+                tempDir.resolve("empty-legacy-kpi-snapshot.log"),
+                legacySnapshotLine(0, 0, 0, 0, 0, 0, 0.0, null) + System.lineSeparator(),
+                StandardCharsets.UTF_8
+        );
+
+        KpiSnapshotRecord migrated = new KpiSnapshotLedger(ledgerPath, CLOCK)
+                .snapshotsFor("tenant-a")
+                .getFirst();
+
+        assertEquals(0, migrated.totalJobs());
+        assertEquals(0.0, migrated.conversionSuccessRate());
+        assertNull(migrated.p95TimeToPreviewMs());
+    }
+
+    @Test
     void rejectsUnknownMetricVersionsAndInconsistentStoredRates() throws Exception {
         assertInvalidLedger(currentSnapshotLine("unknown-v1", 4, 1, 1, 1, 1, 0, 0.5, 123L));
         assertInvalidLedger(currentSnapshotLine("terminal-outcomes-v1", 4, 1, 1, 1, 1, 0, 0.25, 123L));
         assertInvalidLedger(legacySnapshotLine(4, 1, 1, 1, 1, 0, 0.5, 123L));
+        assertInvalidLedger(currentSnapshotLine(
+                "terminal-outcomes-v1",
+                4,
+                1,
+                1,
+                1,
+                1,
+                0,
+                0.5,
+                123L
+        ).replace("SNAPSHOT", "BROKEN"));
     }
 
     @Test

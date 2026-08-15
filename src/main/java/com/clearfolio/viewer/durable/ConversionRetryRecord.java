@@ -7,10 +7,10 @@ import java.util.UUID;
 /**
  * Immutable durable schedule record for one conversion retry attempt.
  *
- * <p>The record binds retry authority to an exact permanently identified job
- * generation and attempt number. Persisting this state allows an execution
- * adapter to recover retry timing after process restart instead of treating an
- * in-memory delayed task as the source of truth.</p>
+ * <p>The record binds retry authority to an exact permanently identified job,
+ * lifecycle generation, and attempt number. Persisting this state allows an
+ * execution adapter to recover retry timing after process restart instead of
+ * treating an in-memory delayed task as the source of truth.</p>
  */
 public final class ConversionRetryRecord {
 
@@ -82,14 +82,25 @@ public final class ConversionRetryRecord {
     }
 
     /**
-     * Checks whether candidate job authority matches this scheduled generation.
+     * Checks whether candidate execution authority matches this scheduled retry.
+     *
+     * <p>Attempt identity is part of the fence. A retry record for an earlier or
+     * later attempt must not authorize execution merely because the job and
+     * lifecycle generation still match.</p>
      *
      * @param candidateJobId candidate conversion-job identifier
      * @param candidateGeneration candidate lifecycle generation
-     * @return true only when both authority components exactly match
+     * @param candidateAttempt candidate retry attempt number
+     * @return true only when job, generation, and attempt exactly match
      */
-    public boolean authorizes(UUID candidateJobId, long candidateGeneration) {
-        return jobId.equals(candidateJobId) && generation == candidateGeneration;
+    public boolean authorizes(
+            UUID candidateJobId,
+            long candidateGeneration,
+            int candidateAttempt
+    ) {
+        return jobId.equals(candidateJobId)
+                && generation == candidateGeneration
+                && attempt == candidateAttempt;
     }
 
     /**

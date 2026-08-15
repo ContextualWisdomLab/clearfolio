@@ -183,15 +183,20 @@ public class ArtifactLinkService {
     }
 
     /**
-     * Verifies a token before serving artifact bytes.
+     * Authenticates a read token before any document or artifact lookup occurs.
+     *
+     * <p>This phase verifies token syntax, signature, lifetime, read scope,
+     * document binding, issued-link authority, and revocation state without
+     * requiring conversion-job or artifact bytes. Callers must still use
+     * {@link #verifyReadToken(UUID, ConversionJob, byte[], String)} after lookup
+     * to verify tenant and artifact-checksum binding before returning bytes.
      *
      * @param docId route document identifier
-     * @param job conversion job
-     * @param artifactBytes stored artifact bytes
      * @param token supplied artifact token
-     * @return verified artifact token claims
+     * @return preauthorized artifact token claims
+     * @throws ArtifactTokenException when token authority is absent or invalid
      */
-    public ArtifactTokenClaims verifyReadToken(UUID docId, ConversionJob job, byte[] artifactBytes, String token) {
+    public ArtifactTokenClaims preauthorizeReadToken(UUID docId, String token) {
         if (token == null || token.isBlank()) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token required");
         }
@@ -216,6 +221,20 @@ public class ArtifactLinkService {
                 || !record.artifactChecksum().equals(claims.artifactChecksum())) {
             throw new ArtifactTokenException(HttpStatus.FORBIDDEN, "artifact token ledger mismatch");
         }
+        return claims;
+    }
+
+    /**
+     * Verifies a token before serving artifact bytes.
+     *
+     * @param docId route document identifier
+     * @param job conversion job
+     * @param artifactBytes stored artifact bytes
+     * @param token supplied artifact token
+     * @return verified artifact token claims
+     */
+    public ArtifactTokenClaims verifyReadToken(UUID docId, ConversionJob job, byte[] artifactBytes, String token) {
+        ArtifactTokenClaims claims = preauthorizeReadToken(docId, token);
         if (job == null || !job.belongsToTenant(claims.tenantId())) {
             throw new ArtifactTokenException(HttpStatus.FORBIDDEN, "artifact token tenant mismatch");
         }

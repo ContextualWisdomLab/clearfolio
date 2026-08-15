@@ -45,7 +45,7 @@ jobs:
             assertEquals(1, attempts.get());
             assertEquals(1, job.getAttemptCount());
             assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
-'''
+          '''
           new = '''            await(
                     () -> attempts.get() >= 1 && job.getStatus() == ConversionJobStatus.SUCCEEDED,
                     3_000
@@ -54,7 +54,7 @@ jobs:
             assertEquals(1, attempts.get());
             assertEquals(1, job.getAttemptCount());
             assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
-'''
+          '''
           if source.count(old) != 1:
               raise SystemExit("expected retry completion assertion was not found exactly once")
           path.write_text(source.replace(old, new), encoding="utf-8")

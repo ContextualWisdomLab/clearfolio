@@ -132,7 +132,7 @@ class AdminControllerTest {
     void retryDeadLetteredUsesTenantScopedMutationWhenAccepted() {
         UUID jobId = UUID.randomUUID();
         TenantContext context = tenantContext();
-        when(conversionService.retryDeadLettered(jobId, "admin", context))
+        when(conversionService.retryDeadLettered(jobId, SUBJECT_ID, context))
                 .thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
@@ -141,15 +141,15 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isAccepted();
 
-        verify(conversionService).retryDeadLettered(jobId, "admin", context);
-        verify(conversionService, never()).retryDeadLettered(jobId, "admin");
+        verify(conversionService).retryDeadLettered(jobId, SUBJECT_ID, context);
+        verify(conversionService, never()).retryDeadLettered(jobId, SUBJECT_ID);
     }
 
     @Test
     void retryDeadLetteredConcealsMissingOrForeignJobsAsNotFound() {
         UUID jobId = UUID.randomUUID();
         TenantContext context = tenantContext();
-        when(conversionService.retryDeadLettered(jobId, "admin", context))
+        when(conversionService.retryDeadLettered(jobId, SUBJECT_ID, context))
                 .thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
@@ -158,15 +158,15 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isNotFound();
 
-        verify(conversionService).retryDeadLettered(jobId, "admin", context);
-        verify(conversionService, never()).retryDeadLettered(jobId, "admin");
+        verify(conversionService).retryDeadLettered(jobId, SUBJECT_ID, context);
+        verify(conversionService, never()).retryDeadLettered(jobId, SUBJECT_ID);
     }
 
     @Test
     void retryDeadLetteredReturnsConflictWhenOwnedJobIsNotEligible() {
         UUID jobId = UUID.randomUUID();
         TenantContext context = tenantContext();
-        when(conversionService.retryDeadLettered(jobId, "admin", context))
+        when(conversionService.retryDeadLettered(jobId, SUBJECT_ID, context))
                 .thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 
         webTestClient.post()
@@ -175,8 +175,8 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isEqualTo(409);
 
-        verify(conversionService).retryDeadLettered(jobId, "admin", context);
-        verify(conversionService, never()).retryDeadLettered(jobId, "admin");
+        verify(conversionService).retryDeadLettered(jobId, SUBJECT_ID, context);
+        verify(conversionService, never()).retryDeadLettered(jobId, SUBJECT_ID);
     }
 
     @Test

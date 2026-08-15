@@ -1,0 +1,85 @@
+name: Repair worker retry completion race
+
+on:
+  push:
+    branches:
+      - test/worker-retry-completion-race-20260815
+    paths:
+      - .github/workflows/repair-worker-retry-completion-race.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-worker-retry-completion-race
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact trigger revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Use preinstalled Temurin JDK 21
+        shell: bash
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
+
+      - name: Make retry completion assertion observe the terminal state
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/test/java/com/clearfolio/viewer/service/DefaultConversionWorkerTest.java")
+          source = path.read_text(encoding="utf-8")
+          old = '''            await(() -> attempts.get() >= 1, 3_000);
+
+            assertEquals(1, attempts.get());
+            assertEquals(1, job.getAttemptCount());
+            assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
+'''
+          new = '''            await(
+                    () -> attempts.get() >= 1 && job.getStatus() == ConversionJobStatus.SUCCEEDED,
+                    3_000
+            );
+
+            assertEquals(1, attempts.get());
+            assertEquals(1, job.getAttemptCount());
+            assertEquals(ConversionJobStatus.SUCCEEDED, job.getStatus());
+'''
+          if source.count(old) != 1:
+              raise SystemExit("expected retry completion assertion was not found exactly once")
+          path.write_text(source.replace(old, new), encoding="utf-8")
+          PY
+
+      - name: Verify complete repository acceptance
+        shell: bash
+        run: |
+          mvn -B --no-transfer-progress verify
+          python3 scripts/verify_maven_test_reports.py
+          git diff --check
+
+      - name: Publish verified test-only repair and remove one-shot workflow
+        shell: bash
+        env:
+          TARGET_BRANCH: test/worker-retry-completion-race-20260815
+          TRIGGER_SHA: ${{ github.sha }}
+        run: |
+          remote_sha="$(git ls-remote origin "refs/heads/$TARGET_BRANCH" | cut -f1)"
+          test "$remote_sha" = "$TRIGGER_SHA"
+          rm .github/workflows/repair-worker-retry-completion-race.yml
+          git config user.name "opencode-agent[bot]"
+          git config user.email "219766164+opencode-agent[bot]@users.noreply.github.com"
+          git add src/test/java/com/clearfolio/viewer/service/DefaultConversionWorkerTest.java
+          git add -u .github/workflows/repair-worker-retry-completion-race.yml
+          git diff --cached --check
+          git commit -m "test(worker): await retry completion before asserting"
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"

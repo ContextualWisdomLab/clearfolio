@@ -33,8 +33,8 @@ class KpiSnapshotLedgerTest {
     void recordsSnapshotsInMemoryAndFiltersByTenant() {
         KpiSnapshotLedger ledger = new KpiSnapshotLedger();
 
-        ledger.recordSnapshot(context("tenant-a"), snapshot(2, 1, 123L));
-        ledger.recordSnapshot(context("tenant-b"), snapshot(1, 0, null));
+        ledger.recordSnapshot(context("tenant-a"), snapshot(2, 1, 1, 123L));
+        ledger.recordSnapshot(context("tenant-b"), snapshot(1, 0, 1, null));
 
         assertEquals(1, ledger.snapshotsFor("tenant-a").size());
         assertEquals(123L, ledger.snapshotsFor("tenant-a").getFirst().p95TimeToPreviewMs());
@@ -47,8 +47,8 @@ class KpiSnapshotLedgerTest {
         Path ledgerPath = tempDir.resolve("kpi-snapshots.log");
         KpiSnapshotLedger ledger = new KpiSnapshotLedger(ledgerPath, CLOCK);
 
-        ledger.recordSnapshot(context("tenant-a"), snapshot(2, 1, 123L));
-        ledger.recordSnapshot(context("tenant-a"), snapshot(0, 0, null));
+        ledger.recordSnapshot(context("tenant-a"), snapshot(2, 1, 1, 123L));
+        ledger.recordSnapshot(context("tenant-a"), snapshot(0, 0, 0, null));
 
         String[] firstFields = Files.readAllLines(ledgerPath, StandardCharsets.UTF_8)
                 .getFirst()
@@ -129,7 +129,10 @@ class KpiSnapshotLedgerTest {
         KpiSnapshotLedger ledger = new KpiSnapshotLedger(ledgerPath, CLOCK);
         Files.writeString(blockedParent, "not a directory", StandardCharsets.UTF_8);
 
-        assertThrows(IllegalStateException.class, () -> ledger.recordSnapshot(context("tenant-a"), snapshot(1, 1, null)));
+        assertThrows(
+                IllegalStateException.class,
+                () -> ledger.recordSnapshot(context("tenant-a"), snapshot(1, 1, 0, null))
+        );
     }
 
     private void assertInvalidLedger(String line) throws Exception {
@@ -146,15 +149,23 @@ class KpiSnapshotLedgerTest {
         return new TenantContext(tenantId, "subject-a", java.util.Set.of(TenantPermissions.ANALYTICS_READ));
     }
 
-    private static KpiSnapshotResponse snapshot(int totalJobs, int succeededJobs, Long p95TimeToPreviewMs) {
+    private static KpiSnapshotResponse snapshot(
+            int totalJobs,
+            int succeededJobs,
+            int failedJobs,
+            Long p95TimeToPreviewMs
+    ) {
+        int submittedJobs = totalJobs - succeededJobs - failedJobs;
+        int terminalJobs = succeededJobs + failedJobs;
+        double successRate = terminalJobs == 0 ? 0.0 : (double) succeededJobs / terminalJobs;
         return new KpiSnapshotResponse(
                 totalJobs,
-                1,
+                submittedJobs,
                 0,
                 succeededJobs,
-                1,
+                failedJobs,
                 0,
-                0.5,
+                successRate,
                 p95TimeToPreviewMs
         );
     }

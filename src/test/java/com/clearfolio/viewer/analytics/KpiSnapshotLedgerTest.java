@@ -147,6 +147,37 @@ class KpiSnapshotLedgerTest {
     }
 
     @Test
+    void rejectsNonFiniteOutOfRangeAndNegativeLatencyEvidence() throws Exception {
+        String current = currentSnapshotLine(
+                "terminal-outcomes-v1", 2, 0, 0, 1, 1, 0, 0.5, 123L
+        );
+        assertInvalidLedger(current.replace("\t0.5\t", "\tNaN\t"));
+        assertInvalidLedger(current.replace("\t0.5\t", "\tInfinity\t"));
+        assertInvalidLedger(current.replace("\t0.5\t", "\t-Infinity\t"));
+        assertInvalidLedger(current.replace("\t0.5\t", "\t-0.01\t"));
+        assertInvalidLedger(current.replace("\t0.5\t", "\t1.01\t"));
+        assertInvalidLedger(current.replace("\t123", "\t-1"));
+    }
+
+    @Test
+    void acceptsInclusiveKpiNumericBoundaries() throws Exception {
+        assertValidLedger(
+                currentSnapshotLine(
+                        "terminal-outcomes-v1", 1, 0, 0, 0, 1, 0, 0.0, 0L
+                ),
+                0.0,
+                0L
+        );
+        assertValidLedger(
+                currentSnapshotLine(
+                        "terminal-outcomes-v1", 1, 0, 0, 1, 0, 0, 1.0, 0L
+                ),
+                1.0,
+                0L
+        );
+    }
+
+    @Test
     void reportsLoadAndWriteFailures() throws Exception {
         Path directory = tempDir.resolve("directory-ledger");
         Files.createDirectory(directory);
@@ -170,7 +201,25 @@ class KpiSnapshotLedgerTest {
                 StandardCharsets.UTF_8
         );
 
-        assertThrows(IllegalStateException.class, () -> new KpiSnapshotLedger(ledgerPath, CLOCK));
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> new KpiSnapshotLedger(ledgerPath, CLOCK)
+        );
+        assertEquals("kpi snapshot ledger contains an invalid line", error.getMessage());
+    }
+
+    private void assertValidLedger(String line, double expectedRate, Long expectedP95) throws Exception {
+        Path ledgerPath = Files.writeString(
+                tempDir.resolve(UUID.randomUUID() + ".log"),
+                line + System.lineSeparator(),
+                StandardCharsets.UTF_8
+        );
+
+        KpiSnapshotRecord record = new KpiSnapshotLedger(ledgerPath, CLOCK)
+                .snapshotsFor("tenant-a")
+                .getFirst();
+        assertEquals(expectedRate, record.conversionSuccessRate());
+        assertEquals(expectedP95, record.p95TimeToPreviewMs());
     }
 
     private static TenantContext context(String tenantId) {

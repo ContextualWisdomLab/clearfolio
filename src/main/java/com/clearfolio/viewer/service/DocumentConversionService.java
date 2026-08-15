@@ -1,7 +1,5 @@
 package com.clearfolio.viewer.service;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -63,36 +61,6 @@ public interface DocumentConversionService {
     RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId);
 
     /**
-     * Retries only a dead-lettered job owned by the supplied tenant.
-     *
-     * <p>The compatibility default checks ownership before delegating to the
-     * legacy mutation. Durable implementations should override this method with
-     * one storage-scoped, generation-fenced transition.</p>
-     *
-     * @param jobId conversion job identifier
-     * @param operatorId operator identifier that triggered the retry
-     * @param tenantContext authenticated tenant authority
-     * @return retry outcome, with missing and foreign jobs both concealed as
-     *         {@link RetryDeadLetterResult#NOT_FOUND}
-     */
-    default RetryDeadLetterResult retryDeadLettered(
-            UUID jobId,
-            String operatorId,
-            TenantContext tenantContext
-    ) {
-        if (tenantContext == null) {
-            return RetryDeadLetterResult.NOT_FOUND;
-        }
-
-        Optional<ConversionJob> job = getJob(jobId);
-        if (job.isEmpty() || !job.get().belongsToTenant(tenantContext.tenantId())) {
-            return RetryDeadLetterResult.NOT_FOUND;
-        }
-
-        return retryDeadLettered(jobId, operatorId);
-    }
-
-    /**
      * Deletes a conversion job owned by the supplied tenant context.
      *
      * @param jobId conversion job identifier
@@ -127,30 +95,4 @@ public interface DocumentConversionService {
      * @return an iterable of all conversion jobs
      */
     Iterable<ConversionJob> getAllJobs();
-
-    /**
-     * Returns only jobs owned by the supplied authenticated tenant.
-     *
-     * <p>The compatibility default prevents cross-tenant publication even when
-     * an older adapter exposes only a global inventory. Durable implementations
-     * should override this method with a tenant predicate at the storage query
-     * boundary.</p>
-     *
-     * @param tenantContext authenticated tenant authority
-     * @return immutable snapshot of tenant-owned jobs, or an empty result when
-     *         tenant authority is absent
-     */
-    default Iterable<ConversionJob> getAllJobs(TenantContext tenantContext) {
-        if (tenantContext == null) {
-            return List.of();
-        }
-
-        List<ConversionJob> tenantJobs = new ArrayList<>();
-        for (ConversionJob job : getAllJobs()) {
-            if (job.belongsToTenant(tenantContext.tenantId())) {
-                tenantJobs.add(job);
-            }
-        }
-        return List.copyOf(tenantJobs);
-    }
 }

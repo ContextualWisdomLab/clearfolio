@@ -28,7 +28,10 @@ import com.clearfolio.viewer.auth.TenantContext;
 public class KpiSnapshotLedger {
 
     private static final String SNAPSHOT = "SNAPSHOT";
+    private static final String TERMINAL_OUTCOMES_RATE_VERSION = "terminal-outcomes-v1";
     private static final String NULL_FIELD = "-";
+    private static final int LEGACY_FIELD_COUNT = 12;
+    private static final int CURRENT_FIELD_COUNT = 13;
     private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
 
@@ -76,7 +79,7 @@ public class KpiSnapshotLedger {
                 snapshot.succeededJobs(),
                 snapshot.failedJobs(),
                 snapshot.deadLetteredJobs(),
-                snapshot.conversionSuccessRate(),
+                terminalSuccessRate(snapshot.succeededJobs(), snapshot.failedJobs()),
                 snapshot.p95TimeToPreviewMs()
         );
         snapshots.add(record);
@@ -110,21 +113,63 @@ public class KpiSnapshotLedger {
 
     private void replayLine(String line) {
         String[] fields = line.split("\t", -1);
-        if (fields.length != 12 || !SNAPSHOT.equals(fields[0])) {
-            throw invalidLine();
+        if (fields.length == LEGACY_FIELD_COUNT && SNAPSHOT.equals(fields[0])) {
+            replayLegacySnapshot(fields);
+            return;
         }
+        if (fields.length == CURRENT_FIELD_COUNT
+                && SNAPSHOT.equals(fields[0])
+                && TERMINAL_OUTCOMES_RATE_VERSION.equals(fields[1])) {
+            replayCurrentSnapshot(fields);
+            return;
+        }
+        throw invalidLine();
+    }
+
+    private void replayLegacySnapshot(String[] fields) {
+        int totalJobs = integer(fields[4]);
+        int submittedJobs = integer(fields[5]);
+        int processingJobs = integer(fields[6]);
+        int succeededJobs = integer(fields[7]);
+        int failedJobs = integer(fields[8]);
+        int deadLetteredJobs = integer(fields[9]);
+        requireRate(rate(fields[10]), totalSuccessRate(totalJobs, succeededJobs));
         snapshots.add(new KpiSnapshotRecord(
                 requiredValue(fields[1]),
                 requiredValue(fields[2]),
                 instant(fields[3]),
-                integer(fields[4]),
-                integer(fields[5]),
-                integer(fields[6]),
-                integer(fields[7]),
-                integer(fields[8]),
-                integer(fields[9]),
-                rate(fields[10]),
+                totalJobs,
+                submittedJobs,
+                processingJobs,
+                succeededJobs,
+                failedJobs,
+                deadLetteredJobs,
+                terminalSuccessRate(succeededJobs, failedJobs),
                 nullableLong(fields[11])
+        ));
+    }
+
+    private void replayCurrentSnapshot(String[] fields) {
+        int totalJobs = integer(fields[5]);
+        int submittedJobs = integer(fields[6]);
+        int processingJobs = integer(fields[7]);
+        int succeededJobs = integer(fields[8]);
+        int failedJobs = integer(fields[9]);
+        int deadLetteredJobs = integer(fields[10]);
+        double currentRate = terminalSuccessRate(succeededJobs, failedJobs);
+        requireRate(rate(fields[11]), currentRate);
+        snapshots.add(new KpiSnapshotRecord(
+                requiredValue(fields[2]),
+                requiredValue(fields[3]),
+                instant(fields[4]),
+                totalJobs,
+                submittedJobs,
+                processingJobs,
+                succeededJobs,
+                failedJobs,
+                deadLetteredJobs,
+                currentRate,
+                nullableLong(fields[12])
         ));
     }
 
@@ -150,6 +195,7 @@ public class KpiSnapshotLedger {
     private static String serialize(KpiSnapshotRecord record) {
         return String.join("\t",
                 SNAPSHOT,
+                TERMINAL_OUTCOMES_RATE_VERSION,
                 field(record.tenantId()),
                 field(record.subjectId()),
                 field(record.exportedAt()),
@@ -162,6 +208,21 @@ public class KpiSnapshotLedger {
                 String.valueOf(record.conversionSuccessRate()),
                 field(record.p95TimeToPreviewMs())
         );
+    }
+
+    private static double totalSuccessRate(int totalJobs, int succeededJobs) {
+        return totalJobs == 0 ? 0.0 : (double) succeededJobs / totalJobs;
+    }
+
+    private static double terminalSuccessRate(int succeededJobs, int failedJobs) {
+        int terminalJobs = succeededJobs + failedJobs;
+        return terminalJobs == 0 ? 0.0 : (double) succeededJobs / terminalJobs;
+    }
+
+    private static void requireRate(double storedRate, double expectedRate) {
+        if (Double.compare(storedRate, expectedRate) != 0) {
+            throw invalidLine();
+        }
     }
 
     private static String field(String value) {

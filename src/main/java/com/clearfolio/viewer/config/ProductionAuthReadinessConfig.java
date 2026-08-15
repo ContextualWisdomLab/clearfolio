@@ -16,7 +16,7 @@ import org.springframework.util.StringUtils;
 @Profile("production")
 public class ProductionAuthReadinessConfig {
 
-    private static final int MINIMUM_HMAC_KEY_BYTES = 16;
+    private static final int MINIMUM_HMAC_KEY_BYTES = 32;
 
     /**
      * Verifies that production cannot start with unsigned tenant headers, undersized HMAC keys,
@@ -30,10 +30,11 @@ public class ProductionAuthReadinessConfig {
      * operator or gateway from believing the literal configured secret is the signing key while the
      * verifier silently uses different bytes.
      *
-     * <p>The 16-byte floor provides the 128-bit input-length minimum specified for HMAC
-     * message-authentication keys in NIST SP 800-224's current initial public draft. Key length alone
-     * does not prove entropy or approved key generation; production operators remain responsible for
-     * generating and protecting both secrets with an approved secret-management boundary.
+     * <p>RFC 7518 section 3.2 requires a key of the same size as the HMAC-SHA-256 output or larger;
+     * Clearfolio therefore requires at least 32 effective UTF-8 bytes for both signing purposes. Key
+     * length alone does not prove entropy, independent generation, approved custody, or rotation;
+     * production operators remain responsible for generating and protecting both secrets through a
+     * reviewed credential-management boundary.
      *
      * <p>NIST SP 800-57 Part 1 Revision 5 states that, in general, one key is used for one purpose.
      * Clearfolio therefore rejects byte-identical tenant-claim and artifact-token signing keys so a
@@ -61,7 +62,7 @@ public class ProductionAuthReadinessConfig {
         byte[] tenantClaimsKey = effectiveTenantClaimsSecret.getBytes(StandardCharsets.UTF_8);
         if (tenantClaimsKey.length < MINIMUM_HMAC_KEY_BYTES) {
             throw new IllegalStateException(
-                    "production profile requires clearfolio.tenant-claims.hmac-secret with at least 16 UTF-8 bytes"
+                    "production profile requires clearfolio.tenant-claims.hmac-secret with at least 32 UTF-8 bytes"
             );
         }
         if (!StringUtils.hasText(artifactTokenSecret)) {
@@ -72,7 +73,7 @@ public class ProductionAuthReadinessConfig {
         byte[] artifactTokenKey = artifactTokenSecret.getBytes(StandardCharsets.UTF_8);
         if (artifactTokenKey.length < MINIMUM_HMAC_KEY_BYTES) {
             throw new IllegalStateException(
-                    "production profile requires clearfolio.artifact-token.secret with at least 16 UTF-8 bytes"
+                    "production profile requires clearfolio.artifact-token.secret with at least 32 UTF-8 bytes"
             );
         }
         if (MessageDigest.isEqual(tenantClaimsKey, artifactTokenKey)) {

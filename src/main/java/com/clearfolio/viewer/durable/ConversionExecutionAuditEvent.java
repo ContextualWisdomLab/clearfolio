@@ -8,14 +8,16 @@ import java.util.regex.Pattern;
 /**
  * Immutable, privacy-safe authority record for one conversion execution event.
  *
- * <p>The record deliberately stores only pseudonymous tenant and job
- * fingerprints. It does not contain source filenames, document text, token
- * material, or other request content. A consumer can therefore correlate a
- * lifecycle event to an execution without recovering the original identity.
+ * <p>The record deliberately stores only versioned keyed audit pseudonyms for
+ * tenant and job authority. It rejects unkeyed SHA-256 digests because common
+ * tenant identifiers can be recovered through practical dictionary attacks.
+ * The pseudonyms are expected to come from a domain-separated keyed HMAC
+ * boundary such as {@code AuditPseudonymizer}; the record itself never receives
+ * raw tenant, subject, filename, token, document-content, or exception text.</p>
  *
  * @param eventId immutable event identifier
- * @param tenantFingerprint canonical lowercase SHA-256 fingerprint of the tenant
- * @param jobFingerprint canonical lowercase SHA-256 fingerprint of the job
+ * @param tenantFingerprint versioned keyed audit pseudonym for the tenant
+ * @param jobFingerprint versioned keyed audit pseudonym for the job
  * @param generation positive execution generation
  * @param attempt zero-based attempt number within the generation
  * @param eventType controlled lifecycle event type
@@ -33,9 +35,10 @@ public record ConversionExecutionAuditEvent(
         Instant occurredAt
 ) {
 
-    private static final int SHA256_HEX_LENGTH = 64;
+    private static final int FINGERPRINT_HEX_LENGTH = 32;
+    private static final int MAX_KEY_VERSION_LENGTH = 32;
     private static final int MAX_REASON_CODE_LENGTH = 64;
-    private static final Pattern SHA256_HEX = Pattern.compile("[0-9a-f]{64}");
+    private static final Pattern FINGERPRINT_HEX = Pattern.compile("[0-9a-f]{32}");
     private static final Pattern REASON_CODE = Pattern.compile("[a-z0-9]+(?:_[a-z0-9]+)*");
 
     /**
@@ -60,8 +63,8 @@ public record ConversionExecutionAuditEvent(
      * Creates and validates one conversion execution audit event.
      *
      * @param eventId immutable event identifier
-     * @param tenantFingerprint canonical lowercase SHA-256 tenant fingerprint
-     * @param jobFingerprint canonical lowercase SHA-256 job fingerprint
+     * @param tenantFingerprint versioned keyed tenant audit pseudonym
+     * @param jobFingerprint versioned keyed job audit pseudonym
      * @param generation positive execution generation
      * @param attempt zero-based attempt number
      * @param eventType controlled lifecycle event type
@@ -95,7 +98,7 @@ public record ConversionExecutionAuditEvent(
      * Checks whether this event belongs to the supplied pseudonymous job
      * execution generation.
      *
-     * @param candidateJobFingerprint pseudonymous job fingerprint to compare
+     * @param candidateJobFingerprint versioned keyed job pseudonym to compare
      * @param candidateGeneration execution generation to compare
      * @return true only when both immutable execution coordinates match
      */
@@ -105,9 +108,34 @@ public record ConversionExecutionAuditEvent(
 
     private static void requireFingerprint(String value, String fieldName) {
         Objects.requireNonNull(value, fieldName);
-        if (value.length() != SHA256_HEX_LENGTH || !SHA256_HEX.matcher(value).matches()) {
-            throw new IllegalArgumentException(fieldName + " must be lowercase SHA-256 hexadecimal");
+        int separator = value.indexOf(':');
+        if (separator <= 0 || separator != value.lastIndexOf(':')) {
+            throw invalidFingerprint(fieldName);
         }
+
+        String keyVersion = value.substring(0, separator);
+        String digest = value.substring(separator + 1);
+        if (keyVersion.length() > MAX_KEY_VERSION_LENGTH
+                || digest.length() != FINGERPRINT_HEX_LENGTH
+                || !FINGERPRINT_HEX.matcher(digest).matches()) {
+            throw invalidFingerprint(fieldName);
+        }
+        for (int index = 0; index < keyVersion.length(); index++) {
+            char character = keyVersion.charAt(index);
+            boolean safe = Character.isLetterOrDigit(character)
+                    || character == '.'
+                    || character == '_'
+                    || character == '-';
+            if (!safe) {
+                throw invalidFingerprint(fieldName);
+            }
+        }
+    }
+
+    private static IllegalArgumentException invalidFingerprint(String fieldName) {
+        return new IllegalArgumentException(
+                fieldName + " must be a versioned keyed audit pseudonym"
+        );
     }
 
     private static void validateReasonCode(String value) {

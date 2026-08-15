@@ -23,7 +23,7 @@ _READ_CHUNK_BYTES = 64 * 1024
 
 
 def _read_bounded_regular_file(path: Path) -> bytes:
-    """Read one bounded regular file while rejecting symlink authority."""
+    """Read one bounded, identity-stable regular file while rejecting symlinks."""
 
     try:
         link_stat = path.lstat()
@@ -46,6 +46,8 @@ def _read_bounded_regular_file(path: Path) -> bytes:
         opened_stat = os.fstat(descriptor)
         if not stat.S_ISREG(opened_stat.st_mode):
             raise ValueError("OpenAPI contract must be a regular file")
+        if not os.path.samestat(link_stat, opened_stat):
+            raise ValueError("OpenAPI contract changed during release provenance read")
         if opened_stat.st_size > MAX_CONTRACT_BYTES:
             raise ValueError("OpenAPI contract exceeds release provenance limit")
 

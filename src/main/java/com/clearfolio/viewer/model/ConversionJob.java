@@ -85,9 +85,9 @@ public class ConversionJob {
      * Creates a conversion job with explicit tenant and subject ownership metadata.
      *
      * <p>This authority-bearing constructor fails closed when tenant or subject
-     * claims are absent. Development callers that intentionally use demo
-     * authority must use one of the convenience constructors that supplies the
-     * demo identities explicitly.</p>
+     * claims are absent or control-corrupted. Development callers that
+     * intentionally use demo authority must use one of the convenience
+     * constructors that supplies the demo identities explicitly.</p>
      *
      * @param jobId job identifier
      * @param tenantId tenant isolation boundary
@@ -131,11 +131,24 @@ public class ConversionJob {
     }
 
     private String requireAuthority(String value, String fieldName) {
-        String sanitized = sanitize(value);
-        if (sanitized == null || sanitized.isBlank()) {
+        if (value == null) {
             throw new IllegalArgumentException(fieldName + " must not be blank");
         }
-        return sanitized.strip();
+        if (value.codePoints().anyMatch(ConversionJob::isDisallowedAuthorityCharacter)) {
+            throw new IllegalArgumentException(fieldName + " must not contain control characters");
+        }
+        String normalized = value.strip();
+        if (normalized.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " must not be blank");
+        }
+        return normalized;
+    }
+
+    private static boolean isDisallowedAuthorityCharacter(int codePoint) {
+        int characterType = Character.getType(codePoint);
+        return Character.isISOControl(codePoint)
+                || characterType == Character.LINE_SEPARATOR
+                || characterType == Character.PARAGRAPH_SEPARATOR;
     }
 
     private String normalizeOrDefault(String value, String fallback) {

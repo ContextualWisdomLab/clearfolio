@@ -43,18 +43,50 @@ class KpiSnapshotLedgerTest {
     }
 
     @Test
-    void persistsAndReloadsSnapshotsWhenPathIsConfigured() {
+    void persistsAndReloadsSnapshotsWhenPathIsConfigured() throws Exception {
         Path ledgerPath = tempDir.resolve("kpi-snapshots.log");
         KpiSnapshotLedger ledger = new KpiSnapshotLedger(ledgerPath, CLOCK);
 
         ledger.recordSnapshot(context("tenant-a"), snapshot(2, 1, 123L));
         ledger.recordSnapshot(context("tenant-a"), snapshot(0, 0, null));
 
+        String[] firstFields = Files.readAllLines(ledgerPath, StandardCharsets.UTF_8)
+                .getFirst()
+                .split("\t", -1);
+        assertEquals("SNAPSHOT", firstFields[0]);
+        assertEquals("terminal-outcomes-v1", firstFields[1]);
+
         KpiSnapshotLedger reloaded = new KpiSnapshotLedger(ledgerPath, CLOCK);
         assertEquals(2, reloaded.snapshotsFor("tenant-a").size());
         assertEquals(NOW, reloaded.snapshotsFor("tenant-a").getFirst().exportedAt());
+        assertEquals(0.5, reloaded.snapshotsFor("tenant-a").getFirst().conversionSuccessRate());
         assertEquals(123L, reloaded.snapshotsFor("tenant-a").getFirst().p95TimeToPreviewMs());
         assertNull(reloaded.snapshotsFor("tenant-a").get(1).p95TimeToPreviewMs());
+    }
+
+    @Test
+    void migratesLegacyTotalDenominatorToTerminalOutcomeSemantics() throws Exception {
+        Path ledgerPath = Files.writeString(
+                tempDir.resolve("legacy-kpi-snapshots.log"),
+                legacySnapshotLine(4, 1, 1, 1, 1, 0, 0.25, 123L) + System.lineSeparator(),
+                StandardCharsets.UTF_8
+        );
+
+        KpiSnapshotRecord migrated = new KpiSnapshotLedger(ledgerPath, CLOCK)
+                .snapshotsFor("tenant-a")
+                .getFirst();
+
+        assertEquals(4, migrated.totalJobs());
+        assertEquals(1, migrated.succeededJobs());
+        assertEquals(1, migrated.failedJobs());
+        assertEquals(0.5, migrated.conversionSuccessRate());
+    }
+
+    @Test
+    void rejectsUnknownMetricVersionsAndInconsistentStoredRates() throws Exception {
+        assertInvalidLedger(currentSnapshotLine("unknown-v1", 4, 1, 1, 1, 1, 0, 0.5, 123L));
+        assertInvalidLedger(currentSnapshotLine("terminal-outcomes-v1", 4, 1, 1, 1, 1, 0, 0.25, 123L));
+        assertInvalidLedger(legacySnapshotLine(4, 1, 1, 1, 1, 0, 0.5, 123L));
     }
 
     @Test
@@ -128,19 +160,60 @@ class KpiSnapshotLedgerTest {
     }
 
     private static String snapshotLine() {
+        return legacySnapshotLine(2, 1, 0, 1, 1, 0, 0.5, 123L);
+    }
+
+    private static String legacySnapshotLine(
+            int totalJobs,
+            int submittedJobs,
+            int processingJobs,
+            int succeededJobs,
+            int failedJobs,
+            int deadLetteredJobs,
+            double conversionSuccessRate,
+            Long p95TimeToPreviewMs
+    ) {
         return String.join("\t",
                 "SNAPSHOT",
                 encoded("tenant-a"),
                 encoded("subject-a"),
                 NOW.toString(),
-                "2",
-                "1",
-                "0",
-                "1",
-                "1",
-                "0",
-                "0.5",
-                "123"
+                String.valueOf(totalJobs),
+                String.valueOf(submittedJobs),
+                String.valueOf(processingJobs),
+                String.valueOf(succeededJobs),
+                String.valueOf(failedJobs),
+                String.valueOf(deadLetteredJobs),
+                String.valueOf(conversionSuccessRate),
+                p95TimeToPreviewMs == null ? "-" : String.valueOf(p95TimeToPreviewMs)
+        );
+    }
+
+    private static String currentSnapshotLine(
+            String metricVersion,
+            int totalJobs,
+            int submittedJobs,
+            int processingJobs,
+            int succeededJobs,
+            int failedJobs,
+            int deadLetteredJobs,
+            double conversionSuccessRate,
+            Long p95TimeToPreviewMs
+    ) {
+        return String.join("\t",
+                "SNAPSHOT",
+                metricVersion,
+                encoded("tenant-a"),
+                encoded("subject-a"),
+                NOW.toString(),
+                String.valueOf(totalJobs),
+                String.valueOf(submittedJobs),
+                String.valueOf(processingJobs),
+                String.valueOf(succeededJobs),
+                String.valueOf(failedJobs),
+                String.valueOf(deadLetteredJobs),
+                String.valueOf(conversionSuccessRate),
+                p95TimeToPreviewMs == null ? "-" : String.valueOf(p95TimeToPreviewMs)
         );
     }
 

@@ -5,10 +5,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+import openapi_release_provenance as provenance_module
 from openapi_release_provenance import (
     CONTRACT_RELATIVE_PATH,
     MAX_CONTRACT_BYTES,
@@ -107,6 +110,34 @@ class OpenApiReleaseProvenanceTest(unittest.TestCase):
             contract_path.write_bytes(b"x" * (MAX_CONTRACT_BYTES + 1))
             with self.assertRaisesRegex(ValueError, "OpenAPI contract exceeds release provenance limit"):
                 build_openapi_release_provenance(root, revision)
+
+    def test_rejects_contract_identity_change_between_metadata_and_open(self) -> None:
+        """Reject a path replacement instead of hashing bytes from a different inode."""
+
+        revision = "e" * 40
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            contract_path = root / CONTRACT_RELATIVE_PATH
+            contract_path.parent.mkdir(parents=True)
+            contract_path.write_text("openapi: 3.0.3\n", encoding="utf-8")
+            replacement_path = root / "replacement.yaml"
+            replacement_path.write_text("openapi: 3.1.0\n", encoding="utf-8")
+            original_open = os.open
+            replaced = False
+
+            def replacing_open(path: Path, flags: int) -> int:
+                nonlocal replaced
+                if not replaced:
+                    replacement_path.replace(contract_path)
+                    replaced = True
+                return original_open(path, flags)
+
+            with patch.object(provenance_module.os, "open", side_effect=replacing_open):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "OpenAPI contract changed during release provenance read",
+                ):
+                    build_openapi_release_provenance(root, revision)
 
     def test_current_repository_contract_is_hashable_without_normalization(self) -> None:
         """Preserve the byte-exact checked-in OpenAPI artifact as the provenance authority."""

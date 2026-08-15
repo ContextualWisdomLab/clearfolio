@@ -51,20 +51,22 @@ class ConversionRetryRecordTest {
     }
 
     @Test
-    void generationFenceRejectsAnotherJobOrGeneration() {
+    void generationFenceRejectsAnotherJobGenerationOrAttempt() {
         UUID jobId = UUID.randomUUID();
         ConversionRetryRecord record = ConversionRetryRecord.schedule(
                 UUID.randomUUID(),
                 jobId,
                 3L,
-                1,
+                2,
                 Instant.parse("2026-08-11T01:00:00Z")
         );
 
-        assertTrue(record.authorizes(jobId, 3L));
-        assertFalse(record.authorizes(UUID.randomUUID(), 3L));
-        assertFalse(record.authorizes(jobId, 4L));
-        assertFalse(record.authorizes(null, 3L));
+        assertTrue(record.authorizes(jobId, 3L, 2));
+        assertFalse(record.authorizes(UUID.randomUUID(), 3L, 2));
+        assertFalse(record.authorizes(jobId, 4L, 2));
+        assertFalse(record.authorizes(jobId, 3L, 1));
+        assertFalse(record.authorizes(jobId, 3L, 3));
+        assertFalse(record.authorizes(null, 3L, 2));
     }
 
     @Test

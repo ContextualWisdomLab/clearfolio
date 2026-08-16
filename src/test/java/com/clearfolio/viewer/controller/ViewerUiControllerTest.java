@@ -99,6 +99,19 @@ class ViewerUiControllerTest {
     }
 
     @Test
+    void viewerScriptUtilizesSetBusyStateForAccessibility() throws Exception {
+        try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/viewer.js")) {
+            assertNotNull(input);
+            String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+
+            assertTrue(script.contains("import { setBusyState } from \"./dom-utils.js\""));
+            assertTrue(script.contains("restoreRetryBtn = setBusyState(el.retryBtn, \"Refreshing...\")"));
+            assertTrue(script.contains("if (restoreRetryBtn) { restoreRetryBtn(); restoreRetryBtn = null; }"));
+            assertTrue(script.contains("if (restoreRetryBtn) restoreRetryBtn()"));
+        }
+    }
+
+    @Test
     void demoScriptUsesExistingApiAndSessionHistory() throws Exception {
         try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/demo.js")) {
             assertNotNull(input);

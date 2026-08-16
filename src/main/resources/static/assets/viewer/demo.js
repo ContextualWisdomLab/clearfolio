@@ -6,6 +6,12 @@ const KPI_EXPORTS_ENDPOINT = "/api/v1/analytics/kpi-snapshot-exports";
 const DEMO_FIXTURE_URL = "/assets/viewer/demo-fixtures.json";
 const POLL_DELAY_MS = 1500;
 const ACTIVE_STATUSES = new Set(["ACCEPTED", "SUBMITTED", "PROCESSING"]);
+const DEMO_AUTH_HEADERS = {
+  "X-Clearfolio-Tenant-Id": "buyer-demo",
+  "X-Clearfolio-Subject-Id": "buyer-demo-operator",
+  "X-Clearfolio-Permissions": "job:create,job:read,job:retry,viewer:read,artifact-link:create,artifact-link:revoke,audit:read,analytics:read",
+};
+
 const el = {
   form: document.getElementById("upload-form"),
   fileInput: document.getElementById("file-input"),
@@ -99,6 +105,7 @@ async function openJsonDocument(url, title) {
 function jsonHeaders(extra = {}) {
   return {
     Accept: "application/json",
+    ...DEMO_AUTH_HEADERS,
     ...extra,
   };
 }

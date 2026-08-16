@@ -1,6 +1,13 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- **ux**: 뷰어 내 새로고침 버튼 등 비동기 요소의 로딩 상태를 `dom-utils.js`의 `setBusyState`를 통해 적용하도록 개선하고, 단조 증가하는 시도(attempt) ID를 부여하여 비동기 응답 경합 시 오래된 상태가 현재 UI를 덮어쓰거나 원본 DOM 노드를 파괴하는 현상을 방지했습니다.
+  - *Reference*: W3C. (2023). *Accessible Rich Internet Applications (WAI-ARIA) 1.3*. https://w3c.github.io/aria/#aria-busy
+  - *Reference*: W3C. (2023). *Web Content Accessibility Guidelines (WCAG) 2.2*. https://www.w3.org/TR/WCAG22/#name-role-value (SC 4.1.2)
+  - *Reference*: W3C. (2023). *Web Content Accessibility Guidelines (WCAG) 2.2*. https://www.w3.org/TR/WCAG22/#status-messages (SC 4.1.3)
+  - 참고: `aria-busy` 메타데이터 속성 부여 자체만으로는 모든 스크린 리더 환경에서의 즉각적인 상태 변경 음성 안내(announcement)를 기술적으로 보장하지는 않습니다.
+
 
 ### Added
 

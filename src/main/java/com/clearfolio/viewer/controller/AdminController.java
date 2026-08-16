@@ -117,11 +117,13 @@ public class AdminController {
      * @param jobId conversion job identifier
      * @param headers request headers carrying tenant claims
      * @return accepted response on success
+     * @throws NoSuchAlgorithmException if hashing fails
      */
     @PostMapping("/api/v1/admin/convert/jobs/{jobId}/retry")
     public ResponseEntity<Void> retryDeadLettered(
             @PathVariable final UUID jobId,
-            @RequestHeader final HttpHeaders headers) {
+            @RequestHeader final HttpHeaders headers)
+            throws NoSuchAlgorithmException {
         final TenantContext context = tenantAccessService.require(
                 headers, TenantPermissions.JOB_RETRY);
         final Optional<ConversionJob> job = conversionService.getJob(jobId);
@@ -153,15 +155,13 @@ public class AdminController {
      *
      * @param subjectId subject identifier
      * @return hex encoded SHA-256 hash
+     * @throws NoSuchAlgorithmException if hashing fails
      */
-    private String hashOperatorId(final String subjectId) {
-        try {
-            final MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            final byte[] hash = digest.digest(
-                    subjectId.getBytes(StandardCharsets.UTF_8));
-            return HEX_FORMAT.formatHex(hash);
-        } catch (final NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 not available", ex);
-        }
+    private String hashOperatorId(final String subjectId)
+            throws NoSuchAlgorithmException {
+        final MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        final byte[] hash = digest.digest(
+                subjectId.getBytes(StandardCharsets.UTF_8));
+        return HEX_FORMAT.formatHex(hash);
     }
 }

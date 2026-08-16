@@ -4,6 +4,9 @@
 
 ### Added
 
+- **빈 상태(Empty State) 버튼 접근성 개선**:
+  - 세션 히스토리가 비어 있을 때 'Clear history' 버튼이 비활성화되도록 수정하여 동작 불가능한 상태를 사용자(시각, 보조 기술)에게 명확히 전달하도록 개선했습니다.
+  - WCAG 2.2 SC 4.1.2 (Name, Role, Value) 및 SC 2.5.3 (Label in Name) 지침을 인용하여 개선되었으며, 본 변경사항은 컴포넌트 단위의 개선으로 전체 제품 준수 선언(whole-product conformance claim)에 해당하지 않습니다.
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.
@@ -14,7 +17,6 @@
 
 ### Changed
 
-- 세션 히스토리가 비어 있을 때 `Clear` 작업을 기본 비활성화하고, 보조기기에 `Clear session history`라는 문맥을 제공하며, 모든 히스토리 렌더링 후 실제 항목 수와 버튼 가용성을 동기화합니다.
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
 - CI가 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하며, 합성 merge revision은 별도 호환성 작업에서 검증하도록 분리했습니다.
 - Maven `verify` 단계에서 JaCoCo production line 및 branch missed count가 각각 0인지 강제하고, 실패 시 누락 위치 진단을 출력하도록 했습니다.

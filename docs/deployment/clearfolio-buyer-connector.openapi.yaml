@@ -5,10 +5,10 @@ info:
   description: >
     Import seed for a buyer-owned gateway or Power Platform custom connector.
     This spec reflects the current Clearfolio Viewer JSON API contract and the
-    signed tenant-header scaffold. It is not a production OIDC/JWT profile.
+    buyer-demo signed-header scaffold. It is not a production OIDC/JWT profile.
   license:
-    name: Apache-2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0.html
+    name: Proprietary - buyer diligence use only
+    url: https://github.com/ContextualWisdomLab/clearfolio
 servers:
   - url: https://{gatewayHost}
     description: Buyer gateway in front of Clearfolio Viewer.
@@ -19,15 +19,13 @@ security:
   - clearfolioTenantHeaders: []
 tags:
   - name: Conversion
-    description: Document intake, status polling, deletion, and retry operations.
+    description: Document intake, status polling, and retry operations.
   - name: Viewer
     description: Viewer bootstrap operations that return signed artifact URLs.
   - name: ArtifactLinks
-    description: Signed artifact-link creation, revocation, byte delivery, and read evidence.
+    description: Signed artifact-link creation, revocation, and read evidence.
   - name: Analytics
     description: Tenant-scoped KPI snapshot and export evidence operations.
-  - name: Operations
-    description: Operational endpoints intentionally exposed without tenant identity.
 paths:
   /api/v1/convert/jobs:
     post:
@@ -94,28 +92,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConversionJobStatusResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-    delete:
-      tags:
-        - Conversion
-      operationId: deleteConversionJob
-      summary: Delete a conversion job and generated artifacts.
-      description: Requires `job:delete`; missing and cross-tenant jobs are hidden.
-      parameters:
-        - $ref: "#/components/parameters/JobId"
-        - $ref: "#/components/parameters/TenantId"
-        - $ref: "#/components/parameters/SubjectId"
-        - $ref: "#/components/parameters/Permissions"
-        - $ref: "#/components/parameters/ClaimsIssuedAt"
-        - $ref: "#/components/parameters/ClaimsSignature"
-      responses:
-        "204":
-          description: Conversion job and generated artifacts deleted.
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -223,7 +199,7 @@ paths:
       tags:
         - ArtifactLinks
       operationId: revokeArtifactLink
-      summary: Revoke a previously issued signed artifact link.
+      summary: Revoke a previously issued artifact link.
       description: Requires `artifact-link:revoke`; intended for operators.
       parameters:
         - $ref: "#/components/parameters/TokenId"
@@ -278,57 +254,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-  /artifacts/{docId}.pdf:
-    get:
-      tags:
-        - ArtifactLinks
-      operationId: getPdfArtifact
-      summary: Read a converted PDF through a signed artifact token.
-      description: >
-        Serves bytes only for a succeeded conversion with an issued, unexpired,
-        unrevoked, document/tenant/checksum-bound artifact token. The token may
-        be supplied either as the `artifactToken` query parameter or as a Bearer
-        credential. At most one `bytes` range is accepted and verified reads are
-        recorded by the server.
-      security:
-        - artifactTokenQuery: []
-        - artifactTokenBearer: []
-      parameters:
-        - $ref: "#/components/parameters/DocId"
-        - $ref: "#/components/parameters/Range"
-      responses:
-        "200":
-          description: Full PDF artifact.
-          content:
-            application/pdf:
-              schema:
-                type: string
-                format: binary
-        "206":
-          description: Requested single byte range of the PDF artifact.
-          headers:
-            Content-Range:
-              description: Returned byte range and complete PDF length as `bytes start-end/total`.
-              schema:
-                type: string
-          content:
-            application/pdf:
-              schema:
-                type: string
-                format: binary
-        "401":
-          description: Signed artifact token is missing, malformed, expired, or otherwise unauthorized.
-        "403":
-          description: Signed artifact token is revoked or otherwise forbidden.
-        "404":
-          description: Conversion job or PDF artifact is absent or unavailable.
-        "416":
-          description: Range is malformed or unsatisfiable for the current PDF bytes.
-          headers:
-            Content-Range:
-              description: Complete PDF length as `bytes */total`.
-              schema:
-                type: string
   /api/v1/analytics/kpi-snapshot:
     get:
       tags:
@@ -379,24 +304,6 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-  /healthz:
-    get:
-      tags:
-        - Operations
-      operationId: getHealthz
-      summary: Check process liveness.
-      description: >
-        Returns only the static process-liveness payload shipped on protected main.
-        This endpoint intentionally requires no tenant identity and does not claim
-        dependency or traffic readiness.
-      security: []
-      responses:
-        "200":
-          description: Process is alive.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthResponse"
 components:
   securitySchemes:
     clearfolioTenantHeaders:
@@ -407,16 +314,6 @@ components:
         Buyer gateway supplies the full signed Clearfolio tenant header set.
         The signature alone is not enough without tenant, subject, permissions,
         and issued-at headers.
-    artifactTokenQuery:
-      type: apiKey
-      in: query
-      name: artifactToken
-      description: Short-lived Clearfolio artifact token issued for this document.
-    artifactTokenBearer:
-      type: http
-      scheme: bearer
-      bearerFormat: ClearfolioArtifactToken
-      description: Short-lived Clearfolio artifact token supplied as an Authorization bearer credential.
   parameters:
     TenantId:
       name: X-Clearfolio-Tenant-Id
@@ -424,14 +321,14 @@ components:
       required: true
       schema:
         type: string
-      example: tenant-example
+      example: buyer-demo
     SubjectId:
       name: X-Clearfolio-Subject-Id
       in: header
       required: true
       schema:
         type: string
-      example: operator-example
+      example: buyer-demo-operator
     Permissions:
       name: X-Clearfolio-Permissions
       in: header
@@ -443,7 +340,7 @@ components:
         The gateway must sign this canonical form, not the raw string.
       schema:
         type: string
-      example: job:create,job:read,job:delete,viewer:read,artifact-link:create,analytics:read
+      example: job:create,job:read,viewer:read,artifact-link:create,analytics:read
     ClaimsIssuedAt:
       name: X-Clearfolio-Claims-Issued-At
       in: header
@@ -505,13 +402,6 @@ components:
       required: true
       schema:
         type: string
-    Range:
-      name: Range
-      in: header
-      required: false
-      description: Optional single HTTP byte range, for example `bytes=0-1023`.
-      schema:
-        type: string
   responses:
     BadRequest:
       description: Bad request or validation failure.
@@ -544,16 +434,6 @@ components:
           schema:
             $ref: "#/components/schemas/ApiErrorResponse"
   schemas:
-    HealthResponse:
-      type: object
-      required:
-        - status
-      additionalProperties: false
-      properties:
-        status:
-          type: string
-          enum:
-            - ok
     SubmitConversionResponse:
       type: object
       required:

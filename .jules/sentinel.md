@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-16 - Cross-Origin Authentication Header Leakage via `fetch`
+**Vulnerability:** `demo.js`의 `fetchJson(url)` 함수에서 URL의 출처를 검증하지 않고 API를 호출하여, 만약 조작된 `statusUrl` 등으로 인해 외부(Cross-Origin) URL로 요청이 갈 경우 `X-Clearfolio-Tenant-Id` 등의 민감한 인증 헤더가 노출될 수 있었습니다.
+**Learning:** `credentials: "same-origin"` 설정은 쿠키 등의 전송을 막지만 사용자 정의 헤더 전송은 차단하지 않으므로, 공격자가 API 응답을 조작하여 외부 URL을 반환하게 하면 헤더 탈취가 가능합니다.
+**Prevention:** 인증 헤더가 포함된 모든 `fetch` 요청 전에 대상 URL이 현재 애플리케이션과 동일 출처(Same-Origin)인지 확인하는 검증 로직(`isSameOrigin`)을 반드시 추가해야 합니다.

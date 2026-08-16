@@ -95,6 +95,9 @@ class ViewerUiControllerTest {
             assertTrue(Pattern.compile("link\\.rel\\s*=\\s*\"noopener noreferrer\"").matcher(script).find());
             assertTrue(Pattern.compile("aria-label\"\\s*,\\s*\"Open artifact in a new tab\"").matcher(script).find());
             assertTrue(Pattern.compile("querySelector\\(\\s*\"#preview-help\"\\s*\\)").matcher(script).find());
+            assertTrue(script.contains("DEMO_AUTH_HEADERS"));
+            assertTrue(script.contains("X-Clearfolio-Tenant-Id"));
+            assertTrue(script.contains("X-Clearfolio-Permissions"));
         }
     }
 
@@ -132,7 +135,11 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("submittedAt: new Date().toISOString()"));
             assertTrue(script.contains("/retry"));
             assertTrue(script.contains("X-Clearfolio-Operator-Id"));
-                        assertTrue(script.contains("deadLettered"));
+            assertTrue(script.contains("X-Clearfolio-Tenant-Id"));
+            assertTrue(script.contains("X-Clearfolio-Permissions"));
+            assertTrue(script.contains("DEMO_AUTH_HEADERS"));
+            assertTrue(script.contains("resolveSameOriginHttpUrl"));
+            assertTrue(script.contains("deadLettered"));
         }
     }
 

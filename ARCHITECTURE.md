@@ -1,6 +1,6 @@
 # Architecture Map
 
-Last updated: 2026-02-23
+Last updated: 2026-08-16
 
 ## System Purpose
 
@@ -20,6 +20,7 @@ Current state: viewer/state API is implemented in this repository; downstream S2
   - `GET /api/v1/viewer/{docId}` (+ alias): viewer bootstrap JSON/state-gated responses.
 - `ViewerUiController` (`src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`)
   - `GET /viewer/{docId}`: HTML viewer UI entrypoint (loading/failed/ready) that embeds PDF.js.
+  - Packaged `viewer.js` refresh sequences use a monotonic attempt identity plus `setBusyState`. Only the current attempt may mutate preview, focus, live status, or restore the refresh control. PDF.js awaits are revalidated after module, document, page, and raster boundaries. Buyer-demo JSON calls keep tenant-claim headers. Status and evidence URLs must be same-origin. See `docs/doctoring/viewer-refresh-busy-state-and-attempt-identity.md`.
 - `ArtifactController` (`src/main/java/com/clearfolio/viewer/controller/ArtifactController.java`)
   - `GET /artifacts/{docId}.pdf`: serves PDF bytes for SUCCEEDED jobs with basic HTTP Range support.
 - `DefaultDocumentConversionService` (`src/main/java/com/clearfolio/viewer/service/DefaultDocumentConversionService.java`)
@@ -87,3 +88,4 @@ Optional tracks:
 - `docs/diagrams/retry-deadletter-flow.md`
 - `docs/engineering/acceptance-criteria.md`
 - `docs/workflow/one-day-delivery-plan.md`
+- `docs/doctoring/viewer-refresh-busy-state-and-attempt-identity.md`

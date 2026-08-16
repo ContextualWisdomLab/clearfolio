@@ -60,7 +60,7 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("id=\"recovery-latest-inspected\""));
                     assertTrue(body.contains("id=\"load-demo-data-btn\""));
                     assertTrue(body.contains("Load demo story"));
-                    assertTrue(body.contains("id=\"clear-history-btn\" disabled aria-label=\"Clear session history\""));
+                    assertTrue(body.contains("id=\"clear-history-btn\" disabled>Clear history</button>"));
                     assertTrue(body.contains("/assets/viewer/demo.js"));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                 });

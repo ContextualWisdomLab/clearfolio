@@ -284,7 +284,7 @@ public class ViewerUiController {
                             <h2 id="history-title" class="panel__title">Session history</h2>
                             <p class="panel__caption">Open status JSON for diligence or launch the preview when conversion is ready.</p>
                           </div>
-                          <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn" disabled aria-label="Clear session history">Clear</button>
+                          <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn" disabled>Clear history</button>
                         </div>
 
                         <div class="table-wrap" id="session-history">

@@ -4,6 +4,9 @@
 
 ### Added
 
+- **빈 상태(Empty State) 버튼 접근성 개선**:
+  - 세션 히스토리가 비어 있을 때 'Clear history' 버튼이 비활성화되도록 수정하여 동작 불가능한 상태를 사용자(시각, 보조 기술)에게 명확히 전달하도록 개선했습니다.
+  - WCAG 2.2 SC 4.1.2 (Name, Role, Value) 및 SC 2.5.3 (Label in Name) 지침을 인용하여 개선되었으며, 본 변경사항은 컴포넌트 단위의 개선으로 전체 제품 준수 선언(whole-product conformance claim)에 해당하지 않습니다.
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.

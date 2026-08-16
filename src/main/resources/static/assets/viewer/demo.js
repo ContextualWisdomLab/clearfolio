@@ -434,23 +434,7 @@ async function loadDemoData() {
   }
 }
 
-function isSameOrigin(url) {
-  try {
-    const urlObj = new URL(url, window.location.href);
-    return urlObj.origin === window.location.origin;
-  } catch (e) {
-    // If window.location is undefined in test context, treat relative paths as same-origin
-    if (typeof window !== 'undefined' && (!window.location || !window.location.href) && url.startsWith('/')) {
-        return true;
-    }
-    return false;
-  }
-}
-
 async function fetchJson(url) {
-  if (!isSameOrigin(url)) {
-    throw new Error("Refusing to fetch from cross-origin URL: " + url);
-  }
   const res = await fetch(url, {
     headers: jsonHeaders(),
     credentials: "same-origin",

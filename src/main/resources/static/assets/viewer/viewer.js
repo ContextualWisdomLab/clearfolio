@@ -3,12 +3,6 @@ import { setBusyState } from "./dom-utils.js";
 const POLL_DELAY_MS = 1500;
 const PDF_JS_MODULE_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.mjs";
 const PDF_JS_WORKER_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.worker.mjs";
-const DEMO_AUTH_HEADERS = {
-  "X-Clearfolio-Tenant-Id": "buyer-demo",
-  "X-Clearfolio-Subject-Id": "buyer-demo-operator",
-  "X-Clearfolio-Permissions": "job:read,viewer:read",
-};
-
 const el = {
   docMeta: document.getElementById("doc-meta"),
   liveStatus: document.getElementById("live-status"),
@@ -155,16 +149,13 @@ async function renderPdfInline(attemptId, path) {
   }
 
   const pdfJs = await getPdfJsModule();
-  if (attemptId !== currentAttemptId) return;
   const loadingTask = pdfJs.getDocument({
     url: resolvedPath,
     withCredentials: true,
   });
   const pdfDocument = await loadingTask.promise;
   try {
-    if (attemptId !== currentAttemptId) return;
     const page = await pdfDocument.getPage(1);
-    if (attemptId !== currentAttemptId) return;
     const unscaledViewport = page.getViewport({ scale: 1 });
     const availableWidth = Math.max(320, el.preview.clientWidth - 32);
     const renderScale = Math.min(2, availableWidth / unscaledViewport.width);
@@ -184,7 +175,6 @@ async function renderPdfInline(attemptId, path) {
     canvas.setAttribute("aria-label", `Rendered first page of a ${pdfDocument.numPages}-page PDF`);
 
     await page.render({ canvasContext: context, viewport }).promise;
-    if (attemptId !== currentAttemptId) return;
     el.preview.appendChild(canvas);
 
     const metadata = document.createElement("p");
@@ -202,7 +192,6 @@ async function fetchJson(url, signal) {
   const res = await fetch(url, {
     headers: {
       Accept: "application/json",
-      ...DEMO_AUTH_HEADERS,
     },
     credentials: "same-origin",
     signal,

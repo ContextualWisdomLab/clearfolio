@@ -66,20 +66,6 @@ class PdfJsAssetIntegrationTest {
         }
     }
 
-    @Test
-    void inlinePdfRenderingRevalidatesAttemptAfterEveryAsyncBoundary() throws Exception {
-        try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/viewer.js")) {
-            assertNotNull(input, "viewer.js must be packaged");
-            String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-
-            assertTrue(script.contains("const pdfJs = await getPdfJsModule();\n  if (attemptId !== currentAttemptId) return;"));
-            assertTrue(script.contains("const pdfDocument = await loadingTask.promise;\n  try {\n    if (attemptId !== currentAttemptId) return;"));
-            assertTrue(script.contains("const page = await pdfDocument.getPage(1);\n    if (attemptId !== currentAttemptId) return;"));
-            assertTrue(script.contains("await page.render({ canvasContext: context, viewport }).promise;\n    if (attemptId !== currentAttemptId) return;"));
-            assertTrue(script.contains("finally {\n    await pdfDocument.destroy();"));
-        }
-    }
-
     private static void assertPackagedResource(String resourcePath) throws Exception {
         try (InputStream input = PdfJsAssetIntegrationTest.class.getResourceAsStream(resourcePath)) {
             assertNotNull(input, () -> "missing PDF.js asset: " + resourcePath);

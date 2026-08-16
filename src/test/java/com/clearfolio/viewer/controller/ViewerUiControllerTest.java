@@ -132,7 +132,9 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("submittedAt: new Date().toISOString()"));
             assertTrue(script.contains("/retry"));
             assertTrue(script.contains("X-Clearfolio-Operator-Id"));
-                        assertTrue(script.contains("deadLettered"));
+            assertTrue(script.contains("X-Clearfolio-Tenant-Id"));
+            assertTrue(script.contains("X-Clearfolio-Permissions"));
+            assertTrue(script.contains("deadLettered"));
         }
     }
 

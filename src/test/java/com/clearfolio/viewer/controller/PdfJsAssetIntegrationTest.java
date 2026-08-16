@@ -62,7 +62,7 @@ class PdfJsAssetIntegrationTest {
             assertTrue(script.contains("getDocument({"));
             assertTrue(script.contains("get(\"artifactToken\")"));
             assertTrue(script.contains("artifactToken=${encodeURIComponent(externalArtifactToken)}"));
-            assertTrue(script.contains("await renderPdfInline(artifactPath)"));
+            assertTrue(script.contains("await renderPdfInline(currentAttemptId, artifactPath)"));
         }
     }
 

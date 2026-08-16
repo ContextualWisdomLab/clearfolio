@@ -1,6 +1,6 @@
 # Architecture Map
 
-Last updated: 2026-02-23
+Last updated: 2026-08-16
 
 ## System Purpose
 
@@ -87,3 +87,4 @@ Optional tracks:
 - `docs/diagrams/retry-deadletter-flow.md`
 - `docs/engineering/acceptance-criteria.md`
 - `docs/workflow/one-day-delivery-plan.md`
+- `docs/doctoring/session-history-action-availability.md` — buyer-demo Clear history availability, visible name, and post-clear focus restore

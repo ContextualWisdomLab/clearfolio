@@ -1,6 +1,7 @@
 package com.clearfolio.viewer.controller;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -60,7 +61,10 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("id=\"recovery-latest-inspected\""));
                     assertTrue(body.contains("id=\"load-demo-data-btn\""));
                     assertTrue(body.contains("Load demo story"));
-                    assertTrue(body.contains("id=\"clear-history-btn\" disabled aria-label=\"Clear session history\""));
+                    assertTrue(body.contains("id=\"history-title\" class=\"panel__title\" tabindex=\"-1\""));
+                    assertTrue(body.contains("id=\"clear-history-btn\" disabled"));
+                    assertTrue(body.contains(">Clear history</button>"));
+                    assertFalse(body.contains("aria-label=\"Clear session history\""));
                     assertTrue(body.contains("/assets/viewer/demo.js"));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                 });
@@ -125,6 +129,10 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("lastInspectedAt"));
             assertTrue(script.contains("loadDemoData"));
             assertTrue(script.contains("load-demo-data-btn"));
+            assertTrue(script.contains("syncClearHistoryAvailability"));
+            assertTrue(script.contains("clearHistoryBtn.disabled = unavailable"));
+            assertTrue(script.contains("document.activeElement === el.clearHistoryBtn"));
+            assertTrue(script.contains("history-title"));
             assertTrue(script.contains("openJobDetail"));
             assertTrue(script.contains("retryActiveJob"));
             assertTrue(script.contains("refreshKpisAfterUpdate"));

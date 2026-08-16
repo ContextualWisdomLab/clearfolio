@@ -13,7 +13,3 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
-
-## 2026-08-13 - 빈 상태일 때의 동작 제한 버튼의 UX 개선
-**Learning:** 데이터가 비어 있는 상태(Empty State)에서 실행 불가능한 동작(예: 히스토리 지우기)의 버튼을 활성화된 채로 두면 사용자에게 혼란을 줄 수 있으며, 아이콘이 없는 텍스트 버튼이더라도 'Clear'와 같이 문맥상 목적이 모호한 텍스트를 사용할 경우 스크린 리더 사용자에게 명확한 의미가 전달되지 않습니다.
-**Action:** 동작을 수행할 데이터가 없을 때는 해당 버튼에 `disabled` 속성을 부여하여 시각적/기능적으로 비활성화하고, 문맥이 필요한 버튼에는 `aria-label`을 추가하여 접근성을 높이는 패턴을 모든 빈 상태(Empty State) 디자인에 일관되게 적용합니다.

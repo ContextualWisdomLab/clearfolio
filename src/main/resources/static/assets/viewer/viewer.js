@@ -204,6 +204,11 @@ async function fetchJson(url, signal) {
 }
 
 async function openJsonDocument(url) {
+  const resolvedUrl = resolveSameOriginHttpUrl(url);
+  if (!resolvedUrl) {
+    showError(currentAttemptId, "Invalid JSON evidence URL.");
+    return;
+  }
   const popup = window.open("", "_blank");
   if (!popup) {
     showError(currentAttemptId, "Allow popups to inspect JSON evidence in a new tab.");
@@ -216,7 +221,7 @@ async function openJsonDocument(url) {
   pre.textContent = "Loading...";
   popup.document.body.appendChild(pre);
 
-  const { res, data } = await fetchJson(url);
+  const { res, data } = await fetchJson(resolvedUrl);
   pre.textContent = res.ok && data
     ? JSON.stringify(data, null, 2)
     : "Unable to load JSON evidence with the current tenant claim.";

@@ -14,6 +14,7 @@
 
 ### Changed
 
+- 세션 히스토리가 비어 있을 때 `Clear` 작업을 기본 비활성화하고, 보조기기에 `Clear session history`라는 문맥을 제공하며, 모든 히스토리 렌더링 후 실제 항목 수와 버튼 가용성을 동기화합니다.
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
 - CI가 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하며, 합성 merge revision은 별도 호환성 작업에서 검증하도록 분리했습니다.
 - Maven `verify` 단계에서 JaCoCo production line 및 branch missed count가 각각 0인지 강제하고, 실패 시 누락 위치 진단을 출력하도록 했습니다.

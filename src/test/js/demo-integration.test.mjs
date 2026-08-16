@@ -65,6 +65,9 @@ test("the executable demo renders inert actions and blocks repeated status activ
     setTimeout() {
       throw new Error("completed jobs must not schedule polling");
     },
+    location: {
+      origin: "http://localhost:8080"
+    }
   };
   globalThis.localStorage = {
     getItem() {

@@ -32,3 +32,7 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## 2026-08-16 - Environment Variable Secrets
+**Vulnerability:** Application secrets (like artifact token secrets and HMAC secrets) were loaded directly from environment variables.
+**Learning:** Loading secrets directly from environment variables can lead to exposure if the environment is dumped or logged. It violates the repository's configuration rule requiring secrets to be read from a KV registry or mounted config tree.
+**Prevention:** Remove environment variable fallbacks from configuration files (e.g., `application-buyer-demo.yml`) to enforce the use of secure config trees or KV mechanisms.

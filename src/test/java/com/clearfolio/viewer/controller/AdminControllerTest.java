@@ -206,6 +206,6 @@ class AdminControllerTest {
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
-                .expectStatus().isEqualTo(500);
+                .expectStatus().isBadRequest();
     }
 }

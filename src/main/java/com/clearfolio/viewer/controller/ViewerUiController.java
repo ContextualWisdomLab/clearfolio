@@ -287,7 +287,7 @@ public class ViewerUiController {
                           <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn">Clear</button>
                         </div>
 
-                        <div class="table-wrap" id="session-history">
+                        <div class="table-wrap" id="session-history" tabindex="0" role="region" aria-labelledby="history-title">
                           <table class="history-table">
                             <thead>
                               <tr>

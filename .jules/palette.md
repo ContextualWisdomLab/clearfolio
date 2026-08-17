@@ -13,3 +13,6 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+## 2026-08-17 - Accessible Responsive Tables
+**Learning:** Horizontally scrollable `.table-wrap` containers must have `tabindex="0"`, `role="region"`, and `aria-labelledby` attributes so keyboard users can focus and scroll them, and screen readers can announce the region correctly.
+**Action:** Always verify scrollable regions have proper keyboard focus and region roles.

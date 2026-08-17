@@ -5,7 +5,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.security.Security;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +22,7 @@ import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
+import com.clearfolio.viewer.testsupport.SecurityProviderTestSupport;
 
 class AdminControllerTest {
 
@@ -111,7 +114,6 @@ class AdminControllerTest {
                 .jsonPath("$.jobs.length()").isEqualTo(1)
                 .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf");
     }
-
 
     @Test
     void deleteJobReturnsNoContent() {
@@ -207,5 +209,49 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
                 .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void retryDeadLetteredThrowsWhenOperatorIdNull() {
+        TenantContext nullContext = mock(TenantContext.class);
+        when(nullContext.tenantId()).thenReturn("tenant-1");
+        when(nullContext.subjectId()).thenReturn(null);
+
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY))).thenReturn(nullContext);
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "tenant-1", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void retryDeadLetteredThrowsWhenSha256NotAvailable() {
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY))).thenReturn(tenantContext);
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "tenant-1", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+
+        synchronized (SecurityProviderTestSupport.SECURITY_PROVIDERS_LOCK) {
+            List<SecurityProviderTestSupport.ProviderPosition> originalProviders = SecurityProviderTestSupport.sha256ProviderPositions();
+            try {
+                for (SecurityProviderTestSupport.ProviderPosition pos : originalProviders) {
+                    Security.removeProvider(pos.provider().getName());
+                }
+
+                webTestClient.post()
+                        .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                        .exchange()
+                        .expectStatus().is5xxServerError();
+
+            } finally {
+                for (SecurityProviderTestSupport.ProviderPosition pos : originalProviders) {
+                    Security.insertProviderAt(pos.provider(), pos.position());
+                }
+            }
+        }
     }
 }

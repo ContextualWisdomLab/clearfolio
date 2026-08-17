@@ -332,19 +332,38 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+    @SuppressWarnings("checkstyle:MagicNumber")
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        int signatureDotIndex = token.lastIndexOf('.');
+        if (signatureDotIndex == -1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        String payload = token.substring(0, signatureDotIndex);
+        String providedSignature = token.substring(signatureDotIndex + 1);
+
         String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+                providedSignature.getBytes(StandardCharsets.US_ASCII))) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
+
+        String[] parts = new String[TOKEN_FIELD_COUNT];
+        int partIndex = 0;
+        int startIndex = 0;
+        int dotIndex;
+        while ((dotIndex = payload.indexOf('.', startIndex)) != -1) {
+            if (partIndex >= TOKEN_FIELD_COUNT - 1) {
+                throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            }
+            parts[partIndex++] = payload.substring(startIndex, dotIndex);
+            startIndex = dotIndex + 1;
+        }
+        if (partIndex != TOKEN_FIELD_COUNT - 1) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+        parts[partIndex] = payload.substring(startIndex);
 
         try {
             String version = decode(parts[0]);
@@ -368,6 +387,7 @@ public class ArtifactLinkService {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
     }
+
 
     private String sign(ArtifactTokenClaims claims) {
         String payload = String.join(".",

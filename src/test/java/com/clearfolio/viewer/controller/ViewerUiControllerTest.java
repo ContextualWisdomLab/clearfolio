@@ -139,6 +139,8 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("X-Clearfolio-Permissions"));
             assertTrue(script.contains("DEMO_AUTH_HEADERS"));
             assertTrue(script.contains("resolveSameOriginHttpUrl"));
+            assertTrue(script.contains("url.origin === window.location.origin"));
+            assertTrue(script.contains("Invalid status URL."));
             assertTrue(script.contains("deadLettered"));
         }
     }

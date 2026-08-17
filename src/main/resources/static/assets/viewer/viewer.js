@@ -19,6 +19,7 @@ const el = {
 };
 
 let pdfJsModulePromise;
+let originalRetryBtnNodes = null;
 
 function getMetaContent(name) {
   const meta = document.querySelector(`meta[name="${name}"]`);
@@ -55,6 +56,10 @@ function setLoading(message) {
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
   el.retryBtn.disabled = true;
+  el.retryBtn.setAttribute("aria-busy", "true");
+  if (!originalRetryBtnNodes) {
+    originalRetryBtnNodes = Array.from(el.retryBtn.childNodes);
+  }
   el.retryBtn.textContent = "Refreshing...";
 }
 
@@ -65,7 +70,10 @@ function showError(message) {
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
   el.retryBtn.disabled = false;
-  el.retryBtn.textContent = "Refresh";
+  el.retryBtn.removeAttribute("aria-busy");
+  if (originalRetryBtnNodes) {
+    el.retryBtn.replaceChildren(...originalRetryBtnNodes);
+  }
 }
 
 function clearPreview() {
@@ -274,7 +282,10 @@ async function poll(docId, abortSignal) {
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
     el.retryBtn.disabled = false;
-    el.retryBtn.textContent = "Refresh";
+    el.retryBtn.removeAttribute("aria-busy");
+    if (originalRetryBtnNodes) {
+      el.retryBtn.replaceChildren(...originalRetryBtnNodes);
+    }
   } catch (_error) {
     if (abortSignal.aborted) {
       return;

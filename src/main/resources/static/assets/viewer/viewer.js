@@ -149,13 +149,16 @@ async function renderPdfInline(attemptId, path) {
   }
 
   const pdfJs = await getPdfJsModule();
+  if (attemptId !== currentAttemptId) return;
   const loadingTask = pdfJs.getDocument({
     url: resolvedPath,
     withCredentials: true,
   });
   const pdfDocument = await loadingTask.promise;
   try {
+    if (attemptId !== currentAttemptId) return;
     const page = await pdfDocument.getPage(1);
+    if (attemptId !== currentAttemptId) return;
     const unscaledViewport = page.getViewport({ scale: 1 });
     const availableWidth = Math.max(320, el.preview.clientWidth - 32);
     const renderScale = Math.min(2, availableWidth / unscaledViewport.width);
@@ -175,6 +178,7 @@ async function renderPdfInline(attemptId, path) {
     canvas.setAttribute("aria-label", `Rendered first page of a ${pdfDocument.numPages}-page PDF`);
 
     await page.render({ canvasContext: context, viewport }).promise;
+    if (attemptId !== currentAttemptId) return;
     el.preview.appendChild(canvas);
 
     const metadata = document.createElement("p");

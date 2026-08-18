@@ -52,6 +52,17 @@ class CredentialRegistryContractTest {
     }
 
     @Test
+    void scopedResolutionRejectsMissingAdapterMaterial() {
+        CredentialReference reference = new CredentialReference(
+                "tenant-claims-hmac",
+                CredentialPurpose.TENANT_CLAIMS_SIGNING
+        );
+        CredentialRegistry registry = ignored -> null;
+
+        assertThrows(IllegalStateException.class, () -> registry.resolveScoped(reference));
+    }
+
+    @Test
     void credentialReferenceFailsClosedForInvalidAuthority() {
         assertThrows(IllegalArgumentException.class, () -> new CredentialReference(
                 null,

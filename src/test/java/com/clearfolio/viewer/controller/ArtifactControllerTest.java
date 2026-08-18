@@ -50,10 +50,13 @@ class ArtifactControllerTest {
     @Test
     void returnsNotFoundWhenJobMissing() {
         UUID docId = UUID.randomUUID();
+        ConversionJob authorizedJob = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        String artifactUrl = signedArtifactUrl(authorizedJob);
         when(conversionService.getJob(docId)).thenReturn(Optional.empty());
 
         webTestClient.get()
-                .uri("/artifacts/{docId}.pdf", docId)
+                .uri(artifactUrl)
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -61,6 +64,9 @@ class ArtifactControllerTest {
     @Test
     void returnsNotFoundWhenJobIsNotSucceeded() {
         UUID docId = UUID.randomUUID();
+        ConversionJob authorizedJob = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        String artifactUrl = signedArtifactUrl(authorizedJob);
         ConversionJob job = new ConversionJob(
                 docId,
                 "report.docx",
@@ -72,7 +78,7 @@ class ArtifactControllerTest {
         when(conversionService.getJob(docId)).thenReturn(Optional.of(job));
 
         webTestClient.get()
-                .uri("/artifacts/{docId}.pdf", docId)
+                .uri(artifactUrl)
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -81,10 +87,13 @@ class ArtifactControllerTest {
     void returnsNotFoundWhenArtifactIsMissing() {
         UUID docId = UUID.randomUUID();
         ConversionJob job = succeededJob(docId);
+        artifactStore.putPdf(docId, sampleBytes());
+        String artifactUrl = signedArtifactUrl(job);
+        artifactStore.deletePdf(docId);
         when(conversionService.getJob(docId)).thenReturn(Optional.of(job));
 
         webTestClient.get()
-                .uri("/artifacts/{docId}.pdf", docId)
+                .uri(artifactUrl)
                 .exchange()
                 .expectStatus().isNotFound();
     }

@@ -55,6 +55,8 @@ class ConversionJobTest {
         assertEquals(TenantContext.DEMO_TENANT_ID, job.getTenantId());
         assertEquals(TenantContext.DEMO_SUBJECT_ID, job.getSubjectId());
         assertTrue(job.belongsToTenant(TenantContext.DEMO_TENANT_ID));
+        assertFalse(job.belongsToTenant(null));
+        assertFalse(job.belongsToTenant(" \u0000 "));
     }
 
     @Test
@@ -74,24 +76,6 @@ class ConversionJobTest {
         assertEquals("subject-a", job.getSubjectId());
         assertTrue(job.belongsToTenant("tenant-a"));
         assertFalse(job.belongsToTenant("tenant-b"));
-    }
-
-    @Test
-    void constructorFallsBackToDemoMetadataForBlankTenantClaims() {
-        ConversionJob job = new ConversionJob(
-                UUID.randomUUID(),
-                " \u0000 ",
-                null,
-                "report.docx",
-                "application/octet-stream",
-                "hash",
-                10L,
-                3
-        );
-
-        assertEquals(TenantContext.DEMO_TENANT_ID, job.getTenantId());
-        assertEquals(TenantContext.DEMO_SUBJECT_ID, job.getSubjectId());
-        assertFalse(job.belongsToTenant(null));
     }
 
     @Test

@@ -617,7 +617,7 @@ class ConversionControllerTest {
                 .jsonPath("$.artifactLinkUrl").value(value -> assertSignedArtifactUrl((String) value, docId))
                 .jsonPath("$.artifactLinkScope").isEqualTo(ArtifactLinkService.ARTIFACT_READ_SCOPE)
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
-                .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
+                .jsonPath("$.rendererAdapter").isEqualTo("PDF_JS");
     }
 
     @Test
@@ -789,7 +789,7 @@ class ConversionControllerTest {
                 .jsonPath("$.previewResourcePath").value(value -> assertSignedArtifactUrl((String) value, docId))
                 .jsonPath("$.artifactLinkUrl").value(value -> assertSignedArtifactUrl((String) value, docId))
                 .jsonPath("$.sourceExtension").isEqualTo("docx")
-                .jsonPath("$.rendererAdapter").isEqualTo("DOCX_PREVIEW");
+                .jsonPath("$.rendererAdapter").isEqualTo("PDF_JS");
         }
     }
 

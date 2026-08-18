@@ -18,7 +18,7 @@ import com.clearfolio.viewer.model.ConversionJob;
  * @param startedAt time at which processing began, or {@code null}
  * @param completedAt time at which processing completed, or {@code null}
  * @param sourceExtension normalized lowercase source-file extension
- * @param rendererAdapter adapter selected for the source document family
+ * @param rendererAdapter qualified renderer used to display the converted artifact
  * @param artifactLinkUrl signed artifact URL, or {@code null} when unavailable
  * @param artifactLinkExpiresAt expiry time of the signed artifact URL, or
  *        {@code null}
@@ -62,7 +62,6 @@ public record ViewerBootstrapResponse(
      */
     public static ViewerBootstrapResponse from(ConversionJob job, ArtifactLinkResponse artifactLink) {
         String sourceExtension = sourceExtensionOf(job.getOriginalFileName());
-        String rendererAdapter = rendererAdapterFor(sourceExtension);
         String previewResourcePath = artifactLink == null
                 ? job.getConvertedResourcePath()
                 : artifactLink.artifactUrl();
@@ -76,7 +75,7 @@ public record ViewerBootstrapResponse(
                 job.getStartedAt(),
                 job.getCompletedAt(),
                 sourceExtension,
-                rendererAdapter,
+                PDF_JS,
                 artifactLink == null ? null : artifactLink.artifactUrl(),
                 artifactLink == null ? null : artifactLink.expiresAt(),
                 artifactLink == null ? null : artifactLink.scope()
@@ -96,16 +95,5 @@ public record ViewerBootstrapResponse(
         }
 
         return normalized.substring(lastDot + 1).toLowerCase(Locale.ROOT);
-    }
-
-    private static String rendererAdapterFor(String sourceExtension) {
-        return switch (sourceExtension) {
-            case "pdf" -> PDF_JS;
-            case "doc", "docx" -> "DOCX_PREVIEW";
-            case "xls", "xlsx", "csv", "tsv" -> "SHEET_ADAPTER";
-            case "ppt", "pptx" -> "SLIDE_ADAPTER";
-            case "md", "txt" -> "TEXT_ADAPTER";
-            default -> PDF_JS;
-        };
     }
 }

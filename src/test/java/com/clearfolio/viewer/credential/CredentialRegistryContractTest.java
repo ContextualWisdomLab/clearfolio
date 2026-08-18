@@ -29,7 +29,26 @@ class CredentialRegistryContractTest {
 
         assertEquals("tenant-claims-hmac", reference.credentialName());
         assertEquals(expected, registry.resolve(reference));
+        assertEquals(expected, registry.resolveScoped(reference));
         assertEquals("credential-registry-v1", CredentialRegistry.CONTRACT_VERSION);
+    }
+
+    @Test
+    void scopedResolutionRejectsPurposeMismatchWithoutChangingRawAdapterContract() {
+        CredentialReference reference = new CredentialReference(
+                "tenant-claims-hmac",
+                CredentialPurpose.TENANT_CLAIMS_SIGNING
+        );
+        CredentialSnapshot mismatched = new CredentialSnapshot(
+                "artifact-token-hmac",
+                "v2",
+                CredentialPurpose.ARTIFACT_TOKEN_SIGNING,
+                new byte[] {5, 4, 3, 2}
+        );
+        CredentialRegistry registry = ignored -> mismatched;
+
+        assertEquals(mismatched, registry.resolve(reference));
+        assertThrows(IllegalStateException.class, () -> registry.resolveScoped(reference));
     }
 
     @Test

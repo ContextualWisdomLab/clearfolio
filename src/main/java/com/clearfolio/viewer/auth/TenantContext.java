@@ -117,13 +117,12 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
     }
 
     private static Set<String> permissionsOf(String raw) {
-        String normalized = sanitize(raw);
-        if (normalized == null) {
+        if (raw == null) {
             return Set.of();
         }
 
         LinkedHashSet<String> parsed = new LinkedHashSet<>();
-        Arrays.stream(normalized.split(","))
+        Arrays.stream(raw.split(","))
                 .map(TenantContext::sanitize)
                 .filter(value -> value != null)
                 .forEach(parsed::add);

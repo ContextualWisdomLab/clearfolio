@@ -1,6 +1,7 @@
 package com.clearfolio.viewer.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashSet;
@@ -35,6 +36,24 @@ class ConversionPropertiesTest {
         properties.setProcessingLeaseTimeoutMs(0L);
 
         assertEquals(1L, properties.getProcessingLeaseTimeoutMs());
+    }
+
+    @Test
+    void retryBackoffMultiplierRejectsNonFiniteValues() {
+        ConversionProperties properties = new ConversionProperties();
+
+        assertThrows(IllegalArgumentException.class, () -> properties.setRetryBackoffMultiplier(Double.NaN));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> properties.setRetryBackoffMultiplier(Double.POSITIVE_INFINITY)
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> properties.setRetryBackoffMultiplier(Double.NEGATIVE_INFINITY)
+        );
+
+        properties.setRetryBackoffMultiplier(0.5);
+        assertEquals(1.0, properties.getRetryBackoffMultiplier());
     }
 
     @Test

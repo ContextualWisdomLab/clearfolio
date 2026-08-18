@@ -25,15 +25,16 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 @RestController
 public class AdminController {
 
+    /** Conversion service. */
     private final DocumentConversionService conversionService;
 
     /**
      * Creates a controller for admin operations.
      *
-     * @param conversionService conversion service
+     * @param cvcService conversion service
      */
-    public AdminController(DocumentConversionService conversionService) {
-        this.conversionService = conversionService;
+    public AdminController(final DocumentConversionService cvcService) {
+        this.conversionService = cvcService;
     }
 
     /**
@@ -43,7 +44,8 @@ public class AdminController {
      * @return list of conversion jobs
      */
     @GetMapping("/api/v1/admin/convert/jobs")
-    public AdminJobListResponse getAllJobs(@RequestParam(required = false) Boolean deadLettered) {
+    public AdminJobListResponse getAllJobs(
+            @RequestParam(required = false) final Boolean deadLettered) {
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
 
         if (deadLettered == null) {
@@ -66,7 +68,7 @@ public class AdminController {
      * @return no content on success
      */
     @DeleteMapping("/api/v1/admin/convert/jobs/{jobId}")
-    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId) {
+    public ResponseEntity<Void> deleteJob(@PathVariable final UUID jobId) {
         conversionService.deleteJob(jobId);
         return ResponseEntity.noContent().build();
     }
@@ -78,13 +80,17 @@ public class AdminController {
      * @return accepted response on success
      */
     @PostMapping("/api/v1/admin/convert/jobs/{jobId}/retry")
-    public ResponseEntity<Void> retryDeadLettered(@PathVariable UUID jobId) {
-        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
+    public ResponseEntity<Void> retryDeadLettered(
+            @PathVariable final UUID jobId) {
+        RetryDeadLetterResult result = conversionService
+                .retryDeadLettered(jobId, "admin");
         if (result == RetryDeadLetterResult.NOT_FOUND) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
         }
         if (result == RetryDeadLetterResult.NOT_ELIGIBLE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "job is not eligible for retry");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "job is not eligible for retry");
         }
         return ResponseEntity.accepted().build();
     }

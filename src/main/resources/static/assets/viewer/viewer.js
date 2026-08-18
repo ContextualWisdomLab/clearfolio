@@ -131,20 +131,36 @@ function getPdfJsModule() {
   return pdfJsModulePromise;
 }
 
-async function renderPdfInline(path) {
+async function renderPdfInline(path, abortSignal) {
   const resolvedPath = resolveSameOriginHttpUrl(path);
   if (resolvedPath === null) {
     throw new Error("PDF preview resource is invalid");
   }
 
+  if (abortSignal?.aborted) {
+    return false;
+  }
+
   const pdfJs = await getPdfJsModule();
+  if (abortSignal?.aborted) {
+    return false;
+  }
+
   const loadingTask = pdfJs.getDocument({
     url: resolvedPath,
     withCredentials: true,
   });
   const pdfDocument = await loadingTask.promise;
   try {
+    if (abortSignal?.aborted) {
+      return false;
+    }
+
     const page = await pdfDocument.getPage(1);
+    if (abortSignal?.aborted) {
+      return false;
+    }
+
     const unscaledViewport = page.getViewport({ scale: 1 });
     const availableWidth = Math.max(320, el.preview.clientWidth - 32);
     const renderScale = Math.min(2, availableWidth / unscaledViewport.width);
@@ -164,6 +180,10 @@ async function renderPdfInline(path) {
     canvas.setAttribute("aria-label", `Rendered first page of a ${pdfDocument.numPages}-page PDF`);
 
     await page.render({ canvasContext: context, viewport }).promise;
+    if (abortSignal?.aborted) {
+      return false;
+    }
+
     el.preview.appendChild(canvas);
 
     const metadata = document.createElement("p");
@@ -172,6 +192,7 @@ async function renderPdfInline(path) {
       ? "Showing the document page."
       : `Showing page 1 of ${pdfDocument.numPages}. Open the artifact for the complete document.`;
     el.preview.appendChild(metadata);
+    return true;
   } finally {
     await pdfDocument.destroy();
   }
@@ -265,10 +286,17 @@ async function poll(docId, abortSignal) {
     clearPreview();
     const path = bootstrap.data.previewResourcePath;
     if (typeof path === "string" && path.endsWith(".pdf")) {
-      await renderPdfInline(path);
+      await renderPdfInline(path, abortSignal);
+      if (abortSignal.aborted) {
+        return;
+      }
     }
     if (typeof path === "string" && path.length > 0) {
       renderPreviewLink(path);
+    }
+
+    if (abortSignal.aborted) {
+      return;
     }
 
     el.preview.setAttribute("aria-busy", "false");

@@ -41,6 +41,7 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("id=\"upload-form\""));
                     assertTrue(body.contains("name=\"file\""));
                     assertTrue(body.contains("id=\"session-history\""));
+                    assertTrue(body.contains("id=\"session-history\" tabindex=\"0\" role=\"region\" aria-labelledby=\"history-title\""));
                     assertTrue(body.contains("id=\"job-detail\""));
                     assertTrue(body.contains("id=\"retry-job-btn\""));
                     assertTrue(body.contains("id=\"kpi-strip\""));

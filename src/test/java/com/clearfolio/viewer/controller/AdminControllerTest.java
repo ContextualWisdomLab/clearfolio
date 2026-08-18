@@ -39,6 +39,7 @@ class AdminControllerTest {
         TenantContext mockContext = mock(TenantContext.class);
         when(mockContext.tenantId()).thenReturn("buyer-demo");
         when(mockContext.subjectId()).thenReturn("subject-1");
+        org.mockito.Mockito.doCallRealMethod().when(tenantAccessService).requireSameTenant(any(), any());
         when(tenantAccessService.require(any(HttpHeaders.class), any(String.class))).thenReturn(mockContext);
     }
 
@@ -137,6 +138,28 @@ class AdminControllerTest {
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
-                .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void deleteJobThrowsWhenJobNotFound() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList());
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void retryThrowsWhenJobNotFound() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList());
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
     }
 }

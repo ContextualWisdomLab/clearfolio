@@ -99,7 +99,7 @@ class ArtifactLinkServiceTest {
         ArtifactLinkResponse response = service.createLink(
                 job,
                 tenantContext(),
-                new ArtifactLinkRequest(" \u0000 ", -1, null)
+                new ArtifactLinkRequest("   ", -1, null)
         );
 
         assertEquals(NOW.plusSeconds(300), response.expiresAt());

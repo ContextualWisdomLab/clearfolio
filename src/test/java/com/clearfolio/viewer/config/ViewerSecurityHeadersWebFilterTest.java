@@ -1,28 +1,30 @@
 package com.clearfolio.viewer.config;
 
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.RequestPath;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import org.springframework.mock.web.server.MockServerWebExchange;
-import org.springframework.web.server.WebFilterChain;
 import org.springframework.web.server.ServerWebExchange;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.RequestPath;
+import org.springframework.web.server.WebFilterChain;
 
 import reactor.core.publisher.Mono;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 class ViewerSecurityHeadersWebFilterTest {
 
@@ -131,6 +133,23 @@ class ViewerSecurityHeadersWebFilterTest {
         String csp = exchange.getResponse().getHeaders().getFirst("Content-Security-Policy");
         assertNotNull(csp);
         assertTrue(csp.contains("frame-ancestors https://example.test"));
+    }
+
+    @Test
+    void rejectsFrameAncestorDirectiveAndHeaderInjection() {
+        IllegalArgumentException directiveInjection = assertThrows(
+                IllegalArgumentException.class,
+                () -> new ViewerSecurityHeadersWebFilter("https://trusted.example; script-src *")
+        );
+        assertEquals("viewer.security.frame-ancestors contains an unsafe CSP character",
+                directiveInjection.getMessage());
+
+        IllegalArgumentException headerInjection = assertThrows(
+                IllegalArgumentException.class,
+                () -> new ViewerSecurityHeadersWebFilter("https://trusted.example\nX-Injected: true")
+        );
+        assertEquals("viewer.security.frame-ancestors contains an unsafe CSP character",
+                headerInjection.getMessage());
     }
 
     @Test

@@ -108,6 +108,10 @@ public class ViewerSecurityHeadersWebFilter implements WebFilter {
         if (configured == null) {
             return "'self'";
         }
+        if (configured.indexOf(';') >= 0 || configured.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException(
+                    "viewer.security.frame-ancestors contains an unsafe CSP character");
+        }
         String trimmed = configured.trim();
         if (trimmed.isEmpty()) {
             return "'self'";

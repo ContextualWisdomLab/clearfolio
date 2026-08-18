@@ -607,7 +607,6 @@ class DefaultConversionWorkerTest {
     void recoverPendingJobsRequeuesDueSubmittedAndStaleProcessingJobs() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
         ConversionProperties conversionProperties = new ConversionProperties();
-        Instant recoveryNow = Instant.now().plusSeconds(120);
 
         ConversionJob dueSubmitted = new ConversionJob(
                 UUID.randomUUID(),
@@ -625,7 +624,6 @@ class DefaultConversionWorkerTest {
                 10L,
                 3
         );
-        futureRetry.markRetryScheduled("retry later", recoveryNow.plusSeconds(30));
         ConversionJob staleProcessing = new ConversionJob(
                 UUID.randomUUID(),
                 "stale.docx",
@@ -635,6 +633,8 @@ class DefaultConversionWorkerTest {
                 3
         );
         assertTrue(staleProcessing.markProcessing("worker exited"));
+        Instant recoveryNow = staleProcessing.getStartedAt().plusNanos(1);
+        futureRetry.markRetryScheduled("retry later", recoveryNow.plusSeconds(30));
         repository.save(dueSubmitted);
         repository.save(futureRetry);
         repository.save(staleProcessing);
@@ -652,7 +652,7 @@ class DefaultConversionWorkerTest {
                 }
         );
 
-        int recovered = worker.recoverPendingJobs(recoveryNow, Duration.ofSeconds(60));
+        int recovered = worker.recoverPendingJobs(recoveryNow, Duration.ZERO);
 
         assertEquals(2, recovered);
         assertEquals(2, attempts.get());

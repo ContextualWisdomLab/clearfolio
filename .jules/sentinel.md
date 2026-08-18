@@ -32,3 +32,7 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## 2026-08-18 - Admin 엔드포인트 권한 부여 누락 문제 수정
+**Vulnerability:** `/api/v1/admin/convert/jobs` 등 AdminController의 주요 엔드포인트에서 권한 부여(authorization) 검사가 누락되어 있었습니다.
+**Learning:** 애플리케이션의 다른 컨트롤러에서는 `TenantAccessService`를 사용하여 수동으로 권한을 검사하고 있으나, AdminController에는 이 검사 로직이 주입되지 않아, 요청 헤더만 알면 누구나 관리자 권한을 행사할 수 있는 보안 취약점이 있었습니다.
+**Prevention:** 모든 새로운 컨트롤러 및 민감한 엔드포인트를 구현할 때, 스프링 시큐리티 어노테이션이 아닌 수동 방식의 인가 서비스(`TenantAccessService`)가 적절히 주입되고 각 엔드포인트에서 호출되는지 철저히 확인해야 합니다.

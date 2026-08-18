@@ -33,8 +33,8 @@ class KpiSnapshotLedgerTest {
     void recordsSnapshotsInMemoryAndFiltersByTenant() {
         KpiSnapshotLedger ledger = new KpiSnapshotLedger();
 
-        ledger.recordSnapshot(context("tenant-a"), snapshot(2, 1, 123L));
-        ledger.recordSnapshot(context("tenant-b"), snapshot(1, 0, null));
+        ledger.recordSnapshot(context("tenant-a"), snapshot(2, 1, 1, 123L));
+        ledger.recordSnapshot(context("tenant-b"), snapshot(1, 0, 1, null));
 
         assertEquals(1, ledger.snapshotsFor("tenant-a").size());
         assertEquals(123L, ledger.snapshotsFor("tenant-a").getFirst().p95TimeToPreviewMs());
@@ -43,18 +43,78 @@ class KpiSnapshotLedgerTest {
     }
 
     @Test
-    void persistsAndReloadsSnapshotsWhenPathIsConfigured() {
+    void persistsAndReloadsSnapshotsWhenPathIsConfigured() throws Exception {
         Path ledgerPath = tempDir.resolve("kpi-snapshots.log");
         KpiSnapshotLedger ledger = new KpiSnapshotLedger(ledgerPath, CLOCK);
 
-        ledger.recordSnapshot(context("tenant-a"), snapshot(2, 1, 123L));
-        ledger.recordSnapshot(context("tenant-a"), snapshot(0, 0, null));
+        ledger.recordSnapshot(context("tenant-a"), snapshot(2, 1, 1, 123L));
+        ledger.recordSnapshot(context("tenant-a"), snapshot(0, 0, 0, null));
+
+        String[] firstFields = Files.readAllLines(ledgerPath, StandardCharsets.UTF_8)
+                .getFirst()
+                .split("\t", -1);
+        assertEquals("SNAPSHOT", firstFields[0]);
+        assertEquals("terminal-outcomes-v1", firstFields[1]);
 
         KpiSnapshotLedger reloaded = new KpiSnapshotLedger(ledgerPath, CLOCK);
         assertEquals(2, reloaded.snapshotsFor("tenant-a").size());
         assertEquals(NOW, reloaded.snapshotsFor("tenant-a").getFirst().exportedAt());
+        assertEquals(0.5, reloaded.snapshotsFor("tenant-a").getFirst().conversionSuccessRate());
         assertEquals(123L, reloaded.snapshotsFor("tenant-a").getFirst().p95TimeToPreviewMs());
         assertNull(reloaded.snapshotsFor("tenant-a").get(1).p95TimeToPreviewMs());
+    }
+
+    @Test
+    void migratesLegacyTotalDenominatorToTerminalOutcomeSemantics() throws Exception {
+        Path ledgerPath = Files.writeString(
+                tempDir.resolve("legacy-kpi-snapshots.log"),
+                legacySnapshotLine(4, 1, 1, 1, 1, 0, 0.25, 123L) + System.lineSeparator(),
+                StandardCharsets.UTF_8
+        );
+
+        KpiSnapshotRecord migrated = new KpiSnapshotLedger(ledgerPath, CLOCK)
+                .snapshotsFor("tenant-a")
+                .getFirst();
+
+        assertEquals(4, migrated.totalJobs());
+        assertEquals(1, migrated.succeededJobs());
+        assertEquals(1, migrated.failedJobs());
+        assertEquals(0.5, migrated.conversionSuccessRate());
+    }
+
+    @Test
+    void migratesEmptyLegacySnapshotToZeroTerminalRate() throws Exception {
+        Path ledgerPath = Files.writeString(
+                tempDir.resolve("empty-legacy-kpi-snapshot.log"),
+                legacySnapshotLine(0, 0, 0, 0, 0, 0, 0.0, null) + System.lineSeparator(),
+                StandardCharsets.UTF_8
+        );
+
+        KpiSnapshotRecord migrated = new KpiSnapshotLedger(ledgerPath, CLOCK)
+                .snapshotsFor("tenant-a")
+                .getFirst();
+
+        assertEquals(0, migrated.totalJobs());
+        assertEquals(0.0, migrated.conversionSuccessRate());
+        assertNull(migrated.p95TimeToPreviewMs());
+    }
+
+    @Test
+    void rejectsUnknownMetricVersionsAndInconsistentStoredRates() throws Exception {
+        assertInvalidLedger(currentSnapshotLine("unknown-v1", 4, 1, 1, 1, 1, 0, 0.5, 123L));
+        assertInvalidLedger(currentSnapshotLine("terminal-outcomes-v1", 4, 1, 1, 1, 1, 0, 0.25, 123L));
+        assertInvalidLedger(legacySnapshotLine(4, 1, 1, 1, 1, 0, 0.5, 123L));
+        assertInvalidLedger(currentSnapshotLine(
+                "terminal-outcomes-v1",
+                4,
+                1,
+                1,
+                1,
+                1,
+                0,
+                0.5,
+                123L
+        ).replace("SNAPSHOT", "BROKEN"));
     }
 
     @Test
@@ -87,6 +147,37 @@ class KpiSnapshotLedgerTest {
     }
 
     @Test
+    void rejectsNonFiniteOutOfRangeAndNegativeLatencyEvidence() throws Exception {
+        String current = currentSnapshotLine(
+                "terminal-outcomes-v1", 2, 0, 0, 1, 1, 0, 0.5, 123L
+        );
+        assertInvalidLedger(current.replace("\t0.5\t", "\tNaN\t"));
+        assertInvalidLedger(current.replace("\t0.5\t", "\tInfinity\t"));
+        assertInvalidLedger(current.replace("\t0.5\t", "\t-Infinity\t"));
+        assertInvalidLedger(current.replace("\t0.5\t", "\t-0.01\t"));
+        assertInvalidLedger(current.replace("\t0.5\t", "\t1.01\t"));
+        assertInvalidLedger(current.replace("\t123", "\t-1"));
+    }
+
+    @Test
+    void acceptsInclusiveKpiNumericBoundaries() throws Exception {
+        assertValidLedger(
+                currentSnapshotLine(
+                        "terminal-outcomes-v1", 1, 0, 0, 0, 1, 0, 0.0, 0L
+                ),
+                0.0,
+                0L
+        );
+        assertValidLedger(
+                currentSnapshotLine(
+                        "terminal-outcomes-v1", 1, 0, 0, 1, 0, 0, 1.0, 0L
+                ),
+                1.0,
+                0L
+        );
+    }
+
+    @Test
     void reportsLoadAndWriteFailures() throws Exception {
         Path directory = tempDir.resolve("directory-ledger");
         Files.createDirectory(directory);
@@ -97,7 +188,10 @@ class KpiSnapshotLedgerTest {
         KpiSnapshotLedger ledger = new KpiSnapshotLedger(ledgerPath, CLOCK);
         Files.writeString(blockedParent, "not a directory", StandardCharsets.UTF_8);
 
-        assertThrows(IllegalStateException.class, () -> ledger.recordSnapshot(context("tenant-a"), snapshot(1, 1, null)));
+        assertThrows(
+                IllegalStateException.class,
+                () -> ledger.recordSnapshot(context("tenant-a"), snapshot(1, 1, 0, null))
+        );
     }
 
     private void assertInvalidLedger(String line) throws Exception {
@@ -107,40 +201,107 @@ class KpiSnapshotLedgerTest {
                 StandardCharsets.UTF_8
         );
 
-        assertThrows(IllegalStateException.class, () -> new KpiSnapshotLedger(ledgerPath, CLOCK));
+        IllegalStateException error = assertThrows(
+                IllegalStateException.class,
+                () -> new KpiSnapshotLedger(ledgerPath, CLOCK)
+        );
+        assertEquals("kpi snapshot ledger contains an invalid line", error.getMessage());
+    }
+
+    private void assertValidLedger(String line, double expectedRate, Long expectedP95) throws Exception {
+        Path ledgerPath = Files.writeString(
+                tempDir.resolve(UUID.randomUUID() + ".log"),
+                line + System.lineSeparator(),
+                StandardCharsets.UTF_8
+        );
+
+        KpiSnapshotRecord record = new KpiSnapshotLedger(ledgerPath, CLOCK)
+                .snapshotsFor("tenant-a")
+                .getFirst();
+        assertEquals(expectedRate, record.conversionSuccessRate());
+        assertEquals(expectedP95, record.p95TimeToPreviewMs());
     }
 
     private static TenantContext context(String tenantId) {
         return new TenantContext(tenantId, "subject-a", java.util.Set.of(TenantPermissions.ANALYTICS_READ));
     }
 
-    private static KpiSnapshotResponse snapshot(int totalJobs, int succeededJobs, Long p95TimeToPreviewMs) {
+    private static KpiSnapshotResponse snapshot(
+            int totalJobs,
+            int succeededJobs,
+            int failedJobs,
+            Long p95TimeToPreviewMs
+    ) {
+        int submittedJobs = totalJobs - succeededJobs - failedJobs;
+        int terminalJobs = succeededJobs + failedJobs;
+        double successRate = terminalJobs == 0 ? 0.0 : (double) succeededJobs / terminalJobs;
         return new KpiSnapshotResponse(
                 totalJobs,
-                1,
+                submittedJobs,
                 0,
                 succeededJobs,
-                1,
+                failedJobs,
                 0,
-                0.5,
+                successRate,
                 p95TimeToPreviewMs
         );
     }
 
     private static String snapshotLine() {
+        return legacySnapshotLine(2, 1, 0, 1, 1, 0, 0.5, 123L);
+    }
+
+    private static String legacySnapshotLine(
+            int totalJobs,
+            int submittedJobs,
+            int processingJobs,
+            int succeededJobs,
+            int failedJobs,
+            int deadLetteredJobs,
+            double conversionSuccessRate,
+            Long p95TimeToPreviewMs
+    ) {
         return String.join("\t",
                 "SNAPSHOT",
                 encoded("tenant-a"),
                 encoded("subject-a"),
                 NOW.toString(),
-                "2",
-                "1",
-                "0",
-                "1",
-                "1",
-                "0",
-                "0.5",
-                "123"
+                String.valueOf(totalJobs),
+                String.valueOf(submittedJobs),
+                String.valueOf(processingJobs),
+                String.valueOf(succeededJobs),
+                String.valueOf(failedJobs),
+                String.valueOf(deadLetteredJobs),
+                String.valueOf(conversionSuccessRate),
+                p95TimeToPreviewMs == null ? "-" : String.valueOf(p95TimeToPreviewMs)
+        );
+    }
+
+    private static String currentSnapshotLine(
+            String metricVersion,
+            int totalJobs,
+            int submittedJobs,
+            int processingJobs,
+            int succeededJobs,
+            int failedJobs,
+            int deadLetteredJobs,
+            double conversionSuccessRate,
+            Long p95TimeToPreviewMs
+    ) {
+        return String.join("\t",
+                "SNAPSHOT",
+                metricVersion,
+                encoded("tenant-a"),
+                encoded("subject-a"),
+                NOW.toString(),
+                String.valueOf(totalJobs),
+                String.valueOf(submittedJobs),
+                String.valueOf(processingJobs),
+                String.valueOf(succeededJobs),
+                String.valueOf(failedJobs),
+                String.valueOf(deadLetteredJobs),
+                String.valueOf(conversionSuccessRate),
+                p95TimeToPreviewMs == null ? "-" : String.valueOf(p95TimeToPreviewMs)
         );
     }
 

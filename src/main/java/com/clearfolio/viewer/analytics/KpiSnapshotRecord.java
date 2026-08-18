@@ -14,7 +14,7 @@ import java.time.Instant;
  * @param succeededJobs succeeded jobs in the snapshot
  * @param failedJobs failed jobs in the snapshot
  * @param deadLetteredJobs dead-lettered jobs in the snapshot
- * @param conversionSuccessRate succeeded jobs divided by total jobs
+ * @param conversionSuccessRate succeeded jobs divided by terminal succeeded/failed jobs
  * @param p95TimeToPreviewMs p95 time to preview, when available
  */
 public record KpiSnapshotRecord(

@@ -4,11 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -22,6 +28,9 @@ import com.clearfolio.viewer.repository.InMemoryConversionJobRepository;
 
 class AnalyticsControllerTest {
 
+    @TempDir
+    private Path tempDir;
+
     private InMemoryConversionJobRepository repository;
     private KpiSnapshotLedger snapshotLedger;
     private WebTestClient webTestClient;
@@ -30,9 +39,7 @@ class AnalyticsControllerTest {
     void setUp() {
         repository = new InMemoryConversionJobRepository();
         snapshotLedger = new KpiSnapshotLedger();
-        webTestClient = WebTestClient.bindToController(
-                new AnalyticsController(repository, new TenantAccessService(), snapshotLedger)
-        ).controllerAdvice(new ApiExceptionHandler()).build();
+        webTestClient = client(snapshotLedger);
     }
 
     @Test
@@ -84,7 +91,7 @@ class AnalyticsControllerTest {
                 .jsonPath("$.succeededJobs").isEqualTo(1)
                 .jsonPath("$.failedJobs").isEqualTo(1)
                 .jsonPath("$.deadLetteredJobs").isEqualTo(1)
-                .jsonPath("$.conversionSuccessRate").value(value -> assertEquals(0.25, (Double) value))
+                .jsonPath("$.conversionSuccessRate").value(value -> assertEquals(0.5, (Double) value))
                 .jsonPath("$.p95TimeToPreviewMs").value(value -> {
                     assertNotNull(value);
                     assertTrue(((Number) value).longValue() >= 0L);
@@ -149,6 +156,44 @@ class AnalyticsControllerTest {
     }
 
     @Test
+    void kpiSnapshotExportsMigratesLegacyRateAfterRestart() throws Exception {
+        Path ledgerPath = tempDir.resolve("legacy-kpi-snapshots.log");
+        String legacyLine = String.join("\t",
+                "SNAPSHOT",
+                encoded(TenantContext.DEMO_TENANT_ID),
+                encoded(TenantContext.DEMO_SUBJECT_ID),
+                Instant.EPOCH.toString(),
+                "4",
+                "1",
+                "1",
+                "1",
+                "1",
+                "0",
+                "0.25",
+                "-"
+        );
+        Files.writeString(
+                ledgerPath,
+                legacyLine + System.lineSeparator(),
+                StandardCharsets.UTF_8
+        );
+
+        WebTestClient restartedClient = client(new KpiSnapshotLedger(ledgerPath.toString()));
+
+        restartedClient.get()
+                .uri("/api/v1/analytics/kpi-snapshot-exports")
+                .headers(AnalyticsControllerTest::addAnalyticsAuth)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$[0].totalJobs").isEqualTo(4)
+                .jsonPath("$[0].succeededJobs").isEqualTo(1)
+                .jsonPath("$[0].failedJobs").isEqualTo(1)
+                .jsonPath("$[0].conversionSuccessRate").isEqualTo(0.5)
+                .jsonPath("$[1]").doesNotExist();
+    }
+
+    @Test
     void kpiSnapshotRejectsMissingAnalyticsPermission() {
         webTestClient.get()
                 .uri("/api/v1/analytics/kpi-snapshot")
@@ -172,6 +217,12 @@ class AnalyticsControllerTest {
                 .jsonPath("$.message").isEqualTo("missing permission: " + TenantPermissions.ANALYTICS_READ);
     }
 
+    private WebTestClient client(KpiSnapshotLedger ledger) {
+        return WebTestClient.bindToController(
+                new AnalyticsController(repository, new TenantAccessService(), ledger)
+        ).controllerAdvice(new ApiExceptionHandler()).build();
+    }
+
     private ConversionJob newJob(String fileName) {
         return new ConversionJob(
                 UUID.randomUUID(),
@@ -191,5 +242,11 @@ class AnalyticsControllerTest {
         headers.add(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID);
         headers.add(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID);
         headers.add(TenantContext.PERMISSIONS_HEADER, permissions);
+    }
+
+    private static String encoded(String value) {
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 }

@@ -150,8 +150,47 @@ async function renderPdfInline(path, abortSignal) {
     url: resolvedPath,
     withCredentials: true,
   });
-  const pdfDocument = await loadingTask.promise;
+  let pdfDocument = null;
+  let renderTask = null;
+  let cancellationStarted = false;
+  const cancelActivePdfWork = () => {
+    if (cancellationStarted) {
+      return;
+    }
+    cancellationStarted = true;
+
+    if (renderTask && typeof renderTask.cancel === "function") {
+      try {
+        renderTask.cancel();
+      } catch (_error) {
+        // Cancellation is best-effort; abort checks still prevent stale publication.
+      }
+    }
+
+    if (!pdfDocument && typeof loadingTask.destroy === "function") {
+      try {
+        Promise.resolve(loadingTask.destroy()).catch(() => {});
+      } catch (_error) {
+        // Loading-task destruction is best-effort; cancellation remains fail-safe.
+      }
+    }
+  };
+
+  abortSignal?.addEventListener("abort", cancelActivePdfWork, { once: true });
+  if (abortSignal?.aborted) {
+    cancelActivePdfWork();
+  }
+
   try {
+    try {
+      pdfDocument = await loadingTask.promise;
+    } catch (error) {
+      if (abortSignal?.aborted) {
+        return false;
+      }
+      throw error;
+    }
+
     if (abortSignal?.aborted) {
       return false;
     }
@@ -179,7 +218,15 @@ async function renderPdfInline(path, abortSignal) {
     canvas.setAttribute("role", "img");
     canvas.setAttribute("aria-label", `Rendered first page of a ${pdfDocument.numPages}-page PDF`);
 
-    await page.render({ canvasContext: context, viewport }).promise;
+    renderTask = page.render({ canvasContext: context, viewport });
+    try {
+      await renderTask.promise;
+    } catch (error) {
+      if (abortSignal?.aborted) {
+        return false;
+      }
+      throw error;
+    }
     if (abortSignal?.aborted) {
       return false;
     }
@@ -194,7 +241,16 @@ async function renderPdfInline(path, abortSignal) {
     el.preview.appendChild(metadata);
     return true;
   } finally {
-    await pdfDocument.destroy();
+    abortSignal?.removeEventListener("abort", cancelActivePdfWork);
+    if (pdfDocument) {
+      try {
+        await pdfDocument.destroy();
+      } catch (error) {
+        if (!abortSignal?.aborted) {
+          throw error;
+        }
+      }
+    }
   }
 }
 

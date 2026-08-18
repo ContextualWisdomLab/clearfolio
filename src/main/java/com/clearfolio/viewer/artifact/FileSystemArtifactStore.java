@@ -65,11 +65,15 @@ public final class FileSystemArtifactStore implements ArtifactStore {
      */
     @Override
     public void putPdf(UUID docId, byte[] pdfBytes) {
+        requireDocId(docId);
         byte[] copy = pdfBytes.clone();
+        byte[] metadata = metadataBytes(docId, copy);
+        ArtifactFilesSnapshot previous = snapshotExistingFiles(docId);
         try {
             bytesWriter.write(pdfPath(docId), copy);
-            bytesWriter.write(metadataPath(docId), metadataBytes(docId, copy));
+            bytesWriter.write(metadataPath(docId), metadata);
         } catch (IOException ex) {
+            rollbackPartialWrite(docId, previous, ex);
             throw new IllegalStateException("failed to persist artifact for docId " + docId, ex);
         }
         cache.put(docId, copy);
@@ -80,6 +84,7 @@ public final class FileSystemArtifactStore implements ArtifactStore {
      */
     @Override
     public Optional<byte[]> getPdf(UUID docId) {
+        requireDocId(docId);
         byte[] cached = cache.get(docId);
         if (cached != null) {
             return Optional.of(cached.clone());
@@ -102,6 +107,7 @@ public final class FileSystemArtifactStore implements ArtifactStore {
      */
     @Override
     public void deletePdf(UUID docId) {
+        requireDocId(docId);
         try {
             Files.deleteIfExists(pdfPath(docId));
             Files.deleteIfExists(metadataPath(docId));
@@ -112,12 +118,64 @@ public final class FileSystemArtifactStore implements ArtifactStore {
         }
     }
 
+    private ArtifactFilesSnapshot snapshotExistingFiles(UUID docId) {
+        try {
+            return new ArtifactFilesSnapshot(
+                    existingFileBytes(pdfPath(docId)),
+                    existingFileBytes(metadataPath(docId))
+            );
+        } catch (IOException ex) {
+            throw new IllegalStateException("failed to snapshot existing artifact for docId " + docId, ex);
+        }
+    }
+
+    private static byte[] existingFileBytes(Path path) throws IOException {
+        return Files.exists(path) ? Files.readAllBytes(path) : null;
+    }
+
+    private void rollbackPartialWrite(
+            UUID docId,
+            ArtifactFilesSnapshot previous,
+            IOException writeFailure
+    ) {
+        restorePartialFile(pdfPath(docId), previous.pdfBytes(), writeFailure);
+        restorePartialFile(metadataPath(docId), previous.metadataBytes(), writeFailure);
+    }
+
+    private static void restorePartialFile(Path path, byte[] previousBytes, IOException writeFailure) {
+        try {
+            if (previousBytes == null) {
+                Files.deleteIfExists(path);
+            } else {
+                Files.write(path, previousBytes);
+            }
+        } catch (IOException rollbackFailure) {
+            writeFailure.addSuppressed(rollbackFailure);
+        }
+    }
+
     private Path pdfPath(UUID docId) {
-        return rootDir.resolve(docId + PDF_SUFFIX);
+        return resolveArtifactPath(rootDir, docId, PDF_SUFFIX);
     }
 
     private Path metadataPath(UUID docId) {
-        return rootDir.resolve(docId + METADATA_SUFFIX);
+        return resolveArtifactPath(rootDir, docId, METADATA_SUFFIX);
+    }
+
+    static Path resolveArtifactPath(Path configuredRoot, UUID docId, String suffix) {
+        requireDocId(docId);
+        Path normalizedRoot = configuredRoot.toAbsolutePath().normalize();
+        Path candidate = normalizedRoot.resolve(docId + suffix).normalize();
+        if (!candidate.startsWith(normalizedRoot)) {
+            throw new IllegalArgumentException("artifact path must remain within configured root");
+        }
+        return candidate;
+    }
+
+    private static void requireDocId(UUID docId) {
+        if (docId == null) {
+            throw new IllegalArgumentException("docId is required");
+        }
     }
 
     private static byte[] metadataBytes(UUID docId, byte[] pdfBytes) {
@@ -136,5 +194,8 @@ public final class FileSystemArtifactStore implements ArtifactStore {
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);
         }
+    }
+
+    private record ArtifactFilesSnapshot(byte[] pdfBytes, byte[] metadataBytes) {
     }
 }

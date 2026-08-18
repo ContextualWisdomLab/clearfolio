@@ -44,9 +44,9 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 3px solid var(--focus);
-  outline: 3px solid color-mix(in srgb, var(--focus), #ffffff 25%);
+  outline: 3px solid #000000;
   outline-offset: 3px;
+  box-shadow: 0 0 0 3px #ffffff;
 }
 
 .skip-link {

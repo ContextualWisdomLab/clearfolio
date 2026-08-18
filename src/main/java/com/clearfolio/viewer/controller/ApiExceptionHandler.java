@@ -3,6 +3,7 @@ package com.clearfolio.viewer.controller;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.net.URI;
 
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ import com.clearfolio.viewer.api.ApiErrorResponse;
 public class ApiExceptionHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApiExceptionHandler.class);
+    private static final Pattern SAFE_TRACE_ID = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._:-]{0,127}");
 
     @Value("${conversion.max-upload-size-bytes:5242880}")
     private long configuredMaxUploadSize = 5242880L;
@@ -223,16 +225,20 @@ public class ApiExceptionHandler {
 
     private String resolveTraceId(ServerWebExchange exchange) {
         String header = exchange.getRequest().getHeaders().getFirst("X-Trace-Id");
-        if (header != null && !header.isBlank()) {
+        if (isSafeTraceId(header)) {
             return header;
         }
 
         String requestId = exchange.getRequest().getId();
-        if (requestId != null && !requestId.isBlank()) {
+        if (isSafeTraceId(requestId)) {
             return requestId;
         }
 
         return UUID.randomUUID().toString();
+    }
+
+    private boolean isSafeTraceId(String value) {
+        return value != null && SAFE_TRACE_ID.matcher(value).matches();
     }
 
     private String normalizeStatusCode(HttpStatusCode statusCode) {

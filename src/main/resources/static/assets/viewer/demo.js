@@ -84,6 +84,11 @@ function updateJob(jobId, patch, { refreshKpisAfterUpdate = true } = {}) {
 }
 
 async function openJsonDocument(url, title) {
+  const resolvedUrl = resolveSameOriginHttpUrl(url);
+  if (!resolvedUrl) {
+    setError("Invalid status URL.");
+    return;
+  }
   const popup = window.open("", "_blank");
   if (!popup) {
     setError("Allow popups to inspect JSON evidence in a new tab.");
@@ -96,7 +101,7 @@ async function openJsonDocument(url, title) {
   pre.textContent = "Loading...";
   popup.document.body.appendChild(pre);
 
-  const { res, data } = await fetchJson(url);
+  const { res, data } = await fetchJson(resolvedUrl);
   pre.textContent = res.ok && data
     ? JSON.stringify(data, null, 2)
     : "Unable to load JSON evidence with the current tenant claim.";
@@ -155,6 +160,20 @@ function addDetailRow(label, value) {
   term.textContent = label;
   description.textContent = formatDetailValue(value);
   el.jobDetailBody.append(term, description);
+}
+
+function resolveSameOriginHttpUrl(urlStr) {
+  if (typeof urlStr !== "string" || urlStr.trim() === "") {
+    return null;
+  }
+  try {
+    const url = new URL(urlStr, window.location.origin);
+    const safeProtocol = url.protocol === "http:" || url.protocol === "https:";
+    const safeAuthority = url.origin === window.location.origin && url.username === "" && url.password === "";
+    return safeProtocol && safeAuthority ? url.href : null;
+  } catch (_error) {
+    return null;
+  }
 }
 
 function formatDetailValue(value) {
@@ -249,7 +268,12 @@ async function openJobDetail(job) {
   }
 
   setStatus("Loading job detail...");
-  const { res, data } = await fetchJson(job.statusUrl);
+  const resolvedUrl = resolveSameOriginHttpUrl(job.statusUrl);
+  if (!resolvedUrl) {
+    setError("Invalid status URL.");
+    return;
+  }
+  const { res, data } = await fetchJson(resolvedUrl);
   if (!res.ok || !data) {
     setError("Unable to load job detail. Open the status JSON for raw evidence.");
     return;
@@ -444,7 +468,12 @@ async function fetchJson(url) {
 }
 
 async function pollJob(jobId, statusUrl) {
-  const { res, data } = await fetchJson(statusUrl);
+  const resolvedUrl = resolveSameOriginHttpUrl(statusUrl);
+  if (!resolvedUrl) {
+    updateJob(jobId, { status: "FAILED" });
+    return;
+  }
+  const { res, data } = await fetchJson(resolvedUrl);
   if (!res.ok || !data) {
     updateJob(jobId, { status: "FAILED" });
     return;

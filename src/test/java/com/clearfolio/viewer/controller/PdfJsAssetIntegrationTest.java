@@ -62,7 +62,21 @@ class PdfJsAssetIntegrationTest {
             assertTrue(script.contains("getDocument({"));
             assertTrue(script.contains("get(\"artifactToken\")"));
             assertTrue(script.contains("artifactToken=${encodeURIComponent(externalArtifactToken)}"));
-            assertTrue(script.contains("await renderPdfInline(artifactPath)"));
+            assertTrue(script.contains("await renderPdfInline(currentAttemptId, artifactPath)"));
+        }
+    }
+
+    @Test
+    void inlinePdfRenderingRevalidatesAttemptAfterEveryAsyncBoundary() throws Exception {
+        try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/viewer.js")) {
+            assertNotNull(input, "viewer.js must be packaged");
+            String script = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+
+            assertTrue(script.contains("const pdfJs = await getPdfJsModule();\n  if (attemptId !== currentAttemptId) return;"));
+            assertTrue(script.contains("const pdfDocument = await loadingTask.promise;\n  try {\n    if (attemptId !== currentAttemptId) return;"));
+            assertTrue(script.contains("const page = await pdfDocument.getPage(1);\n    if (attemptId !== currentAttemptId) return;"));
+            assertTrue(script.contains("await page.render({ canvasContext: context, viewport }).promise;\n    if (attemptId !== currentAttemptId) return;"));
+            assertTrue(script.contains("finally {\n    await pdfDocument.destroy();"));
         }
     }
 

@@ -1,3 +1,5 @@
+import { setBusyState } from "./dom-utils.js";
+
 const POLL_DELAY_MS = 1500;
 const PDF_JS_MODULE_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.mjs";
 const PDF_JS_WORKER_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.worker.mjs";
@@ -19,6 +21,8 @@ const el = {
 };
 
 let pdfJsModulePromise;
+let retryBtnRestore = null;
+let currentAttemptId = 0;
 
 function getMetaContent(name) {
   const meta = document.querySelector(`meta[name="${name}"]`);
@@ -50,25 +54,36 @@ function isUuidLike(value) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
 }
 
-function setLoading(message) {
+function setLoading(attemptId, message) {
+  if (attemptId !== currentAttemptId) return;
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
-  el.retryBtn.disabled = true;
-  el.retryBtn.textContent = "Refreshing...";
+  if (!retryBtnRestore) {
+    retryBtnRestore = setBusyState(el.retryBtn, "Refreshing...");
+  }
 }
 
-function showError(message) {
+function clearLoading(attemptId) {
+  if (attemptId !== currentAttemptId) return;
+  if (retryBtnRestore) {
+    retryBtnRestore();
+    retryBtnRestore = null;
+  }
+}
+
+function showError(attemptId, message) {
+  if (attemptId !== currentAttemptId) return;
   el.error.hidden = false;
   el.errorMessage.textContent = message;
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
-  el.retryBtn.disabled = false;
-  el.retryBtn.textContent = "Refresh";
+  clearLoading(attemptId);
 }
 
-function clearPreview() {
+function clearPreview(attemptId) {
+  if (attemptId !== currentAttemptId) return;
   const nodes = Array.from(el.preview.querySelectorAll("iframe, img, pre, a, canvas, .pdf-preview-meta"));
   for (const node of nodes) {
     node.remove();
@@ -99,7 +114,8 @@ function resolveSameOriginHttpUrl(urlStr) {
   }
 }
 
-function renderPreviewLink(path) {
+function renderPreviewLink(attemptId, path) {
+  if (attemptId !== currentAttemptId) return;
   const resolvedPath = resolveSameOriginHttpUrl(path);
   if (resolvedPath === null) {
     return;
@@ -131,20 +147,24 @@ function getPdfJsModule() {
   return pdfJsModulePromise;
 }
 
-async function renderPdfInline(path) {
+async function renderPdfInline(attemptId, path) {
+  if (attemptId !== currentAttemptId) return;
   const resolvedPath = resolveSameOriginHttpUrl(path);
   if (resolvedPath === null) {
     throw new Error("PDF preview resource is invalid");
   }
 
   const pdfJs = await getPdfJsModule();
+  if (attemptId !== currentAttemptId) return;
   const loadingTask = pdfJs.getDocument({
     url: resolvedPath,
     withCredentials: true,
   });
   const pdfDocument = await loadingTask.promise;
   try {
+    if (attemptId !== currentAttemptId) return;
     const page = await pdfDocument.getPage(1);
+    if (attemptId !== currentAttemptId) return;
     const unscaledViewport = page.getViewport({ scale: 1 });
     const availableWidth = Math.max(320, el.preview.clientWidth - 32);
     const renderScale = Math.min(2, availableWidth / unscaledViewport.width);
@@ -164,6 +184,7 @@ async function renderPdfInline(path) {
     canvas.setAttribute("aria-label", `Rendered first page of a ${pdfDocument.numPages}-page PDF`);
 
     await page.render({ canvasContext: context, viewport }).promise;
+    if (attemptId !== currentAttemptId) return;
     el.preview.appendChild(canvas);
 
     const metadata = document.createElement("p");
@@ -194,9 +215,14 @@ async function fetchJson(url, signal) {
 }
 
 async function openJsonDocument(url) {
+  const resolvedUrl = resolveSameOriginHttpUrl(url);
+  if (!resolvedUrl) {
+    showError(currentAttemptId, "Invalid JSON evidence URL.");
+    return;
+  }
   const popup = window.open("", "_blank");
   if (!popup) {
-    showError("Allow popups to inspect JSON evidence in a new tab.");
+    showError(currentAttemptId, "Allow popups to inspect JSON evidence in a new tab.");
     return;
   }
 
@@ -206,15 +232,15 @@ async function openJsonDocument(url) {
   pre.textContent = "Loading...";
   popup.document.body.appendChild(pre);
 
-  const { res, data } = await fetchJson(url);
+  const { res, data } = await fetchJson(resolvedUrl);
   pre.textContent = res.ok && data
     ? JSON.stringify(data, null, 2)
     : "Unable to load JSON evidence with the current tenant claim.";
 }
 
-async function poll(docId, abortSignal) {
+async function poll(docId, abortSignal, attemptId) {
   try {
-    setLoading("Checking conversion status...");
+    setLoading(attemptId, "Checking conversion status...");
 
     const statusUrl = `/api/v1/convert/jobs/${encodeURIComponent(docId)}`;
     const { res, data } = await fetchJson(statusUrl, abortSignal);
@@ -224,32 +250,34 @@ async function poll(docId, abortSignal) {
     }
 
     if (res.status === 404) {
-      showError("This document could not be found.");
+      showError(attemptId, "This document could not be found.");
       return;
     }
 
     if (!res.ok || !data) {
-      showError("Unable to read job status. Please retry.");
+      showError(attemptId, "Unable to read job status. Please retry.");
       return;
     }
 
     const status = data.status;
     if (status === "SUBMITTED" || status === "PROCESSING") {
-      el.liveStatus.textContent = `${status} - retrying soon...`;
+      if (attemptId === currentAttemptId) {
+        el.liveStatus.textContent = `${status} - retrying soon...`;
+      }
       window.setTimeout(() => {
         if (!abortSignal.aborted) {
-          void poll(docId, abortSignal);
+          void poll(docId, abortSignal, attemptId);
         }
       }, POLL_DELAY_MS);
       return;
     }
 
     if (status !== "SUCCEEDED") {
-      showError(`Preview is not available. Status: ${status}`);
+      showError(attemptId, `Preview is not available. Status: ${status}`);
       return;
     }
 
-    setLoading("Loading viewer bootstrap...");
+    setLoading(attemptId, "Loading viewer bootstrap...");
     const viewerUrl = `/api/v1/viewer/${encodeURIComponent(docId)}`;
     const bootstrap = await fetchJson(viewerUrl, abortSignal);
 
@@ -258,28 +286,29 @@ async function poll(docId, abortSignal) {
     }
 
     if (!bootstrap.res.ok || !bootstrap.data) {
-      showError("Viewer bootstrap failed. Please retry.");
+      showError(attemptId, "Viewer bootstrap failed. Please retry.");
       return;
     }
 
-    clearPreview();
+    clearPreview(attemptId);
     const path = bootstrap.data.previewResourcePath;
     if (typeof path === "string" && path.endsWith(".pdf")) {
-      await renderPdfInline(path);
+      await renderPdfInline(attemptId, path);
     }
     if (typeof path === "string" && path.length > 0) {
-      renderPreviewLink(path);
+      renderPreviewLink(attemptId, path);
     }
 
-    el.preview.setAttribute("aria-busy", "false");
-    el.liveStatus.textContent = "Ready.";
-    el.retryBtn.disabled = false;
-    el.retryBtn.textContent = "Refresh";
+    if (attemptId === currentAttemptId) {
+      el.preview.setAttribute("aria-busy", "false");
+      el.liveStatus.textContent = "Ready.";
+      clearLoading(attemptId);
+    }
   } catch (_error) {
     if (abortSignal.aborted) {
       return;
     }
-    showError("Network or rendering error while loading preview. Please retry.");
+    showError(attemptId, "Network or rendering error while loading preview. Please retry.");
   }
 }
 
@@ -287,13 +316,13 @@ async function init() {
   const docId = getDocId();
   if (!docId) {
     el.docMeta.textContent = "Missing docId.";
-    showError("The viewer URL is missing a docId parameter.");
+    showError(currentAttemptId, "The viewer URL is missing a docId parameter.");
     return;
   }
 
   if (!isUuidLike(docId)) {
     el.docMeta.textContent = `Invalid docId: ${docId}`;
-    showError("The provided docId is invalid.");
+    showError(currentAttemptId, "The provided docId is invalid.");
     return;
   }
 
@@ -306,15 +335,15 @@ async function init() {
   const externalArtifactToken = new URLSearchParams(window.location.search).get("artifactToken");
   if (externalArtifactToken) {
     el.retryBtn.hidden = true;
-    clearPreview();
+    clearPreview(currentAttemptId);
     const artifactPath = `/artifacts/${encodeURIComponent(docId)}.pdf?artifactToken=${encodeURIComponent(externalArtifactToken)}`;
     try {
-      await renderPdfInline(artifactPath);
-      renderPreviewLink(artifactPath);
+      await renderPdfInline(currentAttemptId, artifactPath);
+      renderPreviewLink(currentAttemptId, artifactPath);
       el.preview.setAttribute("aria-busy", "false");
       el.liveStatus.textContent = "Ready.";
     } catch (_error) {
-      showError("Unable to render the signed artifact preview.");
+      showError(currentAttemptId, "Unable to render the signed artifact preview.");
     }
     return;
   }
@@ -330,18 +359,19 @@ async function init() {
 
   let controller = new AbortController();
   const start = () => {
+    currentAttemptId++;
     controller.abort();
     controller = new AbortController();
-    void poll(docId, controller.signal);
+    void poll(docId, controller.signal, currentAttemptId);
   };
 
   el.retryBtn.addEventListener("click", start);
   if (initialState === "NOT_FOUND") {
-    showError("This document could not be found.");
+    showError(currentAttemptId, "This document could not be found.");
     return;
   }
   if (initialState === "FAILED") {
-    showError("Preview is not available. Status: FAILED");
+    showError(currentAttemptId, "Preview is not available. Status: FAILED");
     return;
   }
 

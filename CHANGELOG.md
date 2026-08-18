@@ -1,6 +1,16 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- **ux**: Viewer refresh now uses `setBusyState` so nested icon and label nodes survive loading, and a monotonically increasing attempt identity owns preview, focus, live status, error, and busy restoration. The same identity is revalidated after every PDF.js await (module, document, first page, raster) because `AbortController` does not cancel those steps. Buyer-demo JSON calls keep the existing tenant-claim headers.
+  - *Reference*: World Wide Web Consortium. (2026). *Accessible Rich Internet Applications (WAI-ARIA) 1.3* (Working Draft). https://www.w3.org/TR/wai-aria-1.3/#aria-busy
+  - *Reference*: World Wide Web Consortium. (2023, October 5). *Web Content Accessibility Guidelines (WCAG) 2.2* (W3C Recommendation). https://www.w3.org/TR/WCAG22/#name-role-value (SC 4.1.2)
+  - *Reference*: World Wide Web Consortium. (2023, October 5). *Web Content Accessibility Guidelines (WCAG) 2.2* (W3C Recommendation). https://www.w3.org/TR/WCAG22/#status-messages (SC 4.1.3)
+  - Note: `aria-busy` metadata alone does not guarantee an announcement in every assistive-technology environment.
+- **security**: Demo job-status and JSON-evidence fetches reject URLs that are not same-origin `http:`/`https:` with empty userinfo, so a stored `statusUrl` cannot point the browser at another authority.
+  - *Reference*: Barth, A. (2011). *The web origin concept* (RFC 6454). https://doi.org/10.17487/RFC6454
+  - *Reference*: WHATWG. (2026). *URL Standard*. https://url.spec.whatwg.org/
+  - *Reference*: OWASP Foundation. (2025). *Server-Side Request Forgery Prevention Cheat Sheet*. https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
 
 ### Added
 

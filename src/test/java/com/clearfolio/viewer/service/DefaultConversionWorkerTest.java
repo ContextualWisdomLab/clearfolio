@@ -392,7 +392,10 @@ class DefaultConversionWorkerTest {
 
             worker.enqueue(jobId);
 
-            await(() -> attempts.get() >= 1, 3_000);
+            await(
+          () -> attempts.get() >= 1 && job.getStatus() == ConversionJobStatus.SUCCEEDED,
+          3_000
+  );
 
             assertEquals(1, attempts.get());
             assertEquals(1, job.getAttemptCount());

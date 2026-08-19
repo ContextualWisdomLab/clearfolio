@@ -20,6 +20,7 @@ import org.springframework.http.HttpHeaders;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 
+import com.clearfolio.viewer.model.ConversionJobStatus;
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
@@ -93,6 +94,25 @@ class AdminControllerTest {
                 .jsonPath("$.jobs[0].fileName").isEqualTo("b.pdf");
     }
 
+
+    @Test
+    void getAllJobsSkipsJobsNotBelongingToTenant() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        // job1 belongs to buyer-demo by default.
+        // We can't change job2's tenant easily without reflection or constructor if we didn't add it.
+        // Wait, ConversionJob has a constructor with tenantId!
+        ConversionJob job3 = new ConversionJob(UUID.randomUUID(), "other-tenant", "subject-1", "c.pdf", "application/pdf", "hash-c", 100L, 0);
+
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, job3));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(2);
+    }
     @Test
     void deleteJobReturnsNoContent() {
         UUID jobId = UUID.randomUUID();

@@ -126,16 +126,12 @@ public class AdminController {
         tenantAccessService.requireSameTenant(context, job);
 
         String actor;
-        try {
-            java.security.MessageDigest md =
-                    java.security.MessageDigest.getInstance("SHA-256");
-            byte[] bytes = context.subjectId().getBytes(
-                    java.nio.charset.StandardCharsets.UTF_8);
-            actor = "admin-" + java.util.HexFormat.of().formatHex(
-                    md.digest(bytes));
-        } catch (GeneralSecurityException ex) {
-            throw new IllegalStateException("SHA-256 unavailable", ex);
-        }
+        java.security.MessageDigest md =
+                java.security.MessageDigest.getInstance("SHA-256");
+        byte[] bytes = context.subjectId().getBytes(
+                java.nio.charset.StandardCharsets.UTF_8);
+        actor = "admin-" + java.util.HexFormat.of()
+                .formatHex(md.digest(bytes));
 
         RetryDeadLetterResult result = conversionService
                 .retryDeadLettered(jobId, actor);

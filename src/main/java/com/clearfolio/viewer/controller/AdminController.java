@@ -41,6 +41,8 @@ public class AdminController {
      * @param cvcService conversion service
      * @param taService tenant access service
      */
+
+
     public AdminController(
             final DocumentConversionService cvcService,
             final TenantAccessService taService) {
@@ -110,7 +112,7 @@ public class AdminController {
     @PostMapping("/api/v1/admin/convert/jobs/{jobId}/retry")
     public ResponseEntity<Void> retryDeadLettered(
             @RequestHeader final HttpHeaders headers,
-            @PathVariable final UUID jobId) {
+            @PathVariable final UUID jobId) throws GeneralSecurityException {
         TenantContext context = tenantAccessService.require(
                 headers, "admin:write");
 

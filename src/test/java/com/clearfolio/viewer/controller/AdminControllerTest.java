@@ -162,4 +162,41 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isNotFound();
     }
+
+    @Test
+    void deleteJobThrowsWhenTenantMismatch() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob mockJob = new ConversionJob(jobId, "a.pdf", "application/pdf", "hash-a", 100L);
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(mockJob));
+
+        // Use a different mock context that does not match "buyer-demo"
+        TenantContext mockContext = mock(TenantContext.class);
+        when(mockContext.tenantId()).thenReturn("other-tenant");
+        when(tenantAccessService.require(any(HttpHeaders.class), any(String.class))).thenReturn(mockContext);
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void retryThrowsWhenTenantMismatch() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob mockJob = new ConversionJob(jobId, "a.pdf", "application/pdf", "hash-a", 100L);
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(mockJob));
+
+        TenantContext mockContext = mock(TenantContext.class);
+        when(mockContext.tenantId()).thenReturn("other-tenant");
+        when(mockContext.subjectId()).thenReturn("subject-1");
+        when(tenantAccessService.require(any(HttpHeaders.class), any(String.class))).thenReturn(mockContext);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+
+
 }

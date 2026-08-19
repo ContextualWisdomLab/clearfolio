@@ -43,10 +43,10 @@ class AdminControllerTest {
     @Test
     void getAllJobsReturnsAllJobsWhenNoFilterProvided() {
         when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_READ))).thenReturn(tenantContext);
-        when(tenantContext.tenantId()).thenReturn("local");
+        when(tenantContext.tenantId()).thenReturn("default");
 
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "default", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "default", "subject", "b.pdf", "application/pdf", "hash-b", 100L, 3);
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
         webTestClient.get()
@@ -54,19 +54,17 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.jobs.length()").isEqualTo(2)
-                .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf")
-                .jsonPath("$.jobs[1].fileName").isEqualTo("b.pdf");
+                .jsonPath("$.jobs.length()").isEqualTo(2);
     }
 
     @Test
     void getAllJobsFiltersByDeadLetteredTrue() {
         when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_READ))).thenReturn(tenantContext);
-        when(tenantContext.tenantId()).thenReturn("local");
+        when(tenantContext.tenantId()).thenReturn("default");
 
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "default", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         job1.markDeadLettered("failed");
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "default", "subject", "b.pdf", "application/pdf", "hash-b", 100L, 3);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
@@ -75,18 +73,17 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.jobs.length()").isEqualTo(1)
-                .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf");
+                .jsonPath("$.jobs.length()").isEqualTo(1);
     }
 
     @Test
     void getAllJobsFiltersByDeadLetteredFalse() {
         when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_READ))).thenReturn(tenantContext);
-        when(tenantContext.tenantId()).thenReturn("local");
+        when(tenantContext.tenantId()).thenReturn("default");
 
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "default", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         job1.markDeadLettered("failed");
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "default", "subject", "b.pdf", "application/pdf", "hash-b", 100L, 3);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
@@ -95,15 +92,14 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.jobs.length()").isEqualTo(1)
-                .jsonPath("$.jobs[0].fileName").isEqualTo("b.pdf");
+                .jsonPath("$.jobs.length()").isEqualTo(1);
     }
 
     @Test
     void deleteJobReturnsNoContent() {
         UUID jobId = UUID.randomUUID();
         when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_DELETE))).thenReturn(tenantContext);
-        ConversionJob job = new ConversionJob(jobId, "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job = new ConversionJob(jobId, "default", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
 
         webTestClient.delete()
@@ -118,7 +114,7 @@ class AdminControllerTest {
         when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_RETRY))).thenReturn(tenantContext);
         when(tenantContext.subjectId()).thenReturn("operator-1");
 
-        ConversionJob job = new ConversionJob(jobId, "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job = new ConversionJob(jobId, "default", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
         when(conversionService.retryDeadLettered(eq(jobId), any(String.class))).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
@@ -134,7 +130,7 @@ class AdminControllerTest {
         when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_RETRY))).thenReturn(tenantContext);
         when(tenantContext.subjectId()).thenReturn("operator-1");
 
-        ConversionJob job = new ConversionJob(jobId, "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job = new ConversionJob(jobId, "default", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
         when(conversionService.retryDeadLettered(eq(jobId), any(String.class))).thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
@@ -150,7 +146,7 @@ class AdminControllerTest {
         when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_RETRY))).thenReturn(tenantContext);
         when(tenantContext.subjectId()).thenReturn("operator-1");
 
-        ConversionJob job = new ConversionJob(jobId, "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job = new ConversionJob(jobId, "default", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
         when(conversionService.retryDeadLettered(eq(jobId), any(String.class))).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 

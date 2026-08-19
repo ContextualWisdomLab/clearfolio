@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-19 - 런타임 시크릿 설정 방식 변경
+**Vulnerability:** 환경 변수를 통해 런타임 시크릿(artifact token secret 및 tenant claims HMAC secret)을 직접 주입하고 있었으며, 이는 컨테이너나 프로세스 환경에 민감한 정보가 노출될 위험이 존재했습니다.
+**Learning:** `AGENTS.md`의 보안 지침에 따라 환경 변수는 런타임 애플리케이션의 설정 값이 아닌 KV 저장소(configtree 등)를 부트스트랩하기 위한 경로로만 사용되어야 합니다. 또한 Spring Boot 설정에서 `@Value` 어노테이션의 기본값을 완전히 제거하여 설정 트리의 값이 없을 경우 빈 문자열로 덮어씌워지지 않도록 해야 합니다.
+**Prevention:** 향후 런타임 시크릿 및 권한 증명과 관련된 새로운 변수가 추가될 때, 환경 변수 주입 방식이 아닌 반드시 KV 기반의 조회 방식(configtree 마운트 등)과 `@Value("${property.name}")` 형식의 기본값 없는 엄격한 주입을 사용해야 합니다.

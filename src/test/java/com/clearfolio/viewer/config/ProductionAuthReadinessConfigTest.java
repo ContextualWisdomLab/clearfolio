@@ -3,14 +3,19 @@ package com.clearfolio.viewer.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class ProductionAuthReadinessConfigTest {
 
     @Test
     void productionProfileFailsWithoutSignedTenantClaimsSecret() {
-        productionRunner().run(context -> assertThat(context.getStartupFailure())
-                .hasRootCauseMessage("production profile requires clearfolio.tenant-claims.hmac-secret"));
+        productionRunner()
+                .withPropertyValues("clearfolio.tenant-claims.hmac-secret=")
+                .run(context -> {
+                    assertThat(context.getStartupFailure()).isNotNull();
+                    assertThat(context.getStartupFailure()).hasRootCauseMessage("production profile requires clearfolio.tenant-claims.hmac-secret");
+                });
     }
 
     @Test

@@ -54,6 +54,11 @@ test("the executable demo renders inert actions and blocks repeated status activ
     createElement(tagName) {
       return new MockElement(tagName);
     },
+    createDocumentFragment() {
+      const fragment = new MockElement("fragment");
+      fragment.nodeType = 11;
+      return fragment;
+    },
   };
   globalThis.window = {
     confirm() {

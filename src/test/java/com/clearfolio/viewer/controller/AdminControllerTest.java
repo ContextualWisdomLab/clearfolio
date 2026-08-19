@@ -70,7 +70,35 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
+                .jsonPath("$.jobs").isArray()
                 .jsonPath("$.jobs.length()").isEqualTo(2);
+    }
+
+    @Test
+    void getAllJobsFiltersByBelongsToTenant() {
+        when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_READ))).thenReturn(tenantContext);
+        when(tenantContext.tenantId()).thenReturn("default");
+
+        ConversionJob job1 = mock(ConversionJob.class);
+        when(job1.belongsToTenant("default")).thenReturn(true);
+        when(job1.getOriginalFileName()).thenReturn("a.pdf");
+        when(job1.getJobId()).thenReturn(UUID.randomUUID());
+        when(job1.getTenantId()).thenReturn("default");
+        when(job1.getStatus()).thenReturn(ConversionJobStatus.SUBMITTED);
+        when(job1.getCreatedAt()).thenReturn(Instant.now());
+
+        ConversionJob job2 = mock(ConversionJob.class);
+        when(job2.belongsToTenant("default")).thenReturn(false);
+
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs").isArray()
+                .jsonPath("$.jobs.length()").isEqualTo(1);
     }
 
     @Test
@@ -103,6 +131,7 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
+                .jsonPath("$.jobs").isArray()
                 .jsonPath("$.jobs.length()").isEqualTo(1);
     }
 
@@ -136,6 +165,7 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
+                .jsonPath("$.jobs").isArray()
                 .jsonPath("$.jobs.length()").isEqualTo(1);
     }
 
@@ -150,6 +180,18 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
                 .exchange()
                 .expectStatus().isNoContent();
+    }
+
+    @Test
+    void deleteJobReturnsNotFoundWhenEmpty() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_DELETE))).thenReturn(tenantContext);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
     }
 
     @Test
@@ -177,6 +219,20 @@ class AdminControllerTest {
         ConversionJob job = mock(ConversionJob.class);
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
         when(conversionService.retryDeadLettered(eq(jobId), any(String.class))).thenReturn(RetryDeadLetterResult.NOT_FOUND);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenEmpty() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_RETRY))).thenReturn(tenantContext);
+        when(tenantContext.subjectId()).thenReturn("operator-1");
+
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")

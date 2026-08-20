@@ -27,6 +27,16 @@ jobs:
           echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
           echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
 
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Install hash-locked Python test dependencies
+        run: python -m pip install --disable-pip-version-check --no-cache-dir --require-hashes -r requirements-test.txt
+
+      - name: Run API and buyer-readiness contract tests
+        run: python -m pytest -q scripts
+
       - name: Bind tag to Maven version with pinned help:evaluate -Dexpression=project.version
         shell: bash
         run: |
@@ -62,10 +72,32 @@ jobs:
           test -f target/bom.json
           test -f target/license-policy.json
 
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          from scripts.openapi_release_provenance import (
+              build_openapi_release_provenance,
+              render_openapi_release_provenance,
+          )
+
+          repository_root = Path.cwd()
+          record = build_openapi_release_provenance(
+              repository_root,
+              os.environ["SOURCE_REVISION"],
+          )
+          Path("target/openapi-release-provenance.json").write_text(
+              render_openapi_release_provenance(record),
+              encoding="utf-8",
+          )
+          PY
+
           mkdir -p target/release-evidence
           cp "$JAR" target/release-evidence/
           cp target/bom.json target/release-evidence/sbom-cyclonedx.json
           cp target/license-policy.json target/release-evidence/license-policy.json
+          cp target/openapi-release-provenance.json target/release-evidence/
+          cp docs/deployment/clearfolio-buyer-connector.openapi.yaml target/release-evidence/
           cp pom.xml target/release-evidence/pom.xml
           printf '%s\n' "$SOURCE_REVISION" > target/release-evidence/source-revision.txt
           printf '%s\n' "$GITHUB_REF_NAME" > target/release-evidence/source-tag.txt
@@ -73,6 +105,8 @@ jobs:
             cd target/release-evidence
             sha256sum \
               "clearfolio-viewer-${PROJECT_VERSION}.jar" \
+              clearfolio-buyer-connector.openapi.yaml \
+              openapi-release-provenance.json \
               sbom-cyclonedx.json \
               license-policy.json \
               pom.xml \

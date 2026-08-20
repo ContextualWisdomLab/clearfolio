@@ -100,13 +100,12 @@ def test_required_buyer_states_are_named_and_a11y_blocking() -> None:
 def test_responsive_stories_use_storybook_10_viewport_globals() -> None:
     preview = PREVIEW.read_text(encoding="utf-8")
     story = STORY.read_text(encoding="utf-8")
-    assert "viewport:" in preview
-    assert "clearfolioMobile" in preview
-    assert "width: '390px'" in preview
-    assert "clearfolioTablet" in preview
-    assert "width: '768px'" in preview
-    assert "viewport: { value: 'clearfolioMobile', isRotated: false }" in story
-    assert "viewport: { value: 'clearfolioTablet', isRotated: false }" in story
+    assert "MINIMAL_VIEWPORTS" in preview
+    assert "storybook/viewport" in preview
+    assert "viewport: {" in preview
+    assert "options: MINIMAL_VIEWPORTS" in preview
+    assert "viewport: { value: 'mobile1', isRotated: false }" in story
+    assert "viewport: { value: 'tablet', isRotated: false }" in story
     assert "defaultViewport" not in story
     assert "width: '390px'" not in story
     assert "width: '768px'" not in story

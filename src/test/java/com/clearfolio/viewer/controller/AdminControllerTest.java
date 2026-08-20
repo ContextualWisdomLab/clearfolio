@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -64,6 +65,23 @@ class AdminControllerTest {
     }
 
     @Test
+    void getAllJobsReturnsEmptyListWhenJobDoesNotBelongToTenant() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1));
+
+        when(tenantAccessService.require(any(), any())).thenReturn(new TenantContext("different-tenant", "s", java.util.Set.of()));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(0);
+
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ));
+    }
+
+    @Test
     void getAllJobsFiltersByDeadLetteredTrue() {
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
         job1.markDeadLettered("failed");
@@ -104,6 +122,60 @@ class AdminControllerTest {
     }
 
     @Test
+    void getAllJobsReturnsEmptyWhenTenantMatchesButDeadLetteredDoesNot() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        job1.markDeadLettered("failed");
+
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1));
+        when(tenantAccessService.require(any(), any())).thenReturn(new TenantContext(TENANT_ID, "s", java.util.Set.of()));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs?deadLettered=false")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(0);
+
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ));
+    }
+
+    @Test
+    void getAllJobsReturnsEmptyWhenTenantDoesNotMatchAndDeadLetteredTrue() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        job1.markDeadLettered("failed");
+
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1));
+        when(tenantAccessService.require(any(), any())).thenReturn(new TenantContext("different-tenant", "s", java.util.Set.of()));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(0);
+
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ));
+    }
+
+    @Test
+    void getAllJobsReturnsEmptyWhenTenantDoesNotMatchAndDeadLetteredFalse() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        job1.markDeadLettered("failed");
+
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1));
+        when(tenantAccessService.require(any(), any())).thenReturn(new TenantContext("different-tenant", "s", java.util.Set.of()));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs?deadLettered=false")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(0);
+
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ));
+    }
+
+    @Test
     void deleteJobReturnsNoContent() {
         UUID jobId = UUID.randomUUID();
         when(tenantAccessService.require(any(), any())).thenReturn(new TenantContext(TENANT_ID, "s", java.util.Set.of()));
@@ -117,6 +189,37 @@ class AdminControllerTest {
 
         verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE));
         verify(conversionService).deleteJob(jobId);
+    }
+
+    @Test
+    void deleteJobReturnsNotFoundWhenDifferentTenant() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(), any())).thenReturn(new TenantContext("different-tenant", "s", java.util.Set.of()));
+        ConversionJob job1 = new ConversionJob(jobId, "a.pdf", "application/pdf", "hash-a", 100L);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job1));
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE));
+        verify(conversionService, never()).deleteJob(any());
+    }
+
+    @Test
+    void deleteJobReturnsNotFoundWhenJobDoesNotExist() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(), any())).thenReturn(new TenantContext(TENANT_ID, "s", java.util.Set.of()));
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE));
+        verify(conversionService, never()).deleteJob(any());
     }
 
     @Test
@@ -163,6 +266,35 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE));
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenDifferentTenant() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(), any())).thenReturn(new TenantContext("different-tenant", "s", java.util.Set.of()));
+        ConversionJob job1 = new ConversionJob(jobId, "a.pdf", "application/pdf", "hash-a", 100L);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job1));
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE));
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenJobDoesNotExist() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(), any())).thenReturn(new TenantContext(TENANT_ID, "s", java.util.Set.of()));
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
 
         verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE));
     }

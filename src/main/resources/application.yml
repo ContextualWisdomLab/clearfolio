@@ -4,10 +4,9 @@ spring:
   config:
     # Runtime key material is mounted as a Spring Boot config tree rather than
     # carried in process environment variables. The environment variable below
-    # selects only the bootstrap directory. Mount files named
-    # `conversion.policy-override-secret`,
-    # `conversion.audit-pseudonym-secret`, and
-    # `conversion.audit-pseudonym-key-version` in this directory.
+    # selects only the bootstrap directory. Flat files in this directory remain
+    # ConfigTree properties; production tenant-claim authority additionally uses
+    # the nested provider-neutral registry layout documented below.
     import: "optional:configtree:${CLEARFOLIO_SECRET_CONFIG_DIR:/run/secrets/clearfolio/}"
   codec:
     max-in-memory-size: ${conversion.max-upload-size-bytes}
@@ -26,6 +25,13 @@ conversion:
   processing-lease-timeout-ms: 60000
 
 clearfolio:
+  credential-registry:
+    # This value is a bootstrap location, never secret material. Production
+    # expects tenant-claims-signing/{purpose,active-version,versions/<version>.key}
+    # below this root. The artifact-token secret remains a flat ConfigTree file
+    # named clearfolio.artifact-token.secret until its separate registry consumer
+    # migration is implemented.
+    root-directory: ${CLEARFOLIO_SECRET_CONFIG_DIR:/run/secrets/clearfolio/}
   artifact-store:
     # filesystem (default): persist artifacts under root-dir so they survive
     # restarts. in-memory: volatile store for tests and ephemeral demos.

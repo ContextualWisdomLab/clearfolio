@@ -30,6 +30,13 @@ jobs:
       - name: Resolve exact direct development dependencies
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
+      - name: Emit reviewable lock bootstrap
+        shell: bash
+        run: |
+          printf '%s\n' LOCKFILE_B64_BEGIN
+          base64 -w0 package-lock.json
+          printf '\n%s\n' LOCKFILE_B64_END
+
       - name: Install development dependencies from generated lock
         run: npm ci --ignore-scripts --no-audit --no-fund
 

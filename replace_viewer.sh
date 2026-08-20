@@ -1,1 +1,0 @@
-sed -i 's/assertTrue(body.contains("\/assets\/viewer\/viewer.js"));/assertTrue(body.contains("type=\\"module\\" src=\\"\/assets\/viewer\/viewer.js\\""));/g' src/test/java/com/clearfolio/viewer/controller/ViewerUiControllerTest.java

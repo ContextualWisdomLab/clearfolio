@@ -7,8 +7,6 @@ const DEMO_AUTH_HEADERS = {
   "X-Clearfolio-Permissions": "job:read,viewer:read",
 };
 
-import { setBusyState } from "./dom-utils.js";
-
 const el = {
   docMeta: document.getElementById("doc-meta"),
   liveStatus: document.getElementById("live-status"),
@@ -21,7 +19,6 @@ const el = {
 };
 
 let pdfJsModulePromise;
-let restoreRetryBtn = null;
 
 function getMetaContent(name) {
   const meta = document.querySelector(`meta[name="${name}"]`);
@@ -57,7 +54,8 @@ function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
-  restoreRetryBtn = setBusyState(el.retryBtn, "Refreshing...");
+  el.retryBtn.disabled = true;
+  el.retryBtn.textContent = "Refreshing...";
 }
 
 function showError(message) {
@@ -66,10 +64,8 @@ function showError(message) {
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
-  if (restoreRetryBtn) {
-    restoreRetryBtn();
-    restoreRetryBtn = null;
-  }
+  el.retryBtn.disabled = false;
+  el.retryBtn.textContent = "Refresh";
 }
 
 function clearPreview() {
@@ -277,10 +273,8 @@ async function poll(docId, abortSignal) {
 
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
-    if (restoreRetryBtn) {
-      restoreRetryBtn();
-      restoreRetryBtn = null;
-    }
+    el.retryBtn.disabled = false;
+    el.retryBtn.textContent = "Refresh";
   } catch (_error) {
     if (abortSignal.aborted) {
       return;

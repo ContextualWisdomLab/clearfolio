@@ -144,10 +144,24 @@ export const Failed = {
 
 export const NotFound = {
   args: { state: 'notFound' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('button', { name: 'Check document link' })).toBeEnabled();
+    await expect(canvas.getByRole('button', { name: 'Back to documents' })).toBeEnabled();
+    await expect(canvas.queryByRole('button', { name: 'Try preview again' })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Download original' })).not.toBeInTheDocument();
+  },
 };
 
 export const InvalidDocument = {
   args: { state: 'invalid' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('button', { name: 'Open valid document link' })).toBeEnabled();
+    await expect(canvas.getByRole('button', { name: 'Back to documents' })).toBeEnabled();
+    await expect(canvas.queryByRole('button', { name: 'Try preview again' })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Download original' })).not.toBeInTheDocument();
+  },
 };
 
 export const NetworkError = {
@@ -171,7 +185,7 @@ export const BusyDisabled = {
     await expect(canvas.getByRole('region', { name: 'Preview workspace' })).toHaveAttribute('aria-busy', 'true');
     await expect(canvas.getByRole('button', { name: 'Try preview again' })).toBeDisabled();
     await expect(canvas.getByRole('button', { name: 'Download original' })).toBeDisabled();
-    await expect(canvas.getByRole('button', { name: 'Back to documents' })).toBeDisabled();
+    await expect(canvas.getByRole('button', { name: 'Back to documents' })).toBeEnabled();
   },
 };
 

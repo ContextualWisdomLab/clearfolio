@@ -32,3 +32,7 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## 2026-08-20 - 환경 변수 기반 비밀 키 주입 제거
+**Vulnerability:** 런타임 환경 변수(env)를 통해 Spring Boot placeholder(${ENV_VAR:})로 인증 토큰 및 테넌트 클레임 비밀 키가 주입되고 있었습니다. 이는 프로세스 환경에 민감한 정보가 노출되는 위험을 초래합니다.
+**Learning:** Spring Boot 설정 파일에서 기본값을 제공할 경우 config tree 방식의 비밀 관리를 무력화하고 빈 문자열로 덮어쓰여 보안 검증이 우회될 수 있습니다.
+**Prevention:** 애플리케이션 시작 시 KV(configtree) 백엔드에서 강제적으로 비밀 키를 조회하도록 `@Value`의 placeholder 기본값을 제거하고, YAML에서 해당 키 정의를 완전 삭제하여야 합니다.

@@ -5,12 +5,14 @@ import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -31,6 +33,7 @@ import com.clearfolio.viewer.model.ConversionJob;
 public class TenantAccessService {
 
     private static final String HMAC_SHA_256 = "HmacSHA256";
+    private static final int MINIMUM_HMAC_KEY_BYTES = 32;
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final CredentialReference TENANT_CLAIMS_CREDENTIAL = new CredentialReference(
             "tenant-claims-signing",
@@ -45,67 +48,95 @@ public class TenantAccessService {
      * Creates an access service for local tests and unsigned demo mode.
      */
     public TenantAccessService() {
-        this("", 300L, Clock.systemUTC());
+        this((CredentialRegistry) null, "", 300L, Clock.systemUTC());
+    }
+
+    /**
+     * Creates the Spring-managed access service.
+     *
+     * <p>When a provider-neutral registry bean exists, its tenant-claim signing
+     * credential is the only verification authority. Development and explicit
+     * demo compositions without a registry retain the bounded legacy property
+     * path so local unsigned and signed fixtures remain usable.</p>
+     *
+     * @param credentialRegistryProvider optional provider-neutral registry bean
+     * @param legacyClaimsHmacSecret development/demo compatibility property
+     * @param maxSkewSeconds maximum accepted clock skew in seconds
+     * @throws NullPointerException when the registry provider is absent
+     */
+    @Autowired
+    public TenantAccessService(
+            ObjectProvider<CredentialRegistry> credentialRegistryProvider,
+            @Value("${clearfolio.tenant-claims.hmac-secret:}") String legacyClaimsHmacSecret,
+            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
+        this(
+                Objects.requireNonNull(
+                        credentialRegistryProvider,
+                        "credentialRegistryProvider"
+                ).getIfAvailable(),
+                legacyClaimsHmacSecret,
+                maxSkewSeconds,
+                Clock.systemUTC()
+        );
     }
 
     /**
      * Creates an access service with optional signed gateway claim validation.
      *
-     * <p>This compatibility constructor remains the current Spring wiring until
-     * the credential-registry bootstrap stack is integrated. Production
-     * application wiring must migrate to the registry-backed constructor rather
-     * than treating this property as long-lived secret authority.</p>
-     *
-     * @param claimsHmacSecret optional shared gateway HMAC secret
+     * @param claimsHmacSecret optional development/demo HMAC secret
      * @param maxSkewSeconds maximum accepted clock skew in seconds
      */
-    @Autowired
-    public TenantAccessService(
-            @Value("${clearfolio.tenant-claims.hmac-secret:}") String claimsHmacSecret,
-            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
-        this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
+    public TenantAccessService(String claimsHmacSecret, long maxSkewSeconds) {
+        this((CredentialRegistry) null, claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
     }
 
     /**
      * Creates a verifier from the provider-neutral credential registry.
      *
-     * <p>The server-owned reference is fixed to tenant-claim signing. The
-     * returned snapshot must bind both the expected logical credential and
-     * purpose before its opaque bytes become verification authority.</p>
+     * <p>The server-owned reference is fixed to tenant-claim signing. Scoped
+     * resolution enforces purpose separation, while this consumer additionally
+     * requires the exact logical credential identity and the HMAC-SHA-256
+     * minimum key size before resolved bytes become verification authority.</p>
      *
      * @param credentialRegistry provider-neutral credential authority
      * @param maxSkewSeconds maximum accepted clock skew in seconds
      * @param clock verification clock
-     * @throws NullPointerException when registry, clock, or snapshot is absent
-     * @throws IllegalStateException when registry metadata does not match the
-     *         server-owned tenant-claims reference
+     * @throws NullPointerException when registry or clock is absent
+     * @throws IllegalStateException when registry identity or key size is invalid
      */
     public TenantAccessService(
             CredentialRegistry credentialRegistry,
             long maxSkewSeconds,
             Clock clock
     ) {
-        CredentialSnapshot snapshot = Objects.requireNonNull(
-                Objects.requireNonNull(credentialRegistry, "credentialRegistry")
-                        .resolve(TENANT_CLAIMS_CREDENTIAL),
-                "tenant claims credential snapshot"
+        this(
+                Objects.requireNonNull(credentialRegistry, "credentialRegistry"),
+                null,
+                maxSkewSeconds,
+                clock
         );
-        if (!TENANT_CLAIMS_CREDENTIAL.credentialName().equals(snapshot.credentialId())
-                || snapshot.purpose() != TENANT_CLAIMS_CREDENTIAL.purpose()) {
-            throw new IllegalStateException("tenant claims credential purpose mismatch");
-        }
-        this.claimsHmacSecret = snapshot.secretBytes();
-        this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
-        this.clock = Objects.requireNonNull(clock, "clock");
     }
 
     TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {
-        String cleanedSecret = clean(claimsHmacSecret);
-        this.claimsHmacSecret = cleanedSecret == null
-                ? null
-                : cleanedSecret.getBytes(StandardCharsets.UTF_8);
+        this((CredentialRegistry) null, claimsHmacSecret, maxSkewSeconds, clock);
+    }
+
+    private TenantAccessService(
+            CredentialRegistry credentialRegistry,
+            String legacyClaimsHmacSecret,
+            long maxSkewSeconds,
+            Clock clock
+    ) {
         this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
         this.clock = Objects.requireNonNull(clock, "clock");
+        if (credentialRegistry == null) {
+            String cleanedSecret = clean(legacyClaimsHmacSecret);
+            this.claimsHmacSecret = cleanedSecret == null
+                    ? null
+                    : cleanedSecret.getBytes(StandardCharsets.UTF_8);
+        } else {
+            this.claimsHmacSecret = registrySecretBytes(credentialRegistry);
+        }
     }
 
     /**
@@ -209,6 +240,25 @@ public class TenantAccessService {
             return URL_ENCODER.encodeToString(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
         } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("tenant claims signing failed", ex);
+        }
+    }
+
+    private static byte[] registrySecretBytes(CredentialRegistry credentialRegistry) {
+        CredentialSnapshot snapshot = credentialRegistry.resolveScoped(TENANT_CLAIMS_CREDENTIAL);
+        if (!TENANT_CLAIMS_CREDENTIAL.credentialName().equals(snapshot.credentialId())) {
+            throw new IllegalStateException("tenant claims credential identity mismatch");
+        }
+
+        byte[] resolvedSecret = snapshot.secretBytes();
+        try {
+            if (resolvedSecret.length < MINIMUM_HMAC_KEY_BYTES) {
+                throw new IllegalStateException(
+                        "tenant claims credential requires at least 32 bytes"
+                );
+            }
+            return resolvedSecret.clone();
+        } finally {
+            Arrays.fill(resolvedSecret, (byte) 0);
         }
     }
 

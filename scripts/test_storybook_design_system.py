@@ -13,6 +13,7 @@ PREVIEW = ROOT / ".storybook/preview.js"
 VITEST_SETUP = ROOT / ".storybook/vitest.setup.js"
 VITEST_CONFIG = ROOT / "vitest.config.js"
 PACKAGE = ROOT / "package.json"
+PACKAGE_LOCK = ROOT / "package-lock.json"
 WORKFLOW = ROOT / ".github/workflows/storybook.yml"
 
 REQUIRED_STATES = {
@@ -138,6 +139,17 @@ def test_storybook_is_development_only_and_has_build_test_commands() -> None:
     scripts = package["scripts"]
     assert "storybook build" in scripts["build-storybook"]
     assert "vitest" in scripts["test-storybook"]
+
+
+def test_storybook_dependencies_are_locked_and_ci_uses_lock_only() -> None:
+    assert PACKAGE_LOCK.is_file(), "Storybook transitive dependencies must be reviewable in package-lock.json"
+    package = json.loads(PACKAGE.read_text(encoding="utf-8"))
+    lock = json.loads(PACKAGE_LOCK.read_text(encoding="utf-8"))
+    assert lock["lockfileVersion"] == 3
+    assert lock["packages"][""]["devDependencies"] == package["devDependencies"]
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    assert "npm install --package-lock-only" not in workflow
+    assert "npm ci --ignore-scripts --no-audit --no-fund" in workflow
 
 
 def test_story_fixtures_exclude_customer_authority() -> None:

@@ -4,15 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+
 import com.clearfolio.viewer.execution.ConversionAdmissionDecision;
 import com.clearfolio.viewer.execution.ConversionAdmissionResult;
 import com.clearfolio.viewer.execution.ConversionCapacitySnapshot;
 import com.clearfolio.viewer.execution.ConversionWorkerLease;
 import com.clearfolio.viewer.observability.ConversionTelemetryEvent;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.UUID;
-import org.junit.jupiter.api.Test;
 
 class ConversionExecutionDomainFoundationTest {
 

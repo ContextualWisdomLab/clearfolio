@@ -14,6 +14,13 @@ def test_release_acceptance_is_tag_scoped_and_exact_revision_bound() -> None:
     assert 'test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"' in text
 
 
+def test_release_acceptance_runs_hash_locked_api_contracts() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97" in text
+    assert "--require-hashes -r requirements-test.txt" in text
+    assert "python -m pytest -q scripts" in text
+
+
 def test_release_acceptance_verifies_build_sbom_license_and_tag_version() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "mvn -B --no-transfer-progress verify" in text
@@ -22,6 +29,16 @@ def test_release_acceptance_verifies_build_sbom_license_and_tag_version() -> Non
     assert "--require-no-review" in text
     assert "help:evaluate -Dexpression=project.version" in text
     assert "GITHUB_REF_NAME" in text
+
+
+def test_release_acceptance_binds_openapi_bytes_and_provenance_to_source() -> None:
+    text = WORKFLOW.read_text(encoding="utf-8")
+    assert "build_openapi_release_provenance" in text
+    assert "render_openapi_release_provenance" in text
+    assert 'os.environ["SOURCE_REVISION"]' in text
+    assert "target/openapi-release-provenance.json" in text
+    assert "clearfolio-buyer-connector.openapi.yaml" in text
+    assert "openapi-release-provenance.json" in text
 
 
 def test_release_acceptance_persists_byte_digests_without_publish_authority() -> None:

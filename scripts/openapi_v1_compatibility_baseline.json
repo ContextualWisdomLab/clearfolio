@@ -1,0 +1,38 @@
+{
+  "GET /api/v1/analytics/kpi-snapshot": {
+    "operationId": "getKpiSnapshot",
+    "responses": ["200", "401", "403"]
+  },
+  "GET /api/v1/analytics/kpi-snapshot-exports": {
+    "operationId": "listKpiSnapshotExports",
+    "responses": ["200", "401", "403"]
+  },
+  "GET /api/v1/convert/jobs/{jobId}": {
+    "operationId": "getConversionJobStatus",
+    "responses": ["200", "401", "403", "404"]
+  },
+  "GET /api/v1/viewer/{docId}": {
+    "operationId": "getViewerBootstrap",
+    "responses": ["200", "401", "403", "404", "409"]
+  },
+  "GET /api/v1/viewer/{docId}/artifact-read-events": {
+    "operationId": "listArtifactReadEvents",
+    "responses": ["200", "401", "403", "404"]
+  },
+  "POST /api/v1/convert/jobs": {
+    "operationId": "submitConversionJob",
+    "responses": ["202", "400", "401", "403"]
+  },
+  "POST /api/v1/convert/jobs/{jobId}/retry": {
+    "operationId": "retryDeadLetteredConversionJob",
+    "responses": ["202", "400", "401", "403", "404", "409"]
+  },
+  "POST /api/v1/viewer/artifact-links/{tokenId}/revoke": {
+    "operationId": "revokeArtifactLink",
+    "responses": ["200", "401", "403"]
+  },
+  "POST /api/v1/viewer/{docId}/artifact-links": {
+    "operationId": "createArtifactLink",
+    "responses": ["200", "401", "403", "404"]
+  }
+}

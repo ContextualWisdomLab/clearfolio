@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-13 - [CRITICAL] Admin API 인증 및 권한 검증 누락 수정
+**Vulnerability:** `AdminController`의 관리자 전용 API(전체 작업 조회, 작업 삭제, 데드레터 재시도 등)에 대해 사용자 인증 및 권한(tenant:configure) 검증이 누락되어 누구나 관리자 기능을 호출할 수 있었습니다.
+**Learning:** 새로운 컨트롤러 추가 시 기존의 `TenantAccessService`를 통한 AOP/필터 기반 공통 처리가 아닌, 각 메서드 내에서 명시적인 권한 요구(tenantAccessService.require) 방식을 사용하고 있어 휴먼 에러로 검증 코드가 쉽게 누락될 수 있었습니다.
+**Prevention:** 모든 엔드포인트는 추가 시 반드시 권한 검증 로직이 포함되었는지 확인하고, 보안 문서에 정의된 권한(`docs/security/2026-07-02-auth-tenant-model.md`의 `tenant_admin` 권한)과 일치하는 상수(예: `TENANT_CONFIGURE`)를 적용해야 합니다.

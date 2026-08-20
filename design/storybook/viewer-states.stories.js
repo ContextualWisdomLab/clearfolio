@@ -76,11 +76,10 @@ const HARNESS_STYLES = `
   </style>
 `;
 
-function renderViewer({ state = 'ready', width = '100%', busy = false } = {}) {
+function renderViewer({ state = 'ready', busy = false } = {}) {
   const copy = STATE_COPY[state];
   const root = document.createElement('div');
   root.className = 'storybook-viewer-frame';
-  root.style.maxWidth = width;
 
   const error = copy.errorTitle
     ? `<div class="error" role="alert">
@@ -91,8 +90,18 @@ function renderViewer({ state = 'ready', width = '100%', busy = false } = {}) {
   const skeleton = state === 'loading'
     ? '<div class="skeleton" aria-hidden="true"></div>'
     : `<div class="preview-placeholder" role="document" aria-label="Document preview">${copy.preview}</div>`;
-  const primaryLabel = state === 'ready' ? 'Open document' : 'Try preview again';
-  const retryDisabled = busy ? ' disabled' : '';
+  const unrecoverableReference = state === 'notFound' || state === 'invalid';
+  const primaryLabel = state === 'ready'
+    ? 'Open document'
+    : state === 'notFound'
+      ? 'Check document link'
+      : state === 'invalid'
+        ? 'Open valid document link'
+        : 'Try preview again';
+  const primaryDisabled = busy ? ' disabled' : '';
+  const downloadAction = unrecoverableReference
+    ? ''
+    : `<button class="btn btn-secondary" type="button"${primaryDisabled}>Download original</button>`;
 
   root.innerHTML = `${HARNESS_STYLES}
     <main class="app-main" aria-labelledby="viewer-title">
@@ -109,9 +118,9 @@ function renderViewer({ state = 'ready', width = '100%', busy = false } = {}) {
         ${error}
         <div class="preview" aria-labelledby="preview-title">${skeleton}</div>
         <div class="actions">
-          <button class="btn btn-primary" type="button"${retryDisabled}>${primaryLabel}</button>
-          <button class="btn btn-secondary" type="button"${retryDisabled}>Download original</button>
-          <button class="btn btn-secondary" type="button"${retryDisabled}>Back to documents</button>
+          <button class="btn btn-primary" type="button"${primaryDisabled}>${primaryLabel}</button>
+          ${downloadAction}
+          <button class="btn btn-secondary" type="button">Back to documents</button>
         </div>
         <p class="story-note">Exact document reference: ${DOCUMENT_ID}</p>
       </section>
@@ -190,12 +199,15 @@ export const BusyDisabled = {
 };
 
 export const MobileLoading = {
-  args: { state: 'loading', busy: true, width: '390px' },
-  parameters: {
-    viewport: { defaultViewport: 'mobile1' },
+  args: { state: 'loading', busy: true },
+  globals: {
+    viewport: { value: 'mobile1', isRotated: false },
   },
 };
 
 export const TabletReady = {
-  args: { state: 'ready', width: '768px' },
+  args: { state: 'ready' },
+  globals: {
+    viewport: { value: 'tablet', isRotated: false },
+  },
 };

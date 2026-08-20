@@ -22,3 +22,6 @@
 ## 2026-08-17 - Fail-fast optimization for token parsing to avoid garbage allocation
 **Learning:** Using `String.split` dynamically allocates a full string array before the HMAC signature is even checked. This is expensive and allows maliciously crafted invalid tokens to force unnecessary memory allocations on a hot path, causing excessive GC pressure.
 **Action:** When parsing signed tokens, locate the signature delimiter first using `lastIndexOf('.')` and verify the cryptographic signature before performing any detailed extraction or slicing on the payload portion.
+## 2026-08-17 - Rejected: Token Parsing Optimization without Benchmark Receipts
+**Learning:** Performance optimizations on security-sensitive code paths (like JWT/token parsing) must be backed by rigorous, forked-JVM microbenchmarks. Claims of "zero unnecessary allocation" or "O(1) memory" are rejected if they lack concrete measurements (B/op, allocation counts, variance) against identical valid and hostile corpora, regardless of whether `mvn verify` passes.
+**Action:** Do not submit security-sensitive performance rewrites without first establishing benchmark receipts that prove a material improvement and functional equivalence (property/fuzz testing). Wait for benchmark issues to be completed before proposing the change.

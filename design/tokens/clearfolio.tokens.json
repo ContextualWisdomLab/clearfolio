@@ -1,0 +1,45 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "color": {
+    "brand-blue": {
+      "$type": "color",
+      "$description": "Projection of runtime CSS --brand-blue.",
+      "$value": {"colorSpace": "srgb", "components": [0.0117647059, 0.3058823529, 0.6352941176], "alpha": 1, "hex": "#034ea2"}
+    },
+    "ink": {
+      "$type": "color",
+      "$description": "Projection of runtime CSS --ink.",
+      "$value": {"colorSpace": "srgb", "components": [0.062745098, 0.1254901961, 0.1960784314], "alpha": 1, "hex": "#102032"}
+    },
+    "muted": {
+      "$type": "color",
+      "$description": "Projection of runtime CSS --muted.",
+      "$value": {"colorSpace": "srgb", "components": [0.3529411765, 0.4039215686, 0.4666666667], "alpha": 1, "hex": "#5a6777"}
+    },
+    "bg": {
+      "$type": "color",
+      "$description": "Projection of runtime CSS --bg.",
+      "$value": {"colorSpace": "srgb", "components": [0.9647058824, 0.968627451, 0.9764705882], "alpha": 1, "hex": "#f6f7f9"}
+    },
+    "panel": {
+      "$type": "color",
+      "$description": "Projection of runtime CSS --panel.",
+      "$value": {"colorSpace": "srgb", "components": [1, 1, 1], "alpha": 1, "hex": "#ffffff"}
+    },
+    "line": {
+      "$type": "color",
+      "$description": "Projection of runtime CSS --line.",
+      "$value": {"colorSpace": "srgb", "components": [0.8431372549, 0.8666666667, 0.9019607843], "alpha": 1, "hex": "#d7dde6"}
+    },
+    "danger": {
+      "$type": "color",
+      "$description": "Projection of runtime CSS --danger.",
+      "$value": {"colorSpace": "srgb", "components": [0.7058823529, 0.137254902, 0.0941176471], "alpha": 1, "hex": "#b42318"}
+    },
+    "focus": {
+      "$type": "color",
+      "$description": "Projection of runtime CSS --focus.",
+      "$value": {"colorSpace": "srgb", "components": [1, 0.3490196078, 0.3529411765], "alpha": 1, "hex": "#ff595a"}
+    }
+  }
+}

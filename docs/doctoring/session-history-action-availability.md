@@ -8,6 +8,11 @@ availability follows the same history collection that is rendered in the table.
 - The server-rendered empty state starts with the button disabled.
 - The visible name is the next-action copy `Clear history`. That string is also
   the accessible name; a second `aria-label` is not maintained.
+- The persistent empty-state copy is `Session history is empty. Submit a
+  document or load demo data to continue.` It remains truthful both before the
+  first submission and after a buyer clears previously submitted history, and
+  it names the next available actions instead of claiming that no document was
+  ever submitted in the session.
 - Every `renderHistory` call runs `syncClearHistoryAvailability`, which sets
   `disabled` from whether at least one clearable history record exists.
 - When a confirmed clear disables the control that still has focus, the script
@@ -30,7 +35,9 @@ stateDiagram-v2
 Operators no longer see an executable destructive action when there is nothing
 to clear. Sighted and assistive-technology users receive the same next-action
 name. After a successful clear, keyboard users stay on the Session history
-landmark instead of falling to `document.body`.
+landmark instead of falling to `document.body`. The empty state also remains
+factually correct after a clear and tells the buyer how to repopulate the
+history instead of incorrectly saying that no documents were submitted.
 
 ## Standards and design boundary
 
@@ -62,8 +69,8 @@ The following assertions are the proof, not surrounding prose:
 
 - `ViewerUiControllerTest.homeReturnsBuyerDemoUploadShell` requires the initial
   document to contain one disabled `Clear history` control, a
-  `tabindex="-1"` session-history heading, and no `Clear session history`
-  `aria-label`.
+  `tabindex="-1"` session-history heading, the truthful/actionable empty-state
+  sentence, and no `Clear session history` `aria-label`.
 - `ViewerUiControllerTest.demoScriptUsesExistingApiAndSessionHistory` locks
   `syncClearHistoryAvailability`, the `clearHistoryBtn.disabled` assignment,
   the active-element comparison, and the `#history-title` landmark lookup.
@@ -82,18 +89,20 @@ any commit.
 ## Rollback
 
 Rollback must remove the initial disabled state, the render-time
-synchronization, and the post-clear focus move together. Reverting only one
-side would reintroduce stale availability or drop keyboard focus after a
-successful clear. Do not restore a compact `Clear` label plus a second
-`aria-label` merely to shorten the visible copy.
+synchronization, the truthful empty-state guidance, and the post-clear focus
+move together. Reverting only one side would reintroduce stale availability,
+false post-clear copy, or dropped keyboard focus after a successful clear. Do
+not restore a compact `Clear` label plus a second `aria-label` merely to shorten
+the visible copy.
 
 ## References
 
 WHATWG. (2026). *HTML Living Standard: The button element*.
 https://html.spec.whatwg.org/multipage/form-elements.html#the-button-element
 
-World Wide Web Consortium. (2023, October 5). *Web Content Accessibility
-Guidelines (WCAG) 2.2* (W3C Recommendation). https://www.w3.org/TR/WCAG22/
+World Wide Web Consortium. (2024, December 12). *Web Content Accessibility
+Guidelines (WCAG) 2.2* (W3C Recommendation).
+https://www.w3.org/TR/2024/REC-WCAG22-20241212/
 
 World Wide Web Consortium. (2023, October 5). *Understanding SC 2.4.3: Focus
 Order (Level A)*.

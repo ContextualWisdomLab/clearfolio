@@ -129,6 +129,20 @@ class AdminControllerTest {
     }
 
     @Test
+    void deleteJobReturnsNotFoundWhenJobIsMissing() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .headers(headers -> addAuth(headers, TenantPermissions.ADMIN_WRITE))
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(conversionService, never()).deleteJob(jobId);
+    }
+
+    @Test
     void deleteJobHidesCrossTenantJob() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = tenantJob(jobId, OTHER_TENANT_ID, "private.pdf");
@@ -187,7 +201,7 @@ class AdminControllerTest {
     }
 
     @Test
-    void retryDeadLetteredReturnsNotFoundWhenNotFound() {
+    void retryDeadLetteredReturnsNotFoundWhenJobIsMissing() {
         UUID jobId = UUID.randomUUID();
         when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
 
@@ -198,6 +212,21 @@ class AdminControllerTest {
                 .expectStatus().isNotFound();
 
         verify(conversionService, never()).retryDeadLettered(jobId, TenantContext.DEMO_SUBJECT_ID);
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenOwnedJobDisappearsBeforeRetry() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = defaultTenantJob(jobId, "a.pdf");
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        when(conversionService.retryDeadLettered(jobId, TenantContext.DEMO_SUBJECT_ID))
+                .thenReturn(RetryDeadLetterResult.NOT_FOUND);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .headers(headers -> addAuth(headers, TenantPermissions.ADMIN_WRITE))
+                .exchange()
+                .expectStatus().isNotFound();
     }
 
     @Test

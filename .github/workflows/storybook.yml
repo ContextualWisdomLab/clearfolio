@@ -48,6 +48,9 @@ jobs:
       - name: Install development dependencies from generated lock
         run: npm ci --ignore-scripts --no-audit --no-fund
 
+      - name: Run executable design-system contract tests
+        run: python3 -m unittest discover -s scripts
+
       - name: Install Chromium for Vitest browser mode
         run: npx --no-install playwright install --with-deps chromium
 

@@ -1,0 +1,21 @@
+{
+  "name": "clearfolio-design-authority",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "storybook": "storybook dev -p 6006 --no-open",
+    "build-storybook": "storybook build --output-dir storybook-static",
+    "test-storybook": "vitest --project=storybook"
+  },
+  "devDependencies": {
+    "@storybook/addon-a11y": "10.5.7",
+    "@storybook/addon-vitest": "10.5.7",
+    "@storybook/web-components-vite": "10.5.7",
+    "@vitest/browser-playwright": "4.1.10",
+    "storybook": "10.5.7",
+    "vitest": "4.1.10"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -84,6 +84,11 @@ class ArtifactTokenBoundaryTest {
     }
 
     @Test
+    void rejectsExtremelyLongTokens() {
+        assertMalformedToken("A".repeat(4097));
+    }
+
+    @Test
     void rejectsStructurallyValidTokenWithMismatchedSignature() {
         String payload = String.join(".", validPayloadFields);
         String mismatchedSignature = hmac(payload + ".different-message");

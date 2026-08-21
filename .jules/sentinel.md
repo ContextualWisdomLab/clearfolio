@@ -33,7 +33,7 @@
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
 
-## 2026-08-20 - [CRITICAL] AdminController 인증 및 인가 누락 수정
-**Vulnerability:** AdminController의 모든 엔드포인트(`GET /api/v1/admin/convert/jobs`, `DELETE /api/v1/admin/convert/jobs/{jobId}`, `POST /api/v1/admin/convert/jobs/{jobId}/retry`)에서 인증(Authentication) 및 인가(Authorization) 검증이 누락되어 누구나 관리자 기능에 접근할 수 있었습니다.
-**Learning:** `TenantAccessService`를 주입하지 않아, 관리자용 API가 보호되지 않은 상태로 노출되는 설계상 결함이 존재했습니다.
-**Prevention:** 모든 새로운 컨트롤러 및 API 엔드포인트 작성 시 반드시 `TenantAccessService`를 통한 `require()` 검사를 포함하고, 적절한 권한(`admin:read`, `admin:write` 등)이 요구되는지 테스트 코드 및 코드 리뷰를 통해 철저하게 확인해야 합니다.
+## 2026-08-20 - [CRITICAL] AdminController 인증·인가 및 tenant 격리 수정
+**Vulnerability:** AdminController의 작업 조회·삭제·재시도 엔드포인트가 인증·권한 검증 없이 노출되어 있었고, 최초 권한 패치도 검증된 tenant context를 작업 소유권에 적용하지 않아 `admin:*` 권한을 가진 한 tenant가 다른 tenant의 작업을 조회·삭제·재시도할 수 있었습니다.
+**Learning:** endpoint permission 검사는 multi-tenant object authorization을 대체하지 않습니다. 관리자 권한도 request tenant 경계 안에서 평가해야 하며, 교차-tenant 객체는 존재 여부를 드러내지 않도록 처리해야 합니다. 감사용 retry operator 역시 고정 문자열이 아니라 검증된 subject를 사용해야 합니다.
+**Prevention:** `TenantAccessService.require()`가 반환한 `TenantContext`를 보존해 목록은 `belongsToTenant(context.tenantId())`로 필터링하고, 단건 mutation은 `requireSameTenant()`을 통과한 뒤에만 실행합니다. 인증 누락 401, 권한 누락 403, 교차-tenant 404, 올바른 `admin:read`/`admin:write`와 subject 전파를 실제 access service를 사용한 controller 회귀 테스트로 고정합니다.

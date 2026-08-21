@@ -110,9 +110,21 @@ function jsonHeaders(extra = {}) {
   };
 }
 
+function syncClearHistoryAvailability(historyLength) {
+  const unavailable = historyLength === 0;
+  if (unavailable && document.activeElement === el.clearHistoryBtn) {
+    const landmark = document.getElementById("history-title");
+    if (landmark !== null && typeof landmark.focus === "function") {
+      landmark.focus();
+    }
+  }
+  el.clearHistoryBtn.disabled = unavailable;
+}
+
 function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
+  syncClearHistoryAvailability(history.length);
 
   for (const job of history) {
     const row = document.createElement("tr");

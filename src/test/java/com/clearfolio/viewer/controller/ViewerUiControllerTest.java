@@ -64,6 +64,7 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("id=\"history-title\" class=\"panel__title\" tabindex=\"-1\""));
                     assertTrue(body.contains("id=\"clear-history-btn\" disabled"));
                     assertTrue(body.contains(">Clear history</button>"));
+                    assertTrue(body.contains("<p class=\"empty-state\" id=\"empty-history\">Session history is empty. Submit a document or load demo data to continue.</p>"));
                     assertFalse(body.contains("aria-label=\"Clear session history\""));
                     assertTrue(body.contains("/assets/viewer/demo.js"));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));

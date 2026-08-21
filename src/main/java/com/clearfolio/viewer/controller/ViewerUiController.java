@@ -299,7 +299,7 @@ public class ViewerUiController {
                             </thead>
                             <tbody id="history-body"></tbody>
                           </table>
-                          <p class="empty-state" id="empty-history">No documents submitted in this session.</p>
+                          <p class="empty-state" id="empty-history">Session history is empty. Submit a document or load demo data to continue.</p>
                         </div>
 
                         <aside class="job-detail" id="job-detail" aria-labelledby="job-detail-title" hidden>

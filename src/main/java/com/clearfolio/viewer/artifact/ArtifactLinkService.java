@@ -332,8 +332,18 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
+    /**
+     * Maximum length of an artifact token to prevent resource exhaustion attacks.
+     */
+    private static final int MAX_TOKEN_LENGTH = 4096;
+
     @SuppressWarnings("checkstyle:MagicNumber")
     private ArtifactTokenClaims parseAndVerify(final String token) {
+        if (token.length() > MAX_TOKEN_LENGTH) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED,
+                    "artifact token invalid");
+        }
+
         final int lastDotIndex = token.lastIndexOf('.');
         if (lastDotIndex == -1 || lastDotIndex == token.length() - 1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED,

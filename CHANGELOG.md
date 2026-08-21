@@ -25,6 +25,7 @@
 
 ### Security
 
+- **아티팩트 토큰 DoS 취약점 해결**: `ArtifactLinkService.parseAndVerify`에서 지나치게 긴 토큰이 자원을 소모하는 것을 방지하기 위해 4096자 길이 제한을 추가했습니다.
 - `GET /api/v1/convert/jobs/{jobId}/download`가 리소스 조회 전에 전용 `artifact:read` 권한을 검증하고, PDF 저장소 접근 전에 작업의 tenant 소유권을 확인하도록 강화했습니다. `job:read`만으로는 문서 바이트를 읽을 수 없으며, 인증 누락·권한 누락·교차 tenant UUID 접근은 각각 fail closed 처리되고 교차 tenant 요청은 리소스 존재를 숨기는 `404`를 반환합니다.
 - Maven XML 테스트 보고서 검증기는 각 `testsuite`의 `tests`, `skipped`, `failures`, `errors` 속성을 모두 필수 증거로 요구합니다. 누락된 결과 수를 암묵적으로 0으로 간주하지 않고 fail closed 처리하며, 각 속성 누락 회귀 테스트를 추가했습니다.
 - Maven XML 테스트 보고서 검증기는 UTF-8만 허용하고 UTF-8 BOM은 수용하며, NUL 바이트·DTD·엔터티 선언을 파싱 전에 거부합니다. UTF-16 같은 대체 인코딩으로 위험 선언을 바이트 검사에서 숨기는 우회와 외부 엔터티 읽기·엔터티 확장형 서비스 거부를 회귀 테스트로 차단했습니다.

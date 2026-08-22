@@ -211,64 +211,64 @@ async function openJsonDocument(url) {
 
 async function poll(docId, abortSignal) {
   try {
-    setLoading("Checking conversion status...");
+    while (!abortSignal.aborted) {
+      setLoading("Checking conversion status...");
 
-    const statusUrl = `/api/v1/convert/jobs/${encodeURIComponent(docId)}`;
-    const { res, data } = await fetchJson(statusUrl, abortSignal);
+      const statusUrl = `/api/v1/convert/jobs/${encodeURIComponent(docId)}`;
+      const { res, data } = await fetchJson(statusUrl, abortSignal);
 
-    if (abortSignal.aborted) {
-      return;
-    }
-
-    if (res.status === 404) {
-      showError("This document could not be found.");
-      return;
-    }
-
-    if (!res.ok || !data) {
-      showError("Unable to read job status. Please retry.");
-      return;
-    }
-
-    const status = data.status;
-    if (status === "SUBMITTED" || status === "PROCESSING") {
-      el.liveStatus.textContent = `${status} - retrying soon...`;
-      await new Promise(resolve => window.setTimeout(resolve, POLL_DELAY_MS));
-      if (!abortSignal.aborted) {
-        await poll(docId, abortSignal);
+      if (abortSignal.aborted) {
+        return;
       }
+
+      if (res.status === 404) {
+        showError("This document could not be found.");
+        return;
+      }
+
+      if (!res.ok || !data) {
+        showError("Unable to read job status. Please retry.");
+        return;
+      }
+
+      const status = data.status;
+      if (status === "SUBMITTED" || status === "PROCESSING") {
+        el.liveStatus.textContent = `${status} - retrying soon...`;
+        await new Promise(resolve => window.setTimeout(resolve, POLL_DELAY_MS));
+        continue;
+      }
+
+      if (status !== "SUCCEEDED") {
+        showError(`Preview is not available. Status: ${status}`);
+        return;
+      }
+
+      setLoading("Loading viewer bootstrap...");
+      const viewerUrl = `/api/v1/viewer/${encodeURIComponent(docId)}`;
+      const bootstrap = await fetchJson(viewerUrl, abortSignal);
+
+      if (abortSignal.aborted) {
+        return;
+      }
+
+      if (!bootstrap.res.ok || !bootstrap.data) {
+        showError("Viewer bootstrap failed. Please retry.");
+        return;
+      }
+
+      clearPreview();
+      const path = bootstrap.data.previewResourcePath;
+      if (typeof path === "string" && path.endsWith(".pdf")) {
+        await renderPdfInline(path);
+      }
+      if (typeof path === "string" && path.length > 0) {
+        renderPreviewLink(path);
+      }
+
+      el.preview.setAttribute("aria-busy", "false");
+      el.liveStatus.textContent = "Ready.";
       return;
     }
-
-    if (status !== "SUCCEEDED") {
-      showError(`Preview is not available. Status: ${status}`);
-      return;
-    }
-
-    setLoading("Loading viewer bootstrap...");
-    const viewerUrl = `/api/v1/viewer/${encodeURIComponent(docId)}`;
-    const bootstrap = await fetchJson(viewerUrl, abortSignal);
-
-    if (abortSignal.aborted) {
-      return;
-    }
-
-    if (!bootstrap.res.ok || !bootstrap.data) {
-      showError("Viewer bootstrap failed. Please retry.");
-      return;
-    }
-
-    clearPreview();
-    const path = bootstrap.data.previewResourcePath;
-    if (typeof path === "string" && path.endsWith(".pdf")) {
-      await renderPdfInline(path);
-    }
-    if (typeof path === "string" && path.length > 0) {
-      renderPreviewLink(path);
-    }
-
-    el.preview.setAttribute("aria-busy", "false");
-    el.liveStatus.textContent = "Ready.";
   } catch (_error) {
     if (abortSignal.aborted) {
       return;

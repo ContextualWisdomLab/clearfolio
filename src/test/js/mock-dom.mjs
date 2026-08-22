@@ -31,12 +31,12 @@ export class MockElement {
   }
 
   appendChild(node) {
-    this.childNodes.push(node);
+    if (node instanceof MockDocumentFragment) { this.childNodes.push(...node.childNodes); } else { this.childNodes.push(node); }
     return node;
   }
 
   append(...nodes) {
-    this.childNodes.push(...nodes);
+    nodes.forEach(n => { if (n instanceof MockDocumentFragment) { this.childNodes.push(...n.childNodes); } else { this.childNodes.push(n); } });
   }
 
   replaceChildren(...nodes) {
@@ -74,4 +74,17 @@ export class MockElement {
   focus() {}
 
   reset() {}
+}
+
+export class MockDocumentFragment {
+  constructor() {
+    this.childNodes = [];
+  }
+  appendChild(node) {
+    if (node instanceof MockDocumentFragment) { this.childNodes.push(...node.childNodes); } else { this.childNodes.push(node); }
+    return node;
+  }
+  append(...nodes) {
+    nodes.forEach(n => { if (n instanceof MockDocumentFragment) { this.childNodes.push(...n.childNodes); } else { this.childNodes.push(n); } });
+  }
 }

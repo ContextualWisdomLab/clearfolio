@@ -12,8 +12,8 @@ jobs:
     name: Commit reviewed Storybook lock once
     runs-on: ubuntu-latest
     env:
-      ARTIFACT_ID: "9457584607"
-      EXPECTED_LOCK_SHA256: "6ac5ecda7fcbdda3fc9a028dd455b0e018acf6f4cb792a6b8c5ac4ee25357af6"
+      ARTIFACT_ID: "9485084875"
+      EXPECTED_LOCK_SHA256: "21165acd4dad45d4d105668a93168d3504aea9103ad72676fdb257e19e24c516"
       EXPECTED_PACKAGE_JSON_BLOB: "22cbba43925bcb6356eb5741c25f7f95ba85367e"
       GH_TOKEN: ${{ github.token }}
     steps:

@@ -27,15 +27,15 @@ Project-level Storybook accessibility configuration sets `a11y.test` to `error` 
 
 ## Figma traceability
 
-Fresh evidence was re-read on 2026-08-21 from Clearfolio Figma file `UPIMvnjyP1sTXhIy1wqD02`, page `0:1`, board `2:2` (`Clearfolio Viewer Product Design + Analytics Board`). The board identifies itself as a no-Code-Connect design plan and contains desktop loading/ready/failed, mobile loading, and tablet concepts. Its local swatches match protected-main runtime values: brand `#034ea2`, ink `#102032`, muted `#5a6777`, background `#f6f7f9`, panel `#ffffff`, line `#d7dde6`, danger `#b42318`, and focus `#ff595a`.
+Fresh evidence was re-read on 2026-08-23 from Clearfolio Figma file `UPIMvnjyP1sTXhIy1wqD02`, page `0:1`, board `2:2` (`Clearfolio Viewer Product Design + Analytics Board`). The board identifies itself as a no-Code-Connect design plan and contains desktop loading/ready/failed, mobile loading, and tablet concepts. Its local swatches match protected-main runtime values: brand `#034ea2`, ink `#102032`, muted `#5a6777`, background `#f6f7f9`, panel `#ffffff`, line `#d7dde6`, danger `#b42318`, and focus `#ff595a`.
 
 Code Connect component inventory cannot currently be treated as executable evidence. The connected Figma account reports a Full seat on a Pro team, while the Code Connect API requires a Dev or Full seat on an Organization or Enterprise plan. Until that entitlement changes, the repository records the limitation and does not fabricate mappings. Storybook-to-runtime parity remains independently executable.
 
 ## Security and operability boundary
 
-Storybook packages are development dependencies only. The dedicated pull-request workflow checks out the exact PR head, verifies the checked-out SHA, generates an installation lock for that run, installs without lifecycle scripts, installs only the Chromium browser required for the test provider, builds Storybook, and executes the browser tests. No model credential, repository write token, application secret, customer fixture, or runtime deployment authority is required.
+Storybook packages are development dependencies only. The dedicated pull-request workflow checks out the exact PR head, verifies the checked-out SHA, installs strictly from the reviewed checked-in `package-lock.json` with `npm ci --ignore-scripts --no-audit --no-fund`, runs the Python design-system contract suite, installs only the Chromium browser required for the test provider, builds Storybook, and executes the browser tests. No model credential, repository write token, application secret, customer fixture, or runtime deployment authority is required.
 
-A checked-in npm lockfile is still preferred before this Draft becomes integration-ready so transitive development dependencies are reproducible between runs. A successful Storybook run is design evidence only; it does not replace Maven verification, security scans, protected-branch requirements, review-thread resolution, or qualifying independent approval.
+The checked-in npm lockfile makes transitive development dependencies reviewable and reproducible between runs. A successful Storybook run is design evidence only; it does not replace Maven verification, security scans, protected-branch requirements, review-thread resolution, or qualifying independent approval.
 
 ## References
 

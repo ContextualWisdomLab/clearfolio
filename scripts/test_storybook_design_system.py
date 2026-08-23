@@ -54,6 +54,8 @@ def _runtime_tokens() -> dict[str, str]:
 
 
 def _hex_from_srgb(components: list[float]) -> str:
+    if not all(0 <= component <= 1 for component in components):
+        raise AssertionError("sRGB token components must stay in the 0-1 range")
     channels = [round(component * 255) for component in components]
     if not all(0 <= channel <= 255 for channel in channels):
         raise AssertionError("sRGB token channels must stay in the 0-255 range")

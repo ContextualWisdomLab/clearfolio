@@ -112,7 +112,7 @@ public class ViewerUiController {
                         </div>
 
                         <div class="actions" aria-label="Actions">
-                          <button type="button" class="btn btn-primary" id="retry-btn">Refresh</button>
+                          <button type="button" class="btn btn-primary" id="retry-btn" aria-label="Refresh preview status">Refresh</button>
                           <a class="btn btn-secondary" id="open-json-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Open JSON bootstrap in a new tab" hidden>Open JSON bootstrap</a>
                         </div>
                       </section>
@@ -284,7 +284,7 @@ public class ViewerUiController {
                             <h2 id="history-title" class="panel__title">Session history</h2>
                             <p class="panel__caption">Open status JSON for diligence or launch the preview when conversion is ready.</p>
                           </div>
-                          <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn">Clear</button>
+                          <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn" aria-label="Clear session history">Clear</button>
                         </div>
 
                         <div class="table-wrap" id="session-history">

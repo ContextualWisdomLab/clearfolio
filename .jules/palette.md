@@ -13,3 +13,6 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+## 2026-08-23 - 단독 텍스트 버튼을 위한 문맥 레이블 (Contextual labels for standalone actions)
+**Learning:** 뷰어 및 데모 쉘에 있는 'Clear(지우기)' 또는 'Refresh(새로고침)'와 같이 모호한 단독 텍스트 버튼들은 반복되는 테이블 작업과 동일한 접근성 문제를 야기합니다. 이러한 버튼들이 문맥 없이 스크린 리더로 탐색될 때 충분한 정보를 제공하지 못합니다.
+**Action:** 시각적 UI를 어지럽히지 않고도 접근성 있는 문맥을 제공하기 위해, 텍스트가 짧은 단독 버튼들에는 항상 설명이 포함된 `aria-label` 속성(예: `aria-label="세션 이력 지우기"`)을 추가해야 합니다.

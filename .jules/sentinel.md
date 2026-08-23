@@ -32,3 +32,9 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+
+## 2026-08-23 - Prevent Cross-Tenant Leakage in Admin Endpoint
+**Vulnerability:** The AdminController endpoints (`/api/v1/admin/convert/jobs*`) did not enforce tenant access controls or tenant scoping. They allowed any caller to view, retry, or delete conversion jobs belonging to any tenant, exposing sensitive data and operations across tenant boundaries.
+**Learning:** Administrative endpoints often mistakenly omit data isolation boundaries, assuming that 'admin' means global access. However, in a multi-tenant system, even admin capabilities must strictly enforce the caller's tenant scope (e.g., verifying `job.belongsToTenant(context.tenantId())`) alongside endpoint-level permissions.
+**Prevention:** Apply `TenantAccessService` uniformly across all endpoints, including administrative ones, and always explicitly verify that accessed entities belong to the verified tenant.

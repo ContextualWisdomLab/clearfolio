@@ -332,19 +332,37 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        String payload = token.substring(0, lastDotIndex);
+        String signature = token.substring(lastDotIndex + 1);
+
         String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+                signature.getBytes(StandardCharsets.US_ASCII))) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
+
+        String[] parts = new String[TOKEN_FIELD_COUNT];
+        int start = 0;
+        for (int i = 0; i < TOKEN_FIELD_COUNT - 1; i++) {
+            int dotIndex = payload.indexOf('.', start);
+            if (dotIndex == -1) {
+                throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            }
+            parts[i] = payload.substring(start, dotIndex);
+            start = dotIndex + 1;
+        }
+
+        if (payload.indexOf('.', start) != -1) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+        parts[TOKEN_FIELD_COUNT - 1] = payload.substring(start);
 
         try {
             String version = decode(parts[0]);
@@ -362,7 +380,7 @@ public class ArtifactLinkService {
                     Instant.ofEpochSecond(Long.parseLong(decode(parts[8]))),
                     Instant.ofEpochSecond(Long.parseLong(decode(parts[9])))
             );
-        } catch (IllegalArgumentException | DateTimeException ex) {
+        } catch (final IllegalArgumentException | DateTimeException ex) {
             // IllegalArgumentException: malformed Base64URL, UUID, or numeric fields.
             // DateTimeException: epoch-second value outside the supported Instant range.
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");

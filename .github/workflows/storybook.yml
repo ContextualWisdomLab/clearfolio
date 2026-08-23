@@ -15,7 +15,6 @@ jobs:
       ARTIFACT_ID: "9485084875"
       EXPECTED_LOCK_SHA256: "21165acd4dad45d4d105668a93168d3504aea9103ad72676fdb257e19e24c516"
       EXPECTED_PACKAGE_JSON_BLOB: "22cbba43925bcb6356eb5741c25f7f95ba85367e"
-      FINAL_WORKFLOW_B64: "bmFtZTogU3Rvcnlib29rIERlc2lnbiBTeXN0ZW0KCm9uOgogIHB1bGxfcmVxdWVzdDoge30KCnBlcm1pc3Npb25zOgogIGNvbnRlbnRzOiByZWFkCgpqb2JzOgogIHN0b3J5Ym9vazoKICAgIG5hbWU6IFN0b3J5Ym9vayBicm93c2VyIGFjY2VwdGFuY2UKICAgIHJ1bnMtb246IHVidW50dS1sYXRlc3QKICAgIHN0ZXBzOgogICAgICAtIG5hbWU6IENoZWNrb3V0IGV4YWN0IHB1bGwgcmVxdWVzdCBoZWFkCiAgICAgICAgdXNlczogYWN0aW9ucy9jaGVja291dEAzZDNjNDJlNWFhYzViYTgwNTgyNWRhNzY0MTBjMTgxMjczYmE5MGIxICMgdjcuMC4xCiAgICAgICAgd2l0aDoKICAgICAgICAgIHBlcnNpc3QtY3JlZGVudGlhbHM6IGZhbHNlCiAgICAgICAgICByZWY6ICR7eyBnaXRodWIuZXZlbnQucHVsbF9yZXF1ZXN0LmhlYWQuc2hhIH19CgogICAgICAtIG5hbWU6IFZlcmlmeSBleGFjdCBjaGVja2VkLW91dCByZXZpc2lvbgogICAgICAgIGVudjoKICAgICAgICAgIEVYUEVDVEVEX1NIQTogJHt7IGdpdGh1Yi5ldmVudC5wdWxsX3JlcXVlc3QuaGVhZC5zaGEgfX0KICAgICAgICBydW46IHRlc3QgIiQoZ2l0IHJldi1wYXJzZSBIRUFEKSIgPSAiJEVYUEVDVEVEX1NIQSIKCiAgICAgIC0gbmFtZTogU2V0dXAgTm9kZS5qcwogICAgICAgIHVzZXM6IGFjdGlvbnMvc2V0dXAtbm9kZUA0OGI1NWEwMTFiZGE5ZjVkNmFlYjRjMmQ5YzczNjJlOGRhZTQwNDFlICMgdjYuNC4wCiAgICAgICAgd2l0aDoKICAgICAgICAgIG5vZGUtdmVyc2lvbjogIjI0IgoKICAgICAgLSBuYW1lOiBJbnN0YWxsIGRldmVsb3BtZW50IGRlcGVuZGVuY2llcyBmcm9tIGNoZWNrZWQtaW4gbG9jawogICAgICAgIHJ1bjogbnBtIGNpIC0taWdub3JlLXNjcmlwdHMgLS1uby1hdWRpdCAtLW5vLWZ1bmQKCiAgICAgIC0gbmFtZTogUnVuIGV4ZWN1dGFibGUgZGVzaWduLXN5c3RlbSBjb250cmFjdCB0ZXN0cwogICAgICAgIHJ1bjogcHl0aG9uMyAtbSB1bml0dGVzdCBkaXNjb3ZlciAtcyBzY3JpcHRzCgogICAgICAtIG5hbWU6IEluc3RhbGwgQ2hyb21pdW0gZm9yIFZpdGVzdCBicm93c2VyIG1vZGUKICAgICAgICBydW46IG5weCAtLW5vLWluc3RhbGwgcGxheXdyaWdodCBpbnN0YWxsIC0td2l0aC1kZXBzIGNocm9taXVtCgogICAgICAtIG5hbWU6IEJ1aWxkIFN0b3J5Ym9vawogICAgICAgIHJ1bjogbnBtIHJ1biBidWlsZC1zdG9yeWJvb2sKCiAgICAgIC0gbmFtZTogUnVuIFN0b3J5Ym9vayBicm93c2VyIHRlc3RzCiAgICAgICAgcnVuOiBucG0gcnVuIHRlc3Qtc3Rvcnlib29rIC0tIC0tcnVuCg=="
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout exact pull request head
@@ -48,7 +47,7 @@ jobs:
           unzip -q /tmp/storybook-lock.zip -d /tmp/storybook-lock
           test "$(sha256sum /tmp/storybook-lock/package-lock.json | cut -d' ' -f1)" = "$EXPECTED_LOCK_SHA256"
 
-      - name: Commit lock plus final fail-closed workflow atomically
+      - name: Commit checked-in lock with fast-forward guard
         env:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -56,34 +55,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s' "$FINAL_WORKFLOW_B64" | base64 -d > /tmp/storybook.final.yml
-
           CURRENT_HEAD="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq .head.sha)"
           test "$CURRENT_HEAD" = "$EXPECTED_SHA"
 
-          BASE_TREE="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${EXPECTED_SHA}" --jq .tree.sha)"
-          LOCK_BLOB="$(base64 -w0 /tmp/storybook-lock/package-lock.json \
-            | jq -Rs '{content:.,encoding:"base64"}' \
-            | gh api --method POST "repos/${GITHUB_REPOSITORY}/git/blobs" --input - --jq .sha)"
-          WORKFLOW_BLOB="$(jq -Rs '{content:.,encoding:"utf-8"}' < /tmp/storybook.final.yml \
-            | gh api --method POST "repos/${GITHUB_REPOSITORY}/git/blobs" --input - --jq .sha)"
-          NEW_TREE="$(jq -n \
-            --arg base "$BASE_TREE" \
-            --arg lock "$LOCK_BLOB" \
-            --arg workflow "$WORKFLOW_BLOB" \
-            '{base_tree:$base,tree:[
-              {path:"package-lock.json",mode:"100644",type:"blob",sha:$lock},
-              {path:".github/workflows/storybook.yml",mode:"100644",type:"blob",sha:$workflow}
-            ]}' \
-            | gh api --method POST "repos/${GITHUB_REPOSITORY}/git/trees" --input - --jq .sha)"
-          NEW_COMMIT="$(jq -n \
-            --arg message "fix(design): lock Storybook dependency graph" \
-            --arg tree "$NEW_TREE" \
-            --arg parent "$EXPECTED_SHA" \
-            '{message:$message,tree:$tree,parents:[$parent]}' \
-            | gh api --method POST "repos/${GITHUB_REPOSITORY}/git/commits" --input - --jq .sha)"
+          cp /tmp/storybook-lock/package-lock.json package-lock.json
+          git add package-lock.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(design): lock Storybook dependency graph"
 
           CURRENT_HEAD="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq .head.sha)"
           test "$CURRENT_HEAD" = "$EXPECTED_SHA"
-          jq -n --arg sha "$NEW_COMMIT" '{sha:$sha,force:false}' \
-            | gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/heads/${HEAD_BRANCH}" --input - >/dev/null
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/${HEAD_BRANCH}"

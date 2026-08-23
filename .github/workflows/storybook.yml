@@ -15,6 +15,7 @@ jobs:
       ARTIFACT_ID: "9485084875"
       EXPECTED_LOCK_SHA256: "21165acd4dad45d4d105668a93168d3504aea9103ad72676fdb257e19e24c516"
       EXPECTED_PACKAGE_JSON_BLOB: "22cbba43925bcb6356eb5741c25f7f95ba85367e"
+      FINAL_WORKFLOW_B64: "bmFtZTogU3Rvcnlib29rIERlc2lnbiBTeXN0ZW0KCm9uOgogIHB1bGxfcmVxdWVzdDoge30KCnBlcm1pc3Npb25zOgogIGNvbnRlbnRzOiByZWFkCgpqb2JzOgogIHN0b3J5Ym9vazoKICAgIG5hbWU6IFN0b3J5Ym9vayBicm93c2VyIGFjY2VwdGFuY2UKICAgIHJ1bnMtb246IHVidW50dS1sYXRlc3QKICAgIHN0ZXBzOgogICAgICAtIG5hbWU6IENoZWNrb3V0IGV4YWN0IHB1bGwgcmVxdWVzdCBoZWFkCiAgICAgICAgdXNlczogYWN0aW9ucy9jaGVja291dEAzZDNjNDJlNWFhYzViYTgwNTgyNWRhNzY0MTBjMTgxMjczYmE5MGIxICMgdjcuMC4xCiAgICAgICAgd2l0aDoKICAgICAgICAgIHBlcnNpc3QtY3JlZGVudGlhbHM6IGZhbHNlCiAgICAgICAgICByZWY6ICR7eyBnaXRodWIuZXZlbnQucHVsbF9yZXF1ZXN0LmhlYWQuc2hhIH19CgogICAgICAtIG5hbWU6IFZlcmlmeSBleGFjdCBjaGVja2VkLW91dCByZXZpc2lvbgogICAgICAgIGVudjoKICAgICAgICAgIEVYUEVDVEVEX1NIQTogJHt7IGdpdGh1Yi5ldmVudC5wdWxsX3JlcXVlc3QuaGVhZC5zaGEgfX0KICAgICAgICBydW46IHRlc3QgIiQoZ2l0IHJldi1wYXJzZSBIRUFEKSIgPSAiJEVYUEVDVEVEX1NIQSIKCiAgICAgIC0gbmFtZTogU2V0dXAgTm9kZS5qcwogICAgICAgIHVzZXM6IGFjdGlvbnMvc2V0dXAtbm9kZUA0OGI1NWEwMTFiZGE5ZjVkNmFlYjRjMmQ5YzczNjJlOGRhZTQwNDFlICMgdjYuNC4wCiAgICAgICAgd2l0aDoKICAgICAgICAgIG5vZGUtdmVyc2lvbjogIjI0IgoKICAgICAgLSBuYW1lOiBJbnN0YWxsIGRldmVsb3BtZW50IGRlcGVuZGVuY2llcyBmcm9tIGNoZWNrZWQtaW4gbG9jawogICAgICAgIHJ1bjogbnBtIGNpIC0taWdub3JlLXNjcmlwdHMgLS1uby1hdWRpdCAtLW5vLWZ1bmQKCiAgICAgIC0gbmFtZTogUnVuIGV4ZWN1dGFibGUgZGVzaWduLXN5c3RlbSBjb250cmFjdCB0ZXN0cwogICAgICAgIHJ1bjogcHl0aG9uMyAtbSB1bml0dGVzdCBkaXNjb3ZlciAtcyBzY3JpcHRzCgogICAgICAtIG5hbWU6IEluc3RhbGwgQ2hyb21pdW0gZm9yIFZpdGVzdCBicm93c2VyIG1vZGUKICAgICAgICBydW46IG5weCAtLW5vLWluc3RhbGwgcGxheXdyaWdodCBpbnN0YWxsIC0td2l0aC1kZXBzIGNocm9taXVtCgogICAgICAtIG5hbWU6IEJ1aWxkIFN0b3J5Ym9vawogICAgICAgIHJ1bjogbnBtIHJ1biBidWlsZC1zdG9yeWJvb2sKCiAgICAgIC0gbmFtZTogUnVuIFN0b3J5Ym9vayBicm93c2VyIHRlc3RzCiAgICAgICAgcnVuOiBucG0gcnVuIHRlc3Qtc3Rvcnlib29rIC0tIC0tcnVuCg=="
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout exact pull request head
@@ -55,62 +56,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          cat > /tmp/storybook.final.yml <<'FINAL_WORKFLOW'
-          name: Storybook Design System
-
-          on:
-            pull_request: {}
-
-          permissions:
-            contents: read
-
-          jobs:
-            storybook:
-              name: Storybook browser acceptance
-              runs-on: ubuntu-latest
-              steps:
-                - name: Checkout exact pull request head
-                  uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-                  with:
-                    persist-credentials: false
-                    ref: ${{ github.event.pull_request.head.sha }}
-
-                - name: Verify exact checked-out revision
-                  env:
-                    EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-                  run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-
-                - name: Setup Node.js
-                  uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-                  with:
-                    node-version: "24"
-
-                - name: Install development dependencies from checked-in lock
-                  run: npm ci --ignore-scripts --no-audit --no-fund
-
-                - name: Run executable design-system contract tests
-                  run: python3 -m unittest discover -s scripts
-
-                - name: Install Chromium for Vitest browser mode
-                  run: npx --no-install playwright install --with-deps chromium
-
-                - name: Build Storybook
-                  run: npm run build-storybook
-
-                - name: Run Storybook browser tests
-                  run: npm run test-storybook -- --run
-          FINAL_WORKFLOW
+          printf '%s' "$FINAL_WORKFLOW_B64" | base64 -d > /tmp/storybook.final.yml
 
           CURRENT_HEAD="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq .head.sha)"
           test "$CURRENT_HEAD" = "$EXPECTED_SHA"
 
           BASE_TREE="$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${EXPECTED_SHA}" --jq .tree.sha)"
-          LOCK_B64="$(base64 -w0 /tmp/storybook-lock/package-lock.json)"
-          LOCK_BLOB="$(jq -n --arg content "$LOCK_B64" '{content:$content,encoding:"base64"}' \
+          LOCK_BLOB="$(base64 -w0 /tmp/storybook-lock/package-lock.json \
+            | jq -Rs '{content:.,encoding:"base64"}' \
             | gh api --method POST "repos/${GITHUB_REPOSITORY}/git/blobs" --input - --jq .sha)"
-          WORKFLOW_CONTENT="$(cat /tmp/storybook.final.yml)"
-          WORKFLOW_BLOB="$(jq -n --arg content "$WORKFLOW_CONTENT" '{content:$content,encoding:"utf-8"}' \
+          WORKFLOW_BLOB="$(jq -Rs '{content:.,encoding:"utf-8"}' < /tmp/storybook.final.yml \
             | gh api --method POST "repos/${GITHUB_REPOSITORY}/git/blobs" --input - --jq .sha)"
           NEW_TREE="$(jq -n \
             --arg base "$BASE_TREE" \

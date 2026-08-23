@@ -115,10 +115,11 @@ public class AdminController {
             @RequestHeader final HttpHeaders headers) {
         TenantContext ctx = tenantAccessService.require(
                 headers, TenantPermissions.JOB_DELETE);
-        if (!conversionService.deleteJob(jobId, ctx)) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "job not found");
-        }
+        ConversionJob job = conversionService.getJob(jobId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "job not found"));
+        tenantAccessService.requireSameTenant(ctx, job);
+        conversionService.deleteJob(jobId);
         return ResponseEntity.noContent().build();
     }
 

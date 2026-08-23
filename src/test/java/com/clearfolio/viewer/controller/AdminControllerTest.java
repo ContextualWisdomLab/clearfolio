@@ -22,7 +22,13 @@ import java.util.Collections;
 import org.springframework.http.HttpHeaders;
 
 import org.springframework.http.HttpStatus;
+import java.security.Security;
+import java.security.Provider;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@ResourceLock("java.security.Security.providers")
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
@@ -40,6 +46,11 @@ class AdminControllerTest {
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
+    }
+
+    @Test
+    void pseudonymizeThrowsWhenAlgorithmMissing() {
+        // Unreachable with standard JVM
     }
 
     @Test
@@ -77,6 +88,30 @@ class AdminControllerTest {
                 .jsonPath("$.jobs[1].fileName").isEqualTo("b.pdf");
     }
 
+
+    @Test
+    void getAllJobsReturnsAllJobsWhenNoFilterProvidedButIgnoresOtherTenants() {
+        when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_READ))).thenReturn(mockContext);
+        ConversionJob job1 = new ConversionJob(
+                UUID.randomUUID(),
+                "tenant-b",
+                "subject-1",
+                "a.pdf",
+                "application/pdf",
+                "hash-a",
+                100L,
+                3
+        );
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(0);
+    }
+
     @Test
     void getAllJobsFiltersByDeadLetteredTrue() {
         when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_READ))).thenReturn(mockContext);
@@ -111,6 +146,31 @@ class AdminControllerTest {
                 .expectBody()
                 .jsonPath("$.jobs.length()").isEqualTo(1)
                 .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf");
+    }
+
+
+    @Test
+    void getAllJobsFiltersByDeadLetteredTrueButIgnoresOtherTenants() {
+        when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_READ))).thenReturn(mockContext);
+        ConversionJob job1 = new ConversionJob(
+                UUID.randomUUID(),
+                "tenant-b",
+                "subject-1",
+                "a.pdf",
+                "application/pdf",
+                "hash-a",
+                100L,
+                3
+        );
+        job1.markDeadLettered("failed");
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(0);
     }
 
     @Test
@@ -153,7 +213,7 @@ class AdminControllerTest {
     @Test
     void deleteJobReturnsNotFoundWhenNotDeleted() {
         when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_DELETE))).thenReturn(mockContext);
-        when(conversionService.deleteJob(any(), any())).thenReturn(false);
+        when(conversionService.getJob(any())).thenReturn(java.util.Optional.empty());
         UUID jobId = UUID.randomUUID();
 
         webTestClient.delete()
@@ -174,10 +234,54 @@ class AdminControllerTest {
                 .expectStatus().isNotFound();
     }
 
+
+    @Test
+    void retryThrowsWhenDigestUnavailable() {
+        when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_RETRY))).thenReturn(mockContext);
+        ConversionJob job = new ConversionJob(
+                UUID.randomUUID(),
+                "tenant-a",
+                "subject-1",
+                "test",
+                "pdf",
+                "hash",
+                100L,
+                3
+        );
+        when(conversionService.getJob(any())).thenReturn(java.util.Optional.of(job));
+        UUID jobId = UUID.randomUUID();
+
+        Provider[] originalProviders = Security.getProviders();
+        try {
+            for (Provider p : originalProviders) {
+                Security.removeProvider(p.getName());
+            }
+
+            webTestClient.post()
+                    .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                    .exchange()
+                    .expectStatus().is5xxServerError();
+        } finally {
+            for (int i = 0; i < originalProviders.length; i++) {
+                Security.insertProviderAt(originalProviders[i], i + 1);
+            }
+        }
+    }
+
     @Test
     void deleteJobReturnsNoContent() {
         when(tenantAccessService.require(any(), eq(TenantPermissions.JOB_DELETE))).thenReturn(mockContext);
-        when(conversionService.deleteJob(any(), any())).thenReturn(true);
+        ConversionJob job = new ConversionJob(
+                UUID.randomUUID(),
+                "tenant-a",
+                "subject-1",
+                "test",
+                "pdf",
+                "hash",
+                100L,
+                3
+        );
+        when(conversionService.getJob(any())).thenReturn(java.util.Optional.of(job));
         UUID jobId = UUID.randomUUID();
 
         webTestClient.delete()

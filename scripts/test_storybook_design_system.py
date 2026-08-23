@@ -91,6 +91,12 @@ class StorybookDesignSystemTests(unittest.TestCase):
             self.assertEqual(_hex_from_srgb(value["components"]), value["hex"].lower())
             self.assertEqual(value["hex"].lower(), runtime[name])
 
+    def test_srgb_projection_rejects_out_of_range_components(self) -> None:
+        for components in ([-0.001, 0.0, 0.0], [1.001, 0.0, 0.0]):
+            with self.subTest(components=components):
+                with self.assertRaises(AssertionError):
+                    _hex_from_srgb(components)
+
     def test_required_buyer_states_are_named_and_a11y_blocking(self) -> None:
         story = STORY.read_text(encoding="utf-8")
         exports = set(re.findall(r"export const ([A-Za-z0-9_]+)\s*=", story))

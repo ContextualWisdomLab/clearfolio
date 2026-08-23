@@ -56,10 +56,12 @@ readiness scorecard, and Figma deck payload drift checks are Python scripts unde
 `scripts/`; the exact invocations (with the current evidence/policy file paths)
 are listed in `AGENTS.md` and must pass for doc/dependency changes that touch them.
 
-There are no repo-local CI workflows in `.github/workflows`; gates are reproduced
-locally and evidence is committed under `docs/qa/evidence/`. CodeQL runs through
-GitHub default setup (do not add a repo-local advanced CodeQL workflow), and
-Dependabot config lives in `.github/dependabot.yml`.
+The repository-local `.github/workflows/storybook.yml` workflow runs the
+`Storybook Design System` pull-request gate documented in `AGENTS.md`. Other
+quality/security gates and their local reproduction/evidence are documented in
+`AGENTS.md` and `docs/qa/evidence/`. CodeQL runs through GitHub default setup (do
+not add a repo-local advanced CodeQL workflow), and Dependabot config lives in
+`.github/dependabot.yml`.
 
 ## What this repository is
 

@@ -89,8 +89,12 @@ public class AdminController {
             @RequestHeader final HttpHeaders headers) {
         TenantContext tenantContext = tenantAccessService.require(
                 headers, TenantPermissions.JOB_DELETE);
-        tenantAccessService.requireSameTenant(tenantContext,
-                conversionService.getJob(jobId).orElse(null));
+        ConversionJob job = conversionService.getJob(jobId).orElse(null);
+        if (job == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
+        }
+        tenantAccessService.requireSameTenant(tenantContext, job);
         conversionService.deleteJob(jobId);
         return ResponseEntity.noContent().build();
     }
@@ -108,8 +112,12 @@ public class AdminController {
             @RequestHeader final HttpHeaders headers) {
         TenantContext tenantContext = tenantAccessService.require(
                 headers, TenantPermissions.JOB_RETRY);
-        tenantAccessService.requireSameTenant(tenantContext,
-                conversionService.getJob(jobId).orElse(null));
+        ConversionJob job = conversionService.getJob(jobId).orElse(null);
+        if (job == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
+        }
+        tenantAccessService.requireSameTenant(tenantContext, job);
 
         RetryDeadLetterResult result = conversionService.retryDeadLettered(
                 jobId, tenantContext.subjectId());

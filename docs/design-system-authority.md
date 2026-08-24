@@ -25,9 +25,11 @@ Every error state gives a concrete next action. Loading copy explains that no ac
 
 Project-level Storybook accessibility configuration sets `a11y.test` to `error` and runs WCAG A/AA tags through WCAG 2.2 AA plus axe best-practice checks. The Storybook Vitest integration executes smoke and `play` interaction tests in headless Chromium through Vitest Browser Mode and Playwright.
 
+The named preview wrapper uses `role="region"` with `aria-labelledby="preview-title"`. WAI-ARIA 1.2 defines the implicit `generic` role of a plain HTML `div` as name-prohibited, so leaving `aria-labelledby` on a generic container would be invalid even if an automated browser scan did not surface it. The semantic region keeps the visible `Document preview` heading as the accessible name without inventing parallel copy.
+
 ## Figma traceability
 
-Fresh evidence was re-read on 2026-08-23 from Clearfolio Figma file `UPIMvnjyP1sTXhIy1wqD02`, page `0:1`, board `2:2` (`Clearfolio Viewer Product Design + Analytics Board`). The board identifies itself as a no-Code-Connect design plan and contains desktop loading/ready/failed, mobile loading, and tablet concepts. Its local swatches match protected-main runtime values: brand `#034ea2`, ink `#102032`, muted `#5a6777`, background `#f6f7f9`, panel `#ffffff`, line `#d7dde6`, danger `#b42318`, and focus `#ff595a`.
+Fresh evidence was re-read on 2026-08-24 from Clearfolio Figma file `UPIMvnjyP1sTXhIy1wqD02`, page `0:1`, board `2:2` (`Clearfolio Viewer Product Design + Analytics Board`). The board contains desktop loading/ready/failed, mobile loading, tablet concepts, and a `Storybook buyer-state parity` frame (`10:2`) with document-not-found, invalid-document, and network-error states. Its local swatches match protected-main runtime values: brand `#034ea2`, ink `#102032`, muted `#5a6777`, background `#f6f7f9`, panel `#ffffff`, line `#d7dde6`, danger `#b42318`, and focus `#ff595a`.
 
 Code Connect component inventory cannot currently be treated as executable evidence. The connected Figma account reports a Full seat on a Pro team, while the Code Connect API requires a Dev or Full seat on an Organization or Enterprise plan. Until that entitlement changes, the repository records the limitation and does not fabricate mappings. Storybook-to-runtime parity remains independently executable.
 
@@ -52,3 +54,5 @@ Storybook. (2026). *Vitest addon*. https://storybook.js.org/docs/writing-tests/i
 Storybook. (2026). *Storybook for Web Components with Vite*. https://storybook.js.org/docs/get-started/frameworks/web-components-vite
 
 Vitest. (2026). *Browser mode*. https://vitest.dev/guide/browser/
+
+World Wide Web Consortium. (2023). *Accessible Rich Internet Applications (WAI-ARIA) 1.2*. https://www.w3.org/TR/wai-aria-1.2/

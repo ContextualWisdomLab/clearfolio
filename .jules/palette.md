@@ -13,3 +13,7 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+
+## 2024-09-24 - Empty State Accessibility
+**Learning:** Adding `role="status"` and `aria-live="polite"` to empty states ensures that when an item list (such as history) becomes empty (e.g. after a 'Clear history' action), screen readers properly announce the change to users.
+**Action:** Always apply `role="status"` and `aria-live="polite"` to dynamic empty state placeholders that change visibility.

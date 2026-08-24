@@ -45,7 +45,8 @@ class AdminControllerTest {
         when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_READ))).thenReturn(ctx);
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "admin-tenant", "admin", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "admin-tenant", "admin", "b.pdf", "application/pdf", "hash-b", 100L, 3);
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        ConversionJob jobOtherTenant = new ConversionJob(UUID.randomUUID(), "other-tenant", "admin", "c.pdf", "application/pdf", "hash-c", 100L, 3);
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, jobOtherTenant));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
@@ -110,6 +111,22 @@ class AdminControllerTest {
     }
 
     @Test
+    void deleteJobWithEmptyOptional() {
+        UUID jobId = UUID.randomUUID();
+        TenantContext ctx = new TenantContext("admin-tenant", "admin", Set.of(TenantPermissions.JOB_DELETE));
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_DELETE))).thenReturn(ctx);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+        // Since requireSameTenant throws an exception, let's just make it throw 404
+        org.springframework.web.server.ResponseStatusException ex = new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "job not found");
+        org.mockito.Mockito.doThrow(ex).when(tenantAccessService).requireSameTenant(ctx, null);
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
         TenantContext ctx = new TenantContext("admin-tenant", "admin", Set.of(TenantPermissions.JOB_RETRY));
@@ -122,6 +139,21 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
                 .expectStatus().isAccepted();
+    }
+
+    @Test
+    void retryDeadLetteredWithEmptyOptional() {
+        UUID jobId = UUID.randomUUID();
+        TenantContext ctx = new TenantContext("admin-tenant", "admin", Set.of(TenantPermissions.JOB_RETRY));
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY))).thenReturn(ctx);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+        org.springframework.web.server.ResponseStatusException ex = new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "job not found");
+        org.mockito.Mockito.doThrow(ex).when(tenantAccessService).requireSameTenant(ctx, null);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
     }
 
     @Test

@@ -110,6 +110,13 @@ class StorybookDesignSystemTests(unittest.TestCase):
         self.assertIn("forced-colors", story)
         self.assertIn("viewer.css", preview)
 
+    def test_named_preview_container_uses_semantic_region_role(self) -> None:
+        story = STORY.read_text(encoding="utf-8")
+        self.assertIn(
+            'class="preview" role="region" aria-labelledby="preview-title"',
+            story,
+        )
+
     def test_responsive_stories_use_storybook_10_viewport_globals(self) -> None:
         preview = PREVIEW.read_text(encoding="utf-8")
         story = STORY.read_text(encoding="utf-8")

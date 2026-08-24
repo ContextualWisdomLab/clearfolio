@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-24 - 주입된 시크릿의 안전하지 않은 기본 문자열 폴백 수정
+**Vulnerability:** 주요 보안 서비스(`TenantAccessService`, `ArtifactLinkService`, `ProductionAuthReadinessConfig`)에서 시크릿을 주입할 때 `@Value("${property:}")`를 사용하고 있었습니다. 빈 문자열 폴백을 제공하면, 프로덕션 환경에서 설정이 마운트되지 않거나 잘못 입력되었을 때 애플리케이션 시작 시 오류가 발생하는 대신 Spring Boot가 빈 문자열을 조용히 주입합니다. 이로 인해 토큰 및 클레임이 쉽게 유추할 수 있는 빈 시크릿을 사용하여 생성되거나 검증되므로 인증이 완전히 우회될 수 있습니다.
+**Learning:** 암호화 시크릿에 대한 빈 문자열 폴백은 하드 배포 오류(설정 누락으로 인한 시작 실패)를 조용하고 치명적인 보안 우회(빈 시크릿으로 런타임 성공)로 변환합니다. 프레임워크 바인딩 단계에서 즉시 실패하도록 허용해야 합니다.
+**Prevention:** 의도적으로 인증되지 않은 모드를 지원하지 않는 한 보안상 중요한 `@Value` 주입 속성에 대해 기본 폴백을 제공하지 마십시오. `:`을 생략(예: `@Value("${property}")`)하여 시크릿이 없을 때 Spring의 `BindException`을 통해 빠르게 시작이 실패하도록 강제하십시오.

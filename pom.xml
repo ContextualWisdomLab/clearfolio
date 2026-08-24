@@ -43,7 +43,7 @@
          OSV config contains a narrow temporary ignore because OSV Scanner
          v2.3.8 still reports 2.22.1 even though the advisory text names it as
          patched. -->
-    <jackson-bom.version>2.22.1</jackson-bom.version>
+    <jackson-bom.version>2.22.2</jackson-bom.version>
     <!-- Security override: GHSA-jhq6-gfmj-v8fx fixes logback-core in 1.5.35. -->
     <logback.version>1.5.35</logback.version>
     <!-- Security override: CVE-2025-68161 / CVE-2026-34477 / CVE-2026-34478 / CVE-2026-34480. -->

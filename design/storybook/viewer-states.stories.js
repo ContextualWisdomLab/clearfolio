@@ -116,7 +116,7 @@ function renderViewer({ state = 'ready', busy = false } = {}) {
         </div>
         <div class="status" role="status" aria-live="polite">${copy.status}</div>
         ${error}
-        <div class="preview" aria-labelledby="preview-title">${skeleton}</div>
+        <div class="preview" role="region" aria-labelledby="preview-title">${skeleton}</div>
         <div class="actions">
           <button class="btn btn-primary" type="button"${primaryDisabled}>${primaryLabel}</button>
           ${downloadAction}

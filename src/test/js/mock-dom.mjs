@@ -31,12 +31,24 @@ export class MockElement {
   }
 
   appendChild(node) {
-    this.childNodes.push(node);
+    if (node && node.nodeType === 11) {
+      this.childNodes.push(...node.childNodes);
+      node.childNodes = [];
+    } else {
+      this.childNodes.push(node);
+    }
     return node;
   }
 
   append(...nodes) {
-    this.childNodes.push(...nodes);
+    for (const node of nodes) {
+      if (node && node.nodeType === 11) {
+        this.childNodes.push(...node.childNodes);
+        node.childNodes = [];
+      } else {
+        this.childNodes.push(node);
+      }
+    }
   }
 
   replaceChildren(...nodes) {
@@ -74,4 +86,18 @@ export class MockElement {
   focus() {}
 
   reset() {}
+}
+
+export class MockDocumentFragment {
+  constructor() {
+    this.childNodes = [];
+    this.nodeType = 11;
+  }
+  appendChild(node) {
+    this.childNodes.push(node);
+    return node;
+  }
+  append(...nodes) {
+    this.childNodes.push(...nodes);
+  }
 }

@@ -1,9 +1,11 @@
 package com.clearfolio.viewer.controller;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -97,33 +99,37 @@ class AdminControllerTest {
     }
 
     @Test
-    void deleteJobReturnsNoContent() {
+    void deleteJobDelegatesTenantScopedDelete() {
         UUID jobId = UUID.randomUUID();
         TenantContext ctx = new TenantContext("admin-tenant", "admin", Set.of(TenantPermissions.JOB_DELETE));
         when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_DELETE))).thenReturn(ctx);
-        ConversionJob job = new ConversionJob(jobId, "admin-tenant", "admin", "a.pdf", "application/pdf", "hash", 100L, 3);
-        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        when(conversionService.deleteJob(jobId, ctx)).thenReturn(true);
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
                 .exchange()
                 .expectStatus().isNoContent();
+
+        verify(conversionService).deleteJob(jobId, ctx);
+        verify(conversionService, never()).getJob(jobId);
+        verify(conversionService, never()).deleteJob(jobId);
     }
 
     @Test
-    void deleteJobWithEmptyOptional() {
+    void deleteJobReturnsNotFoundWhenTenantScopedDeleteRejectsJob() {
         UUID jobId = UUID.randomUUID();
         TenantContext ctx = new TenantContext("admin-tenant", "admin", Set.of(TenantPermissions.JOB_DELETE));
         when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_DELETE))).thenReturn(ctx);
-        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
-        // Since requireSameTenant throws an exception, let's just make it throw 404
-        org.springframework.web.server.ResponseStatusException ex = new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "job not found");
-        org.mockito.Mockito.doThrow(ex).when(tenantAccessService).requireSameTenant(ctx, null);
+        when(conversionService.deleteJob(jobId, ctx)).thenReturn(false);
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
                 .exchange()
                 .expectStatus().isNotFound();
+
+        verify(conversionService).deleteJob(jobId, ctx);
+        verify(conversionService, never()).getJob(jobId);
+        verify(conversionService, never()).deleteJob(jobId);
     }
 
     @Test
@@ -147,8 +153,6 @@ class AdminControllerTest {
         TenantContext ctx = new TenantContext("admin-tenant", "admin", Set.of(TenantPermissions.JOB_RETRY));
         when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY))).thenReturn(ctx);
         when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
-        org.springframework.web.server.ResponseStatusException ex = new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "job not found");
-        org.mockito.Mockito.doThrow(ex).when(tenantAccessService).requireSameTenant(ctx, null);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -183,6 +187,6 @@ class AdminControllerTest {
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
-                .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+                .expectStatus().isEqualTo(409);
     }
 }

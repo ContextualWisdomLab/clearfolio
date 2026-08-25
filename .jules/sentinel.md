@@ -32,3 +32,7 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## 2026-08-25 - [Fail-Fast Secrets]
+**Vulnerability:** Spring Boot의 `@Value` 주입에서 기본값을 `:}` 형태로 남겨둘 경우, 설정된 ConfigTree에 비밀키가 누락되었을 때 예외가 발생하지 않고 조용히 빈 문자열로 초기화되는 문제점이 있었습니다.
+**Learning:** 비밀키나 보안에 직결된 환경 변수를 초기화할 때, 빈 값을 허용하면 예상치 못한 보안 취약점(예: 서명 무시, 검증 우회)이 발생할 수 있으므로 강제성(Fail-Fast)을 띠어야 합니다.
+**Prevention:** `@Value` 어노테이션 사용 시 의도적인 기본값이 아니라면 `:${}` 형태의 빈 폴백(fallback)을 제거하여, Spring Boot 구동 시점에 `BindException`을 발생시키도록 구성해야 합니다.

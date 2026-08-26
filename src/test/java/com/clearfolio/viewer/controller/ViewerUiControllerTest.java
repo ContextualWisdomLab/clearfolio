@@ -38,6 +38,7 @@ class ViewerUiControllerTest {
                 .expectBody(String.class)
                 .value(body -> {
                     assertTrue(body.contains("Document intake"));
+                    assertTrue(body.contains("<span>Document <span aria-hidden=\"true\" style=\"color: var(--danger);\">*</span></span>"));
                     assertTrue(body.contains("id=\"upload-form\""));
                     assertTrue(body.contains("name=\"file\""));
                     assertTrue(body.contains("id=\"session-history\""));

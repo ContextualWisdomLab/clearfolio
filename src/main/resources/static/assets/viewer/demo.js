@@ -114,6 +114,10 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
+  // Use a DocumentFragment to batch DOM insertions,
+  // preventing multiple browser reflows/repaints inside the loop.
+  const fragment = document.createDocumentFragment();
+
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -143,8 +147,10 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    el.historyBody.appendChild(row);
+    fragment.appendChild(row);
   }
+
+  el.historyBody.appendChild(fragment);
 
   renderRecoveryEvidence(history);
 }

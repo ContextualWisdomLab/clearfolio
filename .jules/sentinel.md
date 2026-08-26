@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-26 - Admin API의 교차 테넌트 권한 우회 취약점 수정
+**Vulnerability:** `AdminController`의 엔드포인트들이 테넌트 격리를 강제하지 않아, 인증된 사용자 누구나 다른 테넌트의 변환 작업을 조회, 삭제, 재시도할 수 있는 권한 우회(Authorization Bypass) 취약점이 존재했습니다.
+**Learning:** 관리자용 API라고 하더라도 다중 테넌트(Multi-tenant) 환경에서는 컨트롤러 레벨에서 현재 요청자의 권한(`TenantPermissions`)과 대상 리소스의 소유권(`belongsToTenant`)을 반드시 함께 검증해야 합니다.
+**Prevention:** 모든 엔드포인트에서 `TenantAccessService`를 주입받아 요청자의 권한을 확인하고, 리소스 반환 또는 수정 전에 반드시 `job.belongsToTenant(context.tenantId())`와 같이 소유권을 검증해야 합니다.

@@ -13,3 +13,7 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+
+## 2026-08-26 - DOM 파괴 없는 비동기 버튼 로딩 상태
+**Learning:** 대화형 버튼(예: "Refresh")의 로딩 상태 중 `textContent`와 `disabled`를 수동으로 덮어쓰면 기본 접근성 속성과 DOM 구조가 파괴되어 핵심 접근성 원칙을 위반하고 렌더링 퇴행이 발생합니다.
+**Action:** `textContent`와 `disabled`를 수동으로 재정의하는 대신, 제공된 `setBusyState` 유틸리티(깊이 기반 DOM/ARIA 캐싱 및 복원을 안전하게 처리함)를 비동기 버튼에 사용하십시오.

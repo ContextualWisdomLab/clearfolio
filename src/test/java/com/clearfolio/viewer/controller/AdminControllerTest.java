@@ -3,8 +3,11 @@ package com.clearfolio.viewer.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
@@ -12,6 +15,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -30,12 +34,13 @@ class AdminControllerTest {
     private DocumentConversionService conversionService;
     private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
+    private AdminController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
         tenantAccessService = mock(TenantAccessService.class);
-        final AdminController controller = new AdminController(
+        controller = new AdminController(
                 conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
@@ -251,6 +256,30 @@ class AdminControllerTest {
     }
 
     @Test
+    void retryDeadLetteredReturnsNotFoundWhenOtherTenantJob() {
+        final TenantContext context = new TenantContext("tenant1", "sub",
+                Collections.singleton(TenantPermissions.JOB_RETRY));
+        when(tenantAccessService.require(
+                any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY)))
+                .thenReturn(context);
+
+        final UUID jobId = UUID.randomUUID();
+        final ConversionJob job = new ConversionJob(
+                jobId, "tenant2", "sub", "a.pdf",
+                "application/pdf", "hash-a", SIZE, ATTEMPTS);
+        when(conversionService.getJob(jobId))
+                .thenReturn(Optional.of(job));
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header(TenantContext.TENANT_ID_HEADER, "tenant1")
+                .header(TenantContext.SUBJECT_ID_HEADER, "sub")
+                .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_RETRY)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
     void retryDeadLetteredReturnsNotFoundWhenNotFound() {
         final TenantContext context = new TenantContext("tenant1", "sub",
                 Collections.singleton(TenantPermissions.JOB_RETRY));
@@ -302,5 +331,36 @@ class AdminControllerTest {
                 .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_RETRY)
                 .exchange()
                 .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void retryDeadLetteredThrowsWhenNoAlgorithm() {
+        final HttpHeaders headers = new HttpHeaders();
+        headers.add(TenantContext.TENANT_ID_HEADER, "tenant1");
+        headers.add(TenantContext.SUBJECT_ID_HEADER, "sub");
+        headers.add(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_RETRY);
+
+        final TenantContext context = new TenantContext("tenant1", "sub",
+                Collections.singleton(TenantPermissions.JOB_RETRY));
+        when(tenantAccessService.require(
+                any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY)))
+                .thenReturn(context);
+
+        final UUID jobId = UUID.randomUUID();
+        final ConversionJob job = new ConversionJob(
+                jobId, "tenant1", "sub", "a.pdf",
+                "application/pdf", "hash-a", SIZE, ATTEMPTS);
+        when(conversionService.getJob(jobId))
+                .thenReturn(Optional.of(job));
+
+        try (MockedStatic<MessageDigest> mockedDigest = mockStatic(MessageDigest.class)) {
+            mockedDigest.when(() -> MessageDigest.getInstance("SHA-256"))
+                    .thenThrow(new NoSuchAlgorithmException("Test"));
+
+            org.junit.jupiter.api.Assertions.assertThrows(
+                    IllegalStateException.class,
+                    () -> controller.retryDeadLettered(jobId, headers)
+            );
+        }
     }
 }

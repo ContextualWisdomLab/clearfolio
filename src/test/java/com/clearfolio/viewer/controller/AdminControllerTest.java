@@ -182,6 +182,27 @@ class AdminControllerTest {
     }
 
     @Test
+    void deleteJobReturnsNotFoundForMissingJob() {
+        final TenantContext context = new TenantContext("tenant1", "sub",
+                Collections.singleton(TenantPermissions.JOB_DELETE));
+        when(tenantAccessService.require(
+                any(HttpHeaders.class), eq(TenantPermissions.JOB_DELETE)))
+                .thenReturn(context);
+
+        final UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId))
+                .thenReturn(Optional.empty());
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .header(TenantContext.TENANT_ID_HEADER, "tenant1")
+                .header(TenantContext.SUBJECT_ID_HEADER, "sub")
+                .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_DELETE)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         final TenantContext context = new TenantContext("tenant1", "sub",
                 Collections.singleton(TenantPermissions.JOB_RETRY));
@@ -206,6 +227,27 @@ class AdminControllerTest {
                 .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_RETRY)
                 .exchange()
                 .expectStatus().isAccepted();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenJobMissing() {
+        final TenantContext context = new TenantContext("tenant1", "sub",
+                Collections.singleton(TenantPermissions.JOB_RETRY));
+        when(tenantAccessService.require(
+                any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY)))
+                .thenReturn(context);
+
+        final UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId))
+                .thenReturn(Optional.empty());
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header(TenantContext.TENANT_ID_HEADER, "tenant1")
+                .header(TenantContext.SUBJECT_ID_HEADER, "sub")
+                .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_RETRY)
+                .exchange()
+                .expectStatus().isNotFound();
     }
 
     @Test

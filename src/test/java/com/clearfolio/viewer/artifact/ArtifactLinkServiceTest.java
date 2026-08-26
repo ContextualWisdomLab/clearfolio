@@ -107,50 +107,6 @@ class ArtifactLinkServiceTest {
     }
 
     @Test
-    void createsAndVerifiesTokenWhenSecretIsGeneratedForDemoRuntime() {
-        UUID docId = UUID.randomUUID();
-        ConversionJob job = succeededJob(docId);
-        artifactStore.putPdf(docId, sampleBytes());
-        ArtifactLinkService generatedSecretService = new ArtifactLinkService(
-                artifactStore,
-                " ",
-                Clock.fixed(NOW, ZoneOffset.UTC),
-                new FixedSecureRandom()
-        );
-
-        ArtifactLinkResponse response = generatedSecretService.createLink(job, tenantContext(), null);
-
-        assertDoesNotThrow(() -> generatedSecretService.verifyReadToken(
-                docId,
-                job,
-                sampleBytes(),
-                tokenFrom(response)
-        ));
-    }
-
-    @Test
-    void createsAndVerifiesTokenWhenConfiguredSecretIsNull() {
-        UUID docId = UUID.randomUUID();
-        ConversionJob job = succeededJob(docId);
-        artifactStore.putPdf(docId, sampleBytes());
-        ArtifactLinkService generatedSecretService = new ArtifactLinkService(
-                artifactStore,
-                null,
-                Clock.fixed(NOW, ZoneOffset.UTC),
-                new FixedSecureRandom()
-        );
-
-        ArtifactLinkResponse response = generatedSecretService.createLink(job, tenantContext(), null);
-
-        assertDoesNotThrow(() -> generatedSecretService.verifyReadToken(
-                docId,
-                job,
-                sampleBytes(),
-                tokenFrom(response)
-        ));
-    }
-
-    @Test
     void springConstructorUsesProvidedLedger() {
         ArtifactLinkLedger ledger = new ArtifactLinkLedger();
         ArtifactLinkService serviceWithLedger = new ArtifactLinkService(artifactStore, ledger, SECRET);

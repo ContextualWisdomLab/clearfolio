@@ -79,7 +79,7 @@ public class ArtifactLinkService {
     public ArtifactLinkService(
             ArtifactStore artifactStore,
             ArtifactLinkLedger artifactLinkLedger,
-            @Value("${clearfolio.artifact-token.secret:}") String configuredSecret) {
+            @Value("${clearfolio.artifact-token.secret}") String configuredSecret) {
         this(artifactStore, artifactLinkLedger, configuredSecret, Clock.systemUTC(), new SecureRandom());
     }
 
@@ -445,13 +445,7 @@ public class ArtifactLinkService {
         return new String(URL_DECODER.decode(value), StandardCharsets.UTF_8);
     }
 
-    private static byte[] secretBytes(String configuredSecret, SecureRandom secureRandom) {
-        if (configuredSecret != null && !configuredSecret.isBlank()) {
-            return configuredSecret.getBytes(StandardCharsets.UTF_8);
-        }
-
-        byte[] generated = new byte[32];
-        secureRandom.nextBytes(generated);
-        return generated;
+    private static byte[] secretBytes(final String configuredSecret, final SecureRandom secureRandom) {
+        return configuredSecret.getBytes(StandardCharsets.UTF_8);
     }
 }

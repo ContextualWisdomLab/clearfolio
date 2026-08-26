@@ -36,7 +36,7 @@ public class TenantAccessService {
      * Creates an access service for local tests and unsigned demo mode.
      */
     public TenantAccessService() {
-        this("", 300L, Clock.systemUTC());
+        this(null, 300L, Clock.systemUTC());
     }
 
     /**
@@ -47,13 +47,13 @@ public class TenantAccessService {
      */
     @Autowired
     public TenantAccessService(
-            @Value("${clearfolio.tenant-claims.hmac-secret:}") String claimsHmacSecret,
+            @Value("${clearfolio.tenant-claims.hmac-secret}") String claimsHmacSecret,
             @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
         this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
     }
 
-    TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {
-        this.claimsHmacSecret = clean(claimsHmacSecret);
+    TenantAccessService(final String claimsHmacSecret, final long maxSkewSeconds, final Clock clock) {
+        this.claimsHmacSecret = claimsHmacSecret;
         this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
         this.clock = clock;
     }

@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-26 - [CRITICAL] 런타임 시크릿 KV 조회 마이그레이션 및 기본값 제거
+**Vulnerability:** Spring Boot의 환경 변수 주입(`${ENV_VAR:}`)을 통해 런타임 시크릿을 직접 로드하고, 기본값으로 빈 문자열을 허용함. 이로 인해 시크릿이 환경에 없어도 애플리케이션이 조용히 시작되어 빈 문자열 시크릿이 사용되는 심각한 취약점이 존재했음.
+**Learning:** 런타임 시크릿은 `application.yml`에서 직접 환경 변수로 주입되어서는 안 되며, KV 백엔드(예: configtree)를 통해 로드해야 함. 또한 런타임 시크릿은 주입 시 빈 문자열 기본값을 제공하지 않아 어플리케이션 시작 시 빠르게 실패하도록 해야 함.
+**Prevention:** 런타임 시크릿은 항상 Spring Boot의 `configtree` 등 KV 조회 방식을 사용하고, `@Value` 어노테이션에 `defaultValue` 빈 문자열 콜론(`:`)을 제거하여 Fail-Fast를 유도해야 함.

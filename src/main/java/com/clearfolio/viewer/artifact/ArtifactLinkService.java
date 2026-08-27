@@ -332,22 +332,51 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        final int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
-        String expectedSignature = hmac(payload);
+        final String payload = token.substring(0, lastDotIndex);
+        final String signature = token.substring(lastDotIndex + 1);
+
+        final String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+                signature.getBytes(StandardCharsets.US_ASCII))) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
+        final String[] parts = new String[TOKEN_FIELD_COUNT];
+        int count = 0;
+        int startIndex = 0;
+        while (count < TOKEN_FIELD_COUNT) {
+            final int nextDot = payload.indexOf('.', startIndex);
+            if (nextDot == -1) {
+                if (count == TOKEN_FIELD_COUNT - 1) {
+                    parts[count] = payload.substring(startIndex);
+                    count++;
+                    break;
+                } else {
+                    throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                }
+            } else if (count == TOKEN_FIELD_COUNT - 1) {
+                // We are at the last field, but found another dot in the payload,
+                // meaning the payload has too many fields.
+                throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            }
+            parts[count] = payload.substring(startIndex, nextDot);
+            startIndex = nextDot + 1;
+            count++;
+        }
+
+        if (count != TOKEN_FIELD_COUNT) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
         try {
-            String version = decode(parts[0]);
+            final String version = decode(parts[0]);
             if (!VERSION.equals(version)) {
                 throw new IllegalArgumentException("unsupported artifact token version");
             }

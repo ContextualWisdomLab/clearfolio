@@ -356,12 +356,14 @@ public class ArtifactLinkService {
             if (nextDot == -1) {
                 if (count == TOKEN_FIELD_COUNT - 1) {
                     parts[count] = payload.substring(startIndex);
+                    // No need to increment count because we return/build claims right after,
+                    // but we do need count == TOKEN_FIELD_COUNT check later.
                     count++;
                     break;
-                } else {
-                    throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
                 }
-            } else if (count == TOKEN_FIELD_COUNT - 1) {
+                throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            }
+            if (count == TOKEN_FIELD_COUNT - 1) {
                 // We are at the last field, but found another dot in the payload,
                 // meaning the payload has too many fields.
                 throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
@@ -369,10 +371,6 @@ public class ArtifactLinkService {
             parts[count] = payload.substring(startIndex, nextDot);
             startIndex = nextDot + 1;
             count++;
-        }
-
-        if (count != TOKEN_FIELD_COUNT) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
         try {

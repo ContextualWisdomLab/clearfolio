@@ -6,10 +6,8 @@ spring:
     # carried in process environment variables. The environment variable below
     # selects only the bootstrap directory. Mount files named
     # `conversion.policy-override-secret`,
-    # `conversion.audit-pseudonym-secret`,
-    # `conversion.audit-pseudonym-key-version`,
-    # `clearfolio.artifact-token.secret`, and
-    # `clearfolio.tenant-claims.hmac-secret` in this directory.
+    # `conversion.audit-pseudonym-secret`, and
+    # `conversion.audit-pseudonym-key-version` in this directory.
     import: "optional:configtree:${CLEARFOLIO_SECRET_CONFIG_DIR:/run/secrets/clearfolio/}"
   codec:
     max-in-memory-size: ${conversion.max-upload-size-bytes}
@@ -28,14 +26,6 @@ conversion:
   processing-lease-timeout-ms: 60000
 
 clearfolio:
-  # Empty values are non-secret local/demo sentinels. A mounted config tree
-  # overrides them. The production readiness gate rejects either value when
-  # it remains blank, so production still fails closed with an actionable
-  # message while local and buyer-demo profiles can start without secret files.
-  artifact-token:
-    secret: ""
-  tenant-claims:
-    hmac-secret: ""
   artifact-store:
     # filesystem (default): persist artifacts under root-dir so they survive
     # restarts. in-memory: volatile store for tests and ephemeral demos.

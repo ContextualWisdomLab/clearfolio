@@ -21,7 +21,7 @@ Clearfolio keeps the shipped WebFlux/static JavaScript/CSS viewer as the product
 - tablet-width ready state;
 - reduced-motion and forced-colors alternatives.
 
-Every error state gives a concrete next action. Loading copy explains that no action is required yet. The stories use only a fixed all-zero document reference and make no network requests; they contain no customer data, tenant authority, signed links, or credentials.
+Every error state gives a concrete next action. Loading copy explains that no action is required yet and keeps the preview guidance visible beside the skeleton so buyers know what will happen next. The stories use only a fixed all-zero document reference and make no network requests; they contain no customer data, tenant authority, signed links, or credentials.
 
 Project-level Storybook accessibility configuration sets `a11y.test` to `error` and runs WCAG A/AA tags through WCAG 2.2 AA plus axe best-practice checks. The Storybook Vitest integration executes smoke and `play` interaction tests in headless Chromium through Vitest Browser Mode and Playwright.
 
@@ -29,7 +29,7 @@ The named preview wrapper uses `role="region"` with `aria-labelledby="preview-ti
 
 ## Figma traceability
 
-Fresh evidence was re-read on 2026-08-24 from Clearfolio Figma file `UPIMvnjyP1sTXhIy1wqD02`, page `0:1`, board `2:2` (`Clearfolio Viewer Product Design + Analytics Board`). The board contains desktop loading/ready/failed, mobile loading, tablet concepts, and a `Storybook buyer-state parity` frame (`10:2`) with document-not-found, invalid-document, and network-error states. Its local swatches match protected-main runtime values: brand `#034ea2`, ink `#102032`, muted `#5a6777`, background `#f6f7f9`, panel `#ffffff`, line `#d7dde6`, danger `#b42318`, and focus `#ff595a`.
+Fresh evidence was re-read on 2026-08-28 from Clearfolio Figma file `UPIMvnjyP1sTXhIy1wqD02`, page `0:1`, board `2:2` (`Clearfolio Viewer Product Design + Analytics Board`). The board contains desktop loading/ready/failed, mobile loading, tablet concepts, and a `Storybook buyer-state parity` frame (`10:2`) with document-not-found, invalid-document, and network-error states. The desktop and mobile loading frames keep the same guidance text now rendered by the executable Storybook loading state: `The document preview will appear here when preparation finishes.` Its local swatches match protected-main runtime values: brand `#034ea2`, ink `#102032`, muted `#5a6777`, background `#f6f7f9`, panel `#ffffff`, line `#d7dde6`, danger `#b42318`, and focus `#ff595a`.
 
 Code Connect component inventory cannot currently be treated as executable evidence. The connected Figma account reports a Full seat on a Pro team, while the Code Connect API requires a Dev or Full seat on an Organization or Enterprise plan. Until that entitlement changes, the repository records the limitation and does not fabricate mappings. Storybook-to-runtime parity remains independently executable.
 

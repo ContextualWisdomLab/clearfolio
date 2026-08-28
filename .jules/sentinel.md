@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-28 - Missing Authentication on Admin Endpoints
+**Vulnerability:** Admin controller endpoints (e.g., retrieving jobs, deleting jobs, retrying dead-lettered jobs) lacked any authentication or authorization checks, allowing unauthenticated users to perform sensitive administrative operations.
+**Learning:** In Spring Boot applications without global `@PreAuthorize` configuration or filter-based security, controller methods must explicitly enforce access controls. Missing these explicit checks on internal or administrative routes results in critical authorization bypasses.
+**Prevention:** Always require and validate security context (like `TenantAccessService.require(...)`) in every controller endpoint that exposes sensitive data or state-mutating actions, and ensure automated tests verify that unauthenticated requests are rejected.

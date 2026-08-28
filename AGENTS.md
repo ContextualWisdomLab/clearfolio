@@ -21,6 +21,11 @@ including mandatory quality and security merge gates.
   return values, and thrown failures must be understandable without reading the
   implementation.
 - Markdown lint for changed docs must pass.
+- Storybook Design System must pass on the exact current PR head. Its acceptance
+  path uses the reviewed `package-lock.json`, `npm ci --ignore-scripts --no-audit
+  --no-fund`, the Python design-system contract suite, a Storybook production
+  build, and headless Chromium interaction/accessibility tests. It is
+  development-only design evidence and does not replace Maven or security gates.
 - Security evidence must be attached on PR (SAST/code-scanning checks).
 - CodeQL Java/Kotlin analysis must remain enabled through repository default
   setup or an org-central workflow; do not add a repo-local advanced CodeQL

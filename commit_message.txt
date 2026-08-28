@@ -1,4 +1,6 @@
-🛡️ Sentinel: [CRITICAL] 파일 업로드 경로 조작(Path Traversal) 취약점 수정
+보안: AdminController에 대한 인증 및 권한 부여 추가
 
-MultipartFile.getOriginalFilename()을 신뢰하여 발생할 수 있는 경로 조작 취약점을 수정했습니다.
-StringUtils.cleanPath()를 사용하여 경로를 정규화하고 순수한 파일명만 추출하여 악의적인 페이로드(예: ../../../etc/passwd.hwp)로부터 시스템을 보호합니다.
+- 관리자 엔드포인트(`getAllJobs`, `deleteJob`, `retryDeadLettered`)에 `TenantAccessService`를 주입하여 인증 및 권한 검증 로직 추가
+- `TenantPermissions.java`에 `ADMIN_READ`, `ADMIN_WRITE` 권한 상수를 추가
+- 테스트 클래스(`AdminControllerTest.java`)에서 모의 객체(`TenantAccessService`)를 주입하고 적절한 헤더를 전송하여 변경된 권한 검증 로직을 커버
+- Sentinel 저널 파일 업데이트를 통해 인증 누락 취약점에 대한 보안 인사이트 기록

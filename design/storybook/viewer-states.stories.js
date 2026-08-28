@@ -141,6 +141,10 @@ export default meta;
 
 export const Loading = {
   args: { state: 'loading', busy: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(STATE_COPY.loading.preview)).toBeVisible();
+  },
 };
 
 export const Ready = {

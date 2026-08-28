@@ -88,7 +88,8 @@ function renderViewer({ state = 'ready', busy = false } = {}) {
       </div>`
     : '';
   const skeleton = state === 'loading'
-    ? '<div class="skeleton" aria-hidden="true"></div>'
+    ? `<div class="skeleton" aria-hidden="true"></div>
+       <p class="story-note">${copy.preview}</p>`
     : `<div class="preview-placeholder" role="document" aria-label="Document preview">${copy.preview}</div>`;
   const unrecoverableReference = state === 'notFound' || state === 'invalid';
   const primaryLabel = state === 'ready'

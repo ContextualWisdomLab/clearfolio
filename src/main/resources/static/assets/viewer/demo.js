@@ -114,6 +114,10 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
+  // DocumentFragment is used to batch DOM insertions.
+  // This minimizes layout reflows and repaints, significantly improving rendering performance.
+  const fragment = document.createDocumentFragment();
+
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -143,8 +147,9 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    el.historyBody.appendChild(row);
+    fragment.appendChild(row);
   }
+  el.historyBody.appendChild(fragment);
 
   renderRecoveryEvidence(history);
 }

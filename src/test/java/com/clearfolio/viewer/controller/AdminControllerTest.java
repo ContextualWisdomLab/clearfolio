@@ -149,4 +149,59 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
     }
+
+    @Test
+    void getAllJobsFiltersOutOtherTenantsWhenNoFilterProvided() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "test-tenant", "test-subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "other-tenant", "test-subject", "b.pdf", "application/pdf", "hash-b", 100L, 3);
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(1)
+                .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf");
+    }
+
+    @Test
+    void getAllJobsFiltersOutOtherTenantsWhenDeadLetteredTrue() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "test-tenant", "test-subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        job1.markDeadLettered("failed");
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "other-tenant", "test-subject", "b.pdf", "application/pdf", "hash-b", 100L, 3);
+        job2.markDeadLettered("failed");
+
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(1)
+                .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf");
+    }
+
+    @Test
+    void deleteJobReturnsNotFoundWhenJobDoesNotExist() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenJobDoesNotExist() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
 }

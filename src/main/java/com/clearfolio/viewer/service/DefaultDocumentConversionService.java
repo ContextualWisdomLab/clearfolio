@@ -221,13 +221,11 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         if (tenantContext == null) {
             return false;
         }
-
-        Optional<ConversionJob> job = repository.findByTenantAndId(tenantContext.tenantId(), jobId);
-        if (job.isEmpty()) {
+        if (!repository.deleteByTenantAndId(tenantContext.tenantId(), jobId)) {
             return false;
         }
 
-        deleteJob(job.get().getJobId());
+        deleteArtifact(jobId);
         return true;
     }
 
@@ -236,11 +234,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      */
     @Override
     public void deleteJob(UUID jobId) {
-        try {
-            artifactStore.deletePdf(jobId);
-        } catch (Exception ex) {
-            log.warn("Artifact deletion failed failureType={}", ex.getClass().getSimpleName());
-        }
+        deleteArtifact(jobId);
         repository.deleteById(jobId);
     }
 
@@ -269,6 +263,14 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
     @Override
     public Iterable<ConversionJob> getAllJobs() {
         return repository.findAll();
+    }
+
+    private void deleteArtifact(UUID jobId) {
+        try {
+            artifactStore.deletePdf(jobId);
+        } catch (Exception ex) {
+            log.warn("Artifact deletion failed failureType={}", ex.getClass().getSimpleName());
+        }
     }
 
     private void seedPdfPassthroughArtifact(ConversionJob job, MultipartFile file) {

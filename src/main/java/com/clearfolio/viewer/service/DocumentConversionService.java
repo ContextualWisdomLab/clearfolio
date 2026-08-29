@@ -63,18 +63,23 @@ public interface DocumentConversionService {
     /**
      * Deletes a conversion job owned by the supplied tenant context.
      *
-     * <p>The shared default deliberately fails closed because a lookup followed
-     * by the legacy UUID-only delete cannot prove ownership at the mutation
-     * boundary. Implementations that support tenant-aware deletion must override
-     * this method with an atomic ownership-and-delete operation.</p>
-     *
      * @param jobId conversion job identifier
      * @param tenantContext tenant and subject claims for the delete request
-     * @return false unless an implementation provides an atomic tenant-aware
-     *         deletion boundary
+     * @return true when an owned job was deleted; false when it was missing or
+     *         belonged to another tenant
      */
     default boolean deleteJob(UUID jobId, TenantContext tenantContext) {
-        return false;
+        if (tenantContext == null) {
+            return false;
+        }
+
+        Optional<ConversionJob> job = getJob(jobId);
+        if (job.isEmpty() || !job.get().belongsToTenant(tenantContext.tenantId())) {
+            return false;
+        }
+
+        deleteJob(jobId);
+        return true;
     }
 
     /**

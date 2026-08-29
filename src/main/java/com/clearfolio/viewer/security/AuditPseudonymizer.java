@@ -21,8 +21,6 @@ public final class AuditPseudonymizer {
     private static final String HMAC_SHA_256 = "HmacSHA256";
     private static final String DEFAULT_KEY_VERSION = "v1";
     private static final String APPROVER_DOMAIN = "clearfolio:audit-approver:v1";
-    private static final String RETRY_OPERATOR_DOMAIN =
-            "clearfolio:audit-retry-operator:v1";
     private static final int FINGERPRINT_BYTES = 16;
     private static final int MIN_SECRET_BYTES = 32;
     private static final int MAX_KEY_VERSION_LENGTH = 32;
@@ -41,23 +39,6 @@ public final class AuditPseudonymizer {
      */
     public AuditPseudonymizer(String secret, String keyVersion) {
         this(secret, keyVersion, APPROVER_DOMAIN);
-    }
-
-    /**
-     * Creates a pseudonymizer dedicated to retry-operator audit identifiers.
-     *
-     * <p>The retry domain is intentionally distinct from the approver domain so
-     * the same source identifier cannot be correlated across audit purposes.</p>
-     *
-     * @param secret dedicated audit pseudonym secret; when configured, it must
-     *               contain at least 32 UTF-8 bytes; blank disables correlation
-     * @param keyVersion non-sensitive key-rotation identifier
-     * @return retry-operator pseudonymizer
-     */
-    public static AuditPseudonymizer forRetryOperator(
-            String secret,
-            String keyVersion) {
-        return new AuditPseudonymizer(secret, keyVersion, RETRY_OPERATOR_DOMAIN);
     }
 
     /**

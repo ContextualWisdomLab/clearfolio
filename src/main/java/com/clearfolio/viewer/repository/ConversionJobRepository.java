@@ -70,22 +70,6 @@ public interface ConversionJobRepository {
     }
 
     /**
-     * Atomically deletes the current job only when it is owned by the supplied
-     * tenant.
-     *
-     * <p>The default implementation deliberately fails closed. Persistence
-     * implementations must override this method only when the ownership check
-     * and deletion can be performed as one atomic mutation boundary.</p>
-     *
-     * @param tenantId tenant identifier
-     * @param jobId conversion job identifier
-     * @return true only when a tenant-owned current row was deleted
-     */
-    default boolean deleteByTenantAndId(String tenantId, UUID jobId) {
-        return false;
-    }
-
-    /**
      * Returns a snapshot of all known conversion jobs.
      *
      * @return current conversion jobs

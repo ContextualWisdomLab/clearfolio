@@ -114,12 +114,15 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
             return Optional.empty();
         }
 
-        UUID jobId = jobsByTenantAndContentHash.get(contentKey(tenantId, contentHash));
+        String normalizedTenantId = normalizeTenantId(tenantId);
+        UUID jobId = jobsByTenantAndContentHash.get(contentKey(normalizedTenantId, contentHash));
         if (jobId == null) {
             return Optional.empty();
         }
 
-        return findById(jobId);
+        return findById(jobId)
+                .filter(job -> job.belongsToTenant(normalizedTenantId)
+                        && contentHash.equals(job.getContentHash()));
     }
 
     /**

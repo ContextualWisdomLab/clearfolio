@@ -10,10 +10,10 @@ import java.util.Objects;
  * consumers depend only on this contract so environment variables can remain
  * bootstrap transport rather than the credential source of truth.</p>
  *
- * <p>Runtime consumers should call {@link #resolveScoped(CredentialReference)}.
- * The single abstract {@link #resolve(CredentialReference)} method remains the
- * adapter hook so registry implementations stay lambda-friendly while the
- * contract boundary independently verifies purpose separation.</p>
+ * <p>Runtime consumers call {@link #resolveScoped(CredentialReference)}. The
+ * single abstract {@link #resolveAdapterMaterial(CredentialReference)} method is
+ * deliberately named as an adapter hook so the lambda-friendly implementation
+ * surface cannot be mistaken for the purpose-enforcing consumer boundary.</p>
  */
 @FunctionalInterface
 public interface CredentialRegistry {
@@ -24,16 +24,17 @@ public interface CredentialRegistry {
     String CONTRACT_VERSION = "credential-registry-v1";
 
     /**
-     * Resolves one credential reference through the provider adapter.
+     * Obtains one credential snapshot from a provider adapter.
      *
-     * <p>This is the implementation hook. Runtime consumers should use
-     * {@link #resolveScoped(CredentialReference)} so an adapter cannot silently
-     * return material authorized for a different cryptographic purpose.</p>
+     * <p>This method is an adapter implementation hook only. Runtime consumers
+     * must use {@link #resolveScoped(CredentialReference)}, which independently
+     * verifies that returned material is present and authorized for the requested
+     * cryptographic purpose.</p>
      *
      * @param reference server-owned logical credential reference
      * @return versioned credential snapshot supplied by the adapter
      */
-    CredentialSnapshot resolve(CredentialReference reference);
+    CredentialSnapshot resolveAdapterMaterial(CredentialReference reference);
 
     /**
      * Resolves credential material and fails closed when adapter authority drifts.
@@ -46,7 +47,7 @@ public interface CredentialRegistry {
      */
     default CredentialSnapshot resolveScoped(CredentialReference reference) {
         CredentialReference requiredReference = Objects.requireNonNull(reference, "reference");
-        CredentialSnapshot snapshot = resolve(requiredReference);
+        CredentialSnapshot snapshot = resolveAdapterMaterial(requiredReference);
         if (snapshot == null) {
             throw new IllegalStateException("credential registry returned no material");
         }

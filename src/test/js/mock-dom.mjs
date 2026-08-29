@@ -5,6 +5,18 @@ export class MockTextNode {
   }
 }
 
+export class MockDocumentFragment {
+  constructor() {
+    this.nodeType = 11;
+    this.childNodes = [];
+  }
+
+  appendChild(node) {
+    this.childNodes.push(node);
+    return node;
+  }
+}
+
 export class MockElement {
   constructor(tagName = "div") {
     this.tagName = tagName.toUpperCase();
@@ -31,12 +43,19 @@ export class MockElement {
   }
 
   appendChild(node) {
-    this.childNodes.push(node);
+    if (node && node.nodeType === 11) {
+      this.childNodes.push(...node.childNodes);
+      node.childNodes = [];
+    } else {
+      this.childNodes.push(node);
+    }
     return node;
   }
 
   append(...nodes) {
-    this.childNodes.push(...nodes);
+    for (const node of nodes) {
+      this.appendChild(node);
+    }
   }
 
   replaceChildren(...nodes) {

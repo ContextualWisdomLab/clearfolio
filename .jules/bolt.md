@@ -19,3 +19,7 @@
 ## 2026-07-13 - 단일 패스 문자열 치환 최적화 (O(N) 단일 스캔 및 지연 할당)
 **Learning:** `String.replace()`를 여러 번 체이닝하여 호출하면, 문자열 치환이 발생하지 않는 경우에도 내부적으로 불필요한 스캔이 중복 발생하고, 치환 시마다 새로운 문자열 객체와 char 배열이 할당되어 메모리 낭비와 성능 저하(GC 압박)가 발생한다.
 **Action:** 여러 문자를 한 번에 치환해야 하는 경우, O(N) 단일 스캔을 통해 `charAt()`으로 문자를 확인하고, 치환이 실제로 필요한 경우에만 `StringBuilder`를 지연 할당(Lazy allocation)하여 성능을 최적화하고 불필요한 메모리 할당을 방지한다.
+
+## 2026-08-29 - Fragment mocks need manual state management
+**Learning:** When mimicking standard DOM behavior in custom Node.js DOM mocks (like DocumentFragment), you must explicitly implement native behaviors like clearing the `childNodes` array after an append. The actual DOM removes children from a fragment upon insertion, and failing to simulate this can cause tests to pass but diverge from real browser constraints.
+**Action:** Always verify custom DOM mock behavior against standard web APIs, especially for node transfer operations, instead of just making tests pass.

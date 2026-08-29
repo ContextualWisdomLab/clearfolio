@@ -114,6 +114,11 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
+  // ⚡ Bolt: Batch DOM insertions using a DocumentFragment
+  // 🎯 Why: Appending elements individually in a loop triggers multiple layout reflows and repaints.
+  // 📊 Impact: Reduces DOM reflows to exactly 1 per render cycle, significantly improving rendering performance on long lists.
+  const fragment = document.createDocumentFragment();
+
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -143,8 +148,9 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    el.historyBody.appendChild(row);
+    fragment.appendChild(row);
   }
+  el.historyBody.appendChild(fragment);
 
   renderRecoveryEvidence(history);
 }

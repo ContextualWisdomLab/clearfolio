@@ -1,6 +1,6 @@
 # Architecture Map
 
-Last updated: 2026-02-23
+Last updated: 2026-08-29
 
 ## System Purpose
 
@@ -45,6 +45,13 @@ Current state: viewer/state API is implemented in this repository; downstream S2
   - Domain lifecycle and retry metadata (`attemptCount`, `maxAttempts`, `retryAt`, `deadLettered`) plus manual dead-letter retry transition.
 - `ViewerBootstrapResponse` (`src/main/java/com/clearfolio/viewer/api/ViewerBootstrapResponse.java`)
   - Includes deterministic `sourceExtension` and `rendererAdapter` metadata for viewer adapter bootstrap.
+- `CredentialRegistry` (`src/main/java/com/clearfolio/viewer/credential/CredentialRegistry.java`)
+  - Provider-neutral credential-resolution boundary for the issue #319 secret-source migration.
+  - Runtime consumers use `resolveScoped(...)`; provider adapters implement only `resolveAdapterMaterial(...)`.
+  - The scoped boundary fails closed when material is absent or when the returned logical credential identity or `CredentialPurpose` differs from the server-owned `CredentialReference`.
+  - `CredentialSnapshot` carries provider-returned version metadata, defensively copies secret bytes, and redacts secret material from string rendering.
+  - Provider-specific aliases remain inside adapters; runtime code accepts only the normalized server-owned logical credential identity. Persistence, KMS/HSM binding, rotation windows, audit writes, Spring bootstrap, and migration of existing HMAC consumers remain issue #319 follow-up scope.
+  - Standards traceability is recorded in `docs/research/2026-08-29-credential-registry-key-management-grounding.md`.
 
 ## State Model
 

@@ -60,6 +60,24 @@ class CredentialRegistryContractTest {
     }
 
     @Test
+    void scopedResolutionRejectsCredentialIdentitySubstitution() {
+        CredentialReference reference = new CredentialReference(
+                "tenant-claims-hmac",
+                CredentialPurpose.TENANT_CLAIMS_SIGNING
+        );
+        CredentialSnapshot substituted = new CredentialSnapshot(
+                "tenant-claims-secondary",
+                "v9",
+                CredentialPurpose.TENANT_CLAIMS_SIGNING,
+                new byte[] {8, 6, 4, 2}
+        );
+        CredentialRegistry registry = ignored -> substituted;
+
+        assertEquals(substituted, registry.resolveAdapterMaterial(reference));
+        assertThrows(IllegalStateException.class, () -> registry.resolveScoped(reference));
+    }
+
+    @Test
     void scopedResolutionRejectsMissingAdapterMaterial() {
         CredentialReference reference = new CredentialReference(
                 "tenant-claims-hmac",

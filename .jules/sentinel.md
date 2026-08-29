@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-29 - 환경변수를 통한 시크릿 주입 취약점 제거
+**Vulnerability:** `application-buyer-demo.yml`에서 런타임 시크릿(artifact-token HMAC secret, tenant-claims HMAC secret)이 스프링 환경변수 플레이스홀더(`${ENV_VAR:}`)를 통해 주입되고 있었습니다. 이는 환경변수가 런타임 소스로 사용되어 시크릿이 노출될 수 있는 보안 위험을 초래합니다.
+**Learning:** 런타임 설정이나 시크릿을 `os.getenv()`나 스프링 환경변수를 통해 직접 읽는 것은 안전하지 않습니다. 시크릿은 KV(Key-Value) 레지스트리나 DB 기반의 암호화된 저장소와 같이 안전한 소스에서 가져와야 하며, 환경변수는 KV로 데이터를 전송하는 용도로만 제한해야 합니다.
+**Prevention:** 환경변수 플레이스홀더를 제거하고 Spring Boot의 configtree 지원을 사용하여 시크릿을 런타임에 직접 로드하도록 마이그레이션해야 합니다. 스프링 `@Value` 애너테이션에서 빈 문자열의 디폴트 값을 제거하여 시작 시 실패하게 만들면(fail-fast), 보안 속성이 누락되었을 때의 취약점 방지에 도움을 줍니다.

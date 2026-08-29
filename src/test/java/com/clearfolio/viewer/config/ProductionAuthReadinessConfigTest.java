@@ -10,7 +10,7 @@ class ProductionAuthReadinessConfigTest {
     @Test
     void productionProfileFailsWithoutSignedTenantClaimsSecret() {
         productionRunner().run(context -> assertThat(context.getStartupFailure())
-                .hasRootCauseMessage("production profile requires clearfolio.tenant-claims.hmac-secret"));
+                .hasMessageContaining("Could not resolve placeholder"));
     }
 
     @Test

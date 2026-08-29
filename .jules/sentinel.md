@@ -32,7 +32,7 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
-## 2024-05-24 - AdminController 인증 누락 취약점 수정
+## 2026-08-29 - AdminController 인증 누락 취약점 수정
 **Vulnerability:** AdminController 내 민감한 관리자 API (조회, 삭제, 재시도)에 인증 및 테넌트 격리 검사가 누락됨.
 **Learning:** 내부 어드민 용도라도 멀티 테넌트 환경에서는 인증 및 인가를 필수로 적용해야 하며, 행위자 식별 시 AuditPseudonymizer를 통한 가명화가 필요함.
 **Prevention:** 모든 새로운 Controller 작성 시 기본적으로 인증, 인가(TenantAccessService), 그리고 테넌트 격리 로직을 필수로 구현할 것.

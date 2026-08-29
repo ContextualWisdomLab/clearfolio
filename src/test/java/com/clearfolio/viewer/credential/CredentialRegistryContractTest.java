@@ -34,6 +34,14 @@ class CredentialRegistryContractTest {
     }
 
     @Test
+    void registryDoesNotExposeRawResolveAsConsumerFacingMethod() {
+        assertThrows(
+                NoSuchMethodException.class,
+                () -> CredentialRegistry.class.getDeclaredMethod("resolve", CredentialReference.class)
+        );
+    }
+
+    @Test
     void scopedResolutionRejectsPurposeMismatchWithoutChangingRawAdapterContract() {
         CredentialReference reference = new CredentialReference(
                 "tenant-claims-hmac",

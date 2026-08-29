@@ -13,7 +13,7 @@ import java.util.Objects;
  * <p>Runtime consumers call {@link #resolveScoped(CredentialReference)}. The
  * single abstract {@link #resolveAdapterMaterial(CredentialReference)} method is
  * deliberately named as an adapter hook so the lambda-friendly implementation
- * surface cannot be mistaken for the purpose-enforcing consumer boundary.</p>
+ * surface cannot be mistaken for the authority-enforcing consumer boundary.</p>
  */
 @FunctionalInterface
 public interface CredentialRegistry {
@@ -28,8 +28,8 @@ public interface CredentialRegistry {
      *
      * <p>This method is an adapter implementation hook only. Runtime consumers
      * must use {@link #resolveScoped(CredentialReference)}, which independently
-     * verifies that returned material is present and authorized for the requested
-     * cryptographic purpose.</p>
+     * verifies that returned material is present and bound to the requested
+     * logical credential identity and cryptographic purpose.</p>
      *
      * @param reference server-owned logical credential reference
      * @return versioned credential snapshot supplied by the adapter
@@ -40,16 +40,19 @@ public interface CredentialRegistry {
      * Resolves credential material and fails closed when adapter authority drifts.
      *
      * @param reference server-owned logical credential reference
-     * @return versioned credential snapshot whose purpose matches the reference
+     * @return versioned credential snapshot whose identity and purpose match the reference
      * @throws NullPointerException when the reference is absent
      * @throws IllegalStateException when the adapter returns no material or returns
-     *                               material authorized for a different purpose
+     *                               material for a different logical identity or purpose
      */
     default CredentialSnapshot resolveScoped(CredentialReference reference) {
         CredentialReference requiredReference = Objects.requireNonNull(reference, "reference");
         CredentialSnapshot snapshot = resolveAdapterMaterial(requiredReference);
         if (snapshot == null) {
             throw new IllegalStateException("credential registry returned no material");
+        }
+        if (!snapshot.credentialId().equals(requiredReference.credentialName())) {
+            throw new IllegalStateException("credential registry returned material for a different identity");
         }
         if (snapshot.purpose() != requiredReference.purpose()) {
             throw new IllegalStateException("credential registry returned material for a different purpose");

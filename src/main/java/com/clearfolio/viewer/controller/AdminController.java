@@ -2,29 +2,28 @@ package com.clearfolio.viewer.controller;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.Optional;
+import java.util.UUID;
 
-import com.clearfolio.viewer.auth.TenantAccessService;
-import com.clearfolio.viewer.auth.TenantContext;
-import com.clearfolio.viewer.auth.TenantPermissions;
-import com.clearfolio.viewer.security.AuditPseudonymizer;
-import com.clearfolio.viewer.config.ConversionProperties;
 import org.springframework.http.HttpHeaders;
-import org.springframework.web.bind.annotation.RequestHeader;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.api.AdminJobListResponse;
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
+import com.clearfolio.viewer.config.ConversionProperties;
 import com.clearfolio.viewer.model.ConversionJob;
+import com.clearfolio.viewer.security.AuditPseudonymizer;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
 
@@ -62,7 +61,7 @@ public class AdminController {
             final ConversionProperties properties) {
         this.conversionService = svc;
         this.tenantAccessService = accessSvc;
-        this.auditPseudonymizer = new AuditPseudonymizer(
+        this.auditPseudonymizer = AuditPseudonymizer.forRetryOperator(
                 properties.getAuditPseudonymSecret(),
                 properties.getAuditPseudonymKeyVersion());
     }
@@ -121,7 +120,10 @@ public class AdminController {
                     HttpStatus.NOT_FOUND, "job not found");
         }
         tenantAccessService.requireSameTenant(context, job.get());
-        conversionService.deleteJob(jobId);
+        if (!conversionService.deleteJob(jobId, context)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
+        }
         return ResponseEntity.noContent().build();
     }
 

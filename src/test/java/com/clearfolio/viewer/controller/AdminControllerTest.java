@@ -104,6 +104,7 @@ class AdminControllerTest {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "test-tenant", "test-subject", "a.pdf", "application/pdf", "hash", 100L, 3);
                 when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        when(conversionService.deleteJob(jobId, tenantContext)).thenReturn(true);
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)

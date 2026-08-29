@@ -71,7 +71,9 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
                 (key, existingJobId) -> {
                     if (existingJobId != null) {
                         ConversionJob existing = jobs.get(existingJobId);
-                        if (existing != null) {
+                        if (existing != null
+                                && existing.belongsToTenant(candidate.getTenantId())
+                                && contentHash.equals(existing.getContentHash())) {
                             canonical.set(existing);
                             return existingJobId;
                         }

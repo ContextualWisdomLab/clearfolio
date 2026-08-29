@@ -35,6 +35,20 @@ class TenantScopedDeleteAtomicityTest {
     }
 
     @Test
+    void repositoryTenantHashLookupRejectsStaleCrossTenantIndex() {
+        InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
+        UUID jobId = UUID.randomUUID();
+        repository.save(job(jobId, "tenant-a", "hash-a"));
+        ConversionJob replacement = job(jobId, "tenant-b", "hash-b");
+        repository.save(replacement);
+
+        assertTrue(repository.findByTenantAndContentHash("tenant-a", "hash-a").isEmpty());
+        assertSame(
+                replacement,
+                repository.findByTenantAndContentHash("tenant-b", "hash-b").orElseThrow());
+    }
+
+    @Test
     void repositoryDeletesOnlyCurrentTenantAtomically() {
         InMemoryConversionJobRepository repository = new InMemoryConversionJobRepository();
         UUID jobId = UUID.randomUUID();

@@ -104,7 +104,6 @@ class AdminControllerTest {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "test-tenant", "test-subject", "a.pdf", "application/pdf", "hash", 100L, 3);
                 when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
-        when(conversionService.deleteJob(jobId, tenantContext)).thenReturn(true);
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
@@ -199,6 +198,52 @@ class AdminControllerTest {
     void retryDeadLetteredReturnsNotFoundWhenJobDoesNotExist() {
         UUID jobId = UUID.randomUUID();
         when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void getAllJobsFiltersOutOtherTenantsWhenDeadLetteredFalse() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "test-tenant", "test-subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        job1.markDeadLettered("failed");
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "other-tenant", "test-subject", "b.pdf", "application/pdf", "hash-b", 100L, 3);
+
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs?deadLettered=false")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(0);
+    }
+
+    @Test
+    void deleteJobReturnsNotFoundWhenJobBelongsToOtherTenant() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "test-subject", "a.pdf", "application/pdf", "hash", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        org.mockito.Mockito.doThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "job not found"))
+            .when(tenantAccessService).requireSameTenant(any(), any());
+
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenJobBelongsToOtherTenant() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "other-tenant", "test-subject", "a.pdf", "application/pdf", "hash", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        org.mockito.Mockito.doThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "job not found"))
+            .when(tenantAccessService).requireSameTenant(any(), any());
+
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")

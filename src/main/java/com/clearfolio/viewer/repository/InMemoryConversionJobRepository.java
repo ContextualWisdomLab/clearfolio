@@ -134,10 +134,32 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
      * {@inheritDoc}
      */
     @Override
+    public boolean deleteByTenantAndId(String tenantId, UUID jobId) {
+        AtomicReference<ConversionJob> removed = new AtomicReference<>();
+        jobs.computeIfPresent(jobId, (id, current) -> {
+            if (!current.belongsToTenant(tenantId)) {
+                return current;
+            }
+            removed.set(current);
+            return null;
+        });
+
+        ConversionJob deleted = removed.get();
+        if (deleted == null) {
+            return false;
+        }
+        removeContentHashIndex(deleted, jobId);
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void deleteById(UUID jobId) {
         ConversionJob removed = jobs.remove(jobId);
-        if (removed != null && removed.getContentHash() != null && !removed.getContentHash().isBlank()) {
-            jobsByTenantAndContentHash.remove(contentKey(removed.getTenantId(), removed.getContentHash()), jobId);
+        if (removed != null) {
+            removeContentHashIndex(removed, jobId);
         }
     }
 
@@ -241,6 +263,12 @@ public class InMemoryConversionJobRepository implements ConversionJobRepository,
 
         appendLifecycleEvent(job.get(), EVENT_RETRY_ACCEPTED, statusBefore);
         return true;
+    }
+
+    private void removeContentHashIndex(ConversionJob job, UUID jobId) {
+        if (job.getContentHash() != null && !job.getContentHash().isBlank()) {
+            jobsByTenantAndContentHash.remove(contentKey(job.getTenantId(), job.getContentHash()), jobId);
+        }
     }
 
     private String contentKey(String tenantId, String contentHash) {

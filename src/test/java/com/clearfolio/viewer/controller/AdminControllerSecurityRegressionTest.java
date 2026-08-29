@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -62,6 +63,24 @@ class AdminControllerSecurityRegressionTest {
     }
 
     @Test
+    void listUsesReadPermissionAndFiltersOtherTenant() {
+        ConversionJob tenantJob = job(UUID.randomUUID(), TENANT_ID);
+        ConversionJob otherTenantJob = job(UUID.randomUUID(), "other-tenant");
+        when(conversionService.getAllJobs())
+                .thenReturn(List.of(tenantJob, otherTenantJob));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(1);
+
+        verify(tenantAccessService).require(
+                any(), eq(TenantPermissions.JOB_READ));
+    }
+
+    @Test
     void deleteUsesPermissionAndTenantAwareMutationBoundary() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = job(jobId, TENANT_ID);
@@ -73,7 +92,27 @@ class AdminControllerSecurityRegressionTest {
                 .exchange()
                 .expectStatus().isNoContent();
 
-        verify(tenantAccessService).require(any(), eq(TenantPermissions.JOB_DELETE));
+        verify(tenantAccessService).require(
+                any(), eq(TenantPermissions.JOB_DELETE));
+        verify(tenantAccessService).requireSameTenant(tenantContext, job);
+        verify(conversionService).deleteJob(jobId, tenantContext);
+        verify(conversionService, never()).deleteJob(jobId);
+    }
+
+    @Test
+    void deleteReturnsNotFoundWhenTenantAwareMutationLosesJob() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = job(jobId, TENANT_ID);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        when(conversionService.deleteJob(jobId, tenantContext)).thenReturn(false);
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(tenantAccessService).require(
+                any(), eq(TenantPermissions.JOB_DELETE));
         verify(tenantAccessService).requireSameTenant(tenantContext, job);
         verify(conversionService).deleteJob(jobId, tenantContext);
         verify(conversionService, never()).deleteJob(jobId);
@@ -92,10 +131,12 @@ class AdminControllerSecurityRegressionTest {
                 .exchange()
                 .expectStatus().isAccepted();
 
-        verify(tenantAccessService).require(any(), eq(TenantPermissions.JOB_RETRY));
+        verify(tenantAccessService).require(
+                any(), eq(TenantPermissions.JOB_RETRY));
         verify(tenantAccessService).requireSameTenant(tenantContext, job);
         ArgumentCaptor<String> operatorId = ArgumentCaptor.forClass(String.class);
-        verify(conversionService).retryDeadLettered(eq(jobId), operatorId.capture());
+        verify(conversionService).retryDeadLettered(
+                eq(jobId), operatorId.capture());
 
         String approverFingerprint = new AuditPseudonymizer(AUDIT_SECRET, "v1")
                 .fingerprint(SUBJECT_ID);
@@ -118,6 +159,25 @@ class AdminControllerSecurityRegressionTest {
 
         verify(conversionService, never()).deleteJob(jobId);
         verify(conversionService, never()).deleteJob(jobId, tenantContext);
+    }
+
+    @Test
+    void crossTenantRetryFailsBeforeAnyMutation() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob otherTenantJob = job(jobId, "other-tenant");
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(otherTenantJob));
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"))
+                .when(tenantAccessService)
+                .requireSameTenant(tenantContext, otherTenantJob);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(tenantAccessService).require(
+                any(), eq(TenantPermissions.JOB_RETRY));
+        verify(conversionService, never()).retryDeadLettered(eq(jobId), any());
     }
 
     private ConversionJob job(final UUID jobId, final String tenantId) {

@@ -55,6 +55,16 @@ public final class TenantPermissions {
      */
     public static final String ANALYTICS_READ = "analytics:read";
 
+    /**
+     * Permission required to read administrative endpoints.
+     */
+    public static final String ADMIN_READ = "admin:read";
+
+    /**
+     * Permission required to modify resources on administrative endpoints.
+     */
+    public static final String ADMIN_WRITE = "admin:write";
+
     private TenantPermissions() {
     }
 }

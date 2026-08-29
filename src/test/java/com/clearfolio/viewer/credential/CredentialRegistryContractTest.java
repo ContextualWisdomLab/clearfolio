@@ -28,7 +28,7 @@ class CredentialRegistryContractTest {
         };
 
         assertEquals("tenant-claims-hmac", reference.credentialName());
-        assertEquals(expected, registry.resolve(reference));
+        assertEquals(expected, registry.resolveAdapterMaterial(reference));
         assertEquals(expected, registry.resolveScoped(reference));
         assertEquals("credential-registry-v1", CredentialRegistry.CONTRACT_VERSION);
     }
@@ -42,7 +42,7 @@ class CredentialRegistryContractTest {
     }
 
     @Test
-    void scopedResolutionRejectsPurposeMismatchWithoutChangingRawAdapterContract() {
+    void scopedResolutionRejectsPurposeMismatchWhileKeepingAdapterHookExplicit() {
         CredentialReference reference = new CredentialReference(
                 "tenant-claims-hmac",
                 CredentialPurpose.TENANT_CLAIMS_SIGNING
@@ -55,7 +55,7 @@ class CredentialRegistryContractTest {
         );
         CredentialRegistry registry = ignored -> mismatched;
 
-        assertEquals(mismatched, registry.resolve(reference));
+        assertEquals(mismatched, registry.resolveAdapterMaterial(reference));
         assertThrows(IllegalStateException.class, () -> registry.resolveScoped(reference));
     }
 

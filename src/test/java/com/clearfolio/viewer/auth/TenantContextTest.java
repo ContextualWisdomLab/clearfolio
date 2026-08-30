@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -95,4 +96,30 @@ class TenantContextTest {
 
         assertEquals("job:read,viewer:read", context.canonicalPermissions());
     }
+
+    @Test
+    void shouldIgnoreEmptyLastToken() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(TenantContext.TENANT_ID_HEADER, "tenant-123");
+        headers.add(TenantContext.SUBJECT_ID_HEADER, "user-456");
+        headers.add(TenantContext.PERMISSIONS_HEADER, "read, ");
+
+        Optional<TenantContext> context = TenantContext.fromHeaders(headers);
+        assertTrue(context.isPresent());
+        assertEquals(Set.of("read"), context.get().permissions());
+    }
+
+
+    @Test
+    void shouldHandleMultipleCommasAndSpaces() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(TenantContext.TENANT_ID_HEADER, "tenant-123");
+        headers.add(TenantContext.SUBJECT_ID_HEADER, "user-456");
+        headers.add(TenantContext.PERMISSIONS_HEADER, "read, ,write,");
+
+        Optional<TenantContext> context = TenantContext.fromHeaders(headers);
+        assertTrue(context.isPresent());
+        assertEquals(Set.of("read", "write"), context.get().permissions());
+    }
+
 }

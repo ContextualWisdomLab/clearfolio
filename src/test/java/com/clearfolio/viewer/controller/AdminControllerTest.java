@@ -32,8 +32,27 @@ class AdminControllerTest {
         conversionService = mock(DocumentConversionService.class);
         tenantAccessService = mock(TenantAccessService.class);
         controller = new AdminController(conversionService, tenantAccessService);
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(com.clearfolio.viewer.auth.TenantPermissions.JOB_READ))).thenReturn(new TenantContext("tenant-1", "subject-1", new java.util.HashSet<>(Arrays.asList(com.clearfolio.viewer.auth.TenantPermissions.JOB_READ))));
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(com.clearfolio.viewer.auth.TenantPermissions.JOB_DELETE))).thenReturn(new TenantContext("tenant-1", "subject-1", new java.util.HashSet<>(Arrays.asList(com.clearfolio.viewer.auth.TenantPermissions.JOB_DELETE))));
+        when(tenantAccessService.require(
+                any(HttpHeaders.class),
+                eq(com.clearfolio.viewer.auth.TenantPermissions.JOB_READ)))
+                .thenReturn(new TenantContext(
+                        "tenant-1", "subject-1",
+                        new java.util.HashSet<>(Arrays.asList(
+                                com.clearfolio.viewer.auth.TenantPermissions.JOB_READ))));
+        when(tenantAccessService.require(
+                any(HttpHeaders.class),
+                eq(com.clearfolio.viewer.auth.TenantPermissions.JOB_DELETE)))
+                .thenReturn(new TenantContext(
+                        "tenant-1", "subject-1",
+                        new java.util.HashSet<>(Arrays.asList(
+                                com.clearfolio.viewer.auth.TenantPermissions.JOB_DELETE))));
+        when(tenantAccessService.require(
+                any(HttpHeaders.class),
+                eq(com.clearfolio.viewer.auth.TenantPermissions.JOB_RETRY)))
+                .thenReturn(new TenantContext(
+                        "tenant-1", "subject-1",
+                        new java.util.HashSet<>(Arrays.asList(
+                                com.clearfolio.viewer.auth.TenantPermissions.JOB_RETRY))));
 
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
@@ -42,15 +61,19 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsReturnsAllJobsWhenNoFilterProvided() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job1 = new ConversionJob(
+                UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job2 = new ConversionJob(
+                UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
                 .header(TenantContext.TENANT_ID_HEADER, "tenant-1")
                 .header(TenantContext.SUBJECT_ID_HEADER, "subject-1")
-                .header(TenantContext.PERMISSIONS_HEADER, com.clearfolio.viewer.auth.TenantPermissions.JOB_READ)
+                .header(
+                        TenantContext.PERMISSIONS_HEADER,
+                        com.clearfolio.viewer.auth.TenantPermissions.JOB_READ)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -71,7 +94,9 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
                 .header(TenantContext.TENANT_ID_HEADER, "tenant-1")
                 .header(TenantContext.SUBJECT_ID_HEADER, "subject-1")
-                .header(TenantContext.PERMISSIONS_HEADER, com.clearfolio.viewer.auth.TenantPermissions.JOB_READ)
+                .header(
+                        TenantContext.PERMISSIONS_HEADER,
+                        com.clearfolio.viewer.auth.TenantPermissions.JOB_READ)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -91,7 +116,9 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
                 .header(TenantContext.TENANT_ID_HEADER, "tenant-1")
                 .header(TenantContext.SUBJECT_ID_HEADER, "subject-1")
-                .header(TenantContext.PERMISSIONS_HEADER, com.clearfolio.viewer.auth.TenantPermissions.JOB_READ)
+                .header(
+                        TenantContext.PERMISSIONS_HEADER,
+                        com.clearfolio.viewer.auth.TenantPermissions.JOB_READ)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -107,7 +134,9 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
                 .header(TenantContext.TENANT_ID_HEADER, "tenant-1")
                 .header(TenantContext.SUBJECT_ID_HEADER, "subject-1")
-                .header(TenantContext.PERMISSIONS_HEADER, com.clearfolio.viewer.auth.TenantPermissions.JOB_DELETE)
+                .header(
+                        TenantContext.PERMISSIONS_HEADER,
+                        com.clearfolio.viewer.auth.TenantPermissions.JOB_DELETE)
                 .exchange()
                 .expectStatus().isNoContent();
     }
@@ -121,7 +150,9 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .header(TenantContext.TENANT_ID_HEADER, "tenant-1")
                 .header(TenantContext.SUBJECT_ID_HEADER, "subject-1")
-                .header(TenantContext.PERMISSIONS_HEADER, com.clearfolio.viewer.auth.TenantPermissions.JOB_DELETE)
+                .header(
+                        TenantContext.PERMISSIONS_HEADER,
+                        com.clearfolio.viewer.auth.TenantPermissions.JOB_RETRY)
                 .exchange()
                 .expectStatus().isAccepted();
     }
@@ -135,7 +166,9 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .header(TenantContext.TENANT_ID_HEADER, "tenant-1")
                 .header(TenantContext.SUBJECT_ID_HEADER, "subject-1")
-                .header(TenantContext.PERMISSIONS_HEADER, com.clearfolio.viewer.auth.TenantPermissions.JOB_DELETE)
+                .header(
+                        TenantContext.PERMISSIONS_HEADER,
+                        com.clearfolio.viewer.auth.TenantPermissions.JOB_RETRY)
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -149,7 +182,9 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .header(TenantContext.TENANT_ID_HEADER, "tenant-1")
                 .header(TenantContext.SUBJECT_ID_HEADER, "subject-1")
-                .header(TenantContext.PERMISSIONS_HEADER, com.clearfolio.viewer.auth.TenantPermissions.JOB_DELETE)
+                .header(
+                        TenantContext.PERMISSIONS_HEADER,
+                        com.clearfolio.viewer.auth.TenantPermissions.JOB_RETRY)
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
     }

@@ -103,7 +103,7 @@ public class AdminController {
             @PathVariable final UUID jobId) {
         tenantAccessService.require(
                 headers,
-                com.clearfolio.viewer.auth.TenantPermissions.JOB_DELETE);
+                com.clearfolio.viewer.auth.TenantPermissions.JOB_RETRY);
         RetryDeadLetterResult result = conversionService.retryDeadLettered(
                 jobId, "admin");
         if (result == RetryDeadLetterResult.NOT_FOUND) {

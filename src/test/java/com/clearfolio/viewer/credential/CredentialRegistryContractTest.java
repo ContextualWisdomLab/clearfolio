@@ -48,7 +48,7 @@ class CredentialRegistryContractTest {
                 CredentialPurpose.TENANT_CLAIMS_SIGNING
         );
         CredentialSnapshot mismatched = new CredentialSnapshot(
-                "artifact-token-hmac",
+                "tenant-claims-hmac",
                 "v2",
                 CredentialPurpose.ARTIFACT_TOKEN_SIGNING,
                 new byte[] {5, 4, 3, 2}
@@ -56,7 +56,11 @@ class CredentialRegistryContractTest {
         CredentialRegistry registry = ignored -> mismatched;
 
         assertEquals(mismatched, registry.resolveAdapterMaterial(reference));
-        assertThrows(IllegalStateException.class, () -> registry.resolveScoped(reference));
+        IllegalStateException failure = assertThrows(
+                IllegalStateException.class,
+                () -> registry.resolveScoped(reference)
+        );
+        assertEquals("credential registry returned material for a different purpose", failure.getMessage());
     }
 
     @Test

@@ -19,3 +19,6 @@
 ## 2026-07-13 - 단일 패스 문자열 치환 최적화 (O(N) 단일 스캔 및 지연 할당)
 **Learning:** `String.replace()`를 여러 번 체이닝하여 호출하면, 문자열 치환이 발생하지 않는 경우에도 내부적으로 불필요한 스캔이 중복 발생하고, 치환 시마다 새로운 문자열 객체와 char 배열이 할당되어 메모리 낭비와 성능 저하(GC 압박)가 발생한다.
 **Action:** 여러 문자를 한 번에 치환해야 하는 경우, O(N) 단일 스캔을 통해 `charAt()`으로 문자를 확인하고, 치환이 실제로 필요한 경우에만 `StringBuilder`를 지연 할당(Lazy allocation)하여 성능을 최적화하고 불필요한 메모리 할당을 방지한다.
+## 2026-07-13 - String replacement chaining optimization (StringBuilder O(N) scan)
+**Learning:** Chaining `String.replace()` calls creates intermediate string allocations even when some target strings are not found. This leads to inefficient memory usage and increased garbage collection overhead, particularly for template rendering scenarios like `ViewerUiController.java`.
+**Action:** When multiple character sequences need replacement within a template string, use a single `StringBuilder` with an O(N) pre-calculated capacity and a single `while` loop with `indexOf()` to find targets and append the string segments. This avoids unnecessary temporary objects and reduces GC pressure.

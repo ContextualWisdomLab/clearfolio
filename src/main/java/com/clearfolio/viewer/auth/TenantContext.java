@@ -1,6 +1,5 @@
 package com.clearfolio.viewer.auth;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Optional;
@@ -80,7 +79,7 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
      * @param headers request headers
      * @return tenant context when required claims are present
      */
-    public static Optional<TenantContext> fromHeaders(HttpHeaders headers) {
+    public static Optional<TenantContext> fromHeaders(final HttpHeaders headers) {
         if (headers == null) {
             return Optional.empty();
         }
@@ -101,7 +100,7 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
      * @param permission required permission
      * @return true when permission is present
      */
-    public boolean hasPermission(String permission) {
+    public boolean hasPermission(final String permission) {
         return permissions.contains(permission);
     }
 
@@ -114,21 +113,32 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
         return String.join(",", permissions);
     }
 
-    private static Set<String> permissionsOf(String raw) {
-        String normalized = sanitize(raw);
+    private static Set<String> permissionsOf(final String raw) {
+        final String normalized = sanitize(raw);
         if (normalized == null) {
             return Set.of();
         }
 
-        LinkedHashSet<String> parsed = new LinkedHashSet<>();
-        Arrays.stream(normalized.split(","))
-                .map(TenantContext::sanitize)
-                .filter(value -> value != null)
-                .forEach(parsed::add);
+        final LinkedHashSet<String> parsed = new LinkedHashSet<>();
+        int currentIndex = 0;
+        int nextCommaIndex = 0;
+        while ((nextCommaIndex = normalized.indexOf(',', currentIndex)) != -1) {
+            final String token = sanitize(
+                    normalized.substring(currentIndex, nextCommaIndex));
+            if (token != null) {
+                parsed.add(token);
+            }
+            currentIndex = nextCommaIndex + 1;
+        }
+
+        final String lastToken = sanitize(normalized.substring(currentIndex));
+        if (lastToken != null) {
+            parsed.add(lastToken);
+        }
         return parsed;
     }
 
-    private static String sanitize(String value) {
+    private static String sanitize(final String value) {
         if (value == null) {
             return null;
         }

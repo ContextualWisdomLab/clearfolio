@@ -8,7 +8,6 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -20,7 +19,6 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -332,22 +330,48 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+    @SuppressWarnings("checkstyle:MagicNumber")
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        final int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1
+                || lastDotIndex == token.length() - 1) {
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
-        String expectedSignature = hmac(payload);
+        final String payload = token.substring(0, lastDotIndex);
+        final String signature = token.substring(lastDotIndex + 1);
+        final String expectedSignature = hmac(payload);
+
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                signature.getBytes(StandardCharsets.US_ASCII))) {
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
+        final String[] parts = new String[TOKEN_FIELD_COUNT];
+        int currentIndex = 0;
+        int nextDotIndex = 0;
+        for (int i = 0; i < TOKEN_FIELD_COUNT - 1; i++) {
+            nextDotIndex = payload.indexOf('.', currentIndex);
+            if (nextDotIndex == -1) {
+                throw new ArtifactTokenException(
+                        HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            }
+            parts[i] = payload.substring(currentIndex, nextDotIndex);
+            currentIndex = nextDotIndex + 1;
+        }
+
+        parts[TOKEN_FIELD_COUNT - 1] = payload.substring(currentIndex);
+
+        if (payload.indexOf('.', currentIndex) != -1) {
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
         try {
-            String version = decode(parts[0]);
+            final String version = decode(parts[0]);
             if (!VERSION.equals(version)) {
                 throw new IllegalArgumentException("unsupported artifact token version");
             }
@@ -362,7 +386,7 @@ public class ArtifactLinkService {
                     Instant.ofEpochSecond(Long.parseLong(decode(parts[8]))),
                     Instant.ofEpochSecond(Long.parseLong(decode(parts[9])))
             );
-        } catch (IllegalArgumentException | DateTimeException ex) {
+        } catch (final IllegalArgumentException | DateTimeException ex) {
             // IllegalArgumentException: malformed Base64URL, UUID, or numeric fields.
             // DateTimeException: epoch-second value outside the supported Instant range.
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");

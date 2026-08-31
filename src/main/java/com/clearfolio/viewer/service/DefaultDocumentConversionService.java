@@ -223,18 +223,23 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
                 || !(repository instanceof TenantScopedJobMutationRepository tenantRepository)) {
             return false;
         }
-        if (!tenantRepository.deleteByTenantAndId(tenantContext.tenantId(), jobId)) {
-            return false;
-        }
-        deleteArtifact(jobId);
-        return true;
+        return JobMutationCoordinator.withJobLock(jobId, () -> {
+            if (!tenantRepository.deleteByTenantAndId(tenantContext.tenantId(), jobId)) {
+                return false;
+            }
+            deleteArtifact(jobId);
+            return true;
+        });
     }
 
     /** {@inheritDoc} */
     @Override
     public void deleteJob(UUID jobId) {
-        deleteArtifact(jobId);
-        repository.deleteById(jobId);
+        JobMutationCoordinator.withJobLock(jobId, () -> {
+            deleteArtifact(jobId);
+            repository.deleteById(jobId);
+            return null;
+        });
     }
 
     /** {@inheritDoc} */

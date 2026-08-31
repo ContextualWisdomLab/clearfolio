@@ -3,7 +3,6 @@ package com.clearfolio.viewer.controller;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.Optional;
 
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
@@ -34,19 +33,11 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 @RestController
 public class AdminController {
 
-    /**
-     * Conversion service for jobs.
-     */
+    /** Conversion service for jobs. */
     private final DocumentConversionService conversionService;
-
-    /**
-     * Tenant access service for isolation.
-     */
+    /** Tenant access service for isolation. */
     private final TenantAccessService tenantAccessService;
-
-    /**
-     * Audit pseudonymizer for operator ID.
-     */
+    /** Audit pseudonymizer for operator ID. */
     private final AuditPseudonymizer auditPseudonymizer;
 
     /**
@@ -78,7 +69,7 @@ public class AdminController {
     public AdminJobListResponse getAllJobs(
             @RequestParam(required = false) final Boolean deadLettered,
             @RequestHeader final HttpHeaders headers) {
-        final TenantContext context = tenantAccessService.require(
+        final TenantContext context = tenantAccessService.requireSigned(
                 headers, TenantPermissions.JOB_READ);
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
 
@@ -113,15 +104,11 @@ public class AdminController {
     public ResponseEntity<Void> deleteJob(
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
-        final TenantContext context = tenantAccessService.require(
+        final TenantContext context = tenantAccessService.requireSigned(
                 headers, TenantPermissions.JOB_DELETE);
-        Optional<ConversionJob> job = conversionService.getJob(jobId);
-        if (job.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "job not found");
+        if (!conversionService.deleteJob(jobId, context)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
         }
-        tenantAccessService.requireSameTenant(context, job.get());
-        conversionService.deleteJob(jobId);
         return ResponseEntity.noContent().build();
     }
 
@@ -136,24 +123,19 @@ public class AdminController {
     public ResponseEntity<Void> retryDeadLettered(
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
-        final TenantContext context = tenantAccessService.require(
+        final TenantContext context = tenantAccessService.requireSigned(
                 headers, TenantPermissions.JOB_RETRY);
-        Optional<ConversionJob> job = conversionService.getJob(jobId);
-        if (job.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "job not found");
-        }
-        tenantAccessService.requireSameTenant(context, job.get());
         String operatorId = auditPseudonymizer.fingerprint(context.subjectId());
         RetryDeadLetterResult result = conversionService
-                .retryDeadLettered(jobId, operatorId);
+                .retryDeadLettered(jobId, context, operatorId);
         if (result == RetryDeadLetterResult.NOT_FOUND) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "job not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
         }
         if (result == RetryDeadLetterResult.NOT_ELIGIBLE) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "job is not eligible for retry");
+                    HttpStatus.CONFLICT,
+                    "job is not eligible for retry"
+            );
         }
         return ResponseEntity.accepted().build();
     }

@@ -61,29 +61,33 @@ public interface DocumentConversionService {
     RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId);
 
     /**
-     * Deletes a conversion job owned by the supplied tenant context.
+     * Retries a dead-lettered job through a tenant-bound atomic mutation.
      *
      * @param jobId conversion job identifier
-     * @param tenantContext tenant and subject claims for the delete request
-     * @return true when an owned job was deleted; false when it was missing or
-     *         belonged to another tenant
+     * @param tenantContext authenticated tenant context
+     * @param operatorId pseudonymous operator identifier that triggered the retry
+     * @return retry outcome; cross-tenant and missing targets are not found
      */
-    default boolean deleteJob(UUID jobId, TenantContext tenantContext) {
-        if (tenantContext == null) {
-            return false;
-        }
-
-        Optional<ConversionJob> job = getJob(jobId);
-        if (job.isEmpty() || !job.get().belongsToTenant(tenantContext.tenantId())) {
-            return false;
-        }
-
-        deleteJob(jobId);
-        return true;
-    }
+    RetryDeadLetterResult retryDeadLettered(
+            UUID jobId,
+            TenantContext tenantContext,
+            String operatorId
+    );
 
     /**
-     * Deletes a conversion job.
+     * Deletes a conversion job through a tenant-bound atomic mutation.
+     *
+     * @param jobId conversion job identifier
+     * @param tenantContext authenticated tenant context
+     * @return true only when the current tenant-owned job was deleted
+     */
+    boolean deleteJob(UUID jobId, TenantContext tenantContext);
+
+    /**
+     * Deletes a conversion job without a tenant boundary.
+     *
+     * <p>This method is retained for trusted internal compatibility. Request-facing
+     * administrator paths must use {@link #deleteJob(UUID, TenantContext)}.
      *
      * @param jobId conversion job identifier
      */

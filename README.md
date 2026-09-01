@@ -1,5 +1,7 @@
 # Clearfolio Viewer
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ContextualWisdomLab/clearfolio)
+
 Clearfolio is an independently deployable secure document-conversion and viewing service. It can also compose with naruon and other ContextualWisdomLab hosts through explicit versioned APIs without shared application-database ownership.
 
 The current runtime is Java 21 / Spring Boot WebFlux. Upload submission is non-blocking, conversion lifecycle work is delegated to bounded background workers, viewer bootstrap and artifact access are tenant-scoped, and the canonical artifact route uses short-lived signed token, revocation, integrity, Range, and read-audit controls.

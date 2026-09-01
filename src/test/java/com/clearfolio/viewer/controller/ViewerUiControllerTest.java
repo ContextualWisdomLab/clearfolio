@@ -76,7 +76,7 @@ class ViewerUiControllerTest {
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
                 .expectBody(String.class)
                 .value(body -> {
-                    assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId));
+                    assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId + "\""));
                     assertTrue(body.contains("clearfolio-initial-state\" content=\"LOADING\""));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
@@ -183,7 +183,7 @@ class ViewerUiControllerTest {
                 .expectStatus().isOk()
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
                 .expectBody(String.class)
-                .value(body -> assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId)));
+                .value(body -> assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId + "\"")));
     }
 
     @Test

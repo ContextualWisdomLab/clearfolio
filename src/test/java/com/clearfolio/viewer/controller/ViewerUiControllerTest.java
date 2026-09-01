@@ -185,7 +185,10 @@ class ViewerUiControllerTest {
                 .expectStatus().isOk()
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
                 .expectBody(String.class)
-                .value(body -> assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId + "\"")));
+                .value(body -> {
+                    assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId + "\""));
+                    assertFalse(body.contains("{{DOC_ID}}"));
+                });
     }
 
     @Test

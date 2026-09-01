@@ -39,6 +39,8 @@ class ViewerUiControllerTest {
                 .value(body -> {
                     assertTrue(body.contains("Document intake"));
                     assertTrue(body.contains("id=\"upload-form\""));
+                    assertTrue(body.contains("aria-hidden=\"true\""));
+                    assertTrue(body.contains("color: var(--danger);"));
                     assertTrue(body.contains("name=\"file\""));
                     assertTrue(body.contains("id=\"session-history\""));
                     assertTrue(body.contains("id=\"job-detail\""));

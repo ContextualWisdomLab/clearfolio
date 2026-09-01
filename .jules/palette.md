@@ -13,3 +13,7 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+
+## 2024-07-28 - Accessible Visual Required Indicators in Grid Layouts
+**Learning:** When adding visual required indicators (like `*`) to labels within a CSS `display: grid` container, simply appending the indicator can break the visual flow by forcing it onto a new row. Additionally, if the input already uses the HTML5 `required` attribute, screen readers will announce it automatically.
+**Action:** Always wrap the label text and the visual indicator in an inner `<span>` to preserve inline rendering within grid layouts. Ensure the visual indicator is hidden from screen readers using `aria-hidden="true"` to prevent redundant announcements, and style it inline with existing design tokens (e.g., `style="color: var(--danger);"`).

@@ -138,11 +138,34 @@ public class ViewerUiController {
                 </html>
                 """;
 
-        return template
-                .replace("{{DOC_ID}}", docIdString)
-                .replace("{{INITIAL_STATE}}", initialState)
-                .replace("{{PDFJS_MODULE_PATH}}", PDF_JS_MODULE_PATH)
-                .replace("{{PDFJS_WORKER_PATH}}", PDF_JS_WORKER_PATH);
+        // Avoids multiple allocations from chained replace() calls.
+        final int length = template.length() + docIdString.length()
+                + initialState.length() + PDF_JS_MODULE_PATH.length()
+                + PDF_JS_WORKER_PATH.length();
+        final StringBuilder sb = new StringBuilder(length);
+        int lastIndex = 0;
+        int idx = 0;
+        while ((idx = template.indexOf("{{", lastIndex)) != -1) {
+            sb.append(template, lastIndex, idx);
+            if (template.startsWith("{{DOC_ID}}", idx)) {
+                sb.append(docIdString);
+                lastIndex = idx + 10;
+            } else if (template.startsWith("{{INITIAL_STATE}}", idx)) {
+                sb.append(initialState);
+                lastIndex = idx + 17;
+            } else if (template.startsWith("{{PDFJS_MODULE_PATH}}", idx)) {
+                sb.append(PDF_JS_MODULE_PATH);
+                lastIndex = idx + 21;
+            } else if (template.startsWith("{{PDFJS_WORKER_PATH}}", idx)) {
+                sb.append(PDF_JS_WORKER_PATH);
+                lastIndex = idx + 21;
+            } else {
+                sb.append("{{");
+                lastIndex = idx + 2;
+            }
+        }
+        sb.append(template, lastIndex, template.length());
+        return sb.toString();
     }
 
     private static String demoShellHtml() {

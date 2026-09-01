@@ -3,6 +3,7 @@ package com.clearfolio.viewer.controller;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -76,12 +77,17 @@ class ViewerUiControllerTest {
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
                 .expectBody(String.class)
                 .value(body -> {
-                    assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId));
+                    assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId + "\""));
                     assertTrue(body.contains("clearfolio-initial-state\" content=\"LOADING\""));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
                     assertTrue(body.contains("target=\"_blank\" rel=\"noopener noreferrer\""));
                     assertTrue(body.contains("aria-label=\"Open JSON bootstrap in a new tab\""));
+                    assertFalse(body.contains("{{DOC_ID}}"));
+                    assertFalse(body.contains("{{INITIAL_STATE}}"));
+                    assertFalse(body.contains("{{PDFJS_MODULE_PATH}}"));
+                    assertFalse(body.contains("{{PDFJS_WORKER_PATH}}"));
+                    assertFalse(body.contains("{{UNKNOWN_VARIABLE}}"));
                 });
     }
 
@@ -183,7 +189,10 @@ class ViewerUiControllerTest {
                 .expectStatus().isOk()
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
                 .expectBody(String.class)
-                .value(body -> assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId)));
+                .value(body -> {
+                    assertTrue(body.contains("clearfolio-doc-id\" content=\"" + docId + "\""));
+                    assertFalse(body.contains("{{DOC_ID}}"));
+                });
     }
 
     @Test

@@ -28,11 +28,12 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 /**
  * HTTP adapter for tenant-authorized conversion administration.
  *
- * <p>The controller translates authenticated request context into application
- * service calls and HTTP responses. Resource ownership remains fail-closed:
- * callers may only observe or mutate jobs owned by their verified tenant. Audit
- * operator identifiers are delegated to a privacy-specific port so this adapter
- * never owns cryptographic key material or emits raw/weakly hashed principals.</p>
+ * <p>The controller authenticates the request, delegates tenant-scoped aggregate
+ * access to the conversion application service, and translates domain outcomes
+ * into HTTP responses. It never fetches a global job collection or raw
+ * cross-tenant aggregate to reconstruct ownership locally. Audit operator
+ * identifiers are delegated to a privacy-specific port so this adapter owns
+ * neither cryptographic key material nor persistent identity semantics.</p>
  */
 @RestController
 public class AdminController {
@@ -42,14 +43,14 @@ public class AdminController {
     private final RetryOperatorIdentityPort retryOperatorIdentity;
 
     /**
-     * Creates the admin HTTP adapter with explicit authorization and audit ports.
+     * Creates the admin HTTP adapter with explicit application, authorization,
+     * and audit-identity ports.
      *
-     * @param conversionService conversion application service that owns job
-     *                          lookup and lifecycle commands
-     * @param tenantAccessService verifies request claims, permissions, and tenant
-     *                            ownership before protected behavior is exposed
-     * @param retryOperatorIdentity converts authenticated subject identifiers to
-     *                              privacy-safe audit correlation metadata
+     * @param conversionService tenant-aware conversion application service that
+     *                          owns aggregate query and lifecycle authorization
+     * @param tenantAccessService verifies request claims and endpoint permissions
+     * @param retryOperatorIdentity converts authenticated subjects to privacy-safe
+     *                              audit correlation metadata
      */
     public AdminController(
             final DocumentConversionService conversionService,
@@ -63,9 +64,9 @@ public class AdminController {
     /**
      * Retrieves conversion jobs visible to the authenticated tenant.
      *
-     * <p>Authorization is evaluated before any job data is returned. The optional
-     * dead-letter filter changes only presentation and never widens the tenant
-     * boundary.</p>
+     * <p>Authorization runs before the tenant-scoped application query. The
+     * optional dead-letter filter is presentation behavior over an already
+     * tenant-bounded result and cannot widen the ownership boundary.</p>
      *
      * @param deadLettered optional filter for dead-lettered jobs
      * @param headers request headers containing tenant identity and permissions
@@ -77,13 +78,7 @@ public class AdminController {
             @RequestParam(required = false) final Boolean deadLettered,
             @RequestHeader final HttpHeaders headers) {
         final TenantContext context = tenantAccessService.require(headers, TenantPermissions.JOB_READ);
-        Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
-        List<ConversionJob> tenantJobs = new ArrayList<>();
-        for (ConversionJob job : allJobs) {
-            if (job.belongsToTenant(context.tenantId())) {
-                tenantJobs.add(job);
-            }
-        }
+        Iterable<ConversionJob> tenantJobs = conversionService.getJobsForTenant(context);
 
         if (deadLettered == null) {
             return AdminJobListResponse.from(tenantJobs);
@@ -101,21 +96,24 @@ public class AdminController {
     /**
      * Deletes one tenant-owned conversion job.
      *
+     * <p>Missing and cross-tenant identifiers are intentionally mapped to the
+     * same not-found response by the application service, preventing a resource
+     * existence oracle.</p>
+     *
      * @param jobId conversion job identifier
      * @param headers request headers containing tenant identity and delete permission
      * @return no content when the authorized deletion completes
      * @throws ResponseStatusException when the caller is unauthorized or the job
-     *         does not exist within the caller's tenant
+     *         is not visible within the caller's tenant
      */
     @DeleteMapping("/api/v1/admin/convert/jobs/{jobId}")
     public ResponseEntity<Void> deleteJob(
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
         final TenantContext context = tenantAccessService.require(headers, TenantPermissions.JOB_DELETE);
-        ConversionJob job = conversionService.getJob(jobId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
-        tenantAccessService.requireSameTenant(context, job);
-        conversionService.deleteJob(jobId);
+        if (!conversionService.deleteJob(jobId, context)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
         return ResponseEntity.noContent().build();
     }
 
@@ -123,14 +121,15 @@ public class AdminController {
      * Retries one tenant-owned dead-lettered conversion job.
      *
      * <p>The authenticated subject is converted through the dedicated audit
-     * identity port before it crosses into lifecycle state. This avoids storing
-     * plaintext principals or dictionary-recoverable unkeyed hashes while
-     * preserving versioned audit correlation when a dedicated key is configured.</p>
+     * identity port before the tenant-scoped lifecycle command runs. The
+     * application service collapses missing and cross-tenant resources to the
+     * same NOT_FOUND outcome, while the audit identifier remains correlation
+     * metadata rather than an authorization input.</p>
      *
      * @param jobId conversion job identifier
      * @param headers request headers containing tenant identity and retry permission
      * @return accepted when the retry transition is scheduled
-     * @throws ResponseStatusException for unauthorized, missing, cross-tenant, or
+     * @throws ResponseStatusException for unauthorized, missing/cross-tenant, or
      *         non-retryable jobs
      */
     @PostMapping("/api/v1/admin/convert/jobs/{jobId}/retry")
@@ -138,12 +137,8 @@ public class AdminController {
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
         final TenantContext context = tenantAccessService.require(headers, TenantPermissions.JOB_RETRY);
-        ConversionJob job = conversionService.getJob(jobId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
-        tenantAccessService.requireSameTenant(context, job);
-
         String operatorId = retryOperatorIdentity.pseudonymize(context.subjectId());
-        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, operatorId);
+        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, operatorId, context);
         if (result == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
         }

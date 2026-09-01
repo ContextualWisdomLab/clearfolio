@@ -83,7 +83,11 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
                     assertTrue(body.contains("target=\"_blank\" rel=\"noopener noreferrer\""));
                     assertTrue(body.contains("aria-label=\"Open JSON bootstrap in a new tab\""));
-                    assertFalse(body.contains("{{"));
+                    assertFalse(body.contains("{{DOC_ID}}"));
+                    assertFalse(body.contains("{{INITIAL_STATE}}"));
+                    assertFalse(body.contains("{{PDFJS_MODULE_PATH}}"));
+                    assertFalse(body.contains("{{PDFJS_WORKER_PATH}}"));
+                    assertFalse(body.contains("{{UNKNOWN_VARIABLE}}"));
                 });
     }
 

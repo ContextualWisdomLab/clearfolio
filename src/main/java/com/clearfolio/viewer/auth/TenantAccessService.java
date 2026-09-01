@@ -158,7 +158,23 @@ public class TenantAccessService {
         if (value == null) {
             return null;
         }
-        String cleaned = value.replace("\u0000", "").strip();
+
+        // ⚡ Bolt: Single-pass string sanitization
+        // Avoids multiple allocations from chained replace() calls.
+        StringBuilder sb = null;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '\u0000') {
+                if (sb == null) {
+                    sb = new StringBuilder(value.length());
+                    sb.append(value, 0, i);
+                }
+            } else if (sb != null) {
+                sb.append(c);
+            }
+        }
+
+        String cleaned = (sb == null ? value : sb.toString()).strip();
         return cleaned.isEmpty() ? null : cleaned;
     }
 }

@@ -1,25 +1,29 @@
 package com.clearfolio.viewer.controller;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-import com.clearfolio.viewer.model.ConversionJob;
-import com.clearfolio.viewer.service.DocumentConversionService;
-import com.clearfolio.viewer.service.RetryDeadLetterResult;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
-import org.springframework.http.HttpHeaders;
-import java.util.Optional;
+import com.clearfolio.viewer.model.ConversionJob;
+import com.clearfolio.viewer.service.DocumentConversionService;
+import com.clearfolio.viewer.service.RetryDeadLetterResult;
 
 class AdminControllerTest {
 
@@ -119,14 +123,20 @@ class AdminControllerTest {
         when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY))).thenReturn(context);
         ConversionJob job = new ConversionJob(jobId, "tenant-1", "user-1", "a.pdf", "application/pdf", "hash", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
-
-        String expectedHash = "b32817bf034f5dcb3ac5f1e8dc3a19fc82dd24409bb10bc1a1f0a2dbb059f131"; // hash of user-1
-        when(conversionService.retryDeadLettered(jobId, expectedHash)).thenReturn(RetryDeadLetterResult.ACCEPTED);
+        when(conversionService.retryDeadLettered(eq(jobId), anyString())).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
                 .expectStatus().isAccepted();
+
+        ArgumentCaptor<String> operatorIdentity = ArgumentCaptor.forClass(String.class);
+        verify(conversionService).retryDeadLettered(eq(jobId), operatorIdentity.capture());
+        assertNotEquals(
+                "b32817bf034f5dcb3ac5f1e8dc3a19fc82dd24409bb10bc1a1f0a2dbb059f131",
+                operatorIdentity.getValue(),
+                "low-entropy operator identifiers must not use an unkeyed SHA-256 fingerprint"
+        );
     }
 
     @Test
@@ -160,6 +170,6 @@ class AdminControllerTest {
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
-                .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+                .expectStatus().isEqualTo(409);
     }
 }

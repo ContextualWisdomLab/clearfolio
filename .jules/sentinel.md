@@ -32,7 +32,12 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
 ## 2026-08-29 - AdminController 인증 누락 취약점 수정
 **Vulnerability:** AdminController 내 민감한 관리자 API (조회, 삭제, 재시도)에 인증 및 테넌트 격리 검사가 누락됨.
-**Learning:** 내부 어드민 용도라도 멀티 테넌트 환경에서는 인증 및 인가를 필수로 적용해야 하며, 행위자 식별 시 AuditPseudonymizer를 통한 가명화가 필요함.
-**Prevention:** 모든 새로운 Controller 작성 시 기본적으로 인증, 인가(TenantAccessService), 그리고 테넌트 격리 로직을 필수로 구현할 것.
+**Learning:** 내부 어드민 용도라도 멀티 테넌트 환경에서는 인증 및 인가를 필수로 적용해야 하며, 행위자 식별 시 AuditPseudonymizer를 통한 가명화가 필요함. 관리자 권한은 호출자가 보낸 임의 헤더가 아니라 검증된 주체·권한·테넌트 속성에 근거해야 하고, 대상 테넌트와 mutation authority를 동일한 원자적 경계에서 확인해야 한다. 이는 역할 기반 접근제어(RBAC)의 명시적 권한 모델, 속성 기반 접근제어(ABAC)의 subject/object/action/environment 정책 평가, 그리고 OWASP ASVS의 서버 측 authorization 검증 원칙과 일치한다.
+**Prevention:** 모든 새로운 Controller 작성 시 기본적으로 서명·검증된 인증 문맥, 작업별 최소 권한(TenantAccessService), 테넌트 격리, tenant-scoped atomic mutation, 그리고 감사 식별자 가명화를 적용한다. 인증 문맥이 검증되지 않으면 fail closed하고, 조회 후 별도 ID-only mutation처럼 TOCTOU/IDOR를 만들 수 있는 경계를 금지한다.
+**Research basis (APA 7th):**
+- Hu, V. C., Ferraiolo, D., Kuhn, D. R., Schnitzer, A., Sandlin, K., Miller, R., & Scarfone, K. A. (2019). *Guide to attribute based access control (ABAC) definition and considerations* (NIST Special Publication 800-162). National Institute of Standards and Technology. https://doi.org/10.6028/NIST.SP.800-162
+- Open Worldwide Application Security Project. (2025). *Application Security Verification Standard (ASVS) 5.0.0*. OWASP Foundation.
+- Sandhu, R. S., Coyne, E. J., Feinstein, H. L., & Youman, C. E. (1996). Role-based access control models. *Computer, 29*(2), 38–47. https://doi.org/10.1109/2.485845

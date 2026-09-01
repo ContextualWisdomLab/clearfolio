@@ -4,6 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
+import com.clearfolio.viewer.security.AuditPseudonymizer;
+import com.clearfolio.viewer.config.ConversionProperties;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.RequestHeader;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,34 +33,60 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 @RestController
 public class AdminController {
 
+    /** Conversion service for jobs. */
     private final DocumentConversionService conversionService;
+    /** Tenant access service for isolation. */
+    private final TenantAccessService tenantAccessService;
+    /** Audit pseudonymizer for operator ID. */
+    private final AuditPseudonymizer auditPseudonymizer;
 
     /**
      * Creates a controller for admin operations.
      *
-     * @param conversionService conversion service
+     * @param svc conversion service
+     * @param accessSvc tenant access service
+     * @param properties conversion properties
      */
-    public AdminController(DocumentConversionService conversionService) {
-        this.conversionService = conversionService;
+    public AdminController(
+            final DocumentConversionService svc,
+            final TenantAccessService accessSvc,
+            final ConversionProperties properties) {
+        this.conversionService = svc;
+        this.tenantAccessService = accessSvc;
+        this.auditPseudonymizer = new AuditPseudonymizer(
+                properties.getAuditPseudonymSecret(),
+                properties.getAuditPseudonymKeyVersion());
     }
 
     /**
      * Retrieves all conversion jobs, optionally filtered by dead-letter status.
      *
      * @param deadLettered optional filter for dead-lettered jobs
+     * @param headers HTTP headers
      * @return list of conversion jobs
      */
     @GetMapping("/api/v1/admin/convert/jobs")
-    public AdminJobListResponse getAllJobs(@RequestParam(required = false) Boolean deadLettered) {
+    public AdminJobListResponse getAllJobs(
+            @RequestParam(required = false) final Boolean deadLettered,
+            @RequestHeader final HttpHeaders headers) {
+        final TenantContext context = tenantAccessService.requireSigned(
+                headers, TenantPermissions.JOB_READ);
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
 
         if (deadLettered == null) {
-            return AdminJobListResponse.from(allJobs);
+            List<ConversionJob> tenantAllJobs = new ArrayList<>();
+            for (ConversionJob job : allJobs) {
+                if (job.belongsToTenant(context.tenantId())) {
+                    tenantAllJobs.add(job);
+                }
+            }
+            return AdminJobListResponse.from(tenantAllJobs);
         }
 
         List<ConversionJob> filtered = new ArrayList<>();
         for (ConversionJob job : allJobs) {
-            if (job.isDeadLettered() == deadLettered) {
+            if (job.isDeadLettered() == deadLettered
+                    && job.belongsToTenant(context.tenantId())) {
                 filtered.add(job);
             }
         }
@@ -63,11 +97,18 @@ public class AdminController {
      * Deletes a conversion job.
      *
      * @param jobId conversion job identifier
+     * @param headers HTTP headers
      * @return no content on success
      */
     @DeleteMapping("/api/v1/admin/convert/jobs/{jobId}")
-    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId) {
-        conversionService.deleteJob(jobId);
+    public ResponseEntity<Void> deleteJob(
+            @PathVariable final UUID jobId,
+            @RequestHeader final HttpHeaders headers) {
+        final TenantContext context = tenantAccessService.requireSigned(
+                headers, TenantPermissions.JOB_DELETE);
+        if (!conversionService.deleteJob(jobId, context)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
         return ResponseEntity.noContent().build();
     }
 
@@ -75,16 +116,26 @@ public class AdminController {
      * Retries a dead-lettered conversion job.
      *
      * @param jobId conversion job identifier
+     * @param headers HTTP headers
      * @return accepted response on success
      */
     @PostMapping("/api/v1/admin/convert/jobs/{jobId}/retry")
-    public ResponseEntity<Void> retryDeadLettered(@PathVariable UUID jobId) {
-        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
+    public ResponseEntity<Void> retryDeadLettered(
+            @PathVariable final UUID jobId,
+            @RequestHeader final HttpHeaders headers) {
+        final TenantContext context = tenantAccessService.requireSigned(
+                headers, TenantPermissions.JOB_RETRY);
+        String operatorId = auditPseudonymizer.fingerprint(context.subjectId());
+        RetryDeadLetterResult result = conversionService
+                .retryDeadLettered(jobId, context, operatorId);
         if (result == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
         }
         if (result == RetryDeadLetterResult.NOT_ELIGIBLE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "job is not eligible for retry");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "job is not eligible for retry"
+            );
         }
         return ResponseEntity.accepted().build();
     }

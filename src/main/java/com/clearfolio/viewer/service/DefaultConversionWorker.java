@@ -211,7 +211,10 @@ public class DefaultConversionWorker implements ConversionWorker {
 
             try {
                 String convertedResourcePath = conversionTask.apply(jobId);
-                stateStore.markSucceeded(jobId, convertedResourcePath, "conversion completed");
+                JobMutationCoordinator.withJobLock(jobId, () -> {
+                    stateStore.markSucceeded(jobId, convertedResourcePath, "conversion completed");
+                    return null;
+                });
             } catch (Throwable ex) {
                 onFailure(claimed.get(), failureReason(ex));
                 if (ex instanceof VirtualMachineError error) {
@@ -277,10 +280,20 @@ public class DefaultConversionWorker implements ConversionWorker {
         ConversionJob job = repository.findById(jobId)
                 .orElseThrow(() -> new IllegalStateException("job not found"));
 
+        byte[] generatedPdf = null;
         if (artifactStore.getPdf(jobId).isEmpty()) {
-            artifactStore.putPdf(jobId, pdfArtifactGenerator.generatePdf(job));
+            generatedPdf = pdfArtifactGenerator.generatePdf(job);
         }
-        return "/artifacts/" + jobId + ".pdf";
+        final byte[] candidatePdf = generatedPdf;
+        return JobMutationCoordinator.withJobLock(jobId, () -> {
+            if (repository.findById(jobId).orElse(null) != job) {
+                throw new IllegalStateException("job deleted during conversion");
+            }
+            if (candidatePdf != null && artifactStore.getPdf(jobId).isEmpty()) {
+                artifactStore.putPdf(jobId, candidatePdf);
+            }
+            return "/artifacts/" + jobId + ".pdf";
+        });
     }
 
     private static ConversionJobStateStore stateStoreFrom(ConversionJobRepository repository) {

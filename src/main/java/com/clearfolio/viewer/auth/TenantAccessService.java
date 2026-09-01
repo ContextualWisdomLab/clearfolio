@@ -59,26 +59,30 @@ public class TenantAccessService {
     }
 
     /**
-     * Resolves tenant claims and verifies the required permission.
+     * Resolves tenant claims and verifies the required permission. Signature
+     * validation remains optional for non-administrative demo compatibility.
      *
      * @param headers request headers
      * @param permission required permission
      * @return verified tenant context
      */
     public TenantContext require(HttpHeaders headers, String permission) {
-        TenantContext context = TenantContext.fromHeaders(headers)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED,
-                        "auth token required"
-                ));
+        return require(headers, permission, false);
+    }
 
-        requireSignedClaimsWhenConfigured(headers, context);
-
-        if (!context.hasPermission(permission)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing permission: " + permission);
-        }
-
-        return context;
+    /**
+     * Resolves tenant claims and requires a valid gateway signature.
+     *
+     * <p>This boundary fails closed when the verifier secret is not configured,
+     * preventing caller-controlled tenant and permission headers from becoming
+     * administrator credentials.
+     *
+     * @param headers request headers
+     * @param permission required permission
+     * @return cryptographically verified tenant context
+     */
+    public TenantContext requireSigned(HttpHeaders headers, String permission) {
+        return require(headers, permission, true);
     }
 
     /**
@@ -93,8 +97,38 @@ public class TenantAccessService {
         }
     }
 
-    private void requireSignedClaimsWhenConfigured(HttpHeaders headers, TenantContext context) {
+    private TenantContext require(
+            HttpHeaders headers,
+            String permission,
+            boolean signatureRequired
+    ) {
+        TenantContext context = TenantContext.fromHeaders(headers)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "auth token required"
+                ));
+
+        requireSignedClaims(headers, context, signatureRequired);
+
+        if (!context.hasPermission(permission)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing permission: " + permission);
+        }
+
+        return context;
+    }
+
+    private void requireSignedClaims(
+            HttpHeaders headers,
+            TenantContext context,
+            boolean signatureRequired
+    ) {
         if (claimsHmacSecret == null) {
+            if (signatureRequired) {
+                throw new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "signed auth claims required"
+                );
+            }
             return;
         }
 

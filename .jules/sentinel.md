@@ -32,3 +32,7 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## 2026-07-02 - 관리자 API 인증 및 테넌트 격리 누락
+**Vulnerability:** AdminController의 엔드포인트(/api/v1/admin/convert/jobs 등)에 인증, 권한 부여(TenantAccessService) 및 테넌트 격리 검증이 누락되어 누구나 모든 테넌트의 작업에 접근하고 수정할 수 있었습니다.
+**Learning:** 관리자 API 엔드포인트라도 동일하게 인증 및 테넌트 컨텍스트 기반의 권한 제어가 필수적으로 적용되어야 하며, 데이터 조회/수정 시 소유권 확인(belongsToTenant)이 누락되면 심각한 권한 상승 및 정보 유출로 이어집니다.
+**Prevention:** 모든 새로운 컨트롤러 엔드포인트 작성 시 TenantAccessService를 통한 컨텍스트 확보와 리소스 소유권 확인(requireSameTenant)을 기본 템플릿처럼 포함시켜야 합니다.

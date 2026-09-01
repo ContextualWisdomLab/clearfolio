@@ -29,7 +29,9 @@ import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
  * <p>When the uploaded source is already a PDF (declared by extension or
  * content type and confirmed by the {@code %PDF-} magic header), the original
  * bytes are seeded into the artifact store so the worker serves the uploaded
- * document as-is instead of generating a placeholder.
+ * document as-is instead of generating a placeholder. Tenant-facing queries and
+ * lifecycle commands are scoped at this application-service boundary before an
+ * aggregate is returned to an external adapter or mutated.</p>
  */
 @Service
 public class DefaultDocumentConversionService implements DocumentConversionService {
@@ -217,6 +219,17 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
      * {@inheritDoc}
      */
     @Override
+    public Iterable<ConversionJob> getJobsForTenant(TenantContext tenantContext) {
+        if (tenantContext == null) {
+            return java.util.List.of();
+        }
+        return repository.findAllByTenant(tenantContext.tenantId());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean deleteJob(UUID jobId, TenantContext tenantContext) {
         if (tenantContext == null) {
             return false;
@@ -254,13 +267,26 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             return RetryDeadLetterResult.NOT_FOUND;
         }
 
-        ConversionJob job = existing.get();
-        if (!stateStore.retryDeadLettered(job.getJobId(), operatorId)) {
-            return RetryDeadLetterResult.NOT_ELIGIBLE;
+        return retryExistingJob(existing.get(), operatorId);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public RetryDeadLetterResult retryDeadLettered(
+            UUID jobId,
+            String operatorId,
+            TenantContext tenantContext) {
+        if (tenantContext == null) {
+            return RetryDeadLetterResult.NOT_FOUND;
+        }
+        Optional<ConversionJob> existing = repository.findByTenantAndId(tenantContext.tenantId(), jobId);
+        if (existing.isEmpty()) {
+            return RetryDeadLetterResult.NOT_FOUND;
         }
 
-        conversionWorker.enqueue(job.getJobId());
-        return RetryDeadLetterResult.ACCEPTED;
+        return retryExistingJob(existing.get(), operatorId);
     }
 
     /**
@@ -269,6 +295,15 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
     @Override
     public Iterable<ConversionJob> getAllJobs() {
         return repository.findAll();
+    }
+
+    private RetryDeadLetterResult retryExistingJob(ConversionJob job, String operatorId) {
+        if (!stateStore.retryDeadLettered(job.getJobId(), operatorId)) {
+            return RetryDeadLetterResult.NOT_ELIGIBLE;
+        }
+
+        conversionWorker.enqueue(job.getJobId());
+        return RetryDeadLetterResult.ACCEPTED;
     }
 
     private void seedPdfPassthroughArtifact(ConversionJob job, MultipartFile file) {
@@ -351,7 +386,6 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             }
 
             byte[] raw = digest.digest();
-            // Reused HexFormat for performance
             return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);

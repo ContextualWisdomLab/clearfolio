@@ -30,11 +30,11 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
  *
  * <p>The controller authenticates the request, delegates tenant-scoped
  * aggregate access to the conversion application service, and translates
- * domain outcomes
- * into HTTP responses. It never fetches a global job collection or raw
- * cross-tenant aggregate to reconstruct ownership locally. Audit operator
- * identifiers are delegated to a privacy-specific port so this adapter owns
- * neither cryptographic key material nor persistent identity semantics.</p>
+ * domain outcomes into HTTP responses. It never fetches a global job
+ * collection or raw cross-tenant aggregate to reconstruct ownership locally.
+ * Audit operator identifiers are delegated to a privacy-specific port so this
+ * adapter owns neither cryptographic key material nor persistent identity
+ * semantics.</p>
  */
 @RestController
 public class AdminController {
@@ -109,8 +109,8 @@ public class AdminController {
      * Deletes one tenant-owned conversion job.
      *
      * <p>Missing and cross-tenant identifiers are intentionally mapped to the
-     * same not-found response by the application service, preventing a resource
-     * existence oracle.</p>
+     * same not-found response by the application service, preventing a
+     * resource existence oracle.</p>
      *
      * @param jobId conversion job identifier
      * @param headers HTTP headers with tenant claims

@@ -1,8 +1,8 @@
 # Product and Technical Gap Baseline
 
-Last code-current verification: 2026-09-02
+Last code-current verification: 2026-09-03
 Verification branch: `fix/admin-auth-tenant-isolation-7430428408399025558`
-Verification head at authoring: `42831e05f6bd4bac980a4fb07a7389338059ace5`
+Verification head at authoring: `cccc8838cce335b8382352f2d0772ca0cfcb5d8a`
 Integration base at authoring: `main@06633a25109c62e24a7015ae04fb9f6e0a246f7e`
 
 This document is the repository-level, code-current baseline for product responsibility,
@@ -48,7 +48,7 @@ HTTP adapters
        -> ArtifactStore (artifact port)
   -> RetryOperatorIdentityPort (audit-identity privacy port)
        -> HmacRetryOperatorIdentityAdapter
-            -> ConversionProperties audit pseudonym key/version
+            -> ConversionProperties audit pseudonym key/version [known KV-policy deviation]
 ```
 
 Dependency direction is inward toward application/domain contracts. `AdminController`
@@ -76,27 +76,40 @@ Current aggregate/application invariants:
 
 1. Protected admin behavior authenticates and checks the required permission before a
    tenant-scoped application query or command.
-2. Missing and cross-tenant job identifiers are indistinguishable to the admin HTTP
+2. The Spring runtime fails closed with `503 Service Unavailable` when tenant-claim HMAC
+   verification key material is absent; unsigned header trust is confined to the explicit
+   no-argument compatibility constructor used by manually bound controller/unit tests.
+3. Missing and cross-tenant job identifiers are indistinguishable to the admin HTTP
    surface and map to `404` rather than providing an existence oracle.
-3. Tenant-facing adapters use tenant-scoped `DocumentConversionService` operations;
+4. Tenant-facing adapters use tenant-scoped `DocumentConversionService` operations;
    ownership is not duplicated as controller-local filtering.
-4. `DefaultDocumentConversionService` resolves tenant ownership through
+5. `DefaultDocumentConversionService` resolves tenant ownership through
    `ConversionJobRepository` before returning or mutating an aggregate.
-5. Manual retry changes lifecycle state only when `ConversionJobStateStore` accepts the
+6. Manual retry changes lifecycle state only when `ConversionJobStateStore` accepts the
    dead-letter transition; otherwise it returns a typed non-eligible outcome.
-6. Retry audit identity uses keyed HMAC with a retry-specific domain and key version. A
+7. Retry audit identity uses keyed HMAC with a retry-specific domain and key version. A
    missing correlation key produces a non-correlatable unavailable marker, never a raw
    subject or unkeyed subject digest.
-7. Audit correlation metadata is not authorization evidence and must not be promoted into
+8. Audit correlation metadata is not authorization evidence and must not be promoted into
    a business approval, risk acceptance, or compliance truth.
 
 ## Current PR #541 security/SOLID/TDD repair
 
-The active candidate repairs a CRITICAL broken-access-control path and two design defects:
+The active candidate repairs a CRITICAL broken-access-control path and related design
+defects:
 
 - missing admin request authentication/permission and tenant isolation;
+- runtime fail-open behavior when the tenant-claim HMAC verifier is unavailable;
 - dictionary-recoverable unkeyed SHA-256 retry-operator identifiers;
 - HTTP-layer ownership reconstruction from global/unscoped application queries.
+
+The fail-open tenant-claim defect is repaired at source-bearing head
+`cccc8838cce335b8382352f2d0772ca0cfcb5d8a`: the Spring `@Autowired` runtime constructor
+sets `allowUnsignedClaims=false`, and `requireSignedClaimsWhenConfigured` returns
+`503 Service Unavailable` instead of trusting caller-supplied tenant/permission headers
+when the verifier secret is absent. The explicit no-argument constructor remains a
+compatibility boundary for manually bound controller and unit tests and is not selected
+by Spring runtime injection.
 
 TDD evidence was established before the corresponding production repairs:
 
@@ -115,7 +128,8 @@ model-only evidence are non-passing.
 
 | Gap | Buyer / operational impact | Current evidence | Required next acceptance | State |
 | --- | --- | --- | --- | --- |
-| Admin tenant isolation and privacy-safe retry audit identity | Prevents cross-tenant exposure/mutation and offline recovery of low-entropy operator IDs | PR #541 exact-head implementation and production-boundary tests | Unchanged exact head must pass full repository/security/coverage/Javadoc/package/provenance gates and then normal protected-branch review/merge governance | In progress |
+| Admin tenant isolation and privacy-safe retry audit identity | Prevents cross-tenant exposure/mutation and offline recovery of low-entropy operator IDs | PR #541 source-bearing head `cccc8838...` plus production-boundary tests | Current descendant must pass full repository/security/coverage/Javadoc/package/provenance gates and then normal protected-branch review/merge governance | In progress |
+| Runtime credential registry migration | New retry-audit key and existing tenant/artifact HMAC secrets still resolve through Spring configuration instead of the repository-mandated KV/credential-registry runtime boundary | `HmacRetryOperatorIdentityAdapter`, `ConversionProperties`, `TenantAccessService`, `AGENTS.md` known-deviation policy | Introduce/reuse a DB/KV-backed credential port and adapter; bootstrap env/Spring transport into registry only; prove missing/unavailable registry fails closed and rotate/version keys without raw-secret logging | Open security gap |
 | Durable conversion-job persistence | Restart/concurrency behavior remains bounded by in-memory repository except explicit recovery abstractions | `ConversionJobRepository`, `ConversionJobStateStore`, durable repository plan | PostgreSQL adapter with tenant-native queries, idempotent UPSERT/lifecycle transitions, realistic concurrency/recovery tests, 3NF schema and lock contract | Planned |
 | Native document conversion | Non-PDF sources still use placeholder generation rather than full office-format fidelity | `PdfBoxArtifactGenerator`, architecture docs | Format-specific adapter boundaries plus representative real-document fidelity tests and safe resource limits | Planned |
 | Downstream S2S preview-session orchestration | End-to-end enterprise/mobile preview chain is not yet product-complete | `docs/diagrams/preview-flow.md`, architecture target chain | Explicit session/authn/authz contract, failure/retry/timeout evidence and deployment ownership | Planned |
@@ -137,9 +151,10 @@ must preserve these contracts before it can replace the current adapter:
   are tested under concurrent workers;
 - read scaling must not weaken strong-consistency requirements for lifecycle mutation.
 
-## Security and privacy traceability
+## Security, research, and privacy traceability
 
-The active repair is aligned with current authoritative guidance as follows:
+The active repair is aligned with current authoritative guidance and peer-reviewed
+research as follows:
 
 - OWASP ASVS 5.0.0 is the current released ASVS baseline (released 2025-05-30). Its
   authorization requirements reinforce enforcing access decisions at protected resource
@@ -148,14 +163,34 @@ The active repair is aligned with current authoritative guidance as follows:
   control baseline for access enforcement and audit/accountability assurance. This
   repository maps tenant-scoped application enforcement to AC-family intent and keeps
   privacy-safe audit correlation distinct from authorization authority.
-- HMAC follows the keyed construction described by RFC 2104. Clearfolio adds an explicit
-  application-domain separator and versioned dedicated audit key so identical subject
-  identifiers are not reused as the same audit fingerprint across unrelated purposes.
+- HMAC follows RFC 2104 and the peer-reviewed CRYPTO '96 construction by Bellare,
+  Canetti, and Krawczyk. Clearfolio adds an application-domain separator and versioned
+  dedicated audit key so identical subject identifiers are not reused as the same audit
+  fingerprint across unrelated purposes.
+- Sandhu, Coyne, Feinstein, and Youman's peer-reviewed RBAC model separates users, roles,
+  and permissions. Clearfolio's `TenantContext` permission check is not claimed to be a
+  full RBAC implementation, but the research supports keeping authorization grants
+  explicit rather than inferring them from resource identifiers or audit metadata.
 
 These references support engineering controls; they are not claims that Clearfolio is
 certified or that a particular deployment satisfies a compliance framework.
 
+### Research redistribution assessment
+
+No third-party paper PDF is added by this repair. The CRYPTO '96 HMAC paper is published
+by Springer and indexed as closed-access; the repository cites the DOI and a bibliographic
+record rather than redistributing publisher content. The RBAC paper is available from a
+NIST-hosted PDF, but the publication is an IEEE article and the repository has not
+established redistribution rights for copying that PDF into source control. It is
+therefore cited and linked rather than vendored. This follows `AGENTS.md`: attach papers
+only when redistribution is permissible; otherwise retain citation, link, and a short
+engineering summary.
+
 ### References (APA 7th)
+
+Bellare, M., Canetti, R., & Krawczyk, H. (1996). Keying hash functions for message
+authentication. In N. Koblitz (Ed.), *Advances in cryptology—CRYPTO '96* (Lecture Notes
+in Computer Science, Vol. 1109, pp. 1–15). Springer. https://doi.org/10.1007/3-540-68697-5_1
 
 Joint Task Force. (2020). *Security and privacy controls for information systems and
 organizations (NIST Special Publication 800-53, Revision 5)*. National Institute of
@@ -166,6 +201,9 @@ authentication (RFC 2104)*. RFC Editor. https://doi.org/10.17487/RFC2104
 
 OWASP Foundation. (2025). *OWASP Application Security Verification Standard (ASVS),
 version 5.0.0*. https://owasp.org/www-project-application-security-verification-standard/
+
+Sandhu, R. S., Coyne, E. J., Feinstein, H. L., & Youman, C. E. (1996). Role-based access
+control models. *Computer, 29*(2), 38–47. https://doi.org/10.1109/2.485845
 
 ## Evidence discipline and release gate
 

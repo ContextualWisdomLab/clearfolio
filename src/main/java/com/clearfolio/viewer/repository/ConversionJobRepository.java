@@ -10,12 +10,7 @@ import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
 
 /**
- * Persistence port for conversion-job aggregate state.
- *
- * <p>Tenant-aware application operations should use tenant-scoped repository
- * methods so foreign rows are filtered at the persistence boundary whenever the
- * concrete adapter can do so natively. Default implementations preserve current
- * in-memory/legacy adapters without changing tenant semantics.</p>
+ * Persistence abstraction for conversion jobs.
  */
 public interface ConversionJobRepository {
 
@@ -37,7 +32,7 @@ public interface ConversionJobRepository {
     ConversionJob save(ConversionJob job);
 
     /**
-     * Finds a conversion job by identifier for trusted internal paths.
+     * Finds a conversion job by identifier.
      *
      * @param jobId conversion job identifier
      * @return matching conversion job when found
@@ -66,10 +61,6 @@ public interface ConversionJobRepository {
     /**
      * Finds a conversion job by tenant and identifier.
      *
-     * <p>Concrete durable adapters should implement this predicate in their
-     * storage query. The compatibility default filters the single retrieved
-     * aggregate and never changes not-found versus cross-tenant semantics.</p>
-     *
      * @param tenantId tenant identifier
      * @param jobId conversion job identifier
      * @return matching conversion job when found and owned by the tenant
@@ -79,32 +70,11 @@ public interface ConversionJobRepository {
     }
 
     /**
-     * Returns a snapshot of all known conversion jobs for trusted internal and
-     * recovery behavior.
+     * Returns a snapshot of all known conversion jobs.
      *
      * @return current conversion jobs
      */
     List<ConversionJob> findAll();
-
-    /**
-     * Returns only conversion jobs owned by the supplied tenant.
-     *
-     * <p>Durable adapters should push this predicate into SQL or their native
-     * storage query. The compatibility default is intentionally correct before
-     * it is optimal and prevents tenant filtering from being duplicated in
-     * delivery adapters.</p>
-     *
-     * @param tenantId tenant identifier
-     * @return current conversion jobs owned by the tenant
-     */
-    default List<ConversionJob> findAllByTenant(String tenantId) {
-        if (tenantId == null) {
-            return List.of();
-        }
-        return findAll().stream()
-                .filter(job -> job.belongsToTenant(tenantId))
-                .toList();
-    }
 
     /**
      * Finds jobs that should be considered for recovery after worker restart.
@@ -132,8 +102,7 @@ public interface ConversionJobRepository {
     FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate);
 
     /**
-     * Deletes a conversion job by identifier for a caller that has already
-     * established aggregate ownership.
+     * Deletes a conversion job by identifier.
      *
      * @param jobId conversion job identifier
      */

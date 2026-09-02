@@ -44,6 +44,19 @@ class TenantContextTest {
     }
 
     @Test
+    void sanitizeDropsNullCharacters() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(TenantContext.TENANT_ID_HEADER, "ten\u0000ant-a");
+        headers.add(TenantContext.SUBJECT_ID_HEADER, "us\u0000er-1");
+        headers.add(TenantContext.PERMISSIONS_HEADER, "job:read");
+
+        TenantContext context = TenantContext.fromHeaders(headers).orElseThrow();
+
+        assertEquals("tenant-a", context.tenantId());
+        assertEquals("user-1", context.subjectId());
+    }
+
+    @Test
     void fromHeadersReturnsEmptyWhenTenantOrSubjectIsBlank() {
         HttpHeaders blankTenant = new HttpHeaders();
         blankTenant.add(TenantContext.TENANT_ID_HEADER, " \u0000 ");

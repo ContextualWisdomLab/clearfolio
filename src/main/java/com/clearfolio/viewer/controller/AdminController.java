@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import com.clearfolio.viewer.security.AuditPseudonymizer;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.clearfolio.viewer.api.AdminJobListResponse;
 import com.clearfolio.viewer.model.ConversionJob;
@@ -25,15 +28,35 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 @RestController
 public class AdminController {
 
+    /**
+     * Conversion service for administrative actions.
+     */
     private final DocumentConversionService conversionService;
+
+    /**
+     * Pseudonymizer for operator tracking.
+     */
+    private final AuditPseudonymizer auditPseudonymizer;
 
     /**
      * Creates a controller for admin operations.
      *
-     * @param conversionService conversion service
+     * @param docConversionService conversion service
+     * @param auditSecret secret for audit
+     * @param auditKeyVersion key version for audit
      */
-    public AdminController(DocumentConversionService conversionService) {
-        this.conversionService = conversionService;
+    public AdminController(
+            final DocumentConversionService docConversionService,
+            @Value("${conversion.audit-pseudonym-secret:}")
+            final String auditSecret,
+            @Value("${conversion.audit-pseudonym-key-version:}")
+            final String auditKeyVersion) {
+        this.conversionService = docConversionService;
+        this.auditPseudonymizer = new AuditPseudonymizer(
+                auditSecret,
+                auditKeyVersion,
+                "clearfolio:admin-operator:v1"
+        );
     }
 
     /**
@@ -43,7 +66,9 @@ public class AdminController {
      * @return list of conversion jobs
      */
     @GetMapping("/api/v1/admin/convert/jobs")
-    public AdminJobListResponse getAllJobs(@RequestParam(required = false) Boolean deadLettered) {
+    public AdminJobListResponse getAllJobs(
+            @RequestParam(required = false) final Boolean deadLettered
+    ) {
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
 
         if (deadLettered == null) {
@@ -66,7 +91,7 @@ public class AdminController {
      * @return no content on success
      */
     @DeleteMapping("/api/v1/admin/convert/jobs/{jobId}")
-    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId) {
+    public ResponseEntity<Void> deleteJob(@PathVariable final UUID jobId) {
         conversionService.deleteJob(jobId);
         return ResponseEntity.noContent().build();
     }
@@ -75,16 +100,26 @@ public class AdminController {
      * Retries a dead-lettered conversion job.
      *
      * @param jobId conversion job identifier
+     * @param operatorId operator identifier
      * @return accepted response on success
      */
     @PostMapping("/api/v1/admin/convert/jobs/{jobId}/retry")
-    public ResponseEntity<Void> retryDeadLettered(@PathVariable UUID jobId) {
-        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
+    public ResponseEntity<Void> retryDeadLettered(
+            @PathVariable final UUID jobId,
+            @RequestHeader(
+                    value = "X-Operator-Id",
+                    required = false
+            ) final String operatorId) {
+        String pseudonym = auditPseudonymizer.fingerprint(operatorId);
+        RetryDeadLetterResult result = conversionService.retryDeadLettered(
+                jobId, pseudonym);
         if (result == RetryDeadLetterResult.NOT_FOUND) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
         }
         if (result == RetryDeadLetterResult.NOT_ELIGIBLE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "job is not eligible for retry");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "job is not eligible for retry");
         }
         return ResponseEntity.accepted().build();
     }

@@ -50,7 +50,7 @@ public final class AuditPseudonymizer {
      * @param keyVersion non-sensitive key-rotation identifier
      * @param domain stable protocol-specific domain separator
      */
-    AuditPseudonymizer(String secret, String keyVersion, String domain) {
+    public AuditPseudonymizer(String secret, String keyVersion, String domain) {
         this.secretBytes = configuredSecretBytes(secret);
         this.keyVersion = normalizeKeyVersion(keyVersion);
         this.domain = requireDomain(domain);

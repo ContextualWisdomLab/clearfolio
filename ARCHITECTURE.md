@@ -1,6 +1,6 @@
 # Architecture Map
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
 ## Document authority
 
@@ -59,10 +59,13 @@ The HTTP adapter must not fetch global/unscoped conversion aggregates and recons
   - Delegates retry audit correlation to `RetryOperatorIdentityPort`.
 - `TenantAccessService` (`src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`)
   - Verifies signed tenant claims and permission requirements before protected request behavior.
+  - The Spring runtime fails closed with `503 Service Unavailable` when tenant-claim HMAC verifier material is unavailable; it does not trust caller-supplied tenant/permission headers in that state.
+  - The explicit no-argument unsigned compatibility constructor exists for manually bound controller/unit tests and is not selected by Spring runtime injection.
   - Cross-tenant resource existence is intentionally hidden from external callers.
 - `RetryOperatorIdentityPort` and `HmacRetryOperatorIdentityAdapter` (`src/main/java/com/clearfolio/viewer/security/`)
   - Produce versioned, keyed, purpose-separated retry audit pseudonyms from the dedicated audit pseudonym key.
   - Missing key material yields a non-correlatable unavailable marker rather than plaintext or an unkeyed subject digest.
+  - Current source still receives runtime key material through Spring configuration; `AGENTS.md` requires migration to a KV/credential-registry lookup before this security lane is merge-ready.
 - `ViewerUiController` (`src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`)
   - `GET /viewer/{docId}`: HTML viewer UI entrypoint (loading/failed/ready) that embeds PDF.js.
 - `ArtifactController` (`src/main/java/com/clearfolio/viewer/controller/ArtifactController.java`)

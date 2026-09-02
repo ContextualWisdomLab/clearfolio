@@ -1,146 +1,117 @@
 # Clearfolio Viewer
 
-This repository contains the MVP backend for an integrated document viewer platform.
-The current implementation includes non-blocking submit, job status polling, and
-asynchronous conversion that produces an in-memory PDF artifact for preview.
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/ContextualWisdomLab/clearfolio)
 
-## Quick Start
+Clearfolio is an independently deployable secure document-conversion and viewing service. It can also compose with naruon and other ContextualWisdomLab hosts through explicit versioned APIs without shared application-database ownership.
 
-1. Build and verify compilation:
-   - `mvn -DskipTests compile`
-2. Run tests:
-   - `mvn test`
-3. Start the app locally:
-   - `mvn spring-boot:run`
-4. Check readiness:
-   - `curl -sS http://localhost:8080/healthz`
+The current runtime is Java 21 / Spring Boot WebFlux. Upload submission is non-blocking, conversion lifecycle work is delegated to bounded background workers, viewer bootstrap and artifact access are tenant-scoped, and the canonical artifact route uses short-lived signed token, revocation, integrity, Range, and read-audit controls.
 
-## Scope
+## Product truth
 
-- `GET /`: buyer-demo upload, status, KPI, KPI snapshot evidence,
-  operator recovery evidence, session-history shell, and a static
-  `Load demo story` seed for buyer screenshots and Figma review.
-- `POST /api/v1/convert/jobs`: upload document and receive async job id.
-- `GET /api/v1/convert/jobs/{jobId}`: poll conversion status and lifecycle fields.
-- `POST /api/v1/convert/jobs` response includes `jobId`, `status`, and `statusUrl`.
-- `POST /api/v1/convert/jobs/{jobId}/retry`: operator-triggered retry for dead-lettered jobs.
-- `GET /viewer/{docId}`: canonical HTML viewer UI entrypoint (mobile-safe loading/failed/ready states).
-- `GET /api/v1/viewer/{docId}` and `GET /api/v1/convert/viewer/{docId}`: viewer bootstrap JSON with a short-lived signed artifact URL.
-- `POST /api/v1/viewer/{docId}/artifact-links`: create a tenant-bound signed artifact URL for succeeded jobs.
-- `GET /api/v1/analytics/kpi-snapshot`: current conversion KPI counters and optional snapshot evidence for demo and diligence evidence.
-- `GET /api/v1/analytics/kpi-snapshot-exports`: tenant-scoped exported KPI snapshot evidence.
-- `GET /artifacts/{docId}.pdf`: serves converted PDF bytes (SUCCEEDED jobs only) with single-range support after artifact token verification.
-- Errors follow shared shape (`errorCode`, optional `code`, `message`, `traceId`, `details`) for 404/409/400/500 paths.
-- `GET /healthz`: readiness probe.
-- HWP/HWPX are blocked by configuration.
+- Validated PDF passthrough and PDF.js viewing are implemented on protected main.
+- Non-PDF `PdfBoxArtifactGenerator` output is a **development/demo one-page placeholder**, not a faithful DOCX/HWP/Office conversion claim.
+- The default conversion-job repository remains process-local. Filesystem artifacts and selected append-only ledgers provide only their documented local restart continuity, not a durable distributed job system.
+- Production identity-provider integration, real Office fidelity, durable distributed jobs/backpressure/cancellation, full OpenTelemetry/SLO evidence, and release-grade remote persistence remain product gaps or active work as classified in the canonical docs.
+- Active pull-request behavior is never treated as protected-main functionality until integrated and revalidated.
 
-Protected JSON APIs require Clearfolio tenant headers in the current buyer-demo
-runtime: `X-Clearfolio-Tenant-Id`, `X-Clearfolio-Subject-Id`, and
-`X-Clearfolio-Permissions`. The built-in demo shell sends `buyer-demo` headers
-automatically. These headers are a runtime enforcement scaffold, not production
-OIDC/JWT validation. Deployments can set
-`clearfolio.tenant-claims.hmac-secret` to require gateway-signed tenant headers
-with `X-Clearfolio-Claims-Issued-At` and `X-Clearfolio-Claims-Signature`;
-validated OIDC/JWT issuer, audience, expiry, revocation, and role mapping remain
-production gaps. Buyer sandbox deployments should use the `buyer-demo` Spring
-profile and follow
-`docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`.
+## Quick start
 
-## Compatibility notes
+Run repository acceptance first:
 
-- API contract has been kept backward-compatible with the existing jobs + viewer flow.
-- `GET /viewer/{docId}` remains the canonical entry route, but now serves HTML (PDF.js viewer).
-- Alias endpoints remain stable, with signed artifact link fields added to
-  viewer bootstrap responses.
-- Dead-letter terminal cases keep `status=FAILED` in API payloads and set
-  `deadLettered=true` when retries are exhausted.
-- Dead-lettered jobs can be re-queued by an operator with
-  `X-Clearfolio-Operator-Id` via `/api/v1/convert/jobs/{jobId}/retry`.
-- The buyer-demo shell summarizes session-scoped operator recovery evidence:
-  needs-action documents, retry-ready dead-lettered jobs, last accepted retry,
-  and latest inspected job detail. This is demo evidence, not a production admin
-  console.
-- The `Load demo story` control loads
-  `src/main/resources/static/assets/viewer/demo-fixtures.json` into the current
-  browser session. The fixture covers succeeded, processing, unsupported-format,
-  and dead-lettered states plus KPI snapshot/export evidence for screenshot and
-  FigJam handoff work. It is static local demo data, not production seed data.
-- Status, viewer bootstrap, retry, and KPI JSON APIs enforce tenant permission
-  headers and hide cross-tenant jobs as `404`.
-- Tenant headers can be HMAC-signed by a trusted gateway when
-  `clearfolio.tenant-claims.hmac-secret` is configured; unsigned local demo mode
-  should not be exposed as a production internet boundary.
-- `GET /viewer/{docId}` returns an HTML shell without checking job existence;
-  the protected JSON APIs determine visible state.
-- Artifact reads now require a signed `artifactToken` query parameter or bearer
-  token. Issued tokens are recorded in a runtime ledger, can be revoked by
-  `tokenId`, and successful artifact reads are exposed as tenant-scoped audit
-  evidence. Deployments can set `clearfolio.artifact-link-ledger.path` to
-  replay issued-link, revocation, and read-audit metadata from a local
-  append-only ledger file after restart. Centralized durable persistence and
-  object-store metadata remain open.
-- Deployments can set `clearfolio.analytics-snapshot-ledger.path` to append
-  exported KPI snapshots to a local file and replay them after a single-process
-  restart. `GET /api/v1/analytics/kpi-snapshot-exports` exposes the same
-  evidence to authorized tenant callers, and the buyer-demo shell renders the
-  latest export count, subject, export time, and runtime job count without
-  showing tenant ids. This is buyer-demo evidence continuity, not the full
-  durable metrics event stream described in
-  `docs/analytics/2026-07-02-durable-metrics-event-model.md`.
-- `DefaultConversionWorker` runs a startup recovery sweep using
-  `conversion.processing-lease-timeout-ms` to re-enqueue due `SUBMITTED` jobs
-  and stale retryable `PROCESSING` jobs while repository state is available.
-  The default in-memory runtime still loses conversion jobs across process
-  restart until the planned SQL repository profile is implemented.
+```bash
+mvn -B --no-transfer-progress verify
+python3 scripts/verify_maven_test_reports.py
+python3 -m unittest discover -s scripts
+```
 
-## Acceptance gates (current)
+Then run the local application smoke in two terminals so the foreground Spring process remains alive:
 
-- Mandatory: test coverage 100%, docstring 100%, non-blocking request path,
-  lightweight event queue, warning count 0, deprecated usage 0,
-  and one-day delivery schedule with security verification evidence.
-- Optional: DB pooler client path (when DB is introduced), PostgreSQL 17 support track.
+```bash
+# Terminal 1
+mvn spring-boot:run
+```
 
-Current release claim boundary:
-- Mandatory gates are validated through committed evidence under `docs/qa/evidence/`.
-- Optional DB pooler/PostgreSQL 17 tracks are documented only and not executed in this MVP release.
-- Conversion lifecycle transitions now use an explicit in-repo state-store
-  boundary and append a process-local lifecycle event trail for submission,
-  dedupe hits, processing start, retry scheduling, success, failure, and
-  operator retry acceptance. The worker can also recover due submitted jobs and
-  stale processing leases from the available repository state at startup. The
-  default runtime remains process-local until a SQL profile is introduced.
+```bash
+# Terminal 2, after Terminal 1 reports the application started
+curl -fsS http://localhost:8080/healthz
+```
 
-## Delivery schedule
+Focused tests may be used during RED/GREEN development, but final local acceptance uses `mvn verify` plus the test-report verifier. Merge/release acceptance requires current exact-head GitHub evidence according to repository policy.
 
-- One-day customer delivery plan (including security verification):
-  - `docs/plans/2026-02-20-24h-customer-delivery-plan.md`
+## Primary API surfaces
 
-## Documentation references
+- `POST /api/v1/convert/jobs` — bounded asynchronous upload/submit.
+- `GET /api/v1/convert/jobs/{jobId}` — tenant-scoped lifecycle status.
+- `POST /api/v1/convert/jobs/{jobId}/retry` — controlled dead-letter retry.
+- `GET /viewer/{docId}` — canonical HTML/PDF.js viewer entry.
+- `GET /api/v1/viewer/{docId}` and compatibility alias — protected viewer bootstrap.
+- `POST /api/v1/viewer/{docId}/artifact-links` — create a short-lived tenant-bound signed artifact link.
+- `POST /api/v1/viewer/artifact-links/{tokenId}/revoke` — revoke an issued artifact token when authorized.
+- `GET /api/v1/viewer/{docId}/artifact-read-events` — tenant-scoped artifact-read audit evidence.
+- `GET /artifacts/{docId}.pdf` — canonical signed PDF byte delivery with zero-or-one HTTP Range support.
+- `GET /api/v1/convert/jobs/{jobId}/download` — direct-download convenience path; its final accepted security contract is the canonical signed artifact-delivery authority, not permission-only byte access.
+- analytics/admin/health surfaces are documented in `docs/API_CONTRACT.md` and live source; some stronger admin/readiness contracts remain active-PR work and are explicitly labelled there.
 
-- `docs/architecture.md`
-- `docs/prd-integrated-document-viewer-platform.md`
-- `docs/trd-integrated-document-viewer-platform.md`
-- `docs/diagrams/submit-flow.md`
-- `docs/diagrams/status-flow.md`
-- `docs/diagrams/preview-flow.md`
-- `docs/diagrams/retry-deadletter-flow.md`
-- `docs/business/2026-07-02-krw2b-valuation-kpi-model.md`
-- `docs/design/2026-07-02-buyer-demo-kpi-figjam-handoff.md`
-- `docs/deployment/2026-07-02-buyer-deployment-integration-playbook.md`
-- `docs/deployment/clearfolio-buyer-connector.openapi.yaml`
-- `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`
-- `docs/diligence/2026-07-02-buyer-diligence-index.md`
-- `docs/security/2026-07-02-threat-model-data-handling.md`
-- `docs/security/2026-07-02-signed-artifact-link-design.md`
-- `docs/security/2026-07-02-auth-tenant-model.md`
-- `docs/security/2026-07-02-license-allowlist-review.md`
-- `docs/security/2026-07-02-license-policy.json`
-- `docs/analytics/2026-07-02-durable-metrics-event-model.md`
-- `docs/qa/evidence/2026-07-02-krw2b-sale-readiness/seeded-demo-story-verification.md`
+Protected JSON/document APIs use Clearfolio tenant/subject/permission authority. The current buyer-demo scaffold can carry header-based claims and configured signatures; it is not a substitute for production IdP/OIDC issuer, audience, expiry, revocation, and enterprise role mapping.
 
-## Transfer metadata
+## Lifecycle
 
-- Target owner repo: to be set during transfer.
-- Tech stack: Java 21 / Spring Boot / Maven.
-- Primary package: `com.clearfolio.viewer`.
-- Current branch default assumption: `main`.
+Public conversion lifecycle values are:
+
+```text
+SUBMITTED → PROCESSING → SUCCEEDED
+                 ↘ retry/recovery → SUBMITTED
+                 ↘ terminal/exhausted → FAILED
+FAILED + dead-letter evidence → authorized retry → SUBMITTED
+```
+
+Retry exhaustion remains `FAILED` with dead-letter evidence rather than a separate public terminal enum.
+
+## Security highlights
+
+- uploaded documents and document-derived strings are untrusted;
+- blocked/oversized/malformed requests fail closed;
+- cross-tenant resources are concealed according to the API contract;
+- document-byte permission and signed artifact-token authority are separate controls;
+- canonical signed reads bind tenant, subject, document, scope, purpose, checksum, issuance, expiry and revocation and record controlled read evidence;
+- raw tokens, signatures and unnecessary sensitive identifiers must not be logged;
+- active-content/macro execution and implicit external network access are not accepted deterministic-conversion authority paths;
+- cryptographic purposes use separated reviewed secrets when required by the integrated revision.
+
+See `SECURITY.md`, `docs/THREAT_MODEL.md`, and the ADR index for the complete boundary.
+
+## Standalone and CWL composition
+
+Clearfolio owns its conversion/viewer behavior, tenant enforcement, artifact-delivery rules, state interfaces and product evidence. A host such as naruon may own higher-level user workflow, upstream identity/federation and deployment composition, but communicates over explicit contracts and does not mutate Clearfolio application persistence directly.
+
+`contextual-orchestrator` is optional for genuinely model-backed features and is not authority for deterministic conversion, authorization, fidelity measurement, merge, or release.
+
+## Canonical documentation
+
+Start here rather than reconstructing the product from dated plans or PR bodies:
+
+- [`docs/PRD.md`](docs/PRD.md) — product requirements, users, maturity and fidelity/release outcomes.
+- [`docs/TRD.md`](docs/TRD.md) — technical requirements and implemented/active/planned boundaries.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — system/trust/ownership architecture.
+- [`docs/adr/README.md`](docs/adr/README.md) — architecture decisions and implementation maturity.
+- [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — logical ERD and persistence ownership.
+- [`docs/UML.md`](docs/UML.md) — component/sequence/state/recovery/deployment diagrams.
+- [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) — public API and MSA contract authority.
+- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — product threat model.
+- [`docs/TEST_STRATEGY.md`](docs/TEST_STRATEGY.md) — realistic TDD/security/fidelity/recovery strategy.
+- [`docs/OPERABILITY.md`](docs/OPERABILITY.md) — startup, degraded mode, incident, backup/restore and release operations.
+- [`docs/TRACEABILITY.md`](docs/TRACEABILITY.md) — requirement/ADR to implementation/test/PR/evidence mapping.
+- [`docs/DOCUMENTATION_ASSESSMENT.md`](docs/DOCUMENTATION_ASSESSMENT.md) — documentation completeness and drift assessment.
+- [`docs/engineering/acceptance-criteria.md`](docs/engineering/acceptance-criteria.md) — executable acceptance policy.
+
+Legacy `docs/prd-integrated-document-viewer-platform.md`, `docs/trd-integrated-document-viewer-platform.md`, dated delivery plans, feature design notes and `docs/qa/evidence/` remain useful history/evidence. They do not override the canonical spine or live protected code.
+
+## Development automation
+
+Clearfolio's dedicated commercial loop is execution-first and work-conserving: an approval wait, queued check, one RCA, one commit, one documentation update or one merge blocks only the affected action while other safe work continues. Autonomous product development uses an immutably pinned OpenCode Agent with GitHub Secret `NVIDIA_NIM_API_KEY`, never `COPILOT_GITHUB_TOKEN` as a development-model credential, and preserves independent review/merge authority.
+
+Central ContextualWisdomLab `.github` owns privileged PR-maintenance/review/merge control-plane behavior. Clearfolio must not copy that privileged implementation into the product repository.
+
+## Release boundary
+
+Do not release from a feature PR merely because its tests are green. Release only from an exact integrated protected head after CI, security, exact coverage/docstrings, realistic document-fidelity acceptance, accessibility, packaging, SBOM/provenance, reproducibility, API/schema compatibility, migrations/rollback/recovery where applicable, independent review, and protected-main operational acceptance all pass.

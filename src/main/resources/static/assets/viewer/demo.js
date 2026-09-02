@@ -114,6 +114,12 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
+  // ⚡ Bolt: Use DocumentFragment to batch DOM insertions.
+  // 💡 What: Appending elements to a DocumentFragment instead of the live DOM directly.
+  // 🎯 Why: Prevents multiple browser reflows and repaints during history rendering.
+  // 📊 Impact: Reduces rendering time and CPU usage, especially for long histories.
+  const frag = document.createDocumentFragment();
+
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -143,8 +149,10 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    el.historyBody.appendChild(row);
+    frag.appendChild(row);
   }
+
+  el.historyBody.appendChild(frag);
 
   renderRecoveryEvidence(history);
 }

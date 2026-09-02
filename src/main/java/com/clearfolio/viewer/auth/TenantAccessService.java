@@ -154,7 +154,7 @@ public class TenantAccessService {
         }
     }
 
-    private static String clean(String value) {
+    private static String clean(final String value) {
         if (value == null) {
             return null;
         }

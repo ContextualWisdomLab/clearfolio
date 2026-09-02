@@ -128,7 +128,7 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
         return parsed;
     }
 
-    private static String sanitize(String value) {
+    private static String sanitize(final String value) {
         if (value == null) {
             return null;
         }

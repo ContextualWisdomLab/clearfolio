@@ -44,12 +44,21 @@ class TenantAccessServiceTest {
     }
 
     @Test
-    void requireSkipsSignatureValidationWhenSecretIsBlankOrNull() {
+    void configuredRuntimeFailsClosedWhenClaimsSecretIsBlankOrNull() {
         TenantAccessService blankSecret = new TenantAccessService(" ", 300L, Clock.fixed(NOW, ZoneOffset.UTC));
         TenantAccessService nullSecret = new TenantAccessService(null, 300L, Clock.fixed(NOW, ZoneOffset.UTC));
 
-        assertDoesNotThrow(() -> blankSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
-        assertDoesNotThrow(() -> nullSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
+        ResponseStatusException blank = assertThrows(
+                ResponseStatusException.class,
+                () -> blankSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ)
+        );
+        ResponseStatusException missing = assertThrows(
+                ResponseStatusException.class,
+                () -> nullSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ)
+        );
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, blank.getStatusCode());
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, missing.getStatusCode());
     }
 
     @Test

@@ -1,5 +1,4 @@
-🚨 Severity: CRITICAL
-💡 Vulnerability: 파일 업로드 시 `MultipartFile.getOriginalFilename()` 값을 검증 없이 사용하여 발생할 수 있는 경로 조작(Path Traversal) 취약점 발견.
-🎯 Impact: 공격자가 디렉토리 탐색 문자열(`../`)을 포함한 파일명을 전송하여 의도하지 않은 경로에 파일을 저장하거나 시스템 파일(예: `/etc/passwd`)에 접근/조작할 위험이 있음.
-🔧 Fix: `DefaultDocumentConversionService` 및 `DefaultDocumentValidationService`에서 파일명을 사용하기 전 `StringUtils.cleanPath()`를 통해 경로를 정규화하고, 마지막 `/` 이후의 순수한 파일명만 추출하도록 `sanitizeFilename` 메소드를 추가하여 안전하게 처리함.
-✅ Verification: 단위 테스트(`submitStripsDirectoryTraversalFromOriginalFilename` 및 `stripsDirectoryTraversalFromFilename` 등)를 추가하여 취약점 문자열이 정상적으로 제거되며 100% 테스트 커버리지를 보장함.
+💡 What: `TenantContext.java`와 `TenantAccessService.java`의 문자열 정리 메서드를 O(N) 단일 패스 스캔으로 최적화했습니다. `replace("\u0000", "")` 체이닝을 사용하는 대신 루프를 통해 단일 패스로 처리하고, 불필요한 객체 할당을 방지했습니다. 수정된 메서드의 파라미터는 `final`로 선언하여 Checkstyle 에러를 수정했습니다. Jacoco 커버리지를 만족하기 위해 커버리지용 테스트도 추가했습니다.
+🎯 Why: `String.replace("\u0000", "").strip()`을 호출하면 `\u0000` 문자가 없는 대부분의 해피 패스에서도 문자열 스캔과 복사가 발생합니다. 테넌트 컨텍스트는 인증된 모든 요청에서 생성되므로, 이로 인한 불필요한 메모리 할당과 GC 부하를 피해야 합니다.
+📊 Impact: 문자열에 금지된 문자가 없을 경우 `StringBuilder` 할당을 지연시켜 객체 생성을 줄이고 성능을 개선합니다.
+🔬 Measurement: `mvn -B test` 및 프론트엔드 테스트로 회귀가 없음을 확인했습니다.

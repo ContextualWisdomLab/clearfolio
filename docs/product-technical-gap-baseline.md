@@ -1,8 +1,8 @@
 # Product and Technical Gap Baseline
 
-Last code-current verification: 2026-09-02  
-Verification branch: `fix/admin-auth-tenant-isolation-7430428408399025558`  
-Verification head at authoring: `42831e05f6bd4bac980a4fb07a7389338059ace5`  
+Last code-current verification: 2026-09-02
+Verification branch: `fix/admin-auth-tenant-isolation-7430428408399025558`
+Verification head at authoring: `42831e05f6bd4bac980a4fb07a7389338059ace5`
 Integration base at authoring: `main@06633a25109c62e24a7015ae04fb9f6e0a246f7e`
 
 This document is the repository-level, code-current baseline for product responsibility,

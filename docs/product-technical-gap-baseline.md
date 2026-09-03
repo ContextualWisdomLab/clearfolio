@@ -1,8 +1,8 @@
 # Product and Technical Gap Baseline
 
-Last code-current verification: 2026-09-02
+Last code-current verification: 2026-09-03
 Verification branch: `fix/admin-auth-tenant-isolation-7430428408399025558`
-Verification head at authoring: `42831e05f6bd4bac980a4fb07a7389338059ace5`
+Verification source head at authoring: `0e8c3cf6470166864c6aaffb242aa780726f3bc5`
 Integration base at authoring: `main@06633a25109c62e24a7015ae04fb9f6e0a246f7e`
 
 This document is the repository-level, code-current baseline for product responsibility,
@@ -34,21 +34,24 @@ job repository remain explicit constraints in the current architecture.
 | Supporting | Conversion Execution & Recovery | Worker claim/retry/dead-letter/recovery behavior and processing lease semantics | HTTP authorization policy, artifact rendering UI |
 | Supporting | Artifact Delivery | PDF artifact persistence/read delivery and PDF passthrough | Conversion-job ownership authority |
 | Supporting | Tenant Administration | Permission-gated list/delete/retry use cases over tenant-owned conversion jobs | Raw identity storage, cryptographic key ownership, global job browsing |
-| Generic | Access & Audit Boundary | Verified `TenantContext`, permission checks, privacy-safe retry-operator audit identity | Domain retry eligibility or business approval decisions |
+| Generic | Access & Audit Boundary | Verified `TenantContext`, permission checks, credential resolution, privacy-safe retry-operator audit identity | Domain retry eligibility or business approval decisions |
 
 ### Context map and dependency direction
 
 ```text
 HTTP adapters
-  -> TenantAccessService (request authentication/permission)
-  -> DocumentConversionService (tenant-scoped application port)
-       -> ConversionJobRepository (aggregate persistence port)
-       -> ConversionJobStateStore (atomic lifecycle-transition port)
-       -> ConversionWorker (async execution port)
-       -> ArtifactStore (artifact port)
-  -> RetryOperatorIdentityPort (audit-identity privacy port)
+  -> TenantAccessService
+       -> CredentialRegistryPort
+  -> DocumentConversionService
+       -> ConversionJobRepository
+       -> ConversionJobStateStore
+       -> ConversionWorker
+       -> ArtifactStore
+  -> RetryOperatorIdentityPort
        -> HmacRetryOperatorIdentityAdapter
-            -> ConversionProperties audit pseudonym key/version
+            -> CredentialRegistryPort
+
+BootstrapCredentialRegistryAdapter -> CredentialRegistryPort
 ```
 
 Dependency direction is inward toward application/domain contracts. `AdminController`
@@ -57,12 +60,21 @@ ownership itself. Cryptographic pseudonymization is isolated behind
 `RetryOperatorIdentityPort`; the resulting string is audit correlation metadata only and
 must never become an authentication principal or authorization decision.
 
+`CredentialRegistryPort` is now the runtime secret-resolution boundary for the tenant-claim
+and retry-audit consumers changed by PR #541. `BootstrapCredentialRegistryAdapter` copies
+deployment-provisioned values into immutable keyed registry state once during Spring
+bootstrap; those consumers no longer bind environment-backed secret properties directly.
+The existing artifact-token secret path remains a separate known legacy migration gap and
+must not be copied into new consumers.
+
 ### Ubiquitous language and tactical model
 
 - **Conversion Job**: aggregate root that owns conversion lifecycle and retry/dead-letter
   invariants.
 - **Tenant Context**: verified value object carrying tenant, subject, and granted
   permissions for one request/application action.
+- **Credential Registry**: runtime key-value boundary through which security consumers
+  resolve provisioned secrets; deployment configuration is bootstrap transport only.
 - **Dead-lettered Job**: conversion job whose automatic retry budget is exhausted and that
   is eligible only for governed manual retry.
 - **Retry Operator Identity**: privacy-safe, versioned audit correlation value. It is not a
@@ -87,35 +99,57 @@ Current aggregate/application invariants:
 6. Retry audit identity uses keyed HMAC with a retry-specific domain and key version. A
    missing correlation key produces a non-correlatable unavailable marker, never a raw
    subject or unkeyed subject digest.
-7. Audit correlation metadata is not authorization evidence and must not be promoted into
+7. Spring-runtime tenant authorization resolves its verifier key through
+   `CredentialRegistryPort`; an unavailable verifier fails closed with `503 Service
+   Unavailable` rather than trusting unsigned tenant/permission headers.
+8. Audit correlation metadata is not authorization evidence and must not be promoted into
    a business approval, risk acceptance, or compliance truth.
 
 ## Current PR #541 security/SOLID/TDD repair
 
-The active candidate repairs a CRITICAL broken-access-control path and two design defects:
+The active candidate repairs a CRITICAL broken-access-control path and related design
+violations:
 
 - missing admin request authentication/permission and tenant isolation;
 - dictionary-recoverable unkeyed SHA-256 retry-operator identifiers;
-- HTTP-layer ownership reconstruction from global/unscoped application queries.
+- HTTP-layer ownership reconstruction from global/unscoped application queries;
+- runtime audit/tenant verifier consumers binding secret configuration directly instead
+  of resolving it through a credential-registry port.
 
-TDD evidence was established before the corresponding production repairs:
+TDD and repair evidence is intentionally recorded as source-head ancestry, not transferred
+check status:
 
 - privacy RED predecessor `2ad42520d5906a66f801b44ce29a0c4c13fcb6e0`
   rejects the known unkeyed digest produced by that predecessor's production code;
 - architecture RED predecessor `9faef44113baa24413254c4c532db87888e9510a`
-  requires tenant-scoped application list/retry contracts before those contracts exist.
+  requires tenant-scoped application list/retry contracts before those contracts exist;
+- concurrent fail-open regression RED `0993b97559e5f571bf81a0a9ae1e325a92e6469f`
+  restores the `503` missing-verifier expectation against the intervening fail-open source;
+- fail-closed GREEN `f5c9976cf625918d3be52b15603577aff25f3a2d`
+  restores the production `allowUnsignedClaims=false` boundary without rewriting history;
+- audit-registry RED `0ea3f9c75054eda30914f49f9dd208b53fca5705`
+  requires `HmacRetryOperatorIdentityAdapter` to receive audit key material through
+  `CredentialRegistryPort`;
+- audit-registry GREEN `db78fd2980757b540e762832dca87af36cc8025c`
+  removes the adapter's direct audit-secret read;
+- tenant-registry RED `4d417e0a7c723c1d9f92683d0591f4b2178bb056`
+  requires the Spring runtime constructor to resolve tenant-verifier material from the
+  registry and fail closed when it is absent;
+- tenant-registry GREEN `0e8c3cf6470166864c6aaffb242aa780726f3bc5`
+  removes direct tenant-secret binding from `TenantAccessService`.
 
 The causal design applies SRP/DIP/ISP by separating the HTTP adapter, tenant-aware
-application port, persistence port, lifecycle state port, and retry-audit identity port.
-The repository does not claim GREEN until all required checks on the unchanged current
-head terminate successfully; queued, skipped, cancelled, absent, predecessor, and
-model-only evidence are non-passing.
+application port, persistence port, lifecycle state port, credential registry, and
+retry-audit identity port. The repository does not claim GREEN until all required checks
+on the unchanged current head terminate successfully; queued, skipped, cancelled, absent,
+predecessor, and model-only evidence are non-passing.
 
 ## Buyer-visible and technical gaps
 
 | Gap | Buyer / operational impact | Current evidence | Required next acceptance | State |
 | --- | --- | --- | --- | --- |
-| Admin tenant isolation and privacy-safe retry audit identity | Prevents cross-tenant exposure/mutation and offline recovery of low-entropy operator IDs | PR #541 exact-head implementation and production-boundary tests | Unchanged exact head must pass full repository/security/coverage/Javadoc/package/provenance gates and then normal protected-branch review/merge governance | In progress |
+| Admin tenant isolation and privacy-safe retry audit identity | Prevents cross-tenant exposure/mutation and offline recovery of low-entropy operator IDs | PR #541 source implementation and production-boundary tests | Unchanged exact head must pass full repository/security/coverage/Javadoc/package/provenance gates and then normal protected-branch review/merge governance | In progress |
+| Runtime credential registry | New audit and tenant-verifier consumers now resolve through `CredentialRegistryPort`; artifact-token runtime secret is still a legacy direct-property deviation | `CredentialRegistryPort`, `BootstrapCredentialRegistryAdapter`, source-head RED/GREEN above | Migrate the artifact-token consumer to the same or a released external/encrypted registry adapter; production deployments must keep secret values out of request-time env/property reads and fail closed on unavailable security credentials | Partially repaired |
 | Durable conversion-job persistence | Restart/concurrency behavior remains bounded by in-memory repository except explicit recovery abstractions | `ConversionJobRepository`, `ConversionJobStateStore`, durable repository plan | PostgreSQL adapter with tenant-native queries, idempotent UPSERT/lifecycle transitions, realistic concurrency/recovery tests, 3NF schema and lock contract | Planned |
 | Native document conversion | Non-PDF sources still use placeholder generation rather than full office-format fidelity | `PdfBoxArtifactGenerator`, architecture docs | Format-specific adapter boundaries plus representative real-document fidelity tests and safe resource limits | Planned |
 | Downstream S2S preview-session orchestration | End-to-end enterprise/mobile preview chain is not yet product-complete | `docs/diagrams/preview-flow.md`, architecture target chain | Explicit session/authn/authz contract, failure/retry/timeout evidence and deployment ownership | Planned |
@@ -144,18 +178,25 @@ The active repair is aligned with current authoritative guidance as follows:
 - OWASP ASVS 5.0.0 is the current released ASVS baseline (released 2025-05-30). Its
   authorization requirements reinforce enforcing access decisions at protected resource
   boundaries rather than trusting caller-controlled identifiers.
-- NIST SP 800-53 Rev. 5, including the current 5.2.0 supplemental release, provides the
-  control baseline for access enforcement and audit/accountability assurance. This
-  repository maps tenant-scoped application enforcement to AC-family intent and keeps
-  privacy-safe audit correlation distinct from authorization authority.
+- NIST SP 800-53 Rev. 5 provides the control baseline for access enforcement and
+  audit/accountability assurance. This repository maps tenant-scoped application
+  enforcement to AC-family intent and keeps privacy-safe audit correlation distinct from
+  authorization authority.
 - HMAC follows the keyed construction described by RFC 2104. Clearfolio adds an explicit
   application-domain separator and versioned dedicated audit key so identical subject
   identifiers are not reused as the same audit fingerprint across unrelated purposes.
+- Bellare, Canetti, and Krawczyk's CRYPTO '96 treatment grounds the keyed message
+  authentication construction; Sandhu et al.'s RBAC model grounds explicit permission
+  separation. Neither source is represented as product certification.
 
 These references support engineering controls; they are not claims that Clearfolio is
 certified or that a particular deployment satisfies a compliance framework.
 
 ### References (APA 7th)
+
+Bellare, M., Canetti, R., & Krawczyk, H. (1996). Keying hash functions for message
+authentication. In N. Koblitz (Ed.), *Advances in cryptology—CRYPTO '96* (pp. 1–15).
+Springer. https://doi.org/10.1007/3-540-68697-5_1
 
 Joint Task Force. (2020). *Security and privacy controls for information systems and
 organizations (NIST Special Publication 800-53, Revision 5)*. National Institute of
@@ -166,6 +207,9 @@ authentication (RFC 2104)*. RFC Editor. https://doi.org/10.17487/RFC2104
 
 OWASP Foundation. (2025). *OWASP Application Security Verification Standard (ASVS),
 version 5.0.0*. https://owasp.org/www-project-application-security-verification-standard/
+
+Sandhu, R. S., Coyne, E. J., Feinstein, H. L., & Youman, C. E. (1996). Role-based access
+control models. *Computer, 29*(2), 38–47. https://doi.org/10.1109/2.485845
 
 ## Evidence discipline and release gate
 

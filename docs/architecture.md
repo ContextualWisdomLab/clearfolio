@@ -1,6 +1,6 @@
 # Conversion Service Runtime Architecture
 
-Last updated: 2026-09-03
+Last updated: 2026-09-02
 
 This document contains detailed runtime-flow and persistence notes. The repository-level
 component/context map is `ARCHITECTURE.md`; the code-current DDD, gap, remediation, and
@@ -10,19 +10,17 @@ evidence baseline is `docs/product-technical-gap-baseline.md`.
 
 - Web runtime stance: this implementation adopts Spring WebFlux (`spring-boot-starter-webflux`) over Servlet/MVC for request handling.
 - Non-blocking contract stance: request handlers return quickly and conversion work is delegated to the worker queue.
-- Tenant-admin stance: signed authentication claims and required permissions are verified at the HTTP edge. The Spring runtime fails closed with `503 Service Unavailable` when tenant-claim HMAC verifier material is unavailable; caller-supplied tenant/permission headers are not accepted as authorization in that state. Conversion-job ownership is enforced by tenant-scoped application-service/repository contracts rather than controller-local global filtering.
-- Test compatibility boundary: `TenantAccessService` retains an explicit no-argument unsigned constructor for manually bound controller/unit tests; Spring runtime selects the `@Autowired` constructor and does not use that unsigned path.
-- Audit identity stance: retry operator correlation uses a keyed, versioned, purpose-separated audit pseudonym; it is not authentication or authorization authority. Its current Spring-configured key source remains a known `AGENTS.md` KV/credential-registry deviation and is not merge-ready security architecture.
+- Tenant-admin stance: authentication/permission is verified at the HTTP edge, while conversion-job ownership is enforced by tenant-scoped application-service/repository contracts rather than controller-local global filtering.
+- Audit identity stance: retry operator correlation uses a keyed, versioned, purpose-separated audit pseudonym; it is not authentication or authorization authority.
 - Scope boundary: S2S preview-session orchestration is documented but still planned, not completed.
 
 ## Runtime flow
 
 - Submit flow (`POST /api/v1/convert/jobs`): validation -> blocked-format policy evaluation (default block, optional auditable override headers) -> content hash dedupe -> enqueue async conversion -> return `202`.
 - Status flow (`GET /api/v1/convert/jobs/{jobId}`): return lifecycle snapshot (`SUBMITTED`, `PROCESSING`, `SUCCEEDED`, `FAILED`) with retry metadata.
-- Tenant-admin authorization precondition: parse request claims -> require runtime HMAC verifier material -> verify signed tenant/subject/permission claims and issue-time skew -> verify required permission. Missing runtime verifier material returns `503`; missing/invalid/expired signatures return `401`; missing permission returns `403`.
-- Tenant-admin list flow (`GET /api/v1/admin/convert/jobs`): satisfy the authorization precondition for `JOB_READ` -> call tenant-scoped `DocumentConversionService.getJobsForTenant` -> optionally filter dead-letter state for presentation -> return only tenant-owned jobs.
-- Tenant-admin delete flow (`DELETE /api/v1/admin/convert/jobs/{jobId}`): satisfy the authorization precondition for `JOB_DELETE` -> call tenant-scoped service delete -> map both missing and cross-tenant resources to `404` -> return `204` on deletion.
-- Tenant-admin retry flow (`POST /api/v1/admin/convert/jobs/{jobId}/retry`): satisfy the authorization precondition for `JOB_RETRY` -> create privacy-safe retry audit identity -> call tenant-scoped application retry -> map missing/cross-tenant to `404`, ineligible to `409`, accepted to `202`.
+- Tenant-admin list flow (`GET /api/v1/admin/convert/jobs`): verify signed tenant claims and `JOB_READ` -> call tenant-scoped `DocumentConversionService.getJobsForTenant` -> optionally filter dead-letter state for presentation -> return only tenant-owned jobs.
+- Tenant-admin delete flow (`DELETE /api/v1/admin/convert/jobs/{jobId}`): verify `JOB_DELETE` -> call tenant-scoped service delete -> map both missing and cross-tenant resources to `404` -> return `204` on deletion.
+- Tenant-admin retry flow (`POST /api/v1/admin/convert/jobs/{jobId}/retry`): verify `JOB_RETRY` -> create privacy-safe retry audit identity -> call tenant-scoped application retry -> map missing/cross-tenant to `404`, ineligible to `409`, accepted to `202`.
 - Worker startup recovery flow: on application readiness, select due `SUBMITTED` jobs and stale retryable `PROCESSING` jobs older than `conversion.processing-lease-timeout-ms`; re-enqueue due jobs directly and route stale processing jobs through retry scheduling before re-enqueue.
 - Viewer UI flow (`GET /viewer/{docId}`): return HTML shell with mobile-safe loading/failed/ready states; when ready, embed PDF.js.
 - Bootstrap flow (`GET /api/v1/viewer/{docId}` and `GET /api/v1/convert/viewer/{docId}`): return bootstrap JSON on `SUCCEEDED` with deterministic `sourceExtension`/`rendererAdapter`; return `409` for not-ready/failed states; return `404` when missing.
@@ -56,10 +54,10 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 - `controller`: delivery adapters only. They authenticate/authorize request permissions, validate transport inputs, invoke application ports, and map typed outcomes to HTTP. They do not own conversion aggregate authorization or cryptographic key mechanics.
 - `service`: application orchestration, tenant-scoped conversion use cases, validation, policy-override exception lane, conversion execution/recovery.
 - `repository`: conversion aggregate persistence and lifecycle-state ports, including tenant-scoped lookup/list contracts for externally addressable operations.
-- `security` / `auth`: signed tenant claim verification, permission checks, and privacy-safe audit identity adapters. Production authorization fails closed when authoritative claim verification is unavailable. Audit correlation values do not become business approval or access authority.
+- `security` / `auth`: signed tenant claim verification, permission checks, and privacy-safe audit identity adapters. Audit correlation values do not become business approval or access authority.
 - `model`: conversion-job aggregate lifecycle and retry/dead-letter invariants.
 - `artifact`: converted/PDF-passthrough byte persistence and generation.
-- `config`: typed non-secret runtime configuration and executor resources. Runtime secrets are required by `AGENTS.md` to resolve through a KV/credential registry; current direct Spring-configured HMAC inputs are migration debt, not the target architecture.
+- `config`: typed runtime configuration and executor resources.
 
 ## Non-blocking, queue, and DB operation rules
 
@@ -92,11 +90,10 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 | WebFlux dependency | `pom.xml` |
 | Submit non-blocking controller path | `src/main/java/com/clearfolio/viewer/controller/ConversionController.java` |
 | Tenant admin HTTP adapter | `src/main/java/com/clearfolio/viewer/controller/AdminController.java` |
-| Signed tenant claims, fail-closed missing-verifier behavior, and permission checks | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java` |
+| Signed tenant claims and permission checks | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java` |
 | Tenant-scoped application contracts | `src/main/java/com/clearfolio/viewer/service/DocumentConversionService.java` |
 | Tenant-scoped persistence contracts | `src/main/java/com/clearfolio/viewer/repository/ConversionJobRepository.java` |
 | Retry audit identity privacy port/adapter | `src/main/java/com/clearfolio/viewer/security/RetryOperatorIdentityPort.java`, `src/main/java/com/clearfolio/viewer/security/HmacRetryOperatorIdentityAdapter.java` |
-| Runtime secret/KV policy | `AGENTS.md` |
 | Blocked-format override lane + audit signal | `src/main/java/com/clearfolio/viewer/service/DefaultDocumentValidationService.java` |
 | Override header contract | `src/main/java/com/clearfolio/viewer/service/PolicyOverrideRequest.java` |
 | Conversion enqueue orchestration | `src/main/java/com/clearfolio/viewer/service/DefaultDocumentConversionService.java` |

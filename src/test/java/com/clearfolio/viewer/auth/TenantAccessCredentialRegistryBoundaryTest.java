@@ -19,7 +19,7 @@ class TenantAccessCredentialRegistryBoundaryTest {
 
     @Test
     void springRuntimeConstructorResolvesTenantClaimKeyFromRegistry() {
-        CredentialRegistryPort registry = name -> CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET.equals(name)
+        com.clearfolio.viewer.security.CredentialRegistryPort registry = name -> com.clearfolio.viewer.security.CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET.equals(name)
                 ? Optional.of(SECRET)
                 : Optional.empty();
         TenantAccessService service = new TenantAccessService(registry, 300L);
@@ -32,7 +32,7 @@ class TenantAccessCredentialRegistryBoundaryTest {
 
     @Test
     void springRuntimeConstructorFailsClosedWhenRegistryHasNoTenantClaimKey() {
-        TenantAccessService service = new TenantAccessService(name -> Optional.empty(), 300L);
+        TenantAccessService service = new TenantAccessService((com.clearfolio.viewer.security.CredentialRegistryPort) name -> Optional.empty(), 300L);
 
         ResponseStatusException error = assertThrows(
                 ResponseStatusException.class,

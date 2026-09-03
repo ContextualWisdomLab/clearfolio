@@ -11,6 +11,7 @@ import com.code_intelligence.jazzer.junit.FuzzTest;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
+import com.clearfolio.viewer.security.CredentialRegistryPort;
 
 /**
  * Fuzzes tenant-claim parsing from untrusted request headers.

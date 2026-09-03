@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import com.clearfolio.viewer.config.ConversionProperties;
+import com.clearfolio.viewer.security.CredentialRegistryPort;
 
 class HmacRetryOperatorIdentityAdapterTest {
 
@@ -44,7 +45,7 @@ class HmacRetryOperatorIdentityAdapterTest {
         assertTrue(adapter.pseudonymize("user-1").startsWith("unavailable:"));
     }
 
-    private static CredentialRegistryPort credentialRegistry(String auditKey) {
+    private static com.clearfolio.viewer.security.CredentialRegistryPort credentialRegistry(String auditKey) {
         return name -> CredentialRegistryPort.AUDIT_PSEUDONYM_SECRET.equals(name)
                 ? Optional.ofNullable(auditKey)
                 : Optional.empty();

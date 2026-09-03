@@ -1,6 +1,6 @@
 # Architecture Map
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
 ## Document authority
 
@@ -28,13 +28,14 @@ The modular application currently separates these responsibilities:
 - **Conversion Execution & Recovery (supporting):** worker claim/retry/dead-letter/recovery behavior through `ConversionJobStateStore` and `ConversionWorker`.
 - **Artifact Delivery (supporting):** artifact persistence and range-capable PDF delivery through `ArtifactStore`.
 - **Tenant Administration (supporting):** permission-gated tenant-scoped list/delete/retry use cases through `DocumentConversionService`.
-- **Access & Audit Boundary (generic):** request `TenantContext`/permission verification and privacy-safe retry operator identity. Audit pseudonyms are correlation metadata, not authorization authority.
+- **Access & Audit Boundary (generic):** request `TenantContext`/permission verification, credential resolution, and privacy-safe retry operator identity. Audit pseudonyms are correlation metadata, not authorization authority.
 
-Dependency direction for tenant administration is:
+Dependency direction for tenant administration and its security boundary is:
 
 ```text
 AdminController
   -> TenantAccessService
+       -> CredentialRegistryPort
   -> DocumentConversionService (tenant-scoped application port)
        -> ConversionJobRepository
        -> ConversionJobStateStore
@@ -42,9 +43,15 @@ AdminController
        -> ArtifactStore
   -> RetryOperatorIdentityPort
        -> HmacRetryOperatorIdentityAdapter
+            -> CredentialRegistryPort
+
+BootstrapCredentialRegistryAdapter
+  -> CredentialRegistryPort
 ```
 
 The HTTP adapter must not fetch global/unscoped conversion aggregates and reconstruct tenant ownership locally. Missing and cross-tenant resources collapse to the same not-found outcome at the tenant-scoped application boundary. Cryptographic audit identity generation is isolated behind a port so controller/domain code does not own key material or equate audit correlation with access authority.
+
+`BootstrapCredentialRegistryAdapter` is the current credential adapter for the tenant-claim and audit-pseudonym keys. Deployment values are copied into an immutable keyed registry during Spring bootstrap; `TenantAccessService` and `HmacRetryOperatorIdentityAdapter` resolve them only through `CredentialRegistryPort`. Missing tenant-claim key material fails closed with `503`; missing audit-correlation material yields a non-correlatable `unavailable:<version>` marker. The older artifact-token secret path is a separate known migration gap and must not be treated as precedent for new secret consumers.
 
 ## Runtime Components
 
@@ -59,9 +66,13 @@ The HTTP adapter must not fetch global/unscoped conversion aggregates and recons
   - Delegates retry audit correlation to `RetryOperatorIdentityPort`.
 - `TenantAccessService` (`src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java`)
   - Verifies signed tenant claims and permission requirements before protected request behavior.
+  - Resolves Spring-runtime tenant-claim HMAC material through `CredentialRegistryPort`; an unavailable credential fails closed.
   - Cross-tenant resource existence is intentionally hidden from external callers.
+- `CredentialRegistryPort` and `BootstrapCredentialRegistryAdapter` (`src/main/java/com/clearfolio/viewer/security/`)
+  - Provide the keyed runtime secret-resolution boundary for tenant-claim and audit-pseudonym consumers.
+  - The bootstrap adapter copies provisioned transport values into immutable registry state once; runtime consumers do not bind those deployment values directly.
 - `RetryOperatorIdentityPort` and `HmacRetryOperatorIdentityAdapter` (`src/main/java/com/clearfolio/viewer/security/`)
-  - Produce versioned, keyed, purpose-separated retry audit pseudonyms from the dedicated audit pseudonym key.
+  - Produce versioned, keyed, purpose-separated retry audit pseudonyms from the dedicated audit pseudonym key resolved through the credential registry.
   - Missing key material yields a non-correlatable unavailable marker rather than plaintext or an unkeyed subject digest.
 - `ViewerUiController` (`src/main/java/com/clearfolio/viewer/controller/ViewerUiController.java`)
   - `GET /viewer/{docId}`: HTML viewer UI entrypoint (loading/failed/ready) that embeds PDF.js.

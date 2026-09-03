@@ -47,6 +47,14 @@ test("the executable demo renders inert actions and blocks repeated status activ
     statusUrl: "/api/v1/convert/jobs/document-identifier",
   }];
 
+  const historyBody = elements.get("history-body");
+  let liveHistoryAppendCalls = 0;
+  const appendToHistory = historyBody.appendChild.bind(historyBody);
+  historyBody.appendChild = node => {
+    liveHistoryAppendCalls += 1;
+    return appendToHistory(node);
+  };
+
   globalThis.document = {
     getElementById(id) {
       return elements.get(id);
@@ -95,7 +103,8 @@ test("the executable demo renders inert actions and blocks repeated status activ
   await import(moduleUrl.href);
   await new Promise(resolve => setImmediate(resolve));
 
-  const rows = elements.get("history-body").childNodes;
+  assert.equal(liveHistoryAppendCalls, 1);
+  const rows = historyBody.childNodes;
   assert.equal(rows.length, 1);
   const [fileCell, statusCell, , actionsCell] = rows[0].childNodes;
   assert.equal(fileCell.textContent, fileName);

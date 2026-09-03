@@ -31,7 +31,7 @@ final class TenantClaimsFuzzTest {
 
     private final TenantAccessService accessService =
             new TenantAccessService(
-                    name -> com.clearfolio.viewer.security.CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET.equals(name)
+                    name -> CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET.equals(name)
                             ? java.util.Optional.of("clearfolio-fuzz-claims-secret")
                             : java.util.Optional.empty(),
                     300L

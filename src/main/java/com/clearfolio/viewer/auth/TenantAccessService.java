@@ -31,31 +31,44 @@ public class TenantAccessService {
     private final String claimsHmacSecret;
     private final long maxSkewSeconds;
     private final Clock clock;
+    private final boolean allowUnsignedClaims;
 
     /**
-     * Creates an access service for local tests and unsigned demo mode.
+     * Creates the explicitly unsigned service used by manually bound controller
+     * and unit tests. Spring runtime uses the {@link Autowired} constructor and
+     * therefore never selects this compatibility boundary.
      */
     public TenantAccessService() {
-        this("", 300L, Clock.systemUTC());
+        this(null, 300L, Clock.systemUTC(), true);
     }
 
     /**
-     * Creates an access service with optional signed gateway claim validation.
+     * Creates the Spring runtime service. Missing claim-verification key material
+     * fails closed rather than trusting caller-supplied tenant headers.
      *
-     * @param claimsHmacSecret optional shared gateway HMAC secret
+     * @param claimsHmacSecret shared gateway HMAC secret
      * @param maxSkewSeconds maximum accepted clock skew in seconds
      */
     @Autowired
     public TenantAccessService(
             @Value("${clearfolio.tenant-claims.hmac-secret:}") String claimsHmacSecret,
             @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
-        this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
+        this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC(), false);
     }
 
     TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {
+        this(claimsHmacSecret, maxSkewSeconds, clock, false);
+    }
+
+    private TenantAccessService(
+            String claimsHmacSecret,
+            long maxSkewSeconds,
+            Clock clock,
+            boolean allowUnsignedClaims) {
         this.claimsHmacSecret = clean(claimsHmacSecret);
         this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
         this.clock = clock;
+        this.allowUnsignedClaims = allowUnsignedClaims;
     }
 
     /**
@@ -95,7 +108,13 @@ public class TenantAccessService {
 
     private void requireSignedClaimsWhenConfigured(HttpHeaders headers, TenantContext context) {
         if (claimsHmacSecret == null) {
-            return;
+            if (allowUnsignedClaims) {
+                return;
+            }
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "tenant claims verifier unavailable"
+            );
         }
 
         String issuedAt = clean(headers.getFirst(TenantContext.CLAIMS_ISSUED_AT_HEADER));

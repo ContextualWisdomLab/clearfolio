@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.model.ConversionJob;
+import com.clearfolio.viewer.security.CredentialRegistryPort;
 
 /**
  * Enforces request tenant claims and endpoint permissions.
@@ -43,16 +44,28 @@ public class TenantAccessService {
     }
 
     /**
-     * Creates the Spring runtime service. Missing claim-verification key material
-     * fails closed rather than trusting caller-supplied tenant headers.
+     * Creates the Spring runtime service from credential-registry key material.
+     * Missing claim-verification credentials fail closed rather than trusting
+     * caller-supplied tenant headers.
      *
-     * @param claimsHmacSecret shared gateway HMAC secret
+     * @param credentialRegistry runtime credential registry
      * @param maxSkewSeconds maximum accepted clock skew in seconds
      */
     @Autowired
     public TenantAccessService(
-            @Value("${clearfolio.tenant-claims.hmac-secret:}") String claimsHmacSecret,
-            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
+            final CredentialRegistryPort credentialRegistry,
+            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") final long maxSkewSeconds) {
+        this(
+                credentialRegistry
+                        .getCredential(CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET)
+                        .orElse(null),
+                maxSkewSeconds,
+                Clock.systemUTC(),
+                false
+        );
+    }
+
+    TenantAccessService(String claimsHmacSecret, long maxSkewSeconds) {
         this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC(), false);
     }
 

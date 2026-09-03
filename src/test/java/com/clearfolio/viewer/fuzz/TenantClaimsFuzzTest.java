@@ -29,7 +29,12 @@ import com.clearfolio.viewer.auth.TenantPermissions;
 final class TenantClaimsFuzzTest {
 
     private final TenantAccessService accessService =
-            new TenantAccessService("clearfolio-fuzz-claims-secret", 300L);
+            new TenantAccessService(
+                    name -> com.clearfolio.viewer.security.CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET.equals(name)
+                            ? java.util.Optional.of("clearfolio-fuzz-claims-secret")
+                            : java.util.Optional.empty(),
+                    300L
+            );
 
     @FuzzTest(maxDuration = "60s")
     void headerClaimsParsingIsRobust(FuzzedDataProvider data) {

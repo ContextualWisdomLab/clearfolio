@@ -1,6 +1,6 @@
 # Conversion Service Runtime Architecture
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
 This document contains detailed runtime-flow and persistence notes. The repository-level
 component/context map is `ARCHITECTURE.md`; the code-current DDD, gap, remediation, and
@@ -11,6 +11,7 @@ evidence baseline is `docs/product-technical-gap-baseline.md`.
 - Web runtime stance: this implementation adopts Spring WebFlux (`spring-boot-starter-webflux`) over Servlet/MVC for request handling.
 - Non-blocking contract stance: request handlers return quickly and conversion work is delegated to the worker queue.
 - Tenant-admin stance: authentication/permission is verified at the HTTP edge, while conversion-job ownership is enforced by tenant-scoped application-service/repository contracts rather than controller-local global filtering.
+- Credential stance: Spring-runtime tenant-claim and retry-audit consumers resolve secret material through `CredentialRegistryPort`; deployment configuration is bootstrap transport into the current immutable registry adapter rather than a request-time secret source.
 - Audit identity stance: retry operator correlation uses a keyed, versioned, purpose-separated audit pseudonym; it is not authentication or authorization authority.
 - Scope boundary: S2S preview-session orchestration is documented but still planned, not completed.
 
@@ -18,9 +19,9 @@ evidence baseline is `docs/product-technical-gap-baseline.md`.
 
 - Submit flow (`POST /api/v1/convert/jobs`): validation -> blocked-format policy evaluation (default block, optional auditable override headers) -> content hash dedupe -> enqueue async conversion -> return `202`.
 - Status flow (`GET /api/v1/convert/jobs/{jobId}`): return lifecycle snapshot (`SUBMITTED`, `PROCESSING`, `SUCCEEDED`, `FAILED`) with retry metadata.
-- Tenant-admin list flow (`GET /api/v1/admin/convert/jobs`): verify signed tenant claims and `JOB_READ` -> call tenant-scoped `DocumentConversionService.getJobsForTenant` -> optionally filter dead-letter state for presentation -> return only tenant-owned jobs.
+- Tenant-admin list flow (`GET /api/v1/admin/convert/jobs`): resolve the tenant-claim verifier credential -> verify signed tenant claims and `JOB_READ` -> call tenant-scoped `DocumentConversionService.getJobsForTenant` -> optionally filter dead-letter state for presentation -> return only tenant-owned jobs. Missing verifier material returns `503` before permissions or tenant-owned resources are accepted.
 - Tenant-admin delete flow (`DELETE /api/v1/admin/convert/jobs/{jobId}`): verify `JOB_DELETE` -> call tenant-scoped service delete -> map both missing and cross-tenant resources to `404` -> return `204` on deletion.
-- Tenant-admin retry flow (`POST /api/v1/admin/convert/jobs/{jobId}/retry`): verify `JOB_RETRY` -> create privacy-safe retry audit identity -> call tenant-scoped application retry -> map missing/cross-tenant to `404`, ineligible to `409`, accepted to `202`.
+- Tenant-admin retry flow (`POST /api/v1/admin/convert/jobs/{jobId}/retry`): verify `JOB_RETRY` -> resolve the audit pseudonym credential -> create privacy-safe retry audit identity -> call tenant-scoped application retry -> map missing/cross-tenant to `404`, ineligible to `409`, accepted to `202`. Missing audit-correlation material yields `unavailable:<version>` rather than plaintext or an unkeyed digest.
 - Worker startup recovery flow: on application readiness, select due `SUBMITTED` jobs and stale retryable `PROCESSING` jobs older than `conversion.processing-lease-timeout-ms`; re-enqueue due jobs directly and route stale processing jobs through retry scheduling before re-enqueue.
 - Viewer UI flow (`GET /viewer/{docId}`): return HTML shell with mobile-safe loading/failed/ready states; when ready, embed PDF.js.
 - Bootstrap flow (`GET /api/v1/viewer/{docId}` and `GET /api/v1/convert/viewer/{docId}`): return bootstrap JSON on `SUCCEEDED` with deterministic `sourceExtension`/`rendererAdapter`; return `409` for not-ready/failed states; return `404` when missing.
@@ -54,10 +55,12 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 - `controller`: delivery adapters only. They authenticate/authorize request permissions, validate transport inputs, invoke application ports, and map typed outcomes to HTTP. They do not own conversion aggregate authorization or cryptographic key mechanics.
 - `service`: application orchestration, tenant-scoped conversion use cases, validation, policy-override exception lane, conversion execution/recovery.
 - `repository`: conversion aggregate persistence and lifecycle-state ports, including tenant-scoped lookup/list contracts for externally addressable operations.
-- `security` / `auth`: signed tenant claim verification, permission checks, and privacy-safe audit identity adapters. Audit correlation values do not become business approval or access authority.
+- `security` / `auth`: signed tenant claim verification, permission checks, credential-registry port/adapter, and privacy-safe audit identity adapters. Audit correlation values do not become business approval or access authority.
 - `model`: conversion-job aggregate lifecycle and retry/dead-letter invariants.
 - `artifact`: converted/PDF-passthrough byte persistence and generation.
-- `config`: typed runtime configuration and executor resources.
+- `config`: typed non-secret runtime configuration plus bootstrap transport for values copied into the credential registry. Runtime security consumers do not bind those secret properties directly.
+
+The current `BootstrapCredentialRegistryAdapter` is deliberately replaceable behind `CredentialRegistryPort`. It owns the bootstrap-to-runtime handoff for the tenant-claim and audit-pseudonym keys. The older artifact-token direct-property path remains a legacy migration gap; it is not the contract for new secret consumers.
 
 ## Non-blocking, queue, and DB operation rules
 
@@ -91,6 +94,7 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 | Submit non-blocking controller path | `src/main/java/com/clearfolio/viewer/controller/ConversionController.java` |
 | Tenant admin HTTP adapter | `src/main/java/com/clearfolio/viewer/controller/AdminController.java` |
 | Signed tenant claims and permission checks | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java` |
+| Runtime credential registry boundary | `src/main/java/com/clearfolio/viewer/security/CredentialRegistryPort.java`, `src/main/java/com/clearfolio/viewer/security/BootstrapCredentialRegistryAdapter.java` |
 | Tenant-scoped application contracts | `src/main/java/com/clearfolio/viewer/service/DocumentConversionService.java` |
 | Tenant-scoped persistence contracts | `src/main/java/com/clearfolio/viewer/repository/ConversionJobRepository.java` |
 | Retry audit identity privacy port/adapter | `src/main/java/com/clearfolio/viewer/security/RetryOperatorIdentityPort.java`, `src/main/java/com/clearfolio/viewer/security/HmacRetryOperatorIdentityAdapter.java` |

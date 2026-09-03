@@ -7,13 +7,13 @@ import com.clearfolio.viewer.config.ConversionProperties;
 /**
  * Keyed-HMAC adapter for retry-operator audit identities.
  *
- * <p>The adapter reuses Clearfolio's dedicated audit pseudonym key material but
- * applies a retry-operator-specific domain separator. That preserves key
- * separation from policy-override authentication and prevents the same subject
- * identifier from producing the approver-domain fingerprint used elsewhere.
- * A deployment without an audit pseudonym key receives the existing
- * non-correlatable {@code unavailable:<version>} marker rather than plaintext or
- * an unkeyed hash.</p>
+ * <p>The adapter resolves the dedicated audit pseudonym key through the
+ * credential-registry port and applies a retry-operator-specific domain
+ * separator. That preserves key separation from policy-override authentication
+ * and prevents the same subject identifier from producing the approver-domain
+ * fingerprint used elsewhere. A registry without the audit pseudonym key
+ * yields the existing non-correlatable {@code unavailable:<version>} marker
+ * rather than plaintext or an unkeyed hash.</p>
  */
 @Component
 public final class HmacRetryOperatorIdentityAdapter implements RetryOperatorIdentityPort {
@@ -23,16 +23,22 @@ public final class HmacRetryOperatorIdentityAdapter implements RetryOperatorIden
     private final AuditPseudonymizer pseudonymizer;
 
     /**
-     * Creates the adapter from the centralized conversion security properties.
+     * Creates the adapter from the runtime credential registry and non-secret
+     * audit key version configuration.
      *
-     * @param properties configuration that owns the dedicated audit pseudonym
-     *                   secret and non-sensitive key version
+     * @param credentialRegistry runtime credential registry
+     * @param properties configuration containing only the non-sensitive key version
      * @throws IllegalArgumentException when configured key material violates the
      *         repository's minimum-strength or key-version contract
      */
-    public HmacRetryOperatorIdentityAdapter(final ConversionProperties properties) {
+    public HmacRetryOperatorIdentityAdapter(
+            final CredentialRegistryPort credentialRegistry,
+            final ConversionProperties properties) {
+        String auditSecret = credentialRegistry
+                .getCredential(CredentialRegistryPort.AUDIT_PSEUDONYM_SECRET)
+                .orElse("");
         this.pseudonymizer = new AuditPseudonymizer(
-                properties.getAuditPseudonymSecret(),
+                auditSecret,
                 properties.getAuditPseudonymKeyVersion(),
                 RETRY_OPERATOR_DOMAIN
         );

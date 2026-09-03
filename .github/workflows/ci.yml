@@ -3,15 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "*.md"
   # Every pull request target, including immutable stack branches, receives the
   # same exact-head, synthetic-merge, and buyer-readiness acceptance evidence.
-  pull_request:
-    paths-ignore:
-      - "docs/**"
-      - "*.md"
+  pull_request: {}
 
 permissions:
   contents: read

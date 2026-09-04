@@ -44,16 +44,14 @@ class TenantAccessServiceTest {
     }
 
     @Test
-    void requireSkipsSignatureValidationOnlyWhenSecretIsAbsentOrBlank() {
+    void requireSkipsSignatureValidationWhenSecretIsBlankOrNull() {
         TenantAccessService blankSecret = new TenantAccessService(" ", 300L, Clock.fixed(NOW, ZoneOffset.UTC));
         TenantAccessService nullSecret = new TenantAccessService(null, 300L, Clock.fixed(NOW, ZoneOffset.UTC));
+        TenantAccessService nullCharSecret = new TenantAccessService("\u0000", 300L, Clock.fixed(NOW, ZoneOffset.UTC));
 
         assertDoesNotThrow(() -> blankSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
         assertDoesNotThrow(() -> nullSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> new TenantAccessService("\u0000", 300L, Clock.fixed(NOW, ZoneOffset.UTC))
-        );
+        assertDoesNotThrow(() -> nullCharSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
     }
 
     @Test

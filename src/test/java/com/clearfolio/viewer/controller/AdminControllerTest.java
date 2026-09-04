@@ -1,11 +1,14 @@
 package com.clearfolio.viewer.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import static org.mockito.ArgumentMatchers.any;
-
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -17,12 +20,14 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
-
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
 
 class AdminControllerTest {
+
+    private static final String TENANT_ID = "tenant-1";
+    private static final String SUBJECT_ID = "subject-1";
 
     private DocumentConversionService conversionService;
     private TenantAccessService tenantAccessService;
@@ -34,7 +39,7 @@ class AdminControllerTest {
         conversionService = mock(DocumentConversionService.class);
         tenantAccessService = mock(TenantAccessService.class);
         when(tenantAccessService.require(any(HttpHeaders.class), any())).thenReturn(
-                new TenantContext("tenant-1", "subject-1", Set.of(
+                new TenantContext(TENANT_ID, SUBJECT_ID, Set.of(
                         TenantPermissions.ADMIN_READ,
                         TenantPermissions.ADMIN_DELETE,
                         TenantPermissions.ADMIN_RETRY
@@ -47,9 +52,9 @@ class AdminControllerTest {
     }
 
     @Test
-    void getAllJobsReturnsAllJobsWhenNoFilterProvided() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+    void getAllJobsReturnsOwnedJobsWhenNoFilterProvided() {
+        ConversionJob job1 = jobForTenant(TENANT_ID, "a.pdf");
+        ConversionJob job2 = jobForTenant(TENANT_ID, "b.pdf");
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
         webTestClient.get()
@@ -63,12 +68,29 @@ class AdminControllerTest {
     }
 
     @Test
-    void getAllJobsFiltersByDeadLetteredTrue() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
-        job1.markDeadLettered("failed");
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+    void getAllJobsDoesNotExposeAnotherTenantsJobs() {
+        ConversionJob owned = jobForTenant(TENANT_ID, "owned.pdf");
+        ConversionJob foreign = jobForTenant("tenant-2", "foreign.pdf");
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(owned, foreign));
 
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(1)
+                .jsonPath("$.jobs[0].fileName").isEqualTo("owned.pdf");
+    }
+
+    @Test
+    void getAllJobsFiltersOwnedJobsByDeadLetteredTrue() {
+        ConversionJob job1 = jobForTenant(TENANT_ID, "a.pdf");
+        job1.markDeadLettered("failed");
+        ConversionJob job2 = jobForTenant(TENANT_ID, "b.pdf");
+        ConversionJob foreign = jobForTenant("tenant-2", "foreign.pdf");
+        foreign.markDeadLettered("failed");
+
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, foreign));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
@@ -80,12 +102,13 @@ class AdminControllerTest {
     }
 
     @Test
-    void getAllJobsFiltersByDeadLetteredFalse() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+    void getAllJobsFiltersOwnedJobsByDeadLetteredFalse() {
+        ConversionJob job1 = jobForTenant(TENANT_ID, "a.pdf");
         job1.markDeadLettered("failed");
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job2 = jobForTenant(TENANT_ID, "b.pdf");
+        ConversionJob foreign = jobForTenant("tenant-2", "foreign.pdf");
 
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, foreign));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
@@ -97,30 +120,64 @@ class AdminControllerTest {
     }
 
     @Test
-    void deleteJobReturnsNoContent() {
+    void deleteJobReturnsNoContentForOwnedJob() {
         UUID jobId = UUID.randomUUID();
+        when(conversionService.deleteJob(eq(jobId), any(TenantContext.class))).thenReturn(true);
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
                 .exchange()
                 .expectStatus().isNoContent();
+
+        verify(conversionService).deleteJob(eq(jobId), any(TenantContext.class));
+        verify(conversionService, never()).deleteJob(jobId);
     }
 
     @Test
-    void retryDeadLetteredReturnsAcceptedWhenAccepted() {
+    void deleteJobHidesMissingOrForeignJob() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
+        when(conversionService.deleteJob(eq(jobId), any(TenantContext.class))).thenReturn(false);
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(conversionService, never()).deleteJob(jobId);
+    }
+
+    @Test
+    void retryDeadLetteredReturnsAcceptedForOwnedJobAndAttributesSubject() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(jobForTenant(TENANT_ID, "owned.pdf")));
+        when(conversionService.retryDeadLettered(jobId, SUBJECT_ID)).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
                 .expectStatus().isAccepted();
+
+        verify(conversionService).retryDeadLettered(jobId, SUBJECT_ID);
     }
 
     @Test
-    void retryDeadLetteredReturnsNotFoundWhenNotFound() {
+    void retryDeadLetteredHidesAnotherTenantsJob() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(jobForTenant("tenant-2", "foreign.pdf")));
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(conversionService, never()).retryDeadLettered(eq(jobId), any());
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenOwnedJobDisappearsBeforeRetry() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(jobForTenant(TENANT_ID, "owned.pdf")));
+        when(conversionService.retryDeadLettered(jobId, SUBJECT_ID)).thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -129,13 +186,27 @@ class AdminControllerTest {
     }
 
     @Test
-    void retryDeadLetteredReturnsConflictWhenNotEligible() {
+    void retryDeadLetteredReturnsConflictWhenOwnedJobIsNotEligible() {
         UUID jobId = UUID.randomUUID();
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(jobForTenant(TENANT_ID, "owned.pdf")));
+        when(conversionService.retryDeadLettered(jobId, SUBJECT_ID)).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
-                .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+                .expectStatus().isEqualTo(409);
+    }
+
+    private static ConversionJob jobForTenant(String tenantId, String fileName) {
+        return new ConversionJob(
+                UUID.randomUUID(),
+                tenantId,
+                "job-subject",
+                fileName,
+                "application/pdf",
+                "hash-" + fileName,
+                100L,
+                3
+        );
     }
 }

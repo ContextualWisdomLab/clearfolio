@@ -57,7 +57,7 @@ public class AdminController {
     public AdminJobListResponse getAllJobs(
             @RequestParam(required = false) Boolean deadLettered,
             @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ADMIN_READ);
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_READ);
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
 
         List<ConversionJob> filtered = new ArrayList<>();
@@ -83,7 +83,7 @@ public class AdminController {
     public ResponseEntity<Void> deleteJob(
             @PathVariable UUID jobId,
             @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ADMIN_DELETE);
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_DELETE);
         if (!conversionService.deleteJob(jobId, tenantContext)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
         }
@@ -101,7 +101,7 @@ public class AdminController {
     public ResponseEntity<Void> retryDeadLettered(
             @PathVariable UUID jobId,
             @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ADMIN_RETRY);
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.JOB_RETRY);
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
         tenantAccessService.requireSameTenant(tenantContext, job);

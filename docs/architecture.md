@@ -1,24 +1,28 @@
-# Conversion Service Architecture
+# Conversion Service Runtime Architecture
 
-Last updated: 2026-02-23
+Last updated: 2026-09-03
 
-This repository currently ships an MVP backend for integrated document conversion/viewer entry with a non-blocking web stack.
+This document contains detailed runtime-flow and persistence notes. The repository-level
+component/context map is `ARCHITECTURE.md`; the code-current DDD, gap, remediation, and
+evidence baseline is `docs/product-technical-gap-baseline.md`.
 
 ## Current implementation stance
 
 - Web runtime stance: this implementation adopts Spring WebFlux (`spring-boot-starter-webflux`) over Servlet/MVC for request handling.
 - Non-blocking contract stance: request handlers return quickly and conversion work is delegated to the worker queue.
+- Tenant-admin stance: authentication/permission is verified at the HTTP edge, while conversion-job ownership is enforced by tenant-scoped application-service/repository contracts rather than controller-local global filtering.
+- Credential stance: Spring-runtime tenant-claim and retry-audit consumers resolve secret material through `CredentialRegistryPort`; deployment configuration is bootstrap transport into the current immutable registry adapter rather than a request-time secret source.
+- Audit identity stance: retry operator correlation uses a keyed, versioned, purpose-separated audit pseudonym; it is not authentication or authorization authority.
 - Scope boundary: S2S preview-session orchestration is documented but still planned, not completed.
 
 ## Runtime flow
 
 - Submit flow (`POST /api/v1/convert/jobs`): validation -> blocked-format policy evaluation (default block, optional auditable override headers) -> content hash dedupe -> enqueue async conversion -> return `202`.
 - Status flow (`GET /api/v1/convert/jobs/{jobId}`): return lifecycle snapshot (`SUBMITTED`, `PROCESSING`, `SUCCEEDED`, `FAILED`) with retry metadata.
-- Operator recovery flow (`POST /api/v1/convert/jobs/{jobId}/retry`): validate `X-Clearfolio-Operator-Id` -> allow only dead-lettered jobs -> reset state -> enqueue async conversion -> return `202`.
-- Worker startup recovery flow: on application readiness, select due
-  `SUBMITTED` jobs and stale retryable `PROCESSING` jobs older than
-  `conversion.processing-lease-timeout-ms`; re-enqueue due jobs directly and
-  route stale processing jobs through retry scheduling before re-enqueue.
+- Tenant-admin list flow (`GET /api/v1/admin/convert/jobs`): resolve the tenant-claim verifier credential -> verify signed tenant claims and `JOB_READ` -> call tenant-scoped `DocumentConversionService.getJobsForTenant` -> optionally filter dead-letter state for presentation -> return only tenant-owned jobs. Missing verifier material returns `503` before permissions or tenant-owned resources are accepted.
+- Tenant-admin delete flow (`DELETE /api/v1/admin/convert/jobs/{jobId}`): verify `JOB_DELETE` -> call tenant-scoped service delete -> map both missing and cross-tenant resources to `404` -> return `204` on deletion.
+- Tenant-admin retry flow (`POST /api/v1/admin/convert/jobs/{jobId}/retry`): verify `JOB_RETRY` -> resolve the audit pseudonym credential -> create privacy-safe retry audit identity -> call tenant-scoped application retry -> map missing/cross-tenant to `404`, ineligible to `409`, accepted to `202`. Missing audit-correlation material yields `unavailable:<version>` rather than plaintext or an unkeyed digest.
+- Worker startup recovery flow: on application readiness, select due `SUBMITTED` jobs and stale retryable `PROCESSING` jobs older than `conversion.processing-lease-timeout-ms`; re-enqueue due jobs directly and route stale processing jobs through retry scheduling before re-enqueue.
 - Viewer UI flow (`GET /viewer/{docId}`): return HTML shell with mobile-safe loading/failed/ready states; when ready, embed PDF.js.
 - Bootstrap flow (`GET /api/v1/viewer/{docId}` and `GET /api/v1/convert/viewer/{docId}`): return bootstrap JSON on `SUCCEEDED` with deterministic `sourceExtension`/`rendererAdapter`; return `409` for not-ready/failed states; return `404` when missing.
 - Artifact flow (`GET /artifacts/{docId}.pdf`): serve converted PDF bytes for `SUCCEEDED` jobs only (single-range support).
@@ -46,13 +50,17 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 - client DB pooler
 - PostgreSQL 17
 
-## Component boundaries
+## Runtime responsibility boundaries
 
-- `controller`: HTTP endpoints and exception mapping.
-- `service`: validation, policy-override exception lane handling, conversion orchestration, worker execution.
-- `repository`: job persistence abstraction.
-- `model`: lifecycle state and retry/dead-letter metadata.
-- `config`: conversion properties and executor resources.
+- `controller`: delivery adapters only. They authenticate/authorize request permissions, validate transport inputs, invoke application ports, and map typed outcomes to HTTP. They do not own conversion aggregate authorization or cryptographic key mechanics.
+- `service`: application orchestration, tenant-scoped conversion use cases, validation, policy-override exception lane, conversion execution/recovery.
+- `repository`: conversion aggregate persistence and lifecycle-state ports, including tenant-scoped lookup/list contracts for externally addressable operations.
+- `security` / `auth`: signed tenant claim verification, permission checks, credential-registry port/adapter, and privacy-safe audit identity adapters. Audit correlation values do not become business approval or access authority.
+- `model`: conversion-job aggregate lifecycle and retry/dead-letter invariants.
+- `artifact`: converted/PDF-passthrough byte persistence and generation.
+- `config`: typed non-secret runtime configuration plus bootstrap transport for values copied into the credential registry. Runtime security consumers do not bind those secret properties directly.
+
+The current `BootstrapCredentialRegistryAdapter` is deliberately replaceable behind `CredentialRegistryPort`. It owns the bootstrap-to-runtime handoff for the tenant-claim and audit-pseudonym keys. The older artifact-token direct-property path remains a legacy migration gap; it is not the contract for new secret consumers.
 
 ## Non-blocking, queue, and DB operation rules
 
@@ -60,17 +68,12 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 - Queue flow in request path does not wait for completion; clients poll status endpoint.
 - Queue policy baseline: bounded executor, retry scheduling with backoff, dead-letter fallback.
 - DB/transaction policy (for future persistent DB phase): keep transactions short, avoid external calls inside transactions, use timeout/retry and `SKIP LOCKED` where applicable.
-- Durable job repository target: keep `ConversionJobRepository` as the read and
-  dedupe boundary. `ConversionJobStateStore` is now the explicit lifecycle
-  transition boundary for worker claims, success, retry, dead-lettering, and
-  operator retry acceptance before adding a SQL implementation.
-  `ConversionJobRepository.findRecoverableJobs` and `DefaultConversionWorker`
-  now define the process-local startup recovery contract for due submitted jobs
-  and stale processing leases. See
-  `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`.
+- Durable job repository target: keep `ConversionJobRepository` as the aggregate read/dedupe/tenant-scope boundary. `ConversionJobStateStore` is the explicit lifecycle transition boundary for worker claims, success, retry, dead-lettering, and operator retry acceptance before adding a SQL implementation.
+- Tenant-native persistence target: durable adapters must push `findByTenantAndId` and `findAllByTenant` predicates into storage queries rather than materializing global rows and filtering at an external adapter.
+- `ConversionJobRepository.findRecoverableJobs` and `DefaultConversionWorker` define the process-local startup recovery contract for due submitted jobs and stale processing leases. See `docs/persistence/2026-07-02-durable-conversion-job-repository-plan.md`.
 - Read-only routing policy (future DB phase): use provided read-only endpoint/DSN for read-biased traffic; strong consistency/DDL/lock-sensitive paths stay on primary.
 - Pooler detection policy (best effort, future DB phase): in management DB `pgbouncer`/`pgcat`, try `SHOW VERSION;`; if detection fails, treat as `unknown` and keep safe fallback.
-- Distributed Postgres compatibility policy: for Citus/Cosmos DB for PostgreSQL (Hyperscale)-style deployments, automatic read split is disabled by default (opt-in only).
+- Distributed Postgres compatibility policy: for Citus/Cosmos DB for PostgreSQL-style deployments, automatic read split is disabled by default and requires an explicit evidence-backed opt-in.
 
 ## OSS references (implementation and concept)
 
@@ -89,20 +92,27 @@ Reference policy: `docs/engineering/acceptance-criteria.md`.
 | --- | --- |
 | WebFlux dependency | `pom.xml` |
 | Submit non-blocking controller path | `src/main/java/com/clearfolio/viewer/controller/ConversionController.java` |
+| Tenant admin HTTP adapter | `src/main/java/com/clearfolio/viewer/controller/AdminController.java` |
+| Signed tenant claims and permission checks | `src/main/java/com/clearfolio/viewer/auth/TenantAccessService.java` |
+| Runtime credential registry boundary | `src/main/java/com/clearfolio/viewer/security/CredentialRegistryPort.java`, `src/main/java/com/clearfolio/viewer/security/BootstrapCredentialRegistryAdapter.java` |
+| Tenant-scoped application contracts | `src/main/java/com/clearfolio/viewer/service/DocumentConversionService.java` |
+| Tenant-scoped persistence contracts | `src/main/java/com/clearfolio/viewer/repository/ConversionJobRepository.java` |
+| Retry audit identity privacy port/adapter | `src/main/java/com/clearfolio/viewer/security/RetryOperatorIdentityPort.java`, `src/main/java/com/clearfolio/viewer/security/HmacRetryOperatorIdentityAdapter.java` |
 | Blocked-format override lane + audit signal | `src/main/java/com/clearfolio/viewer/service/DefaultDocumentValidationService.java` |
 | Override header contract | `src/main/java/com/clearfolio/viewer/service/PolicyOverrideRequest.java` |
 | Conversion enqueue orchestration | `src/main/java/com/clearfolio/viewer/service/DefaultDocumentConversionService.java` |
 | Worker retry/dead-letter behavior | `src/main/java/com/clearfolio/viewer/service/DefaultConversionWorker.java` |
-| Operator dead-letter retry endpoint | `src/main/java/com/clearfolio/viewer/controller/ConversionController.java` |
 | Bounded queue configuration | `src/main/java/com/clearfolio/viewer/config/ConversionExecutorConfig.java` |
 | NUL sanitization at persistence boundary | `src/main/java/com/clearfolio/viewer/model/ConversionJob.java` |
 | Viewer adapter selection metadata | `src/main/java/com/clearfolio/viewer/api/ViewerBootstrapResponse.java` |
+| Code-current product/DDD/gap baseline | `docs/product-technical-gap-baseline.md` |
 | Mandatory gate evidence index | `docs/qa/evidence/LATEST.md` |
-| Latest gate summary | `docs/qa/evidence/2026-02-21-ac-gates/SUMMARY.md` |
+| Latest historical gate summary | `docs/qa/evidence/2026-02-21-ac-gates/SUMMARY.md` |
 
 ## Related design docs
 
-- `ARCHITECTURE.md` (root architecture map, updated in this change)
+- `ARCHITECTURE.md`
+- `docs/product-technical-gap-baseline.md`
 - `docs/prd-integrated-document-viewer-platform.md`
 - `docs/trd-integrated-document-viewer-platform.md`
 - `docs/diagrams/submit-flow.md`

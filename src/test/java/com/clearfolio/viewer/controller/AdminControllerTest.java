@@ -44,6 +44,8 @@ class AdminControllerTest {
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
 
+    }
+
     @Test
     void getAllJobsBlocksWhenUnauthorized() {
         when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_READ)))

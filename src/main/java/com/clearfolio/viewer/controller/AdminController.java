@@ -4,22 +4,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.RequestHeader;
+
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantPermissions;
+import com.clearfolio.viewer.auth.TenantContext;
 
 import com.clearfolio.viewer.api.AdminJobListResponse;
-import com.clearfolio.viewer.auth.TenantAccessService;
-import com.clearfolio.viewer.auth.TenantContext;
-import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
@@ -49,18 +50,19 @@ public class AdminController {
     }
 
     /**
-     * Retrieves all tenant-owned conversion jobs, optionally filtered by dead-letter status.
+     * Retrieves all conversion jobs, optionally filtered by dead-letter status.
      *
      * @param deadLettered optional filter for dead-lettered jobs
      * @param headers request headers
-     * @return list of tenant-owned conversion jobs
+     * @return list of conversion jobs
      */
     @GetMapping("/api/v1/admin/convert/jobs")
     public AdminJobListResponse getAllJobs(
             @RequestParam(required = false) final Boolean deadLettered,
             @RequestHeader final HttpHeaders headers) {
         TenantContext tenantContext =
-                tenantAccessService.require(headers, TenantPermissions.JOB_READ);
+                tenantAccessService.require(
+                        headers, TenantPermissions.JOB_READ);
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
 
         List<ConversionJob> tenantJobs = new ArrayList<>();
@@ -85,7 +87,7 @@ public class AdminController {
     }
 
     /**
-     * Deletes a tenant-owned conversion job.
+     * Deletes a conversion job.
      *
      * @param jobId conversion job identifier
      * @param headers request headers
@@ -96,7 +98,8 @@ public class AdminController {
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
         TenantContext tenantContext =
-                tenantAccessService.require(headers, TenantPermissions.JOB_DELETE);
+                tenantAccessService.require(
+                        headers, TenantPermissions.JOB_DELETE);
         ConversionJob job = conversionService.getJob(jobId).orElseThrow(() ->
                 new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "job not found"));
@@ -106,7 +109,7 @@ public class AdminController {
     }
 
     /**
-     * Retries a tenant-owned dead-lettered conversion job.
+     * Retries a dead-lettered conversion job.
      *
      * @param jobId conversion job identifier
      * @param headers request headers
@@ -117,7 +120,8 @@ public class AdminController {
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
         TenantContext tenantContext =
-                tenantAccessService.require(headers, TenantPermissions.JOB_RETRY);
+                tenantAccessService.require(
+                        headers, TenantPermissions.JOB_RETRY);
         ConversionJob job = conversionService.getJob(jobId).orElseThrow(() ->
                 new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "job not found"));

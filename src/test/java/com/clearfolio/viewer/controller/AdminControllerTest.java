@@ -46,8 +46,8 @@ class AdminControllerTest {
     }
 
     @Test
-    void getAllJobsRequiresAdminReadAndReturnsOwnedJobsWhenNoFilterProvided() {
-        allow(TenantPermissions.ADMIN_READ);
+    void getAllJobsRequiresJobReadAndReturnsOwnedJobsWhenNoFilterProvided() {
+        allow(TenantPermissions.JOB_READ);
         ConversionJob job1 = jobForTenant(TENANT_ID, "a.pdf");
         ConversionJob job2 = jobForTenant(TENANT_ID, "b.pdf");
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
@@ -61,12 +61,12 @@ class AdminControllerTest {
                 .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf")
                 .jsonPath("$.jobs[1].fileName").isEqualTo("b.pdf");
 
-        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ));
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.JOB_READ));
     }
 
     @Test
     void getAllJobsDoesNotExposeAnotherTenantsJobs() {
-        allow(TenantPermissions.ADMIN_READ);
+        allow(TenantPermissions.JOB_READ);
         ConversionJob owned = jobForTenant(TENANT_ID, "owned.pdf");
         ConversionJob foreign = jobForTenant("tenant-2", "foreign.pdf");
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(owned, foreign));
@@ -82,7 +82,7 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsFiltersOwnedJobsByDeadLetteredTrue() {
-        allow(TenantPermissions.ADMIN_READ);
+        allow(TenantPermissions.JOB_READ);
         ConversionJob job1 = jobForTenant(TENANT_ID, "a.pdf");
         job1.markDeadLettered("failed");
         ConversionJob job2 = jobForTenant(TENANT_ID, "b.pdf");
@@ -101,7 +101,7 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsFiltersOwnedJobsByDeadLetteredFalse() {
-        allow(TenantPermissions.ADMIN_READ);
+        allow(TenantPermissions.JOB_READ);
         ConversionJob job1 = jobForTenant(TENANT_ID, "a.pdf");
         job1.markDeadLettered("failed");
         ConversionJob job2 = jobForTenant(TENANT_ID, "b.pdf");
@@ -119,7 +119,7 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsReturnsUnauthorizedWhenAuthenticationFails() {
-        deny(TenantPermissions.ADMIN_READ, HttpStatus.UNAUTHORIZED);
+        deny(TenantPermissions.JOB_READ, HttpStatus.UNAUTHORIZED);
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
@@ -130,8 +130,8 @@ class AdminControllerTest {
     }
 
     @Test
-    void getAllJobsReturnsForbiddenWhenAdminReadIsMissing() {
-        deny(TenantPermissions.ADMIN_READ, HttpStatus.FORBIDDEN);
+    void getAllJobsReturnsForbiddenWhenJobReadIsMissing() {
+        deny(TenantPermissions.JOB_READ, HttpStatus.FORBIDDEN);
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
@@ -142,8 +142,8 @@ class AdminControllerTest {
     }
 
     @Test
-    void deleteJobRequiresAdminDeleteAndReturnsNoContentForOwnedJob() {
-        allow(TenantPermissions.ADMIN_DELETE);
+    void deleteJobRequiresJobDeleteAndReturnsNoContentForOwnedJob() {
+        allow(TenantPermissions.JOB_DELETE);
         UUID jobId = UUID.randomUUID();
         when(conversionService.deleteJob(eq(jobId), any(TenantContext.class))).thenReturn(true);
 
@@ -152,14 +152,14 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isNoContent();
 
-        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_DELETE));
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.JOB_DELETE));
         verify(conversionService).deleteJob(eq(jobId), any(TenantContext.class));
         verify(conversionService, never()).deleteJob(jobId);
     }
 
     @Test
     void deleteJobHidesMissingOrForeignJob() {
-        allow(TenantPermissions.ADMIN_DELETE);
+        allow(TenantPermissions.JOB_DELETE);
         UUID jobId = UUID.randomUUID();
         when(conversionService.deleteJob(eq(jobId), any(TenantContext.class))).thenReturn(false);
 
@@ -173,7 +173,7 @@ class AdminControllerTest {
 
     @Test
     void deleteJobReturnsUnauthorizedWhenAuthenticationFails() {
-        deny(TenantPermissions.ADMIN_DELETE, HttpStatus.UNAUTHORIZED);
+        deny(TenantPermissions.JOB_DELETE, HttpStatus.UNAUTHORIZED);
         UUID jobId = UUID.randomUUID();
 
         webTestClient.delete()
@@ -186,8 +186,8 @@ class AdminControllerTest {
     }
 
     @Test
-    void deleteJobReturnsForbiddenWhenAdminDeleteIsMissing() {
-        deny(TenantPermissions.ADMIN_DELETE, HttpStatus.FORBIDDEN);
+    void deleteJobReturnsForbiddenWhenJobDeleteIsMissing() {
+        deny(TenantPermissions.JOB_DELETE, HttpStatus.FORBIDDEN);
         UUID jobId = UUID.randomUUID();
 
         webTestClient.delete()
@@ -200,8 +200,8 @@ class AdminControllerTest {
     }
 
     @Test
-    void retryDeadLetteredRequiresAdminRetryAndAttributesAuthenticatedSubject() {
-        allow(TenantPermissions.ADMIN_RETRY);
+    void retryDeadLetteredRequiresJobRetryAndAttributesAuthenticatedSubject() {
+        allow(TenantPermissions.JOB_RETRY);
         UUID jobId = UUID.randomUUID();
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(jobForTenant(TENANT_ID, "owned.pdf")));
         when(conversionService.retryDeadLettered(jobId, SUBJECT_ID)).thenReturn(RetryDeadLetterResult.ACCEPTED);
@@ -211,13 +211,13 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isAccepted();
 
-        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_RETRY));
+        verify(tenantAccessService).require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY));
         verify(conversionService).retryDeadLettered(jobId, SUBJECT_ID);
     }
 
     @Test
     void retryDeadLetteredHidesAnotherTenantsJob() {
-        allow(TenantPermissions.ADMIN_RETRY);
+        allow(TenantPermissions.JOB_RETRY);
         UUID jobId = UUID.randomUUID();
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(jobForTenant("tenant-2", "foreign.pdf")));
 
@@ -231,7 +231,7 @@ class AdminControllerTest {
 
     @Test
     void retryDeadLetteredReturnsNotFoundWhenOwnedJobDisappearsBeforeRetry() {
-        allow(TenantPermissions.ADMIN_RETRY);
+        allow(TenantPermissions.JOB_RETRY);
         UUID jobId = UUID.randomUUID();
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(jobForTenant(TENANT_ID, "owned.pdf")));
         when(conversionService.retryDeadLettered(jobId, SUBJECT_ID)).thenReturn(RetryDeadLetterResult.NOT_FOUND);
@@ -244,7 +244,7 @@ class AdminControllerTest {
 
     @Test
     void retryDeadLetteredReturnsConflictWhenOwnedJobIsNotEligible() {
-        allow(TenantPermissions.ADMIN_RETRY);
+        allow(TenantPermissions.JOB_RETRY);
         UUID jobId = UUID.randomUUID();
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(jobForTenant(TENANT_ID, "owned.pdf")));
         when(conversionService.retryDeadLettered(jobId, SUBJECT_ID)).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
@@ -257,7 +257,7 @@ class AdminControllerTest {
 
     @Test
     void retryDeadLetteredReturnsUnauthorizedWhenAuthenticationFails() {
-        deny(TenantPermissions.ADMIN_RETRY, HttpStatus.UNAUTHORIZED);
+        deny(TenantPermissions.JOB_RETRY, HttpStatus.UNAUTHORIZED);
         UUID jobId = UUID.randomUUID();
 
         webTestClient.post()
@@ -270,8 +270,8 @@ class AdminControllerTest {
     }
 
     @Test
-    void retryDeadLetteredReturnsForbiddenWhenAdminRetryIsMissing() {
-        deny(TenantPermissions.ADMIN_RETRY, HttpStatus.FORBIDDEN);
+    void retryDeadLetteredReturnsForbiddenWhenJobRetryIsMissing() {
+        deny(TenantPermissions.JOB_RETRY, HttpStatus.FORBIDDEN);
         UUID jobId = UUID.randomUUID();
 
         webTestClient.post()

@@ -133,8 +133,6 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
             return null;
         }
 
-        // ⚡ Bolt: Single-pass string sanitization
-        // Avoids multiple allocations from chained replace() calls.
         StringBuilder sb = null;
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);

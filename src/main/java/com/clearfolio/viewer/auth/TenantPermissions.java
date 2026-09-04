@@ -55,21 +55,6 @@ public final class TenantPermissions {
      */
     public static final String ANALYTICS_READ = "analytics:read";
 
-    /**
-     * Permission required to read all jobs.
-     */
-    public static final String ADMIN_READ = "admin:read";
-
-    /**
-     * Permission required to delete any job.
-     */
-    public static final String ADMIN_DELETE = "admin:delete";
-
-    /**
-     * Permission required to retry any job.
-     */
-    public static final String ADMIN_RETRY = "admin:retry";
-
     private TenantPermissions() {
     }
 }

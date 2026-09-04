@@ -185,7 +185,10 @@ public class ViewerUiController {
                         </div>
 
                         <form id="upload-form" class="upload-form" enctype="multipart/form-data">
-                          <label class="field-label" for="file-input">Document</label>
+                          <label class="field-label" for="file-input">
+                            <span>Document <span style="color: var(--danger);"
+                                aria-hidden="true">*</span></span>
+                          </label>
                           <input id="file-input" name="file" class="file-input" type="file" required />
 
                           <div class="actions">

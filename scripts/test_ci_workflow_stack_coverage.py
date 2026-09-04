@@ -42,6 +42,28 @@ class CiWorkflowStackCoverageTest(unittest.TestCase):
         self.assertIn("  pull_request: {}", workflow)
         self.assertNotIn("  pull_request:\n    branches: [main]", workflow)
 
+    def test_ci_cancels_only_superseded_pull_request_runs(self) -> None:
+        workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "group: ${{ github.workflow }}-${{ github.repository }}-"
+            "${{ github.event_name == 'pull_request' && "
+            "github.event.pull_request.number || github.run_id }}",
+            workflow,
+        )
+        self.assertIn(
+            "cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
+            workflow,
+        )
+
+    def test_fuzz_matrix_runs_one_target_at_a_time(self) -> None:
+        workflow = (
+            REPOSITORY_ROOT / ".github" / "workflows" / "fuzz.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("      max-parallel: 1", workflow)
+        self.assertEqual(workflow.count("          - "), 3)
+
     def test_ci_preserves_exact_head_and_synthetic_merge_evidence(self) -> None:
         """Bind exact-head and synthetic-merge checks to their intended CI jobs."""
         workflow = CI_WORKFLOW.read_text(encoding="utf-8")

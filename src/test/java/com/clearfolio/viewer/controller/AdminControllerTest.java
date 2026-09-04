@@ -3,6 +3,8 @@ package com.clearfolio.viewer.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
@@ -127,6 +129,24 @@ class AdminControllerTest {
     }
 
     @Test
+    void deleteJobHidesForeignTenantAndDoesNotMutate() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob foreignJob = job(jobId, "tenant-b", "foreign.pdf");
+        when(conversionService.getJob(jobId))
+                .thenReturn(java.util.Optional.of(foreignJob));
+        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND))
+                .when(tenantAccessService).requireSameTenant(any(), eq(foreignJob));
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .header("X-Test", "test")
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(conversionService, never()).deleteJob(jobId);
+    }
+
+    @Test
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
         when(conversionService.getJob(jobId))
@@ -139,6 +159,26 @@ class AdminControllerTest {
                 .header("X-Test", "test")
                 .exchange()
                 .expectStatus().isAccepted();
+    }
+
+    @Test
+    void retryDeadLetteredHidesForeignTenantAndDoesNotMutate() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob foreignJob = job(jobId, "tenant-b", "foreign.pdf");
+        foreignJob.markDeadLettered("failed");
+        when(conversionService.getJob(jobId))
+                .thenReturn(java.util.Optional.of(foreignJob));
+        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND))
+                .when(tenantAccessService).requireSameTenant(any(), eq(foreignJob));
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header("X-Test", "test")
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(conversionService, never()).retryDeadLettered(jobId, "admin");
+        org.junit.jupiter.api.Assertions.assertTrue(foreignJob.isDeadLettered());
     }
 
     @Test

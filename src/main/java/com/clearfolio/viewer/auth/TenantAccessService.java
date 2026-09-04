@@ -53,7 +53,7 @@ public class TenantAccessService {
     }
 
     TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {
-        this.claimsHmacSecret = clean(claimsHmacSecret);
+        this.claimsHmacSecret = normalizeSigningSecret(claimsHmacSecret);
         this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
         this.clock = clock;
     }
@@ -152,6 +152,16 @@ public class TenantAccessService {
         } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("tenant claims signing failed", ex);
         }
+    }
+
+    private static String normalizeSigningSecret(final String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        if (value.indexOf('\u0000') >= 0) {
+            throw new IllegalArgumentException("tenant claims HMAC secret must not contain NUL");
+        }
+        return value.strip();
     }
 
     private static String clean(final String value) {

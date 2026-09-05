@@ -50,6 +50,7 @@ class TenantAccessServiceTest {
 
         assertDoesNotThrow(() -> blankSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
         assertDoesNotThrow(() -> nullSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
+        assertThrows(IllegalArgumentException.class, () -> new TenantAccessService("\u0000", 300L, Clock.fixed(NOW, ZoneOffset.UTC)));
     }
 
     @Test

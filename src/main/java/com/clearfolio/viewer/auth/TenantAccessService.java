@@ -167,6 +167,8 @@ public class TenantAccessService {
             return null;
         }
 
+        // ⚡ Bolt: Single-pass string sanitization
+        // Avoids multiple allocations from chained replace() calls.
         StringBuilder sb = null;
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);

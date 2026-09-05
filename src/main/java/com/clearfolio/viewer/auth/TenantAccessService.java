@@ -53,7 +53,7 @@ public class TenantAccessService {
     }
 
     TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {
-        this.claimsHmacSecret = clean(claimsHmacSecret);
+        this.claimsHmacSecret = normalizeSigningSecret(claimsHmacSecret);
         this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
         this.clock = clock;
     }
@@ -154,11 +154,35 @@ public class TenantAccessService {
         }
     }
 
-    private static String clean(String value) {
+    private static String normalizeSigningSecret(final String secret) {
+        if (secret != null && secret.indexOf('\u0000') != -1) {
+            throw new IllegalArgumentException(
+                    "tenant claims HMAC secret must not contain NUL");
+        }
+        return clean(secret);
+    }
+
+    private static String clean(final String value) {
         if (value == null) {
             return null;
         }
-        String cleaned = value.replace("\u0000", "").strip();
+
+        // ⚡ Bolt: Single-pass string sanitization
+        // Avoids multiple allocations from chained replace() calls.
+        StringBuilder sb = null;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '\u0000') {
+                if (sb == null) {
+                    sb = new StringBuilder(value.length());
+                    sb.append(value, 0, i);
+                }
+            } else if (sb != null) {
+                sb.append(c);
+            }
+        }
+
+        String cleaned = (sb == null ? value : sb.toString()).strip();
         return cleaned.isEmpty() ? null : cleaned;
     }
 }

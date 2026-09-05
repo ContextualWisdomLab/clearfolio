@@ -1,9 +1,6 @@
 # Changelog
 
 ## [Unreleased]
-### 성능 개선 (Performance)
-- **artifact**: `String.split` 대신 `indexOf`와 `substring`을 사용하여 토큰 파싱 성능 최적화 및 GC 부담 감소
-
 
 ### Added
 

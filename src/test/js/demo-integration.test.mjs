@@ -36,16 +36,34 @@ const elementIds = [
   "retry-job-btn",
 ];
 
-test("the executable demo renders inert actions and blocks repeated status activation", async () => {
+test("the executable demo renders inert actions and batches history publication", async () => {
+  const historyBody = new MockElement();
+  let historyBodyAppendCount = 0;
+  historyBody.appendChild = function appendHistoryChild(node) {
+    historyBodyAppendCount += 1;
+    return MockElement.prototype.appendChild.call(this, node);
+  };
+
   const elements = new Map(elementIds.map(id => [id, new MockElement()]));
+  elements.set("history-body", historyBody);
+
   const fileName = "<img src=x onerror=alert(1)>.pdf";
-  const history = [{
-    fileName,
-    status: "SUCCEEDED",
-    submittedAt: "2026-08-05T00:00:00Z",
-    jobId: "document-identifier",
-    statusUrl: "/api/v1/convert/jobs/document-identifier",
-  }];
+  const history = [
+    {
+      fileName,
+      status: "SUCCEEDED",
+      submittedAt: "2026-08-05T00:00:00Z",
+      jobId: "document-identifier",
+      statusUrl: "/api/v1/convert/jobs/document-identifier",
+    },
+    {
+      fileName: "second-document.pdf",
+      status: "SUCCEEDED",
+      submittedAt: "2026-08-05T00:01:00Z",
+      jobId: "second-document-identifier",
+      statusUrl: "/api/v1/convert/jobs/second-document-identifier",
+    },
+  ];
 
   globalThis.document = {
     getElementById(id) {
@@ -96,7 +114,12 @@ test("the executable demo renders inert actions and blocks repeated status activ
   await new Promise(resolve => setImmediate(resolve));
 
   const rows = elements.get("history-body").childNodes;
-  assert.equal(rows.length, 1);
+  assert.equal(rows.length, 2);
+  assert.equal(
+    historyBodyAppendCount,
+    1,
+    "history rows should cross the live history-body boundary in one fragment append",
+  );
   const [fileCell, statusCell, , actionsCell] = rows[0].childNodes;
   assert.equal(fileCell.textContent, fileName);
   assert.equal(fileCell.childNodes.length, 1);

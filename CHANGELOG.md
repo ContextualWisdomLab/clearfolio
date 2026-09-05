@@ -70,9 +70,3 @@
 - 루트 `LICENSE`와 Maven license metadata를 추가해 Scorecard License alert가 표준 Apache-2.0 파일을 확인할 수 있게 했습니다.
 - logback-core 신규 권고(GHSA-jhq6-gfmj-v8fx) 대응을 위해 Logback 관리 버전을 `1.5.35`로 고정했습니다.
 - 저장소 보안 정책, Maven/GitHub Actions Dependabot 설정, 기본 CodeQL/중앙 SAST 운영 지침, 다운로드 파일명 정규화 Jazzer fuzz target을 추가해 Scorecard 보안 거버넌스 신호를 보강했습니다.
-
-## [Unreleased]
-
-### Changed
-
-- ⚡ Bolt: `DocumentFragment`를 사용하여 `demo.js`의 DOM 렌더링 성능을 최적화했습니다. (불필요한 리플로우 및 리페인트 감소)

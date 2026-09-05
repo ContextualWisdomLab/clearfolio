@@ -148,8 +148,27 @@ public class ArtifactLinkLedger {
         }
     }
 
-    private void replayLine(String line) {
-        String[] fields = line.split("\t", -1);
+    @SuppressWarnings("checkstyle:MagicNumber")
+    private void replayLine(final String line) {
+        // Find the number of parts first
+        int count = 1;
+        int idx = 0;
+        while ((idx = line.indexOf('\t', idx)) >= 0) {
+            count++;
+            idx++;
+        }
+
+        final String[] fields = new String[count];
+        int fieldIndex = 0;
+        int startIndex = 0;
+        int tabIndex;
+
+        while ((tabIndex = line.indexOf('\t', startIndex)) >= 0) {
+            fields[fieldIndex++] = line.substring(startIndex, tabIndex);
+            startIndex = tabIndex + 1;
+        }
+        fields[fieldIndex] = line.substring(startIndex);
+
         switch (fields[0]) {
             case ISSUED -> replayIssued(fields);
             case REVOKED -> replayRevoked(fields);

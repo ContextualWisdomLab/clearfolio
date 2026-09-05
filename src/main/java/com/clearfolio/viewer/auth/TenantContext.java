@@ -114,17 +114,30 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
         return String.join(",", permissions);
     }
 
-    private static Set<String> permissionsOf(String raw) {
-        String normalized = sanitize(raw);
+    private static Set<String> permissionsOf(final String raw) {
+        final String normalized = sanitize(raw);
         if (normalized == null) {
             return Set.of();
         }
 
-        LinkedHashSet<String> parsed = new LinkedHashSet<>();
-        Arrays.stream(normalized.split(","))
-                .map(TenantContext::sanitize)
-                .filter(value -> value != null)
-                .forEach(parsed::add);
+        final LinkedHashSet<String> parsed = new LinkedHashSet<>();
+        int startIndex = 0;
+        int commaIndex;
+
+        while ((commaIndex = normalized.indexOf(',', startIndex)) >= 0) {
+            final String part = sanitize(normalized.substring(startIndex, commaIndex));
+            if (part != null) {
+                parsed.add(part);
+            }
+            startIndex = commaIndex + 1;
+        }
+
+        if (startIndex <= normalized.length()) {
+            final String part = sanitize(normalized.substring(startIndex));
+            if (part != null) {
+                parsed.add(part);
+            }
+        }
         return parsed;
     }
 

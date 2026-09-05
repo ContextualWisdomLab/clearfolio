@@ -19,7 +19,7 @@ public class ProductionAuthReadinessConfig {
      */
     public ProductionAuthReadinessConfig(
             @Value("${clearfolio.tenant-claims.hmac-secret:}") String tenantClaimsSecret) {
-        if (!StringUtils.hasText(tenantClaimsSecret)) {
+        if (!StringUtils.hasText(tenantClaimsSecret) || tenantClaimsSecret.indexOf('\u0000') >= 0) {
             throw new IllegalStateException(
                     "production profile requires clearfolio.tenant-claims.hmac-secret"
             );

@@ -502,3 +502,7 @@ a:hover {
     animation: none;
   }
 }
+
+.required-marker {
+  color: var(--danger);
+}

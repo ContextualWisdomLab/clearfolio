@@ -132,7 +132,7 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
             startIndex = commaIndex + 1;
         }
 
-        if (startIndex < normalized.length()) {
+        if (startIndex <= normalized.length()) {
             final String part = sanitize(normalized.substring(startIndex));
             if (part != null) {
                 parsed.add(part);

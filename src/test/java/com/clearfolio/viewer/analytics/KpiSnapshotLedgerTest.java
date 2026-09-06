@@ -85,6 +85,7 @@ class KpiSnapshotLedgerTest {
         assertInvalidLedger(snapshotLine().replace("\t123", "\tnot-long"));
         assertInvalidLedger(snapshotLine().replace(encoded("tenant-a"), "!"));
         assertInvalidLedger(snapshotLine() + "	extra-field");
+        assertInvalidLedger("SNAPSHOT");
     }
 
     @Test

@@ -1,15 +1,24 @@
 package com.clearfolio.viewer.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.server.ResponseStatusException;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
@@ -17,13 +26,24 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
+    private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService);
+        tenantAccessService = mock(TenantAccessService.class);
+        when(tenantAccessService.require(
+                any(HttpHeaders.class),
+                eq(TenantPermissions.ADMIN_WRITE)
+        )).thenReturn(new TenantContext(
+                "tenant-1",
+                "subject-1",
+                Set.of(TenantPermissions.ADMIN_WRITE)
+        ));
+
+        controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -120,5 +140,28 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+    }
+
+    @Test
+    void endpointsRejectUnauthorizedRequests() {
+        when(tenantAccessService.require(
+                any(HttpHeaders.class),
+                eq(TenantPermissions.ADMIN_WRITE)
+        )).thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isForbidden();
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + UUID.randomUUID())
+                .exchange()
+                .expectStatus().isForbidden();
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + UUID.randomUUID() + "/retry")
+                .exchange()
+                .expectStatus().isForbidden();
     }
 }

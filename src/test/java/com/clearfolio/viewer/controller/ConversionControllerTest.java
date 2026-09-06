@@ -79,22 +79,7 @@ class ConversionControllerTest {
                                     .header(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID)
                                     .header(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID)
                                     .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.ARTIFACT_READ);
-                    String path = request.url().getPath();
-                    int count = 1;
-                    int idx = 0;
-                    while ((idx = path.indexOf('/', idx)) >= 0) {
-                        count++;
-                        idx++;
-                    }
-                    String[] pathSegments = new String[count];
-                    int fieldIndex = 0;
-                    int startIndex = 0;
-                    int slashIndex;
-                    while ((slashIndex = path.indexOf('/', startIndex)) >= 0) {
-                        pathSegments[fieldIndex++] = path.substring(startIndex, slashIndex);
-                        startIndex = slashIndex + 1;
-                    }
-                    pathSegments[fieldIndex] = path.substring(startIndex);
+                    String[] pathSegments = request.url().getPath().split("/");
                     if (pathSegments.length >= 2) {
                         try {
                             UUID jobId = UUID.fromString(pathSegments[pathSegments.length - 2]);

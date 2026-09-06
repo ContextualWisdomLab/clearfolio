@@ -336,34 +336,42 @@ public class ArtifactLinkService {
     private ArtifactTokenClaims parseAndVerify(final String token) {
         int lastDotIndex = token.lastIndexOf('.');
         if (lastDotIndex == -1) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
         String payload = token.substring(0, lastDotIndex);
+
+        // Fail-fast structural admission check before invoking HMAC
+        int dotCount = 0;
+        for (int i = 0; i < payload.length(); i++) {
+            if (payload.charAt(i) == '.') {
+                dotCount++;
+            }
+        }
+        if (dotCount != TOKEN_FIELD_COUNT - 1) {
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
         String expectedSignature = hmac(payload);
         String providedSignature = token.substring(lastDotIndex + 1);
 
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
                 providedSignature.getBytes(StandardCharsets.US_ASCII))) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
         String[] parts = new String[TOKEN_FIELD_COUNT];
         int start = 0;
         for (int i = 0; i < TOKEN_FIELD_COUNT - 1; i++) {
             int dotIndex = payload.indexOf('.', start);
-            if (dotIndex == -1) {
-                throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
-            }
             parts[i] = payload.substring(start, dotIndex);
             start = dotIndex + 1;
         }
         parts[TOKEN_FIELD_COUNT - 1] = payload.substring(start);
-
-        if (parts[TOKEN_FIELD_COUNT - 1].indexOf('.') != -1) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
-        }
 
         try {
             String version = decode(parts[0]);

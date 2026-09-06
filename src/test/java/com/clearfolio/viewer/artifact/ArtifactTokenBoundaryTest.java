@@ -55,22 +55,7 @@ class ArtifactTokenBoundaryTest {
         artifactBytes = new byte[] {0, 1, 2, 3};
         artifactStore.putPdf(documentId, artifactBytes);
         ArtifactLinkResponse link = service.createLink(conversionJob, tenantContext(), null);
-        String token = tokenFrom(link);
-        int count = 1;
-        int idx = 0;
-        while ((idx = token.indexOf('.', idx)) >= 0) {
-            count++;
-            idx++;
-        }
-        String[] tokenParts = new String[count];
-        int fieldIndex = 0;
-        int startIndex = 0;
-        int dotIndex;
-        while ((dotIndex = token.indexOf('.', startIndex)) >= 0) {
-            tokenParts[fieldIndex++] = token.substring(startIndex, dotIndex);
-            startIndex = dotIndex + 1;
-        }
-        tokenParts[fieldIndex] = token.substring(startIndex);
+        String[] tokenParts = tokenFrom(link).split("\\.", -1);
         assertEquals(11, tokenParts.length, "a valid token must contain ten payload fields and one signature");
         validPayloadFields = Arrays.copyOf(tokenParts, 10);
     }

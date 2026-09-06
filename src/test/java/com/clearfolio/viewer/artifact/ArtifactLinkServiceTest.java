@@ -643,21 +643,7 @@ class ArtifactLinkServiceTest {
     }
 
     private static String retokenize(String token, int fieldIndex, String value) {
-        int count = 1;
-        int idx = 0;
-        while ((idx = token.indexOf('.', idx)) >= 0) {
-            count++;
-            idx++;
-        }
-        String[] parts = new String[count];
-        int partIndex = 0;
-        int startIndex = 0;
-        int dotIndex;
-        while ((dotIndex = token.indexOf('.', startIndex)) >= 0) {
-            parts[partIndex++] = token.substring(startIndex, dotIndex);
-            startIndex = dotIndex + 1;
-        }
-        parts[partIndex] = token.substring(startIndex);
+        String[] parts = token.split("\\.");
         parts[fieldIndex] = encode(value);
         String payload = String.join(".", Arrays.copyOf(parts, 10));
         return payload + "." + hmac(payload);

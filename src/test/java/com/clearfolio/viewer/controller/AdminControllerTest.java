@@ -63,6 +63,24 @@ class AdminControllerTest {
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         job1.markDeadLettered("failed");
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "b.pdf", "application/pdf", "hash-b", 100L, 3);
+        ConversionJob job3 = new ConversionJob(UUID.randomUUID(), "other-tenant", "subject-1", "c.pdf", "application/pdf", "hash-c", 100L, 3);
+
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, job3));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(1)
+                .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf");
+    }
+
+    @Test
+    void getAllJobsFiltersByDeadLetteredFalseAndTenant() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        job1.markDeadLettered("failed");
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "b.pdf", "application/pdf", "hash-b", 100L, 3);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 

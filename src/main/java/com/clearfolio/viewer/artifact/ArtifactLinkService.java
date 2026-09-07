@@ -332,38 +332,19 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    @SuppressWarnings("checkstyle:MagicNumber")
-    private ArtifactTokenClaims parseAndVerify(final String token) {
-        final int lastDotIndex = token.lastIndexOf('.');
-        if (lastDotIndex == -1) {
+    private ArtifactTokenClaims parseAndVerify(String token) {
+        String[] parts = token.split("\\.", -1);
+        if (parts.length != TOKEN_FIELD_COUNT + 1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        final String payload = token.substring(0, lastDotIndex);
-        final String expectedSignature = hmac(payload);
-        final String actualSignature = token.substring(lastDotIndex + 1);
-
+        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                actualSignature.getBytes(StandardCharsets.US_ASCII))) {
+                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
-
-        final String[] parts = new String[TOKEN_FIELD_COUNT];
-        int current = 0;
-        int partIndex = 0;
-        while (partIndex < TOKEN_FIELD_COUNT - 1) {
-            final int nextDot = payload.indexOf('.', current);
-            if (nextDot == -1) {
-                throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
-            }
-            parts[partIndex++] = payload.substring(current, nextDot);
-            current = nextDot + 1;
-        }
-        if (payload.indexOf('.', current) != -1) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
-        }
-        parts[partIndex] = payload.substring(current);
 
         try {
             String version = decode(parts[0]);

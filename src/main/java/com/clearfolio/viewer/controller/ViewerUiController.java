@@ -112,7 +112,7 @@ public class ViewerUiController {
                         </div>
 
                         <div class="actions" aria-label="Actions">
-                          <button type="button" class="btn btn-primary" id="retry-btn" aria-label="Refresh">Refresh</button>
+                          <button type="button" class="btn btn-primary" id="retry-btn">Refresh</button>
                           <a class="btn btn-secondary" id="open-json-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Open JSON bootstrap in a new tab" hidden>Open JSON bootstrap</a>
                         </div>
                       </section>
@@ -181,7 +181,7 @@ public class ViewerUiController {
                             <h2 id="upload-title" class="panel__title">Upload document</h2>
                             <p class="panel__caption">Uses the existing async conversion API. History is stored only in this browser session.</p>
                           </div>
-                          <button type="button" class="btn btn-secondary btn-compact" id="load-demo-data-btn" aria-label="Load demo story">Load demo story</button>
+                          <button type="button" class="btn btn-secondary btn-compact" id="load-demo-data-btn">Load demo story</button>
                         </div>
 
                         <form id="upload-form" class="upload-form" enctype="multipart/form-data">
@@ -189,7 +189,7 @@ public class ViewerUiController {
                           <input id="file-input" name="file" class="file-input" type="file" required />
 
                           <div class="actions">
-                            <button type="submit" class="btn btn-primary" id="submit-btn" aria-label="Submit document">Submit document</button>
+                            <button type="submit" class="btn btn-primary" id="submit-btn">Submit document</button>
                           </div>
                         </form>
 
@@ -225,7 +225,7 @@ public class ViewerUiController {
                             <h2 id="kpi-evidence-title" class="panel__title">KPI snapshot evidence</h2>
                             <p class="panel__caption">Tenant-scoped local evidence from authorized KPI snapshot exports.</p>
                           </div>
-                          <button type="button" class="btn btn-secondary btn-compact" id="refresh-evidence-btn" aria-label="Refresh evidence">Refresh evidence</button>
+                          <button type="button" class="btn btn-secondary btn-compact" id="refresh-evidence-btn">Refresh evidence</button>
                         </div>
 
                         <dl class="evidence-summary" aria-label="KPI snapshot export evidence">
@@ -284,7 +284,7 @@ public class ViewerUiController {
                             <h2 id="history-title" class="panel__title">Session history</h2>
                             <p class="panel__caption">Open status JSON for diligence or launch the preview when conversion is ready.</p>
                           </div>
-                          <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn" aria-label="Clear history">Clear</button>
+                          <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn">Clear</button>
                         </div>
 
                         <div class="table-wrap" id="session-history">
@@ -308,7 +308,7 @@ public class ViewerUiController {
                               <h3 id="job-detail-title" class="job-detail__title">Job detail</h3>
                               <p class="job-detail__caption" id="job-detail-caption">Select a document to inspect operational evidence.</p>
                             </div>
-                            <button type="button" class="btn btn-secondary btn-compact" id="retry-job-btn" aria-label="Retry dead-lettered job" hidden>Retry dead-lettered job</button>
+                            <button type="button" class="btn btn-secondary btn-compact" id="retry-job-btn" hidden>Retry dead-lettered job</button>
                           </div>
                           <dl class="job-detail__list" id="job-detail-body"></dl>
                         </aside>

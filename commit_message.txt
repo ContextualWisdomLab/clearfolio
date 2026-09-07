@@ -1,6 +1,4 @@
-🎨 Palette: 버튼에 접근성 향상을 위한 aria-label 추가
+🛡️ Sentinel: [CRITICAL] 파일 업로드 경로 조작(Path Traversal) 취약점 수정
 
-💡 What: ViewerUiController.java 템플릿의 UI 버튼들에 가시적 텍스트와 정확히 일치하는 `aria-label` 속성을 추가하고, CHANGELOG.md에 변경 사항을 기록했습니다.
-🎯 Why: 아이콘 또는 간략한 텍스트만 표시되는 버튼의 경우 스크린 리더 사용자가 정확한 동작 의도를 파악하기 어려우므로, 명시적인 `aria-label`을 제공하여 접근성을 향상시키기 위함입니다. WCAG 2.5.3 지침에 따라 aria-label이 가시적 텍스트를 완전히 포함하도록 했습니다.
-📸 Before/After: 해당 없음 (HTML 속성 변경으로 시각적인 차이는 없음).
-♿ Accessibility: WCAG 지침에 따라 동적 액션 버튼과 상태 갱신 버튼에 명시적인 aria-label 속성을 올바르게 부여했습니다.
+MultipartFile.getOriginalFilename()을 신뢰하여 발생할 수 있는 경로 조작 취약점을 수정했습니다.
+StringUtils.cleanPath()를 사용하여 경로를 정규화하고 순수한 파일명만 추출하여 악의적인 페이로드(예: ../../../etc/passwd.hwp)로부터 시스템을 보호합니다.

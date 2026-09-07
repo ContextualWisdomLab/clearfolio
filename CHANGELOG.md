@@ -3,7 +3,8 @@
 ## [Unreleased]
 
 ### Added
-- [UX/A11y] 동적으로 생성되는 액션 버튼에 문서 파일명을 포함하는 명확한 aria-label 추가 (접근성 향상).
+- [UX/A11y] ViewUiController의 동적인 버튼 요소들에 가시적 텍스트와 일치하는 aria-label을 부여하여 스크린 리더 접근성을 개선했습니다.
+- [UX/A11y] createActionButton 유틸리티를 활용해 생성되는 아이콘 전용 버튼들에 컨텍스트(예: 파일명)를 포함한 aria-label을 추가했습니다.
 
 
 ### Added

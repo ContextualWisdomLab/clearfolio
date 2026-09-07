@@ -104,6 +104,17 @@ class AdminControllerTest {
     }
 
     @Test
+    void deleteJobReturnsNotFoundWhenJobNotFound() {
+        UUID jobId = UUID.randomUUID();
+        when(conversionService.deleteJob(any(UUID.class), any(TenantContext.class))).thenReturn(false);
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 3);

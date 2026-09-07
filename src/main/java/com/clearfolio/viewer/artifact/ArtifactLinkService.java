@@ -332,19 +332,46 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+    @SuppressWarnings("checkstyle:MagicNumber")
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1) {
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        String payload = token.substring(0, lastDotIndex);
+
+        // Fail-fast structural admission check before invoking HMAC
+        int dotCount = 0;
+        for (int i = 0; i < payload.length(); i++) {
+            if (payload.charAt(i) == '.') {
+                dotCount++;
+            }
+        }
+        if (dotCount != TOKEN_FIELD_COUNT - 1) {
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
         String expectedSignature = hmac(payload);
+        String providedSignature = token.substring(lastDotIndex + 1);
+
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                providedSignature.getBytes(StandardCharsets.US_ASCII))) {
+            throw new ArtifactTokenException(
+                    HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
+
+        String[] parts = new String[TOKEN_FIELD_COUNT];
+        int start = 0;
+        for (int i = 0; i < TOKEN_FIELD_COUNT - 1; i++) {
+            int dotIndex = payload.indexOf('.', start);
+            parts[i] = payload.substring(start, dotIndex);
+            start = dotIndex + 1;
+        }
+        parts[TOKEN_FIELD_COUNT - 1] = payload.substring(start);
 
         try {
             String version = decode(parts[0]);

@@ -6,10 +6,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
-import java.util.UUID;
-
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -81,16 +80,17 @@ class AdminControllerTest {
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         job1.markDeadLettered("failed");
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "b.pdf", "application/pdf", "hash-b", 100L, 3);
+        ConversionJob job3 = new ConversionJob(UUID.randomUUID(), "other-tenant", "subject-1", "c.pdf", "application/pdf", "hash-c", 100L, 3);
 
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, job3));
 
         webTestClient.get()
-                .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .uri("/api/v1/admin/convert/jobs?deadLettered=false")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.jobs.length()").isEqualTo(1)
-                .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf");
+                .jsonPath("$.jobs[0].fileName").isEqualTo("b.pdf");
     }
 
     @Test
@@ -149,6 +149,20 @@ class AdminControllerTest {
     void retryDeadLetteredReturnsNotFoundWhenNotFound() {
         UUID jobId = UUID.randomUUID();
         when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenDeletedAfterLookup() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(job));
+        when(conversionService.retryDeadLettered(jobId, "subject-1"))
+                .thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")

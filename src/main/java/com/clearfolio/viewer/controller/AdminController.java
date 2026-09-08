@@ -114,6 +114,10 @@ public class AdminController {
 
         RetryDeadLetterResult result = conversionService.retryDeadLettered(
                 jobId, tenantContext.subjectId());
+        if (result == RetryDeadLetterResult.NOT_FOUND) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
+        }
         if (result == RetryDeadLetterResult.NOT_ELIGIBLE) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "job is not eligible for retry");

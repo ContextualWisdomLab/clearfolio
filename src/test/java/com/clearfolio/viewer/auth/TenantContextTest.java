@@ -14,6 +14,20 @@ import org.springframework.http.HttpHeaders;
 class TenantContextTest {
 
     @Test
+    void permissionsOfParsesEmptySegmentsCorrectly() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(TenantContext.TENANT_ID_HEADER, "tenant");
+        headers.set(TenantContext.SUBJECT_ID_HEADER, "subject");
+        headers.set(TenantContext.PERMISSIONS_HEADER, "perm1,,perm2,");
+
+        TenantContext ctx = TenantContext.fromHeaders(headers).orElseThrow();
+        assertEquals(2, ctx.permissions().size());
+        assertTrue(ctx.hasPermission("perm1"));
+        assertTrue(ctx.hasPermission("perm2"));
+    }
+
+
+    @Test
     void fromHeadersParsesRequiredClaimsAndPermissions() {
         HttpHeaders headers = new HttpHeaders();
         headers.add(TenantContext.TENANT_ID_HEADER, " tenant-a ");

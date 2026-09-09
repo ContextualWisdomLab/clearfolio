@@ -23,6 +23,14 @@ import com.clearfolio.viewer.auth.TenantPermissions;
 
 class KpiSnapshotLedgerTest {
 
+    @Test
+    void rejectsTooManyFields() throws Exception {
+        Path ledgerPath = tempDir.resolve("too-many-fields.log");
+        Files.writeString(ledgerPath, "SNAPSHOT\t" + "a\t".repeat(12) + "\n");
+        assertThrows(IllegalStateException.class, () -> new KpiSnapshotLedger(ledgerPath, Clock.systemUTC()));
+    }
+
+
     private static final Instant NOW = Instant.parse("2026-07-02T00:00:00Z");
     private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
 

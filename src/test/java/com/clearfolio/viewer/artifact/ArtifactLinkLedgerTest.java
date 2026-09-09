@@ -142,6 +142,9 @@ class ArtifactLinkLedgerTest {
         assertInvalidLedger(issuedLine(UUID.randomUUID().toString()).replace("1970-01-01T00:00:00Z", "not-instant"));
         assertInvalidLedger(readLine("not-status"));
         assertInvalidLedger(readLine("206").replace(encoded("token-1"), encoded(" ")));
+
+        // Exceeds max fields test coverage (missed branch instruction)
+        assertInvalidLedger("ISSUED\t" + "a\t".repeat(15));
     }
 
     @Test

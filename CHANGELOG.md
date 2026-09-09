@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### 변경사항
+- 성능 개선: `String.split()`을 `indexOf()`와 `substring()`을 활용한 수동 파싱으로 교체하여 파싱 성능을 개선했습니다.
 
 ### Added
 

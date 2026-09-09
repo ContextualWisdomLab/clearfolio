@@ -332,13 +332,25 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+    @SuppressWarnings("checkstyle:MagicNumber")
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        final String[] parts = new String[TOKEN_FIELD_COUNT + 1];
+        int start = 0;
+        int next;
+        int count = 0;
+        while ((next = token.indexOf('.', start)) != -1) {
+            if (count >= TOKEN_FIELD_COUNT) {
+                throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            }
+            parts[count++] = token.substring(start, next);
+            start = next + 1;
+        }
+        if (count != TOKEN_FIELD_COUNT) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
+        parts[count] = token.substring(start);
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
+        final String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
         String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),

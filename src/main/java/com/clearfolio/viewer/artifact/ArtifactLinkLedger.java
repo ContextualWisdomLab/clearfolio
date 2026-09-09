@@ -148,12 +148,29 @@ public class ArtifactLinkLedger {
         }
     }
 
-    private void replayLine(String line) {
-        String[] fields = line.split("\t", -1);
-        switch (fields[0]) {
-            case ISSUED -> replayIssued(fields);
-            case REVOKED -> replayRevoked(fields);
-            case READ -> replayRead(fields);
+    @SuppressWarnings("checkstyle:MagicNumber")
+    private void replayLine(final String line) {
+        final int maxFields = 14;
+        final String[] fields = new String[maxFields];
+        int start = 0;
+        int next;
+        int count = 0;
+        while ((next = line.indexOf('\t', start)) != -1) {
+            if (count >= maxFields - 1) {
+                throw invalidLine();
+            }
+            fields[count++] = line.substring(start, next);
+            start = next + 1;
+        }
+        fields[count++] = line.substring(start);
+
+        final String[] exactFields = new String[count];
+        System.arraycopy(fields, 0, exactFields, 0, count);
+
+        switch (exactFields[0]) {
+            case ISSUED -> replayIssued(exactFields);
+            case REVOKED -> replayRevoked(exactFields);
+            case READ -> replayRead(exactFields);
             default -> throw invalidLine();
         }
     }

@@ -143,10 +143,8 @@ class ArtifactLinkLedgerTest {
         assertInvalidLedger(readLine("not-status"));
         assertInvalidLedger(readLine("206").replace(encoded("token-1"), encoded(" ")));
 
-        // Exceeds default capacity
-        assertInvalidLedger("ISSUED\t" + "a\t".repeat(20));
-
-
+        // Exceeds max fields test coverage (missed branch instruction)
+        assertInvalidLedger("ISSUED\t" + "a\t".repeat(15));
     }
 
     @Test

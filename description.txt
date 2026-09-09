@@ -1,4 +1,4 @@
 💡 What: `String.split()`을 수동 루프(`indexOf()`, `substring()`)로 변경.
 🎯 Why: 불필요한 배열 및 정규식 평가 방지로 메모리 최적화 및 GC(Garbage Collector)의 압력을 줄임.
 📊 Impact: GC 압력 완화 및 성능 개선
-🔬 Measurement: `mvn test` 및 `mvn checkstyle:check`를 통해 안정성 확인 완료
+🔬 Measurement: `mvn verify`를 통해 안정성 및 커버리지 확인 완료

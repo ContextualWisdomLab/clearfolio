@@ -130,9 +130,9 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
             }
             start = next + 1;
         }
-        final String lastToken = sanitize(normalized.substring(start));
-        if (lastToken != null) {
-            parsed.add(lastToken);
+        final String token = sanitize(normalized.substring(start));
+        if (token != null) {
+            parsed.add(token);
         }
         return parsed;
     }

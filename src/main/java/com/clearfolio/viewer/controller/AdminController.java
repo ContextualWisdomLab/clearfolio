@@ -90,13 +90,15 @@ public class AdminController {
         TenantContext context = tenantAccessService.require(
                 headers, TenantPermissions.ADMIN_WRITE);
         if (!conversionService.deleteJob(jobId, context)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
         }
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * Retries a dead-lettered conversion job owned by the authorized request tenant.
+     * Retries a dead-lettered conversion job owned by the authorized request
+     * tenant.
      *
      * @param jobId conversion job identifier
      * @param headers request headers

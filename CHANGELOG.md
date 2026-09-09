@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### 변경사항
+- 성능 개선: `String.split()` 제거를 통해 불필요한 배열 할당 방지 및 메모리 사용 최적화
 
 ### Added
 

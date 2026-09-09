@@ -30,27 +30,35 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 @RestController
 public class AdminController {
 
+    /** Conversion service. */
     private final DocumentConversionService conversionService;
+    /** Tenant access service. */
     private final TenantAccessService tenantAccessService;
 
     /**
      * Creates a controller for admin operations.
      *
-     * @param conversionService conversion service
+     * @param conversionServiceParam conversion service
+     * @param tenantAccessServiceParam tenant access service
      */
-    public AdminController(DocumentConversionService conversionService, TenantAccessService tenantAccessService) {
-        this.conversionService = conversionService;
-        this.tenantAccessService = tenantAccessService;
+    public AdminController(
+            final DocumentConversionService conversionServiceParam,
+            final TenantAccessService tenantAccessServiceParam) {
+        this.conversionService = conversionServiceParam;
+        this.tenantAccessService = tenantAccessServiceParam;
     }
 
     /**
      * Retrieves all conversion jobs, optionally filtered by dead-letter status.
      *
      * @param deadLettered optional filter for dead-lettered jobs
+     * @param headers request headers
      * @return list of conversion jobs
      */
     @GetMapping("/api/v1/admin/convert/jobs")
-    public AdminJobListResponse getAllJobs(@RequestParam(required = false) Boolean deadLettered, @RequestHeader HttpHeaders headers) {
+    public AdminJobListResponse getAllJobs(
+            @RequestParam(required = false) final Boolean deadLettered,
+            @RequestHeader final HttpHeaders headers) {
         tenantAccessService.require(headers, TenantPermissions.ADMIN_READ);
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
 
@@ -71,10 +79,13 @@ public class AdminController {
      * Deletes a conversion job.
      *
      * @param jobId conversion job identifier
+     * @param headers request headers
      * @return no content on success
      */
     @DeleteMapping("/api/v1/admin/convert/jobs/{jobId}")
-    public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId, @RequestHeader HttpHeaders headers) {
+    public ResponseEntity<Void> deleteJob(
+            @PathVariable final UUID jobId,
+            @RequestHeader final HttpHeaders headers) {
         tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
         conversionService.deleteJob(jobId);
         return ResponseEntity.noContent().build();
@@ -84,17 +95,23 @@ public class AdminController {
      * Retries a dead-lettered conversion job.
      *
      * @param jobId conversion job identifier
+     * @param headers request headers
      * @return accepted response on success
      */
     @PostMapping("/api/v1/admin/convert/jobs/{jobId}/retry")
-    public ResponseEntity<Void> retryDeadLettered(@PathVariable UUID jobId, @RequestHeader HttpHeaders headers) {
+    public ResponseEntity<Void> retryDeadLettered(
+            @PathVariable final UUID jobId,
+            @RequestHeader final HttpHeaders headers) {
         tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
-        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
+        RetryDeadLetterResult result = conversionService.retryDeadLettered(
+                jobId, "admin");
         if (result == RetryDeadLetterResult.NOT_FOUND) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
         }
         if (result == RetryDeadLetterResult.NOT_ELIGIBLE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "job is not eligible for retry");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "job is not eligible for retry");
         }
         return ResponseEntity.accepted().build();
     }

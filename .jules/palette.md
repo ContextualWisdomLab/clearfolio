@@ -13,3 +13,7 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+
+## 2026-09-09 - Async Button Loading States in Viewer
+**Learning:** Adding explicit loading and disabled states to asynchronous action buttons like "Refresh" in the viewer UI provides immediate feedback. To prevent losing nested DOM states or ARIA attributes, we should use the existing `setBusyState` utility.
+**Action:** Always use `setBusyState(button, loadingText)` from `dom-utils.js` when modifying button states during asynchronous operations in the clearfolio viewer.

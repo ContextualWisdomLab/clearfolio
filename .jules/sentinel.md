@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-09-09 - Admin endpoint tenant authorization boundary
+**Vulnerability:** `AdminController`의 조회·삭제·재시도 경계에는 권한 확인이 없었습니다. 여기에 permission 검사만 추가해도 충분하지 않습니다. `TenantContext.tenantId`가 데이터 격리 경계이므로, 권한을 통과한 요청이 전역 `getAllJobs()`, `deleteJob(jobId)`, `retryDeadLettered(jobId, ...)`를 그대로 호출하면 다른 tenant의 작업을 관찰하거나 변경할 수 있습니다.
+**Learning:** tenant-scoped authorization에서는 capability(permission)와 resource ownership을 함께 검증해야 합니다. 목록은 요청 tenant의 aggregate만 반환하고, 단건 변경은 존재 여부를 노출하지 않도록 foreign tenant도 `404`로 처리해야 합니다. 재시도 감사 주체도 고정 문자열이 아니라 검증된 `TenantContext.subjectId`를 사용해야 합니다.
+**Prevention:** admin endpoint는 `TenantAccessService.require()`로 permission을 확인한 뒤 `tenantId`로 목록을 제한하고, 삭제는 tenant-aware service boundary를 사용하며, 재시도 전 `requireSameTenant()`를 거칩니다. 테스트는 동일 tenant 성공뿐 아니라 cross-tenant list/delete/retry가 실패하는 계약을 포함해야 합니다.

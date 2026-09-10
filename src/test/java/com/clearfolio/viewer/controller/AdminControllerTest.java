@@ -127,7 +127,7 @@ class AdminControllerTest {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
+        when(conversionService.retryDeadLettered(jobId, "subject")).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -157,7 +157,7 @@ class AdminControllerTest {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
+        when(conversionService.retryDeadLettered(jobId, "subject")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -165,7 +165,7 @@ class AdminControllerTest {
                 .header(TenantContext.SUBJECT_ID_HEADER, "subject")
                 .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_RETRY)
                 .exchange()
-                .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+                .expectStatus().isEqualTo(409);
     }
 
     @Test

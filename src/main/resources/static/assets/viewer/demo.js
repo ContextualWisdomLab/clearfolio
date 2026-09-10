@@ -114,8 +114,6 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
-  const fragment = document.createDocumentFragment();
-
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -145,10 +143,8 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    fragment.appendChild(row);
+    el.historyBody.appendChild(row);
   }
-
-  el.historyBody.appendChild(fragment);
 
   renderRecoveryEvidence(history);
 }

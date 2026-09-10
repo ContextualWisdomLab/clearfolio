@@ -57,7 +57,7 @@ class AdminControllerTenantEdgeCoverageTest {
         AdminJobListResponse response = controller.getAllJobs(null, headers);
 
         assertEquals(1, response.jobs().size());
-        assertEquals(ownJob.id(), response.jobs().get(0).id());
+        assertEquals(ownJob.getJobId(), response.jobs().get(0).jobId());
     }
 
     @Test

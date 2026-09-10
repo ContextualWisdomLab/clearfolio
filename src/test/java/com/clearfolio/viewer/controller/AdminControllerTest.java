@@ -108,6 +108,25 @@ class AdminControllerTest {
     }
 
     @Test
+    void getAllJobsFiltersByTenantId() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "tenant", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "other-tenant", "subject", "b.pdf", "application/pdf", "hash-b", 100L, 3);
+
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .header(TenantContext.TENANT_ID_HEADER, "tenant")
+                .header(TenantContext.SUBJECT_ID_HEADER, "subject")
+                .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_READ)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(1)
+                .jsonPath("$.jobs[0].jobId").isEqualTo(job1.getJobId().toString());
+    }
+
+    @Test
     void deleteJobReturnsNoContent() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
@@ -158,6 +177,8 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsNotFoundWhenNotFound() {
         UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY)))
+                .thenReturn(new TenantContext("tenant", "subject", java.util.Set.of(TenantPermissions.JOB_RETRY)));
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.empty());
 
         webTestClient.post()
@@ -213,6 +234,21 @@ class AdminControllerTest {
     }
 
     @Test
+    void deleteJobReturnsNotFoundWhenJobDoesNotExist() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_DELETE)))
+                .thenReturn(new TenantContext("tenant", "subject", java.util.Set.of(TenantPermissions.JOB_DELETE)));
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.empty());
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .header(TenantContext.TENANT_ID_HEADER, "tenant")
+                .header(TenantContext.SUBJECT_ID_HEADER, "subject")
+                .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_DELETE)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
     void deleteJobRequiresPermission() {
         UUID jobId = UUID.randomUUID();
         when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_DELETE)))
@@ -233,4 +269,23 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isForbidden();
     }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenDisappears() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "tenant", "subject", "a.pdf", "application/pdf", "hash", 100L, 3);
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY)))
+                .thenReturn(new TenantContext("tenant", "subject", java.util.Set.of(TenantPermissions.JOB_RETRY)));
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
+        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header(TenantContext.TENANT_ID_HEADER, "tenant")
+                .header(TenantContext.SUBJECT_ID_HEADER, "subject")
+                .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_RETRY)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
 }

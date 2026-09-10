@@ -89,7 +89,7 @@ class AdminControllerTenantEdgeCoverageTest {
         when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY)))
                 .thenReturn(tenantContext);
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
-        when(conversionService.retryDeadLettered(jobId, "admin"))
+        when(conversionService.retryDeadLettered(jobId, "subject-a"))
                 .thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         ResponseStatusException error = assertThrows(

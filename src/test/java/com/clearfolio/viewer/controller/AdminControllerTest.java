@@ -127,7 +127,8 @@ class AdminControllerTest {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant-b", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
-        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND)).when(tenantAccessService).requireSameTenant(any(), eq(job));
+        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND))
+                .when(tenantAccessService).requireSameTenant(any(), eq(job));
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
@@ -173,7 +174,8 @@ class AdminControllerTest {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant-b", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
-        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND)).when(tenantAccessService).requireSameTenant(any(), eq(job));
+        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND))
+                .when(tenantAccessService).requireSameTenant(any(), eq(job));
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")

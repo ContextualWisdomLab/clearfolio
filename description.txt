@@ -1,5 +1,4 @@
-🚨 Severity: CRITICAL
-💡 Vulnerability: 파일 업로드 시 `MultipartFile.getOriginalFilename()` 값을 검증 없이 사용하여 발생할 수 있는 경로 조작(Path Traversal) 취약점 발견.
-🎯 Impact: 공격자가 디렉토리 탐색 문자열(`../`)을 포함한 파일명을 전송하여 의도하지 않은 경로에 파일을 저장하거나 시스템 파일(예: `/etc/passwd`)에 접근/조작할 위험이 있음.
-🔧 Fix: `DefaultDocumentConversionService` 및 `DefaultDocumentValidationService`에서 파일명을 사용하기 전 `StringUtils.cleanPath()`를 통해 경로를 정규화하고, 마지막 `/` 이후의 순수한 파일명만 추출하도록 `sanitizeFilename` 메소드를 추가하여 안전하게 처리함.
-✅ Verification: 단위 테스트(`submitStripsDirectoryTraversalFromOriginalFilename` 및 `stripsDirectoryTraversalFromFilename` 등)를 추가하여 취약점 문자열이 정상적으로 제거되며 100% 테스트 커버리지를 보장함.
+💡 What: `String.split(",")`과 Java Stream을 사용하던 문자열 파싱을 수동 루프와 `indexOf()`, `substring()`을 사용하도록 최적화했습니다.
+🎯 Why: 간단한 구분 기호 토큰을 파싱할 때 `String.split()`과 Stream을 사용하는 것은 불필요한 배열 할당과 함수형 오버헤드를 발생시켜 가비지 컬렉션(GC) 압박을 줍니다. 수동 루프로 전환하여 이러한 오버헤드를 제거했습니다.
+📊 Impact: 문자열 파싱 시 불필요한 객체 할당을 방지하여 메모리 사용량을 줄이고 성능을 향상시킵니다.
+🔬 Measurement: `mvn -B --no-transfer-progress verify` 명령어를 통해 전체 테스트가 성공적으로 통과하고 100% 코드 커버리지가 유지되는지 확인할 수 있습니다.

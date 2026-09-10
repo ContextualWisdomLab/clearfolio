@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.api.AdminJobListResponse;
 import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
@@ -63,7 +64,7 @@ public class AdminController {
     public AdminJobListResponse getAllJobs(
             final @RequestParam(required = false) Boolean deadLettered,
             final @RequestHeader HttpHeaders headers) {
-        com.clearfolio.viewer.auth.TenantContext context = tenantAccessService
+        TenantContext context = tenantAccessService
                 .require(headers, TenantPermissions.JOB_READ);
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
 
@@ -91,7 +92,7 @@ public class AdminController {
     public ResponseEntity<Void> deleteJob(
             final @PathVariable UUID jobId,
             final @RequestHeader HttpHeaders headers) {
-        com.clearfolio.viewer.auth.TenantContext context = tenantAccessService
+        TenantContext context = tenantAccessService
                 .require(headers, TenantPermissions.JOB_DELETE);
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -112,7 +113,7 @@ public class AdminController {
     public ResponseEntity<Void> retryDeadLettered(
             final @PathVariable UUID jobId,
             final @RequestHeader HttpHeaders headers) {
-        com.clearfolio.viewer.auth.TenantContext context = tenantAccessService
+        TenantContext context = tenantAccessService
                 .require(headers, TenantPermissions.JOB_RETRY);
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(

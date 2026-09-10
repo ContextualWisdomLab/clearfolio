@@ -123,11 +123,27 @@ class AdminControllerTest {
     }
 
     @Test
+    void deleteJobReturnsNotFoundWhenNotOwned() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "tenant-b", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
+        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND)).when(tenantAccessService).requireSameTenant(any(), eq(job));
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .header(TenantContext.TENANT_ID_HEADER, "tenant")
+                .header(TenantContext.SUBJECT_ID_HEADER, "subject")
+                .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_DELETE)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
-        when(conversionService.retryDeadLettered(jobId, "subject")).thenReturn(RetryDeadLetterResult.ACCEPTED);
+        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -153,11 +169,11 @@ class AdminControllerTest {
     }
 
     @Test
-    void retryDeadLetteredReturnsConflictWhenNotEligible() {
+    void retryDeadLetteredReturnsNotFoundWhenNotOwned() {
         UUID jobId = UUID.randomUUID();
-        ConversionJob job = new ConversionJob(jobId, "tenant", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        ConversionJob job = new ConversionJob(jobId, "tenant-b", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
-        when(conversionService.retryDeadLettered(jobId, "subject")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
+        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND)).when(tenantAccessService).requireSameTenant(any(), eq(job));
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -165,7 +181,23 @@ class AdminControllerTest {
                 .header(TenantContext.SUBJECT_ID_HEADER, "subject")
                 .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_RETRY)
                 .exchange()
-                .expectStatus().isEqualTo(409);
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsConflictWhenNotEligible() {
+        UUID jobId = UUID.randomUUID();
+        ConversionJob job = new ConversionJob(jobId, "tenant", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
+        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header(TenantContext.TENANT_ID_HEADER, "tenant")
+                .header(TenantContext.SUBJECT_ID_HEADER, "subject")
+                .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_RETRY)
+                .exchange()
+                .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
     }
 
     @Test

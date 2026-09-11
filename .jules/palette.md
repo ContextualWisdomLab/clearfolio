@@ -13,3 +13,7 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+
+## 2026-09-11 - 시각적 필수 입력 표시 추가
+**Learning:** HTML5의 required 속성을 사용하는 폼 필드에 시각적 필수 표시(*)를 추가할 때, 스크린 리더의 중복 읽기를 방지하기 위해 반드시 aria-hidden="true"를 적용해야 합니다. 또한, grid 레이아웃이 적용된 부모 컨테이너에서는 내부 요소가 분리되지 않도록 텍스트와 표시를 하나의 span으로 감싸야 합니다.
+**Action:** 폼 필드에 시각적 필수 표시자를 추가할 때는 중복 접근성을 방지하기 위해 aria-hidden을 사용하고, 레이아웃 깨짐을 방지하기 위해 올바른 래핑 요소를 사용하세요.

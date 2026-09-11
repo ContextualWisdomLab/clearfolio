@@ -3,6 +3,7 @@ package com.clearfolio.viewer.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
@@ -145,8 +146,6 @@ class AdminControllerTest {
     void deleteJobReturnsNotFoundWhenNotOwned() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant-b", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_DELETE)))
-                .thenReturn(new TenantContext("tenant", "subject", java.util.Set.of(TenantPermissions.JOB_DELETE)));
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
         org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND))
                 .when(tenantAccessService).requireSameTenant(any(), eq(job));
@@ -164,10 +163,8 @@ class AdminControllerTest {
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY)))
-                .thenReturn(new TenantContext("tenant", "subject", java.util.Set.of(TenantPermissions.JOB_RETRY)));
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
+        when(conversionService.retryDeadLettered(jobId, "subject")).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -176,6 +173,8 @@ class AdminControllerTest {
                 .header(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_RETRY)
                 .exchange()
                 .expectStatus().isAccepted();
+
+        verify(conversionService).retryDeadLettered(jobId, "subject");
     }
 
     @Test
@@ -198,8 +197,6 @@ class AdminControllerTest {
     void retryDeadLetteredReturnsNotFoundWhenNotOwned() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant-b", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY)))
-                .thenReturn(new TenantContext("tenant", "subject", java.util.Set.of(TenantPermissions.JOB_RETRY)));
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
         org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND))
                 .when(tenantAccessService).requireSameTenant(any(), eq(job));
@@ -217,10 +214,8 @@ class AdminControllerTest {
     void retryDeadLetteredReturnsConflictWhenNotEligible() {
         UUID jobId = UUID.randomUUID();
         ConversionJob job = new ConversionJob(jobId, "tenant", "subject", "a.pdf", "application/pdf", "hash-a", 100L, 3);
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY)))
-                .thenReturn(new TenantContext("tenant", "subject", java.util.Set.of(TenantPermissions.JOB_RETRY)));
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
+        when(conversionService.retryDeadLettered(jobId, "subject")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
@@ -285,7 +280,7 @@ class AdminControllerTest {
         when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.JOB_RETRY)))
                 .thenReturn(new TenantContext("tenant", "subject", java.util.Set.of(TenantPermissions.JOB_RETRY)));
         when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
+        when(conversionService.retryDeadLettered(jobId, "subject")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")

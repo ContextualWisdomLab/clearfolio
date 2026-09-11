@@ -498,7 +498,9 @@ a:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .skeleton {
+  .skeleton,
+  .btn[aria-busy="true"]::before,
+  .preview[aria-busy="true"]::before {
     animation: none;
   }
 }
@@ -507,15 +509,24 @@ a:hover {
   gap: 8px;
 }
 
-.btn[aria-busy="true"]::before {
+.btn[aria-busy="true"]::before,
+.preview[aria-busy="true"]::before {
   content: "";
   display: block;
   width: 14px;
   height: 14px;
-  border: 2px solid currentColor;
+  border: 2px solid currentcolor;
   border-right-color: transparent;
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
+}
+
+.preview[aria-busy="true"]::before {
+  margin-bottom: 12px;
+}
+
+.preview[aria-busy="true"]:has(.skeleton)::before {
+  display: none;
 }
 
 @keyframes spin {

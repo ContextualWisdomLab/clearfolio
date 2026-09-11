@@ -79,6 +79,37 @@ class TenantContextTest {
     }
 
     @Test
+    void permissionParserDropsTrailingComma() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(TenantContext.TENANT_ID_HEADER, "tenant-a");
+        headers.add(TenantContext.SUBJECT_ID_HEADER, "user-1");
+        headers.add(TenantContext.PERMISSIONS_HEADER, "job:read,");
+
+        TenantContext context = TenantContext.fromHeaders(headers).orElseThrow();
+
+        assertEquals(Set.of(TenantPermissions.JOB_READ), context.permissions());
+    }
+
+    @Test
+    void shouldParseNullRawPermissions() {
+        TenantContext.fromHeaders(new HttpHeaders());
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(TenantContext.TENANT_ID_HEADER, "tenant-a");
+        headers.add(TenantContext.SUBJECT_ID_HEADER, "user-1");
+        headers.add(TenantContext.PERMISSIONS_HEADER, " ");
+        assertTrue(TenantContext.fromHeaders(headers).isEmpty());
+    }
+
+    @Test
+    void shouldParseOnlyCommas() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(TenantContext.TENANT_ID_HEADER, "tenant-a");
+        headers.add(TenantContext.SUBJECT_ID_HEADER, "user-1");
+        headers.add(TenantContext.PERMISSIONS_HEADER, ",,,");
+        assertTrue(TenantContext.fromHeaders(headers).isEmpty());
+    }
+
+    @Test
     void hasPermissionReturnsFalseForMissingPermission() {
         TenantContext context = new TenantContext("tenant-a", "user-1", java.util.Set.of(TenantPermissions.JOB_READ));
 

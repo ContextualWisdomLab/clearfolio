@@ -498,7 +498,33 @@ a:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .skeleton {
+  .skeleton,
+  .btn[aria-busy="true"]::before,
+  .preview[aria-busy="true"]:not(:has(.skeleton))::before {
     animation: none;
+  }
+}
+
+.btn[aria-busy="true"],
+.preview[aria-busy="true"]:not(:has(.skeleton)) {
+  position: relative;
+  gap: 8px;
+}
+
+.btn[aria-busy="true"]::before,
+.preview[aria-busy="true"]:not(:has(.skeleton))::before {
+  content: "";
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }

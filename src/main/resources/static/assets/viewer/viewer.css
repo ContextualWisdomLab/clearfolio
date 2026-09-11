@@ -502,3 +502,24 @@ a:hover {
     animation: none;
   }
 }
+
+.btn[aria-busy="true"] {
+  gap: 8px;
+}
+
+.btn[aria-busy="true"]::before {
+  content: "";
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

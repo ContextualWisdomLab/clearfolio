@@ -1,6 +1,5 @@
 package com.clearfolio.viewer.auth;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Optional;
@@ -22,7 +21,10 @@ import org.springframework.http.HttpHeaders;
  * @param subjectId normalized authenticated user or service identifier
  * @param permissions immutable normalized permission claims for the subject
  */
-public record TenantContext(String tenantId, String subjectId, Set<String> permissions) {
+public record TenantContext(
+        String tenantId,
+        String subjectId,
+        Set<String> permissions) {
 
     /**
      * Header carrying the tenant isolation boundary.
@@ -42,12 +44,14 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
     /**
      * Header carrying the epoch-second issue time for signed gateway claims.
      */
-    public static final String CLAIMS_ISSUED_AT_HEADER = "X-Clearfolio-Claims-Issued-At";
+    public static final String CLAIMS_ISSUED_AT_HEADER =
+            "X-Clearfolio-Claims-Issued-At";
 
     /**
      * Header carrying the HMAC signature for signed gateway claims.
      */
-    public static final String CLAIMS_SIGNATURE_HEADER = "X-Clearfolio-Claims-Signature";
+    public static final String CLAIMS_SIGNATURE_HEADER =
+            "X-Clearfolio-Claims-Signature";
 
     /**
      * Demo tenant used by the built-in buyer-demo shell.
@@ -80,14 +84,16 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
      * @param headers request headers
      * @return tenant context when required claims are present
      */
-    public static Optional<TenantContext> fromHeaders(HttpHeaders headers) {
+    public static Optional<TenantContext> fromHeaders(
+            final HttpHeaders headers) {
         if (headers == null) {
             return Optional.empty();
         }
 
         String tenantId = sanitize(headers.getFirst(TENANT_ID_HEADER));
         String subjectId = sanitize(headers.getFirst(SUBJECT_ID_HEADER));
-        Set<String> permissions = permissionsOf(headers.getFirst(PERMISSIONS_HEADER));
+        Set<String> permissions =
+                permissionsOf(headers.getFirst(PERMISSIONS_HEADER));
         if (tenantId == null || subjectId == null || permissions.isEmpty()) {
             return Optional.empty();
         }
@@ -101,7 +107,7 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
      * @param permission required permission
      * @return true when permission is present
      */
-    public boolean hasPermission(String permission) {
+    public boolean hasPermission(final String permission) {
         return permissions.contains(permission);
     }
 
@@ -114,21 +120,35 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
         return String.join(",", permissions);
     }
 
-    private static Set<String> permissionsOf(String raw) {
+    private static Set<String> permissionsOf(final String raw) {
         String normalized = sanitize(raw);
         if (normalized == null) {
             return Set.of();
         }
 
         LinkedHashSet<String> parsed = new LinkedHashSet<>();
-        Arrays.stream(normalized.split(","))
-                .map(TenantContext::sanitize)
-                .filter(value -> value != null)
-                .forEach(parsed::add);
+        // ⚡ Bolt: Use manual indexOf() loop instead of String.split()
+        // and Streams to avoid unnecessary array allocations and functional
+        // overhead during parsing.
+        int start = 0;
+        int next;
+        while ((next = normalized.indexOf(',', start)) != -1) {
+            String token = sanitize(normalized.substring(start, next));
+            if (token != null) {
+                parsed.add(token);
+            }
+            start = next + 1;
+        }
+        if (start < normalized.length()) {
+            String token = sanitize(normalized.substring(start));
+            if (token != null) {
+                parsed.add(token);
+            }
+        }
         return parsed;
     }
 
-    private static String sanitize(String value) {
+    private static String sanitize(final String value) {
         if (value == null) {
             return null;
         }

@@ -4,12 +4,21 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.Set;
 import java.util.UUID;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
+import org.mockito.ArgumentMatchers;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
@@ -17,20 +26,37 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
+    private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
+    private TenantContext tenantContext;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService);
+        tenantAccessService = mock(TenantAccessService.class);
+        tenantContext = new TenantContext("tenant", "subject", Set.of(TenantPermissions.ADMIN_READ, TenantPermissions.ADMIN_WRITE));
+        controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
     }
 
     @Test
+    void getAllJobsReturnsForbiddenWhenNoPermission() {
+        when(tenantAccessService.require(ArgumentMatchers.any(HttpHeaders.class), ArgumentMatchers.eq(TenantPermissions.ADMIN_READ)))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
     void getAllJobsReturnsAllJobsWhenNoFilterProvided() {
+        when(tenantAccessService.require(ArgumentMatchers.any(HttpHeaders.class), ArgumentMatchers.eq(TenantPermissions.ADMIN_READ)))
+                .thenReturn(tenantContext);
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
@@ -47,6 +73,8 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsFiltersByDeadLetteredTrue() {
+        when(tenantAccessService.require(ArgumentMatchers.any(HttpHeaders.class), ArgumentMatchers.eq(TenantPermissions.ADMIN_READ)))
+                .thenReturn(tenantContext);
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
         job1.markDeadLettered("failed");
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
@@ -64,6 +92,8 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsFiltersByDeadLetteredFalse() {
+        when(tenantAccessService.require(ArgumentMatchers.any(HttpHeaders.class), ArgumentMatchers.eq(TenantPermissions.ADMIN_READ)))
+                .thenReturn(tenantContext);
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
         job1.markDeadLettered("failed");
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
@@ -81,6 +111,8 @@ class AdminControllerTest {
 
     @Test
     void deleteJobReturnsNoContent() {
+        when(tenantAccessService.require(ArgumentMatchers.any(HttpHeaders.class), ArgumentMatchers.eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(tenantContext);
         UUID jobId = UUID.randomUUID();
 
         webTestClient.delete()
@@ -91,6 +123,8 @@ class AdminControllerTest {
 
     @Test
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
+        when(tenantAccessService.require(ArgumentMatchers.any(HttpHeaders.class), ArgumentMatchers.eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(tenantContext);
         UUID jobId = UUID.randomUUID();
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
@@ -102,6 +136,8 @@ class AdminControllerTest {
 
     @Test
     void retryDeadLetteredReturnsNotFoundWhenNotFound() {
+        when(tenantAccessService.require(ArgumentMatchers.any(HttpHeaders.class), ArgumentMatchers.eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(tenantContext);
         UUID jobId = UUID.randomUUID();
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
@@ -113,6 +149,8 @@ class AdminControllerTest {
 
     @Test
     void retryDeadLetteredReturnsConflictWhenNotEligible() {
+        when(tenantAccessService.require(ArgumentMatchers.any(HttpHeaders.class), ArgumentMatchers.eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(tenantContext);
         UUID jobId = UUID.randomUUID();
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 

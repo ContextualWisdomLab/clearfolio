@@ -17,8 +17,15 @@ import org.springframework.web.util.HtmlUtils;
 public class ViewerUiController {
 
     // Keep these in sync with `pom.xml` pdfjs-dist version and viewer.js.
-    static final String PDF_JS_MODULE_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.mjs";
-    static final String PDF_JS_WORKER_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.worker.mjs";
+    /** Path to the PDF.js ES module. */
+    static final String PDF_JS_MODULE_PATH = " +
+"/webjars/pdfjs-dist/6.1.200/build/pdf.mjs" +
+";
+    /** Path to the PDF.js web worker module. */
+    static final String PDF_JS_WORKER_PATH = " +
+"/webjars/pdfjs-dist/6.1.200/build/pdf.worker.mjs" +
+";
+    /** Sentinel value for an invalid document identifier. */
     private static final String INVALID_DOC_ID_SENTINEL = "invalid";
 
     /**
@@ -58,7 +65,9 @@ public class ViewerUiController {
             // /viewer/{docId}, land on a readable page.
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .contentType(MediaType.TEXT_HTML)
-                    .body(viewerShellHtml(INVALID_DOC_ID_SENTINEL, "NOT_FOUND"));
+                    .body(viewerShellHtml(INVALID_DOC_ID_SENTINEL, " +
+"NOT_FOUND" +
+"));
         }
     }
 
@@ -73,16 +82,41 @@ public class ViewerUiController {
                 <html lang="en">
                   <head>
                     <meta charset="utf-8" />
-                    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+                    <meta name=" +
+"viewport" +
+" content=" +
+"width=device-width, initial-scale=1, viewport-fit=cover" +
+" />
                     <meta name="referrer" content="no-referrer" />
                     <meta name="clearfolio-doc-id" content="{{DOC_ID}}" />
-                    <meta name="clearfolio-initial-state" content="{{INITIAL_STATE}}" />
-                    <meta name="clearfolio-pdfjs-module-path" content="{{PDFJS_MODULE_PATH}}" />
-                    <meta name="clearfolio-pdfjs-worker-path" content="{{PDFJS_WORKER_PATH}}" />
+                    <meta name=" +
+"clearfolio-initial-state" +
+" content=" +
+"{{INITIAL_STATE}}" +
+" />
+                    <meta name=" +
+"clearfolio-pdfjs-module-path" +
+" content=" +
+"{{PDFJS_MODULE_PATH}}" +
+" />
+                    <meta name=" +
+"clearfolio-pdfjs-worker-path" +
+" content=" +
+"{{PDFJS_WORKER_PATH}}" +
+" />
                     <title>Clearfolio Viewer</title>
                     <link rel="stylesheet" href="/assets/viewer/viewer.css" />
                   </head>
-                  <body>
+                  <body>""";
+    }
+
+    private static String demoShellBodyHtml() {
+        return demoShellMainTopHtml() + demoShellMainBottomHtml()
+                + demoShellFooterHtml();
+    }
+
+    private static String demoShellMainTopHtml() {
+        return """
                     <a class="skip-link" href="#main">Skip to content</a>
 
                     <header class="app-header" role="banner">
@@ -92,28 +126,74 @@ public class ViewerUiController {
                         </div>
 
                         <nav class="header-nav" aria-label="Viewer utilities">
-                          <a class="header-nav__link" href="/healthz">Service status</a>
+                          <a class=" +
+"header-nav__link" +
+" href=" +
+"/healthz" +
+">Service status</a>
                         </nav>
                       </div>
                     </header>
 
                     <main id="main" class="app-main" tabindex="-1">
                       <h1 class="page-title">Document preview</h1>
-                      <p class="page-subtitle" id="doc-meta">Preparing preview shell...</p>
+                      <p class=" +
+"page-subtitle" +
+" id=" +
+"doc-meta" +
+">Preparing preview shell...</p>
 
                       <section class="panel" aria-labelledby="state-title">
-                        <h2 id="state-title" class="panel__title">Preview status</h2>
+                        <h2 id=" +
+"state-title" +
+" class=" +
+"panel__title" +
+">Preview status</h2>
 
-                        <div id="live-status" class="status" role="status" aria-live="polite" aria-atomic="true">Loading...</div>
+                        <div id=" +
+"live-status" +
+" class=" +
+"status" +
+" role=" +
+"status" +
+" aria-live=" +
+"polite" +
+" aria-atomic=" +
+"true" +
+">Loading...</div>
 
                         <div id="error" class="error" role="alert" hidden>
-                          <h3 class="error__title" id="error-title" tabindex="-1">Unable to load preview</h3>
+                          <h3 class=" +
+"error__title" +
+" id=" +
+"error-title" +
+" tabindex=" +
+"-1" +
+">Unable to load preview</h3>
                           <p class="error__message" id="error-message"></p>
                         </div>
 
                         <div class="actions" aria-label="Actions">
-                          <button type="button" class="btn btn-primary" id="retry-btn">Refresh</button>
-                          <a class="btn btn-secondary" id="open-json-link" href="#" target="_blank" rel="noopener noreferrer" aria-label="Open JSON bootstrap in a new tab" hidden>Open JSON bootstrap</a>
+                          <button type=" +
+"button" +
+" class=" +
+"btn btn-primary" +
+" id=" +
+"retry-btn" +
+">Refresh</button>
+                          <a class=" +
+"btn btn-secondary" +
+" id=" +
+"open-json-link" +
+" href=" +
+"#" +
+" target=" +
+"_blank" +
+" rel=" +
+"noopener noreferrer" +
+" aria-label=" +
+"Open JSON bootstrap in a new tab" +
+" hidden>Open JSON bootstrap</a>
                         </div>
                       </section>
 
@@ -122,18 +202,29 @@ public class ViewerUiController {
 
                         <div id="preview" class="preview" aria-busy="true">
                           <div class="skeleton" aria-hidden="true"></div>
-                          <p class="help" id="preview-help">When ready, the converted artifact will appear here.</p>
+                          <p class=" +
+"help" +
+" id=" +
+"preview-help" +
+">When ready, the converted artifact will appear here.</p>
                         </div>
                       </section>
-                    </main>
+                    </main>""";
+    }
 
+    private static String demoShellFooterHtml() {
+        return """
                     <footer class="app-footer" role="contentinfo">
                       <div class="app-footer__inner">
                         <small>Copyright (c) 2026 by HYOSUNG. All rights reserved.</small>
                       </div>
                     </footer>
 
-                    <script type="module" src="/assets/viewer/viewer.js"></script>
+                    <script type=" +
+"module" +
+" src=" +
+"/assets/viewer/viewer.js" +
+"></script>
                   </body>
                 </html>
                 """;
@@ -145,18 +236,44 @@ public class ViewerUiController {
                 .replace("{{PDFJS_WORKER_PATH}}", PDF_JS_WORKER_PATH);
     }
 
+    /**
+     * Generates the self-contained HTML payload for the demo intake shell.
+     *
+     * <p>This shell acts as a unified client for uploading documents, monitoring
+     * asynchronous conversion status, and viewing local KPIs without persisting
+     * history on the server.</p>
+     *
+     * @return HTML string representing the demo shell
+     */
     private static String demoShellHtml() {
+        return demoShellHeadHtml() + demoShellBodyHtml();
+    }
+
+    private static String demoShellHeadHtml() {
         return """
                 <!doctype html>
                 <html lang="en">
                   <head>
                     <meta charset="utf-8" />
-                    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+                    <meta name=" +
+"viewport" +
+" content=" +
+"width=device-width, initial-scale=1, viewport-fit=cover" +
+" />
                     <meta name="referrer" content="no-referrer" />
                     <title>Clearfolio Viewer</title>
                     <link rel="stylesheet" href="/assets/viewer/viewer.css" />
                   </head>
-                  <body>
+                  <body>""";
+    }
+
+    private static String demoShellBodyHtml() {
+        return demoShellMainTopHtml() + demoShellMainBottomHtml()
+                + demoShellFooterHtml();
+    }
+
+    private static String demoShellMainTopHtml() {
+        return """
                     <a class="skip-link" href="#main">Skip to content</a>
 
                     <header class="app-header" role="banner">
@@ -166,43 +283,111 @@ public class ViewerUiController {
                         </div>
 
                         <nav class="header-nav" aria-label="Viewer utilities">
-                          <a class="header-nav__link" href="/healthz">Service status</a>
+                          <a class=" +
+"header-nav__link" +
+" href=" +
+"/healthz" +
+">Service status</a>
                         </nav>
                       </div>
                     </header>
 
                     <main id="main" class="app-main" tabindex="-1">
                       <h1 class="page-title">Document intake</h1>
-                      <p class="page-subtitle">Submit a document, watch conversion progress, and open the governed preview from one buyer-demo surface.</p>
+                      <p class=" +
+"page-subtitle" +
+">Submit a document, watch conversion progress, and open the governed preview from one buyer-demo surface.</p>
 
-                      <section class="panel demo-panel" aria-labelledby="upload-title">
+                      <section class=" +
+"panel demo-panel" +
+" aria-labelledby=" +
+"upload-title" +
+">
                         <div class="panel-header">
                           <div>
-                            <h2 id="upload-title" class="panel__title">Upload document</h2>
-                            <p class="panel__caption">Uses the existing async conversion API. History is stored only in this browser session.</p>
+                            <h2 id=" +
+"upload-title" +
+" class=" +
+"panel__title" +
+">Upload document</h2>
+                            <p class=" +
+"panel__caption" +
+">Uses the existing async conversion API. History is stored only in this browser session.</p>
                           </div>
-                          <button type="button" class="btn btn-secondary btn-compact" id="load-demo-data-btn">Load demo story</button>
+                          <button type=" +
+"button" +
+" class=" +
+"btn btn-secondary btn-compact" +
+" id=" +
+"load-demo-data-btn" +
+">Load demo story</button>
                         </div>
 
-                        <form id="upload-form" class="upload-form" enctype="multipart/form-data">
+                        <form id=" +
+"upload-form" +
+" class=" +
+"upload-form" +
+" enctype=" +
+"multipart/form-data" +
+">
                           <label class="field-label" for="file-input">
-                            <span>Document <span class="error__title" aria-hidden="true">*</span></span>
+                            <span>Document <span class=" +
+"error__title" +
+" aria-hidden=" +
+"true" +
+">*</span></span>
                           </label>
-                          <input id="file-input" name="file" class="file-input" type="file" required />
+                          <input id=" +
+"file-input" +
+" name=" +
+"file" +
+" class=" +
+"file-input" +
+" type=" +
+"file" +
+" required />
 
                           <div class="actions">
-                            <button type="submit" class="btn btn-primary" id="submit-btn">Submit document</button>
+                            <button type=" +
+"submit" +
+" class=" +
+"btn btn-primary" +
+" id=" +
+"submit-btn" +
+">Submit document</button>
                           </div>
                         </form>
 
-                        <div id="demo-status" class="status" role="status" aria-live="polite" aria-atomic="true">Ready for upload.</div>
+                        <div id=" +
+"demo-status" +
+" class=" +
+"status" +
+" role=" +
+"status" +
+" aria-live=" +
+"polite" +
+" aria-atomic=" +
+"true" +
+">Ready for upload.</div>
                         <div id="demo-error" class="error" role="alert" hidden>
-                          <h3 class="error__title" id="demo-error-title" tabindex="-1">Upload could not continue</h3>
+                          <h3 class=" +
+"error__title" +
+" id=" +
+"demo-error-title" +
+" tabindex=" +
+"-1" +
+">Upload could not continue</h3>
                           <p class="error__message" id="demo-error-message"></p>
                         </div>
                       </section>
 
-                      <section class="kpi-strip" id="kpi-strip" aria-label="Conversion KPIs">
+                      <section class=" +
+"kpi-strip" +
+" id=" +
+"kpi-strip" +
+" aria-label=" +
+"Conversion KPIs" +
+">
                         <div class="kpi">
                           <span class="kpi__label">Runtime jobs</span>
                           <strong class="kpi__value" id="kpi-total">0</strong>
@@ -213,7 +398,11 @@ public class ViewerUiController {
                         </div>
                         <div class="kpi">
                           <span class="kpi__label">Success rate</span>
-                          <strong class="kpi__value" id="kpi-success-rate">0%</strong>
+                          <strong class=" +
+"kpi__value" +
+" id=" +
+"kpi-success-rate" +
+">0%</strong>
                         </div>
                         <div class="kpi">
                           <span class="kpi__label">P95 preview</span>
@@ -221,16 +410,36 @@ public class ViewerUiController {
                         </div>
                       </section>
 
-                      <section class="panel evidence-panel" aria-labelledby="kpi-evidence-title">
+                      <section class=" +
+"panel evidence-panel" +
+" aria-labelledby=" +
+"kpi-evidence-title" +
+">
                         <div class="panel-header">
                           <div>
-                            <h2 id="kpi-evidence-title" class="panel__title">KPI snapshot evidence</h2>
-                            <p class="panel__caption">Tenant-scoped local evidence from authorized KPI snapshot exports.</p>
+                            <h2 id=" +
+"kpi-evidence-title" +
+" class=" +
+"panel__title" +
+">KPI snapshot evidence</h2>
+                            <p class=" +
+"panel__caption" +
+">Tenant-scoped local evidence from authorized KPI snapshot exports.</p>
                           </div>
-                          <button type="button" class="btn btn-secondary btn-compact" id="refresh-evidence-btn">Refresh evidence</button>
+                          <button type=" +
+"button" +
+" class=" +
+"btn btn-secondary btn-compact" +
+" id=" +
+"refresh-evidence-btn" +
+">Refresh evidence</button>
                         </div>
 
-                        <dl class="evidence-summary" aria-label="KPI snapshot export evidence">
+                        <dl class=" +
+"evidence-summary" +
+" aria-label=" +
+"KPI snapshot export evidence" +
+">
                           <div class="evidence-summary__item">
                             <dt>Exports</dt>
                             <dd id="kpi-export-count">0</dd>
@@ -248,18 +457,41 @@ public class ViewerUiController {
                             <dd id="kpi-export-jobs">0</dd>
                           </div>
                         </dl>
-                        <p class="panel__caption" id="kpi-export-status">Snapshot evidence has not been loaded.</p>
+                        <p class=" +
+"panel__caption" +
+" id=" +
+"kpi-export-status" +
+">Snapshot evidence has not been loaded.</p>
                       </section>
 
-                      <section class="panel recovery-panel" aria-labelledby="operator-recovery-title">
+""";
+    }
+
+    private static String demoShellMainBottomHtml() {
+        return """
+                      <section class=" +
+"panel recovery-panel" +
+" aria-labelledby=" +
+"operator-recovery-title" +
+">
                         <div class="panel-header">
                           <div>
-                            <h2 id="operator-recovery-title" class="panel__title">Operator recovery evidence</h2>
-                            <p class="panel__caption">Buyer-readable recovery posture from the current demo session.</p>
+                            <h2 id=" +
+"operator-recovery-title" +
+" class=" +
+"panel__title" +
+">Operator recovery evidence</h2>
+                            <p class=" +
+"panel__caption" +
+">Buyer-readable recovery posture from the current demo session.</p>
                           </div>
                         </div>
 
-                        <dl class="evidence-summary" aria-label="Operator recovery evidence">
+                        <dl class=" +
+"evidence-summary" +
+" aria-label=" +
+"Operator recovery evidence" +
+">
                           <div class="evidence-summary__item">
                             <dt>Needs action</dt>
                             <dd id="recovery-needs-action">0</dd>
@@ -277,16 +509,32 @@ public class ViewerUiController {
                             <dd id="recovery-latest-inspected">n/a</dd>
                           </div>
                         </dl>
-                        <p class="panel__caption" id="recovery-status">No recovery evidence has been collected in this session.</p>
+                        <p class=" +
+"panel__caption" +
+" id=" +
+"recovery-status" +
+">No recovery evidence has been collected in this session.</p>
                       </section>
 
                       <section class="panel" aria-labelledby="history-title">
                         <div class="panel-header">
                           <div>
-                            <h2 id="history-title" class="panel__title">Session history</h2>
-                            <p class="panel__caption">Open status JSON for diligence or launch the preview when conversion is ready.</p>
+                            <h2 id=" +
+"history-title" +
+" class=" +
+"panel__title" +
+">Session history</h2>
+                            <p class=" +
+"panel__caption" +
+">Open status JSON for diligence or launch the preview when conversion is ready.</p>
                           </div>
-                          <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn">Clear</button>
+                          <button type=" +
+"button" +
+" class=" +
+"btn btn-secondary btn-compact" +
+" id=" +
+"clear-history-btn" +
+">Clear</button>
                         </div>
 
                         <div class="table-wrap" id="session-history">
@@ -301,22 +549,53 @@ public class ViewerUiController {
                             </thead>
                             <tbody id="history-body"></tbody>
                           </table>
-                          <p class="empty-state" id="empty-history">No documents submitted in this session.</p>
+                          <p class=" +
+"empty-state" +
+" id=" +
+"empty-history" +
+">No documents submitted in this session.</p>
                         </div>
 
-                        <aside class="job-detail" id="job-detail" aria-labelledby="job-detail-title" hidden>
+                        <aside class=" +
+"job-detail" +
+" id=" +
+"job-detail" +
+" aria-labelledby=" +
+"job-detail-title" +
+" hidden>
                           <div class="job-detail__header">
                             <div>
-                              <h3 id="job-detail-title" class="job-detail__title">Job detail</h3>
-                              <p class="job-detail__caption" id="job-detail-caption">Select a document to inspect operational evidence.</p>
+                              <h3 id=" +
+"job-detail-title" +
+" class=" +
+"job-detail__title" +
+">Job detail</h3>
+                              <p class=" +
+"job-detail__caption" +
+" id=" +
+"job-detail-caption" +
+">Select a document to inspect operational evidence.</p>
                             </div>
-                            <button type="button" class="btn btn-secondary btn-compact" id="retry-job-btn" hidden>Retry dead-lettered job</button>
+                            <button type=" +
+"button" +
+" class=" +
+"btn btn-secondary btn-compact" +
+" id=" +
+"retry-job-btn" +
+" hidden>Retry dead-lettered job</button>
                           </div>
-                          <dl class="job-detail__list" id="job-detail-body"></dl>
+                          <dl class=" +
+"job-detail__list" +
+" id=" +
+"job-detail-body" +
+"></dl>
                         </aside>
                       </section>
-                    </main>
+                    </main>""";
+    }
 
+    private static String demoShellFooterHtml() {
+        return """
                     <footer class="app-footer" role="contentinfo">
                       <div class="app-footer__inner">
                         <small>Copyright (c) 2026 by HYOSUNG. All rights reserved.</small>

@@ -33,7 +33,7 @@
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
 
-## 2026-07-13 - Missing Authentication on Admin Endpoints
-**Vulnerability:** Admin API endpoints in `AdminController` did not require any tenant claims or authorization checks, allowing unauthenticated or unauthorized users to perform privileged actions like fetching all jobs or deleting jobs.
-**Learning:** All administrative endpoints must explicitly enforce authorization regardless of network boundaries, as bypassing these controls can lead to complete data exposure or loss.
-**Prevention:** Implement rigorous permission checks (e.g., using `tenantAccessService.require(headers, TenantPermissions.ADMIN_READ)`) on all admin endpoints.
+## 2026-07-13 - Admin Authorization and Tenant-Isolation Boundary
+**Vulnerability:** `AdminController` originally exposed privileged endpoints without authentication or authorization. Adding `ADMIN_READ`/`ADMIN_WRITE` checks alone still left a cross-tenant boundary failure because the verified `TenantContext` was discarded before listing, deleting, or retrying conversion jobs.
+**Learning:** A permission answers whether a subject may perform an operation; it does not identify which tenant-owned aggregate the subject may operate on. Multi-tenant administrative routes must carry the verified tenant context through the application-service boundary and hide foreign aggregates consistently.
+**Prevention:** Keep the `TenantContext` returned by `TenantAccessService.require(...)`. Filter list results with `ConversionJob.belongsToTenant(...)`, use tenant-aware service operations such as `deleteJob(jobId, tenantContext)`, and call `requireSameTenant(...)` before a retry state transition. Unauthorized requests must not invoke the application service, and foreign or missing jobs are returned as `404 NOT_FOUND` rather than revealing cross-tenant existence.

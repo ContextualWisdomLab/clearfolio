@@ -1,8 +1,0 @@
-    /**
-     * Permission required to read buyer-demo analytics.
-     */
-    public static final String ANALYTICS_READ = "analytics:read";
-
-    private TenantPermissions() {
-    }
-}

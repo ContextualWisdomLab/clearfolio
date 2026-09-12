@@ -13,3 +13,7 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+
+## 2026-09-08 - Accessible Visual Required Indicators
+**Learning:** When adding visual required Indicators (like '*') to form fields that use the HTML5 `required` attribute, they must include `aria-hidden="true"` to prevent screen readers from redundantly announcing the symbol and confusing users.
+**Action:** Always pair visual requirement markers with `aria-hidden="true"` on fields where the underlying input element already has semantic required state.

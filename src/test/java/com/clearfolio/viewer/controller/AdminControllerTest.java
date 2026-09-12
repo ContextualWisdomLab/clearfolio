@@ -121,15 +121,40 @@ class AdminControllerTest {
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), tenantContext.tenantId(), tenantContext.subjectId(), "b.pdf", "application/pdf", "hash-b", 100L, 3);
         ConversionJob job3 = new ConversionJob(UUID.randomUUID(), "other", "other", "c.pdf", "application/pdf", "hash-c", 100L, 3);
         job3.markDeadLettered("failed");
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, job3));
+        ConversionJob job4 = new ConversionJob(UUID.randomUUID(), tenantContext.tenantId(), tenantContext.subjectId(), "d.pdf", "application/pdf", "hash-d", 100L, 3);
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, job3, job4));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.jobs.length()").isEqualTo(1)
-                .jsonPath("$.jobs[0].fileName").isEqualTo("b.pdf");
+                .jsonPath("$.jobs.length()").isEqualTo(2)
+                .jsonPath("$.jobs[0].fileName").isEqualTo("b.pdf")
+                .jsonPath("$.jobs[1].fileName").isEqualTo("d.pdf");
+    }
+
+    @Test
+    void getAllJobsHidesForeignTenantJobAndFiltersDeadLetteredNull() {
+        when(tenantAccessService.require(ArgumentMatchers.any(HttpHeaders.class), ArgumentMatchers.eq(TenantPermissions.ADMIN_READ)))
+                .thenReturn(tenantContext);
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), tenantContext.tenantId(), tenantContext.subjectId(), "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        job1.markDeadLettered("failed");
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), tenantContext.tenantId(), tenantContext.subjectId(), "b.pdf", "application/pdf", "hash-b", 100L, 3);
+        ConversionJob job3 = new ConversionJob(UUID.randomUUID(), "other", "other", "c.pdf", "application/pdf", "hash-c", 100L, 3);
+        job3.markDeadLettered("failed");
+        ConversionJob job4 = new ConversionJob(UUID.randomUUID(), tenantContext.tenantId(), tenantContext.subjectId(), "d.pdf", "application/pdf", "hash-d", 100L, 3);
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, job3, job4));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(3)
+                .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf")
+                .jsonPath("$.jobs[1].fileName").isEqualTo("b.pdf")
+                .jsonPath("$.jobs[2].fileName").isEqualTo("d.pdf");
     }
 
     @Test
@@ -141,7 +166,8 @@ class AdminControllerTest {
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), tenantContext.tenantId(), tenantContext.subjectId(), "b.pdf", "application/pdf", "hash-b", 100L, 3);
         ConversionJob job3 = new ConversionJob(UUID.randomUUID(), "other", "other", "c.pdf", "application/pdf", "hash-c", 100L, 3);
         job3.markDeadLettered("failed");
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, job3));
+        ConversionJob job4 = new ConversionJob(UUID.randomUUID(), tenantContext.tenantId(), tenantContext.subjectId(), "d.pdf", "application/pdf", "hash-d", 100L, 3);
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2, job3, job4));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")

@@ -4,13 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -49,12 +49,11 @@ public class AdminController {
     }
 
     /**
-     * Retrieves conversion jobs owned by the request tenant, optionally filtered
-     * by dead-letter status.
+     * Retrieves all conversion jobs, optionally filtered by dead-letter status.
      *
      * @param deadLettered optional filter for dead-lettered jobs
      * @param headers request headers
-     * @return tenant-owned conversion jobs
+     * @return list of conversion jobs
      */
     @GetMapping("/api/v1/admin/convert/jobs")
     public AdminJobListResponse getAllJobs(
@@ -63,21 +62,22 @@ public class AdminController {
         TenantContext tenantContext = tenantAccessService.require(
                 headers, TenantPermissions.ADMIN_READ);
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
-        List<ConversionJob> filtered = new ArrayList<>();
 
+        List<ConversionJob> filtered = new ArrayList<>();
         for (ConversionJob job : allJobs) {
             if (!job.belongsToTenant(tenantContext.tenantId())) {
                 continue;
             }
-            if (deadLettered == null || job.isDeadLettered() == deadLettered) {
-                filtered.add(job);
+            if (deadLettered != null && job.isDeadLettered() != deadLettered) {
+                continue;
             }
+            filtered.add(job);
         }
         return AdminJobListResponse.from(filtered);
     }
 
     /**
-     * Deletes a conversion job owned by the request tenant.
+     * Deletes a conversion job.
      *
      * @param jobId conversion job identifier
      * @param headers request headers
@@ -90,13 +90,14 @@ public class AdminController {
         TenantContext tenantContext = tenantAccessService.require(
                 headers, TenantPermissions.ADMIN_WRITE);
         if (!conversionService.deleteJob(jobId, tenantContext)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
         }
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * Retries a dead-lettered conversion job owned by the request tenant.
+     * Retries a dead-lettered conversion job.
      *
      * @param jobId conversion job identifier
      * @param headers request headers
@@ -108,6 +109,7 @@ public class AdminController {
             @RequestHeader final HttpHeaders headers) {
         TenantContext tenantContext = tenantAccessService.require(
                 headers, TenantPermissions.ADMIN_WRITE);
+
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "job not found"));
@@ -115,10 +117,6 @@ public class AdminController {
 
         RetryDeadLetterResult result = conversionService
                 .retryDeadLettered(jobId, "admin");
-        if (result == RetryDeadLetterResult.NOT_FOUND) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND, "job not found");
-        }
         if (result == RetryDeadLetterResult.NOT_ELIGIBLE) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "job is not eligible for retry");

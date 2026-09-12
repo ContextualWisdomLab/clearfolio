@@ -231,6 +231,21 @@ class AdminControllerTest {
     }
 
     @Test
+    void retryDeadLetteredReturnsNotFoundWhenOwnedJobDisappearsBeforeRetry() {
+        allowWrite();
+        UUID jobId = UUID.randomUUID();
+        ConversionJob owned = job(TENANT_ID, "owned.pdf", "owned-hash");
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(owned));
+        when(conversionService.retryDeadLettered(jobId, "admin"))
+                .thenReturn(RetryDeadLetterResult.NOT_FOUND);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
     void retryDeadLetteredReturnsConflictWhenNotEligible() {
         allowWrite();
         UUID jobId = UUID.randomUUID();

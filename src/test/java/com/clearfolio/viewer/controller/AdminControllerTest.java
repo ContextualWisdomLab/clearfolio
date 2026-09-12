@@ -2,6 +2,7 @@ package com.clearfolio.viewer.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -191,6 +192,8 @@ class AdminControllerTest {
         UUID jobId = UUID.randomUUID();
         ConversionJob foreign = job(OTHER_TENANT_ID, "foreign.pdf", "foreign-hash");
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(foreign));
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"))
+                .when(tenantAccessService).requireSameTenant(tenantContext, foreign);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")

@@ -9,13 +9,14 @@ import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+import java.util.Optional;
 import org.springframework.http.HttpHeaders;
 
 class TenantContextTest {
 
     @Test
     void fromHeadersParsesRequiredClaimsAndPermissions() {
-        HttpHeaders headers = new HttpHeaders();
+        final HttpHeaders headers = new HttpHeaders();
         headers.add(TenantContext.TENANT_ID_HEADER, " tenant-a ");
         headers.add(TenantContext.SUBJECT_ID_HEADER, " user-1 ");
         headers.add(TenantContext.PERMISSIONS_HEADER, "job:read, viewer:read,job:read");
@@ -31,7 +32,7 @@ class TenantContextTest {
 
     @Test
     void fromHeadersReturnsEmptyWhenRequiredClaimIsMissing() {
-        HttpHeaders headers = new HttpHeaders();
+        final HttpHeaders headers = new HttpHeaders();
         headers.add(TenantContext.TENANT_ID_HEADER, "tenant-a");
         headers.add(TenantContext.SUBJECT_ID_HEADER, "user-1");
 
@@ -68,7 +69,7 @@ class TenantContextTest {
 
     @Test
     void permissionParserDropsBlankEntries() {
-        HttpHeaders headers = new HttpHeaders();
+        final HttpHeaders headers = new HttpHeaders();
         headers.add(TenantContext.TENANT_ID_HEADER, "tenant-a");
         headers.add(TenantContext.SUBJECT_ID_HEADER, "user-1");
         headers.add(TenantContext.PERMISSIONS_HEADER, "job:read, ,\u0000,viewer:read");
@@ -94,5 +95,62 @@ class TenantContextTest {
         );
 
         assertEquals("job:read,viewer:read", context.canonicalPermissions());
+    }
+
+    @Test
+    void fromHeaders_whenPermissionsContainEmptyTokens_ignoresThem() {
+        final HttpHeaders headers = new HttpHeaders();
+        headers.set(TenantContext.TENANT_ID_HEADER, "tenant");
+        headers.set(TenantContext.SUBJECT_ID_HEADER, "subject");
+        headers.set(TenantContext.PERMISSIONS_HEADER, ",a");
+        Optional<TenantContext> context = TenantContext.fromHeaders(headers);
+        assertTrue(context.isPresent());
+        assertEquals("a", context.get().canonicalPermissions());
+
+        headers.set(TenantContext.PERMISSIONS_HEADER, "a,");
+        context = TenantContext.fromHeaders(headers);
+        assertTrue(context.isPresent());
+        assertEquals("a", context.get().canonicalPermissions());
+
+        headers.set(TenantContext.PERMISSIONS_HEADER, "a,,b");
+        context = TenantContext.fromHeaders(headers);
+        assertTrue(context.isPresent());
+        assertEquals("a,b", context.get().canonicalPermissions());
+
+        headers.set(TenantContext.PERMISSIONS_HEADER, ",,");
+        context = TenantContext.fromHeaders(headers);
+        assertTrue(context.isEmpty());
+    }
+
+    @Test
+    void fromHeaders_whenPermissionsContainDuplicates_preservesFirstOccurrenceOrder() {
+        final HttpHeaders headers = new HttpHeaders();
+        headers.set(TenantContext.TENANT_ID_HEADER, "tenant");
+        headers.set(TenantContext.SUBJECT_ID_HEADER, "subject");
+        headers.set(TenantContext.PERMISSIONS_HEADER, "b,a,b");
+        Optional<TenantContext> context = TenantContext.fromHeaders(headers);
+        assertTrue(context.isPresent());
+        assertEquals("b,a", context.get().canonicalPermissions());
+    }
+
+    @Test
+    void fromHeaders_whenPermissionsAreWhitespaceOrControlOnly_ignoresThem() {
+        final HttpHeaders headers = new HttpHeaders();
+        headers.set(TenantContext.TENANT_ID_HEADER, "tenant");
+        headers.set(TenantContext.SUBJECT_ID_HEADER, "subject");
+        headers.set(TenantContext.PERMISSIONS_HEADER, "a, \t,b,\u0000");
+        Optional<TenantContext> context = TenantContext.fromHeaders(headers);
+        assertTrue(context.isPresent());
+        assertEquals("a,b", context.get().canonicalPermissions());
+    }
+
+    @Test
+    void fromHeaders_whenPermissionsAreEmpty_rejectsContext() {
+        final HttpHeaders headers = new HttpHeaders();
+        headers.set(TenantContext.TENANT_ID_HEADER, "tenant");
+        headers.set(TenantContext.SUBJECT_ID_HEADER, "subject");
+        headers.set(TenantContext.PERMISSIONS_HEADER, "");
+        Optional<TenantContext> context = TenantContext.fromHeaders(headers);
+        assertTrue(context.isEmpty());
     }
 }

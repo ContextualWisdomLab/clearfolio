@@ -1,5 +1,6 @@
 package com.clearfolio.viewer.auth;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Optional;
@@ -113,31 +114,17 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
         return String.join(",", permissions);
     }
 
-    private static Set<String> permissionsOf(final String raw) {
-        final String normalized = sanitize(raw);
+    private static Set<String> permissionsOf(String raw) {
+        String normalized = sanitize(raw);
         if (normalized == null) {
             return Set.of();
         }
 
-        final LinkedHashSet<String> parsed = new LinkedHashSet<>();
-        int start = 0;
-        while (true) {
-            final int next = normalized.indexOf(',', start);
-            final String claim;
-            if (next == -1) {
-                claim = sanitize(normalized.substring(start));
-            } else {
-                claim = sanitize(normalized.substring(start, next));
-            }
-            if (claim != null) {
-                parsed.add(claim);
-            }
-            if (next == -1) {
-                break;
-            }
-            start = next + 1;
-        }
-
+        LinkedHashSet<String> parsed = new LinkedHashSet<>();
+        Arrays.stream(normalized.split(","))
+                .map(TenantContext::sanitize)
+                .filter(value -> value != null)
+                .forEach(parsed::add);
         return parsed;
     }
 

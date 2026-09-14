@@ -57,7 +57,9 @@ public class AdminController {
             @RequestParam(required = false) final Boolean deadLettered,
             @RequestHeader final HttpHeaders headers) {
         com.clearfolio.viewer.auth.TenantContext tenantContext =
-                tenantAccessService.require(headers, TenantPermissions.ADMIN_READ);
+                tenantAccessService.require(
+                        headers,
+                        TenantPermissions.ADMIN_READ);
 
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
 
@@ -93,7 +95,9 @@ public class AdminController {
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
         com.clearfolio.viewer.auth.TenantContext tenantContext =
-                tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+                tenantAccessService.require(
+                        headers,
+                        TenantPermissions.ADMIN_WRITE);
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "job not found"));
@@ -114,7 +118,9 @@ public class AdminController {
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
         com.clearfolio.viewer.auth.TenantContext tenantContext =
-                tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+                tenantAccessService.require(
+                        headers,
+                        TenantPermissions.ADMIN_WRITE);
         ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "job not found"));

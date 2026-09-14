@@ -153,4 +153,15 @@ class TenantContextTest {
         Optional<TenantContext> context = TenantContext.fromHeaders(headers);
         assertTrue(context.isEmpty());
     }
+
+    @Test
+    void fromHeaders_whenPermissionsEndWithCommaAndToken_preservesLastToken() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(TenantContext.TENANT_ID_HEADER, "tenant");
+        headers.set(TenantContext.SUBJECT_ID_HEADER, "subject");
+        headers.set(TenantContext.PERMISSIONS_HEADER, "a,b");
+        Optional<TenantContext> context = TenantContext.fromHeaders(headers);
+        assertTrue(context.isPresent());
+        assertEquals("a,b", context.get().canonicalPermissions());
+    }
 }

@@ -48,7 +48,6 @@ a:hover {
   outline: 3px solid var(--focus);
   outline: 3px solid color-mix(in srgb, var(--focus), #ffffff 25%);
   outline-offset: 3px;
-  transition: outline-offset 0.2s ease, outline-color 0.2s ease;
 }
 
 .skip-link {
@@ -62,7 +61,12 @@ a:hover {
   border-radius: 10px;
   box-shadow: var(--shadow);
   transform: translateY(-160%);
-  transition: transform 0.2s ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skip-link {
+    transition: transform 0.2s ease;
+  }
 }
 
 .skip-link:focus {

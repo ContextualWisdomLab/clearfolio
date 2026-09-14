@@ -8,8 +8,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.junit.jupiter.api.Test;
 import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 
 class TenantContextTest {
@@ -156,7 +157,7 @@ class TenantContextTest {
 
     @Test
     void fromHeaders_whenPermissionsEndWithCommaAndToken_preservesLastToken() {
-        HttpHeaders headers = new HttpHeaders();
+        final HttpHeaders headers = new HttpHeaders();
         headers.set(TenantContext.TENANT_ID_HEADER, "tenant");
         headers.set(TenantContext.SUBJECT_ID_HEADER, "subject");
         headers.set(TenantContext.PERMISSIONS_HEADER, "a,b");

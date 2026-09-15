@@ -114,6 +114,10 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
+  // ⚡ Bolt: 성능 개선을 위한 DocumentFragment 사용
+  // 루프 내에서 직접 DOM에 추가하지 않고 일괄 삽입하여 리플로우/리페인트를 방지합니다.
+  const fragment = document.createDocumentFragment();
+
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -143,8 +147,10 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    el.historyBody.appendChild(row);
+    fragment.appendChild(row);
   }
+
+  el.historyBody.appendChild(fragment);
 
   renderRecoveryEvidence(history);
 }

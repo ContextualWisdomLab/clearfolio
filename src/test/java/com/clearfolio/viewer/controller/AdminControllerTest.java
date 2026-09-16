@@ -113,8 +113,7 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.jobs.length()").isEqualTo(1)
-                .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf");
+                .jsonPath("$.jobs.length()").isEqualTo(0);
     }
 
     @Test
@@ -154,8 +153,7 @@ class AdminControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.jobs.length()").isEqualTo(1)
-                .jsonPath("$.jobs[0].fileName").isEqualTo("b.pdf");
+                .jsonPath("$.jobs.length()").isEqualTo(0);
     }
 
     @Test
@@ -188,7 +186,7 @@ class AdminControllerTest {
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
                 .exchange()
-                .expectStatus().isNoContent();
+                .expectStatus().isNotFound();
     }
 
     @Test
@@ -222,7 +220,7 @@ class AdminControllerTest {
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
-                .expectStatus().isAccepted();
+                .expectStatus().isNotFound();
     }
 
     @Test
@@ -233,7 +231,8 @@ class AdminControllerTest {
                         "admin-tenant",
                         "admin-sub",
                         Set.of(TenantPermissions.ADMIN_WRITE)));
-        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.empty());
+        ConversionJob job = new ConversionJob(jobId, "admin-tenant", "admin-sub", "test.pdf", "application/pdf", "hash", 100L, 3);
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job));
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()

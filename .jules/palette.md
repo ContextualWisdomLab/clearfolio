@@ -13,3 +13,7 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+
+## 2026-07-04 - 상태 변경 시 부드러운 시각적 전환(Transitions) 적용
+**Learning:** 인터랙티브 요소(버튼, 링크, 입력창 등)의 hover, focus 등의 상태 변경 시 즉각적인(instant) 변경보다는 부드러운 전환(transition) 효과를 제공하면 사용자가 상태 변화를 더 명확하게 인지하고, 전반적인 사용성과 시각적 완성도가 향상됩니다.
+**Action:** CSS에 `transition: background-color 0.2s ease, border-color 0.2s ease, filter 0.2s ease;` 와 같이 속성을 추가하되, 사용자의 `prefers-reduced-motion` 설정을 존중하여 모션 기반의 트랜지션(`transform` 등)은 `no-preference` 조건 하에 제한하고 포커스 윤곽선 등 필수적인 시각적 피드백은 지연 없이 즉시 제공해야 합니다.

@@ -54,17 +54,15 @@ public class AdminController {
     public AdminJobListResponse getAllJobs(
             @RequestParam(required = false) Boolean deadLettered,
             @RequestHeader HttpHeaders headers) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_READ);
+        var context = tenantAccessService.require(headers, TenantPermissions.ADMIN_READ);
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
-
-        if (deadLettered == null) {
-            return AdminJobListResponse.from(allJobs);
-        }
 
         List<ConversionJob> filtered = new ArrayList<>();
         for (ConversionJob job : allJobs) {
-            if (job.isDeadLettered() == deadLettered) {
-                filtered.add(job);
+            if (job.belongsToTenant(context.tenantId())) {
+                if (deadLettered == null || job.isDeadLettered() == deadLettered) {
+                    filtered.add(job);
+                }
             }
         }
         return AdminJobListResponse.from(filtered);
@@ -81,8 +79,10 @@ public class AdminController {
     public ResponseEntity<Void> deleteJob(
             @PathVariable UUID jobId,
             @RequestHeader HttpHeaders headers) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
-        conversionService.deleteJob(jobId);
+        var context = tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+        if (!conversionService.deleteJob(jobId, context)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
         return ResponseEntity.noContent().build();
     }
 
@@ -97,7 +97,9 @@ public class AdminController {
     public ResponseEntity<Void> retryDeadLettered(
             @PathVariable UUID jobId,
             @RequestHeader HttpHeaders headers) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+        var context = tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+        var job = conversionService.getJob(jobId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
+        tenantAccessService.requireSameTenant(context, job);
         RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
         if (result == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");

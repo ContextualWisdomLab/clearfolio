@@ -19,6 +19,7 @@ import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
 import org.junit.jupiter.api.Test;
+import java.util.Collections;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import com.clearfolio.viewer.model.ConversionJob;
@@ -50,8 +51,8 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsReturnsAllJobsWhenNoFilterProvided() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 1);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "b.pdf", "application/pdf", "hash-b", 100L, 1);
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
         webTestClient.get()
@@ -66,9 +67,9 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsFiltersByDeadLetteredTrue() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 1);
         job1.markDeadLettered("failed");
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "b.pdf", "application/pdf", "hash-b", 100L, 1);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
@@ -83,9 +84,9 @@ class AdminControllerTest {
 
     @Test
     void getAllJobsFiltersByDeadLetteredFalse() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 1);
         job1.markDeadLettered("failed");
-        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "b.pdf", "application/pdf", "hash-b", 100L, 1);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
 
@@ -112,6 +113,9 @@ class AdminControllerTest {
     @Test
     void deleteJobReturnsNoContent() {
         UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(new TenantContext("tenant-1", "subject-1", Set.of(TenantPermissions.ADMIN_WRITE)));
+        when(conversionService.deleteJob(eq(jobId), any(TenantContext.class))).thenReturn(true);
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
@@ -122,6 +126,10 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
+        ConversionJob job1 = new ConversionJob(jobId, "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 1);
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(new TenantContext("tenant-1", "subject-1", Set.of(TenantPermissions.ADMIN_WRITE)));
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job1));
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
@@ -133,6 +141,10 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsNotFoundWhenNotFound() {
         UUID jobId = UUID.randomUUID();
+        ConversionJob job1 = new ConversionJob(jobId, "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 1);
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(new TenantContext("tenant-1", "subject-1", Set.of(TenantPermissions.ADMIN_WRITE)));
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job1));
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
@@ -144,6 +156,10 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsConflictWhenNotEligible() {
         UUID jobId = UUID.randomUUID();
+        ConversionJob job1 = new ConversionJob(jobId, "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 1);
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(new TenantContext("tenant-1", "subject-1", Set.of(TenantPermissions.ADMIN_WRITE)));
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.of(job1));
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 
         webTestClient.post()

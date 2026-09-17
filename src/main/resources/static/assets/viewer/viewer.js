@@ -1,5 +1,3 @@
-import { setBusyState } from "./dom-utils.js";
-
 const POLL_DELAY_MS = 1500;
 const PDF_JS_MODULE_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.mjs";
 const PDF_JS_WORKER_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.worker.mjs";
@@ -52,31 +50,22 @@ function isUuidLike(value) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
 }
 
-let restoreRetryBtn = null;
-
 function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
-  if (!restoreRetryBtn) {
-    restoreRetryBtn = setBusyState(el.retryBtn, "Refreshing...");
-  }
-}
-
-function clearLoading() {
-  if (restoreRetryBtn) {
-    restoreRetryBtn();
-    restoreRetryBtn = null;
-  }
+  el.retryBtn.disabled = true;
+  el.retryBtn.textContent = "Refreshing...";
 }
 
 function showError(message) {
-  clearLoading();
   el.error.hidden = false;
   el.errorMessage.textContent = message;
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
+  el.retryBtn.disabled = false;
+  el.retryBtn.textContent = "Refresh";
 }
 
 function clearPreview() {
@@ -284,7 +273,8 @@ async function poll(docId, abortSignal) {
 
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
-    clearLoading();
+    el.retryBtn.disabled = false;
+    el.retryBtn.textContent = "Refresh";
   } catch (_error) {
     if (abortSignal.aborted) {
       return;

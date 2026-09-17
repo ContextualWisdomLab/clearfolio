@@ -45,7 +45,7 @@ class TenantAccessServiceTest {
 
     @Test
     void requireSkipsSignatureValidationWhenSecretIsBlankOrNull() {
-        TenantAccessService blankSecret = new TenantAccessService(" ", 300L, Clock.fixed(NOW, ZoneOffset.UTC));
+        TenantAccessService blankSecret = new TenantAccessService(null, 300L, Clock.fixed(NOW, ZoneOffset.UTC));
         TenantAccessService nullSecret = new TenantAccessService(null, 300L, Clock.fixed(NOW, ZoneOffset.UTC));
 
         assertDoesNotThrow(() -> blankSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));

@@ -50,9 +50,10 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(UnsupportedDocumentFormatException.class)
     public ResponseEntity<ApiErrorResponse> handleUnsupported(
-            UnsupportedDocumentFormatException ex,
-            ServerWebExchange exchange) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            final UnsupportedDocumentFormatException ex,
+            final ServerWebExchange exchange) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
                 .body(new ApiErrorResponse(
                         "UNSUPPORTED_FORMAT",
                         ex.getMessage(),
@@ -70,9 +71,10 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleBadRequest(
-            IllegalArgumentException ex,
-            ServerWebExchange exchange) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            final IllegalArgumentException ex,
+            final ServerWebExchange exchange) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
                 .body(new ApiErrorResponse(
                         "BAD_REQUEST",
                         ex.getMessage(),
@@ -90,9 +92,10 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiErrorResponse> handleMaxUploadSizeExceeded(
-            MaxUploadSizeExceededException ex,
-            ServerWebExchange exchange) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            final MaxUploadSizeExceededException ex,
+            final ServerWebExchange exchange) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
                 .body(new ApiErrorResponse(
                         "BAD_REQUEST",
                         "File is too large.",
@@ -110,13 +113,14 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(ServerWebInputException.class)
     public ResponseEntity<ApiErrorResponse> handleServerWebInput(
-            ServerWebInputException ex,
-            ServerWebExchange exchange) {
+            final ServerWebInputException ex,
+            final ServerWebExchange exchange) {
         String message = ex.getReason();
         if (message == null || message.isBlank()) {
             message = "Bad request";
         }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
                 .body(new ApiErrorResponse(
                         "BAD_REQUEST",
                         message,
@@ -134,9 +138,10 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(DataBufferLimitException.class)
     public ResponseEntity<ApiErrorResponse> handleDataBufferLimit(
-            DataBufferLimitException ex,
-            ServerWebExchange exchange) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            final DataBufferLimitException ex,
+            final ServerWebExchange exchange) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
                 .body(new ApiErrorResponse(
                         "BAD_REQUEST",
                         "File is too large.",
@@ -154,9 +159,10 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiErrorResponse> handleTypeMismatch(
-            MethodArgumentTypeMismatchException ex,
-            ServerWebExchange exchange) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            final MethodArgumentTypeMismatchException ex,
+            final ServerWebExchange exchange) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
                 .body(new ApiErrorResponse(
                         "BAD_REQUEST",
                         "Invalid value for parameter " + ex.getName(),
@@ -177,8 +183,8 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiErrorResponse> handleResponseStatus(
-            ResponseStatusException ex,
-            ServerWebExchange exchange) {
+            final ResponseStatusException ex,
+            final ServerWebExchange exchange) {
         String reason = ex.getReason();
         if (reason == null || reason.isBlank()) {
             reason = "HTTP " + ex.getStatusCode().value();
@@ -212,7 +218,8 @@ public class ApiExceptionHandler {
                 sanitizeForLog(traceId),
                 ex.getClass().getSimpleName()
         );
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiErrorResponse(
                         "INTERNAL_ERROR",
                         "Unexpected error",
@@ -221,7 +228,7 @@ public class ApiExceptionHandler {
                 ));
     }
 
-    private String resolveTraceId(ServerWebExchange exchange) {
+    private String resolveTraceId(final ServerWebExchange exchange) {
         String header = exchange.getRequest().getHeaders().getFirst("X-Trace-Id");
         if (header != null && !header.isBlank()) {
             return header;
@@ -272,7 +279,7 @@ public class ApiExceptionHandler {
         return sb == null ? value : sb.toString();
     }
 
-    private Map<String, Object> extensionDetails(String extension) {
+    private Map<String, Object> extensionDetails(final String extension) {
         if (extension == null) {
             return Map.of();
         }
@@ -306,7 +313,7 @@ public class ApiExceptionHandler {
         return Map.of("part", partName);
     }
 
-    private long resolveMaxUploadSize(long exceptionMaxUploadSize) {
+    private long resolveMaxUploadSize(final long exceptionMaxUploadSize) {
         return exceptionMaxUploadSize > 0 ? exceptionMaxUploadSize : configuredMaxUploadSize;
     }
 }

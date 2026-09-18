@@ -13,32 +13,17 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
-import com.clearfolio.viewer.auth.TenantAccessService;
-import com.clearfolio.viewer.auth.TenantContext;
-import com.clearfolio.viewer.auth.TenantPermissions;
-import org.springframework.http.HttpHeaders;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import java.util.Set;
 
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
-    private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        tenantAccessService = mock(TenantAccessService.class);
-
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ)))
-                .thenReturn(new TenantContext("admin-tenant", "admin-user", Set.of(TenantPermissions.ADMIN_READ)));
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
-                .thenReturn(new TenantContext("admin-tenant", "admin-user", Set.of(TenantPermissions.ADMIN_WRITE)));
-
-        controller = new AdminController(conversionService, tenantAccessService);
+        controller = new AdminController(conversionService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();

@@ -100,6 +100,47 @@ class AdminControllerTest {
     }
 
     @Test
+    void getAllJobsFiltersOutJobsNotBelongingToTenant() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "tenant-1", "subject-1", "a.pdf", "application/pdf", "hash-a", 100L, 1);
+        ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "tenant-2", "subject-2", "b.pdf", "application/pdf", "hash-b", 100L, 1);
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(1)
+                .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf");
+    }
+
+    @Test
+    void deleteJobReturnsNotFoundWhenNotExists() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(new TenantContext("tenant-1", "subject-1", Set.of(TenantPermissions.ADMIN_WRITE)));
+        when(conversionService.deleteJob(eq(jobId), any(TenantContext.class))).thenReturn(false);
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenJobDoesNotExist() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(new TenantContext("tenant-1", "subject-1", Set.of(TenantPermissions.ADMIN_WRITE)));
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.empty());
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
     void endpointsRequireAuthorization() {
         when(tenantAccessService.require(any(HttpHeaders.class), any(String.class)))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));

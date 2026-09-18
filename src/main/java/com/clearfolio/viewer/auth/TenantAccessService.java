@@ -36,24 +36,28 @@ public class TenantAccessService {
      * Creates an access service for local tests and unsigned demo mode.
      */
     public TenantAccessService() {
-        this("", 300L, Clock.systemUTC());
+        this(null, 300L, Clock.systemUTC());
     }
 
     /**
      * Creates an access service with optional signed gateway claim validation.
      *
-     * @param claimsHmacSecret optional shared gateway HMAC secret
+     * @param configuredSecret optional shared gateway HMAC secret
      * @param maxSkewSeconds maximum accepted clock skew in seconds
      */
     @Autowired
     public TenantAccessService(
-            @Value("${clearfolio.tenant-claims.hmac-secret:}") String claimsHmacSecret,
+            @Value("${clearfolio.tenant-claims.hmac-secret}")
+            final String configuredSecret,
             @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
-        this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
+        this(configuredSecret, maxSkewSeconds, Clock.systemUTC());
     }
 
-    TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {
-        this.claimsHmacSecret = clean(claimsHmacSecret);
+    TenantAccessService(
+            final String claimsHmacSecret,
+            final long maxSkewSeconds,
+            final Clock clock) {
+        this.claimsHmacSecret = claimsHmacSecret;
         this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
         this.clock = clock;
     }

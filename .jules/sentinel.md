@@ -32,3 +32,7 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## 2026-07-20 - Spring Boot 비밀값 누락 시 런타임 우회 취약점 방지
+**Vulnerability:** Spring Boot의 `@Value` 애너테이션에서 기본값을 빈 문자열로 설정(`@Value("${secret:}")`)하면, 비밀값이 환경에 주입되지 않았을 때 서비스가 기동 실패(fail-fast)하지 않고 빈 문자열을 비밀값으로 사용하여 암호화 로직이 동작하게 됩니다. 이로 인해 공격자가 빈 문자열을 서명키로 악용할 수 있는 취약점이 발생합니다.
+**Learning:** 비밀값 주입 시 기본값을 명시하지 않으면 런타임 초기에 누락을 감지하고 애플리케이션 시작을 차단할 수 있습니다. 수동으로 null이나 빈 문자열을 체크하는 것보다 프레임워크 수준에서 강제로 실패하게 만드는 것이 훨씬 안전하고 확실한 방어 수단입니다.
+**Prevention:** 런타임에 반드시 필요한 비밀값은 `@Value` 애너테이션 사용 시 콜론(`:`)과 기본값을 포함하지 말고 `@Value("${my.secret}")` 형태로 사용하여 주입 실패 시 즉시 `IllegalArgumentException` (Could not resolve placeholder)이 발생하도록 설정해야 합니다.

@@ -46,6 +46,16 @@ public final class TenantPermissions {
     public static final String ARTIFACT_LINK_REVOKE = "artifact-link:revoke";
 
     /**
+     * Permission required to perform admin read actions.
+     */
+    public static final String ADMIN_READ = "admin:read";
+
+    /**
+     * Permission required to perform admin write actions.
+     */
+    public static final String ADMIN_WRITE = "admin:write";
+
+    /**
      * Permission required to read audit evidence.
      */
     public static final String AUDIT_READ = "audit:read";

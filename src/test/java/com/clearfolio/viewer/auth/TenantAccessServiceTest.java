@@ -280,4 +280,27 @@ class TenantAccessServiceTest {
     private static TenantAccessService signedService() {
         return new TenantAccessService(SECRET, 300L, Clock.fixed(NOW, ZoneOffset.UTC));
     }
+
+    @Test
+    void requireRejectsBlankSignatureOrTimestamp() {
+        TenantAccessService signedService = signedService();
+        HttpHeaders blankSignature = headers(TenantPermissions.JOB_READ);
+        blankSignature.add(TenantContext.CLAIMS_ISSUED_AT_HEADER, String.valueOf(NOW.getEpochSecond()));
+        blankSignature.add(TenantContext.CLAIMS_SIGNATURE_HEADER, "   ");
+
+        HttpHeaders blankTimestamp = headers(TenantPermissions.JOB_READ);
+        blankTimestamp.add(TenantContext.CLAIMS_ISSUED_AT_HEADER, "");
+        blankTimestamp.add(TenantContext.CLAIMS_SIGNATURE_HEADER, "signature");
+
+        assertEquals(HttpStatus.UNAUTHORIZED, assertThrows(
+                ResponseStatusException.class,
+                () -> signedService.require(blankSignature, TenantPermissions.JOB_READ)
+        ).getStatusCode());
+
+        assertEquals(HttpStatus.UNAUTHORIZED, assertThrows(
+                ResponseStatusException.class,
+                () -> signedService.require(blankTimestamp, TenantPermissions.JOB_READ)
+        ).getStatusCode());
+    }
+
 }

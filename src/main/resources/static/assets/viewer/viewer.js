@@ -1,3 +1,5 @@
+import { setBusyState } from "./dom-utils.js";
+
 const POLL_DELAY_MS = 1500;
 const PDF_JS_MODULE_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.mjs";
 const PDF_JS_WORKER_PATH = "/webjars/pdfjs-dist/6.1.200/build/pdf.worker.mjs";
@@ -19,6 +21,7 @@ const el = {
 };
 
 let pdfJsModulePromise;
+let restoreRetryBtn = null;
 
 function getMetaContent(name) {
   const meta = document.querySelector(`meta[name="${name}"]`);
@@ -50,12 +53,26 @@ function isUuidLike(value) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
 }
 
-function setLoading(message) {
+function setLoading(message, abortSignal) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
-  el.retryBtn.disabled = true;
-  el.retryBtn.textContent = "Refreshing...";
+  if (!restoreRetryBtn) {
+    restoreRetryBtn = setBusyState(el.retryBtn, "Refreshing...");
+    abortSignal.addEventListener("abort", restoreRetryButton, { once: true });
+  }
+}
+
+/**
+ * Releases the active retry-button busy lease exactly once.
+ */
+function restoreRetryButton() {
+  if (!restoreRetryBtn) {
+    return;
+  }
+  const restore = restoreRetryBtn;
+  restoreRetryBtn = null;
+  restore();
 }
 
 function showError(message) {
@@ -64,8 +81,7 @@ function showError(message) {
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
-  el.retryBtn.disabled = false;
-  el.retryBtn.textContent = "Refresh";
+  restoreRetryButton();
 }
 
 function clearPreview() {
@@ -214,7 +230,7 @@ async function openJsonDocument(url) {
 
 async function poll(docId, abortSignal) {
   try {
-    setLoading("Checking conversion status...");
+    setLoading("Checking conversion status...", abortSignal);
 
     const statusUrl = `/api/v1/convert/jobs/${encodeURIComponent(docId)}`;
     const { res, data } = await fetchJson(statusUrl, abortSignal);
@@ -249,7 +265,7 @@ async function poll(docId, abortSignal) {
       return;
     }
 
-    setLoading("Loading viewer bootstrap...");
+    setLoading("Loading viewer bootstrap...", abortSignal);
     const viewerUrl = `/api/v1/viewer/${encodeURIComponent(docId)}`;
     const bootstrap = await fetchJson(viewerUrl, abortSignal);
 
@@ -273,8 +289,7 @@ async function poll(docId, abortSignal) {
 
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
-    el.retryBtn.disabled = false;
-    el.retryBtn.textContent = "Refresh";
+    restoreRetryButton();
   } catch (_error) {
     if (abortSignal.aborted) {
       return;

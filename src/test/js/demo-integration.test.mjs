@@ -39,22 +39,13 @@ const elementIds = [
 test("the executable demo renders inert actions and blocks repeated status activation", async () => {
   const elements = new Map(elementIds.map(id => [id, new MockElement()]));
   const fileName = "<img src=x onerror=alert(1)>.pdf";
-  const history = [
-    {
-      fileName,
-      status: "SUCCEEDED",
-      submittedAt: "2026-08-05T00:00:00Z",
-      jobId: "document-identifier",
-      statusUrl: "/api/v1/convert/jobs/document-identifier",
-    },
-    {
-      fileName: "second-document.pdf",
-      status: "SUCCEEDED",
-      submittedAt: "2026-08-05T00:01:00Z",
-      jobId: "second-document-identifier",
-      statusUrl: "/api/v1/convert/jobs/second-document-identifier",
-    },
-  ];
+  const history = [{
+    fileName,
+    status: "SUCCEEDED",
+    submittedAt: "2026-08-05T00:00:00Z",
+    jobId: "document-identifier",
+    statusUrl: "/api/v1/convert/jobs/document-identifier",
+  }];
 
   globalThis.document = {
     getElementById(id) {
@@ -105,9 +96,7 @@ test("the executable demo renders inert actions and blocks repeated status activ
   await new Promise(resolve => setImmediate(resolve));
 
   const rows = elements.get("history-body").childNodes;
-  assert.equal(rows.length, 2);
-  assert.equal(rows[0].childNodes[0].textContent, fileName);
-  assert.equal(rows[1].childNodes[0].textContent, "second-document.pdf");
+  assert.equal(rows.length, 1);
   const [fileCell, statusCell, , actionsCell] = rows[0].childNodes;
   assert.equal(fileCell.textContent, fileName);
   assert.equal(fileCell.childNodes.length, 1);

@@ -99,11 +99,8 @@ public class AdminController {
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
         com.clearfolio.viewer.auth.TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
-        ConversionJob job = conversionService.getJob(jobId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
-        tenantAccessService.requireSameTenant(tenantContext, job);
 
-        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
+        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin", tenantContext);
         if (result == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
         }

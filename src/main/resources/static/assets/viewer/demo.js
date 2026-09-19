@@ -114,7 +114,7 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
-  // ⚡ Bolt: Batch DOM insertions using DocumentFragment to prevent multiple reflows/repaints
+  // Build the complete DOM subtree before inserting it into the live container.
   const fragment = document.createDocumentFragment();
   for (const job of history) {
     const row = document.createElement("tr");
@@ -174,7 +174,7 @@ function renderJobDetail(detail) {
     : "Operational evidence";
   el.jobDetailBody.textContent = "";
 
-  // ⚡ Bolt: Batch DOM insertions using DocumentFragment to prevent multiple reflows/repaints
+  // Build the complete DOM subtree before inserting it into the live container.
   const fragment = document.createDocumentFragment();
 
   const addDetailToFragment = (label, value) => {

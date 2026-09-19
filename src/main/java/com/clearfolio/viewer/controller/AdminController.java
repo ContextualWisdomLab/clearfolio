@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.api.AdminJobListResponse;
 import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
@@ -46,18 +47,18 @@ public class AdminController {
     }
 
     /**
-     * Retrieves all conversion jobs, optionally filtered by dead-letter status.
+     * Retrieves tenant-owned conversion jobs, optionally filtered by dead-letter status.
      *
      * @param deadLettered optional filter for dead-lettered jobs
      * @param headers request headers carrying tenant claims
-     * @return list of conversion jobs
+     * @return list of tenant-owned conversion jobs
      */
     @GetMapping("/api/v1/admin/convert/jobs")
     public AdminJobListResponse getAllJobs(
             @RequestParam(required = false) final Boolean deadLettered,
             @RequestHeader final HttpHeaders headers) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_READ);
-        Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ADMIN_READ);
+        Iterable<ConversionJob> allJobs = conversionService.getAllJobs(tenantContext);
 
         if (deadLettered == null) {
             return AdminJobListResponse.from(allJobs);
@@ -73,7 +74,7 @@ public class AdminController {
     }
 
     /**
-     * Deletes a conversion job.
+     * Deletes a tenant-owned conversion job.
      *
      * @param jobId conversion job identifier
      * @param headers request headers carrying tenant claims
@@ -83,13 +84,15 @@ public class AdminController {
     public ResponseEntity<Void> deleteJob(
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
-        conversionService.deleteJob(jobId);
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+        if (!conversionService.deleteJob(jobId, tenantContext)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+        }
         return ResponseEntity.noContent().build();
     }
 
     /**
-     * Retries a dead-lettered conversion job.
+     * Retries a tenant-owned dead-lettered conversion job.
      *
      * @param jobId conversion job identifier
      * @param headers request headers carrying tenant claims
@@ -99,8 +102,11 @@ public class AdminController {
     public ResponseEntity<Void> retryDeadLettered(
             @PathVariable final UUID jobId,
             @RequestHeader final HttpHeaders headers) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
-        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
+        TenantContext tenantContext = tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+        RetryDeadLetterResult result = conversionService.retryDeadLettered(
+                jobId,
+                tenantContext.subjectId(),
+                tenantContext);
         if (result == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
         }

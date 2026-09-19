@@ -132,6 +132,14 @@ class DocumentationSpineContractTest(unittest.TestCase):
         self.assertNotIn("asynchronous conversion that produces an in-memory pdf artifact", readme)
         self.assertIn("development/demo one-page placeholder", readme)
 
+    def test_readme_exposes_repository_license_boundary(self) -> None:
+        """Keep the public entrypoint explicit about source and third-party terms."""
+
+        readme = read_text("README.md")
+        self.assertIn("## License", readme)
+        self.assertIn("[Apache License 2.0](LICENSE)", readme)
+        self.assertIn("Third-party components retain", readme)
+
     def test_security_policy_matches_current_trust_boundaries(self) -> None:
         """Require root security guidance to expose current authorization and privacy boundaries."""
 

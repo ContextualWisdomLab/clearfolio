@@ -33,7 +33,7 @@
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
 
-## 2026-09-16 - 어드민 엔드포인트 인증 누락 방지
-**Vulnerability:** 어드민 컨트롤러 엔드포인트에 권한 부여 검사가 누락되어 있었습니다.
-**Learning:** 민감한 어드민 엔드포인트는 반드시 `tenantAccessService.require`를 사용하여 테넌트 권한 검사를 강제해야 합니다.
-**Prevention:** 관리자 엔드포인트를 포함하여 모든 컨트롤러에 대해 엄격한 테넌트 권한 검사를 일관되게 적용해야 합니다.
+## 2026-09-19 - 어드민 권한과 테넌트 객체 격리
+**Vulnerability:** 어드민 엔드포인트에 인증·권한 검사가 없었고, 최초 수리에서는 `TenantAccessService.require`가 반환한 검증된 `TenantContext`를 버린 채 global list/delete/retry를 호출하여 다른 테넌트의 변환 작업에 접근할 수 있는 IDOR 경로가 남았습니다.
+**Learning:** `admin:read` 또는 `admin:write` 같은 수직 권한 검사는 테넌트 소유권 검사와 별개입니다. 테넌트가 있는 aggregate는 verified tenant context를 controller에서 끝내지 않고 application-service/repository 경계까지 전달해야 하며, missing object와 foreign-tenant object는 동일한 NOT_FOUND 정책으로 처리해 존재 여부도 노출하지 않아야 합니다.
+**Prevention:** 관리자 list/delete/retry는 tenant-aware service contract만 사용합니다. 조회는 tenant predicate로 제한하고, mutation은 `jobId`와 tenant ownership을 같은 application-service operation에서 검증합니다. Durable repository가 도입되면 global snapshot을 읽어 후처리하지 말고 tenant predicate를 persistence query에 포함하며, retry state transition도 tenant check와 같은 transaction boundary에서 집행합니다.

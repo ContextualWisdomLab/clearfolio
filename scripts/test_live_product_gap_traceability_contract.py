@@ -134,6 +134,52 @@ class LiveProductGapTraceabilityContractTest(unittest.TestCase):
         self.assertIn("superseded", assessment)
         self.assertNotIn("only #268 remains unreconciled", assessment)
 
+    def test_all_canonical_docs_reject_superseded_268_and_stale_download_maturity(self) -> None:
+        """Keep lifecycle and signed-download maturity consistent across canonical docs."""
+
+        supersession_documents = (
+            "docs/PRD.md",
+            "docs/TRD.md",
+            "ARCHITECTURE.md",
+            "docs/OPERABILITY.md",
+            "docs/API_CONTRACT.md",
+            "docs/THREAT_MODEL.md",
+            "docs/MIGRATION_ROLLBACK.md",
+            "docs/TEST_STRATEGY.md",
+            "docs/adr/README.md",
+            "docs/adr/0003-tenant-security-and-durable-evidence.md",
+            "docs/adr/0004-immutable-document-lifecycle.md",
+            "docs/DOCUMENTATION_ASSESSMENT.md",
+            "docs/ACQUISITION_DILIGENCE.md",
+        )
+        for relative_path in supersession_documents:
+            document = read_text(relative_path)
+            with self.subTest(document=relative_path):
+                self.assertIn("#268", document)
+                self.assertIn("superseded", document)
+                self.assertNotIn("`active_pr` #268", document)
+
+        signed_download_documents = (
+            "docs/PRD.md",
+            "docs/TRD.md",
+            "ARCHITECTURE.md",
+            "docs/THREAT_MODEL.md",
+            "docs/adr/README.md",
+        )
+        for relative_path in signed_download_documents:
+            document = read_text(relative_path)
+            with self.subTest(document=relative_path):
+                self.assertIn("implemented_on_main", document)
+                self.assertNotIn("direct-download hardening `active_pr`", document)
+                self.assertNotIn("direct-download alignment `active_pr`", document)
+                self.assertNotIn(
+                    "direct conversion-job download endpoint is currently under `active_pr`",
+                    document,
+                )
+
+        traceability = read_text("docs/TRACEABILITY.md")
+        self.assertIn("assessment date: 2026-09-20", traceability)
+
     def test_assessment_exposes_current_api_workspace_and_credential_gaps(self) -> None:
         """Require the fitness assessment to expose current executable product/security gaps."""
 

@@ -176,6 +176,10 @@ a:hover {
   font-weight: 700;
 }
 
+.required-indicator {
+  color: var(--danger);
+}
+
 .file-input {
   width: 100%;
   min-height: 42px;

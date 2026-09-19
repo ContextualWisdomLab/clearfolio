@@ -39,13 +39,22 @@ const elementIds = [
 test("the executable demo renders inert actions and blocks repeated status activation", async () => {
   const elements = new Map(elementIds.map(id => [id, new MockElement()]));
   const fileName = "<img src=x onerror=alert(1)>.pdf";
-  const history = [{
-    fileName,
-    status: "SUCCEEDED",
-    submittedAt: "2026-08-05T00:00:00Z",
-    jobId: "document-identifier",
-    statusUrl: "/api/v1/convert/jobs/document-identifier",
-  }];
+  const history = [
+    {
+      fileName,
+      status: "SUCCEEDED",
+      submittedAt: "2026-08-05T00:00:00Z",
+      jobId: "document-identifier",
+      statusUrl: "/api/v1/convert/jobs/document-identifier",
+    },
+    {
+      fileName: "second-document.pdf",
+      status: "SUCCEEDED",
+      submittedAt: "2026-08-05T00:01:00Z",
+      jobId: "second-document-identifier",
+      statusUrl: "/api/v1/convert/jobs/second-document-identifier",
+    },
+  ];
 
   globalThis.document = {
     getElementById(id) {

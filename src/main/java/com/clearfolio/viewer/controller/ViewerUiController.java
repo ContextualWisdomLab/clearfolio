@@ -188,7 +188,7 @@ public class ViewerUiController {
                           <label class="field-label" for="file-input">
                             <span>
                               Document
-                              <span aria-hidden="true" class="error__title">*</span>
+                              <span class="required-indicator" aria-hidden="true">*</span>
                             </span>
                           </label>
                           <input id="file-input" name="file" class="file-input" type="file" required />

@@ -546,6 +546,64 @@ Each update must record a fresh protected-main SHA and live PR/issue inventory.
 Do not silently rewrite historical facts; use git history and the status
 vocabulary.
 
+
+### 10.1 Live design-assurance addendum — required upload indicator
+
+Evidence date: 2026-09-20.
+
+**PRD / user scene.** During document intake, a buyer must see that a document is
+required before submission. The native file input remains the semantic authority:
+its `required` attribute conveys requiredness, while a visible asterisk is only a
+decorative supplement.
+
+**TRD / canonical writer.** Product source, focused controller tests, component
+CSS, bounded Palette guidance, and CHANGELOG are owned by Draft
+[#598](https://github.com/ContextualWisdomLab/clearfolio/pull/598) at exact
+evidence head `1f96e0f181d06930de9c3a71a3fafd40e08bd6ac`. The marker uses the
+dedicated `.required-indicator` class rather than the unrelated
+`.error__title` component. Draft siblings
+[#584](https://github.com/ContextualWisdomLab/clearfolio/pull/584) at
+`a5b831198a8dcbb097fc7703009083b537b5c94c` and
+[#605](https://github.com/ContextualWisdomLab/clearfolio/pull/605) at
+`61226fbba6827af0d1394605a1001e12038952c6` remain evidence-preserved until
+protected-main integration proves complete source/test/docs carryover; they are
+not independent writers and must not be closed merely as duplicates.
+
+**UML / interaction.**
+`DocumentIntakePage -> FileInput: associate through label[for=file-input]`;
+`FileInput -> BrowserValidation: required`; `RequiredIndicator -> AT: hidden`.
+The asterisk neither submits data nor replaces browser/domain validation.
+
+**ERD.** No entity, aggregate, table, or persistence authority changes. Selected
+file state remains browser-controlled presentation state until the existing
+document-intake submission boundary accepts it.
+
+**Context Map.** The Viewer UI owns presentation and native form semantics. The
+document-conversion bounded context continues to own accepted-document truth.
+No presentation DTO or marker state crosses that boundary.
+
+**Exact-head acceptance matrix.**
+
+| Dimension | Current evidence | Status / action |
+| --- | --- | --- |
+| Determinism | Focused source contract requires label association, dedicated marker class, native `required`, and component CSS | PASS at the cited #598 evidence head; hosted exact-head replay required after every head change |
+| Semantics | Native `required` retained; only the decorative marker has `aria-hidden="true"` | PASS in source; real accessibility-tree verification remains required |
+| Component ownership | `.required-indicator` replaces `.error__title` reuse | PASS in source/CSS |
+| Pointer/touch/keyboard | Label activation, file chooser, empty-submit validation, focus return | FAIL — record Chromium/Firefox/WebKit current-head interaction evidence |
+| Accessibility | Name/required state, no duplicate marker announcement, focus-visible, error/empty states, WCAG 2.2 AA | FAIL — record browser accessibility-tree and AT evidence |
+| Responsive | 320 px, 768 px, and desktop screenshots; no label/marker split or overflow | FAIL |
+| Locales | ko/en/ja/zh/vi/es/de/fr expansion, CJK, wrapping, and font fallback | FAIL |
+| API wiring / lifecycle | Actual submit CTA, cancellation, retry, stale response, offline, busy and reload behavior | FAIL; a file selection must not be represented as durable domain truth before server acceptance |
+| Large-data performance | Label-only delta has no credible measured regression; full intake page p50/p95 remains unmeasured | FAIL for release evidence |
+| Import/export and recovery | Import is the native file selection path; reload must not imply that browser-cleared file state persisted | FAIL — browser E2E required |
+
+**Gap / action / status.** Source-level component ownership is repaired, but the
+UI Delivery Gate remains **Proposed / FAIL** until unchanged-head hosted checks,
+independent review, real-browser/AT/responsive/eight-locale evidence, and the
+canonical sibling convergence are complete. No release or protected-main
+maturity claim is made.
+
+
 ## 11. Standards and primary references — APA 7th
 
 International Organization for Standardization. (2024). *Document management

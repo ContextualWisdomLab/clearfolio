@@ -115,3 +115,7 @@ Central ContextualWisdomLab `.github` owns privileged PR-maintenance/review/merg
 ## Release boundary
 
 Do not release from a feature PR merely because its tests are green. Release only from an exact integrated protected head after CI, security, exact coverage/docstrings, realistic document-fidelity acceptance, accessibility, packaging, SBOM/provenance, reproducibility, API/schema compatibility, migrations/rollback/recovery where applicable, independent review, and protected-main operational acceptance all pass.
+
+## License
+
+Clearfolio source and documentation are available under the [Apache License 2.0](LICENSE). Third-party components retain their own licenses and attribution obligations; release artifacts must verify those obligations against the exact dependency inventory, SBOM, and generated attribution evidence required by [release acceptance](docs/RELEASE_ACCEPTANCE.md). The repository grant does not replace third-party terms.

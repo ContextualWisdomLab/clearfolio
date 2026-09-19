@@ -9,14 +9,26 @@ class ProductionAuthReadinessConfigTest {
 
     @Test
     void productionProfileFailsWithoutSignedTenantClaimsSecret() {
-        productionRunner().run(context -> assertThat(context.getStartupFailure())
-                .hasRootCauseMessage("production profile requires clearfolio.tenant-claims.hmac-secret"));
+        productionRunner()
+                .withPropertyValues("clearfolio.artifact-token.secret=production-artifact-secret")
+                .run(context -> assertThat(context.getStartupFailure())
+                        .hasRootCauseMessage("production profile requires clearfolio.tenant-claims.hmac-secret"));
     }
 
     @Test
-    void productionProfileStartsWithSignedTenantClaimsSecret() {
+    void productionProfileFailsWithoutArtifactTokenSecret() {
         productionRunner()
-                .withPropertyValues("clearfolio.tenant-claims.hmac-secret=production-secret", "clearfolio.artifact-token.secret=production-artifact-secret")
+                .withPropertyValues("clearfolio.tenant-claims.hmac-secret=production-tenant-secret")
+                .run(context -> assertThat(context.getStartupFailure())
+                        .hasRootCauseMessage("production profile requires clearfolio.artifact-token.secret"));
+    }
+
+    @Test
+    void productionProfileStartsWithBothSigningSecrets() {
+        productionRunner()
+                .withPropertyValues(
+                        "clearfolio.tenant-claims.hmac-secret=production-tenant-secret",
+                        "clearfolio.artifact-token.secret=production-artifact-secret")
                 .run(context -> assertThat(context.getStartupFailure()).isNull());
     }
 

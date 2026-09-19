@@ -96,7 +96,9 @@ test("the executable demo renders inert actions and blocks repeated status activ
   await new Promise(resolve => setImmediate(resolve));
 
   const rows = elements.get("history-body").childNodes;
-  assert.equal(rows.length, 1);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].childNodes[0].textContent, fileName);
+  assert.equal(rows[1].childNodes[0].textContent, "second-document.pdf");
   const [fileCell, statusCell, , actionsCell] = rows[0].childNodes;
   assert.equal(fileCell.textContent, fileName);
   assert.equal(fileCell.childNodes.length, 1);

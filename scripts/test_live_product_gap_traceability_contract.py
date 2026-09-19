@@ -147,8 +147,8 @@ class LiveProductGapTraceabilityContractTest(unittest.TestCase):
             "docs/MIGRATION_ROLLBACK.md",
             "docs/TEST_STRATEGY.md",
             "docs/adr/README.md",
-            "docs/adr/0003-tenant-security-and-durable-evidence.md",
-            "docs/adr/0004-immutable-document-lifecycle.md",
+            "docs/adr/0003-audit-pseudonymization-key-separation.md",
+            "docs/adr/0004-durable-lifecycle-generation-fencing.md",
             "docs/DOCUMENTATION_ASSESSMENT.md",
             "docs/ACQUISITION_DILIGENCE.md",
         )

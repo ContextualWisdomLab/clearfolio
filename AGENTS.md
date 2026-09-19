@@ -5,6 +5,22 @@
 This file defines repository-level operating assumptions for automated agents,
 including mandatory quality and security merge gates.
 
+## Canonical product and architecture authority
+
+Before selecting or changing product work, read the current canonical graph:
+
+- `docs/PRD.md` for product requirements and maturity;
+- `docs/TRD.md` for technical requirements and evidence boundaries;
+- root `ARCHITECTURE.md` for runtime, trust, deployment, and document authority;
+- `docs/adr/README.md` for accepted, proposed, active, and planned decisions;
+- `docs/TRACEABILITY.md` for requirement-to-code/test/issue/PR evidence;
+- `docs/DOCUMENTATION_ASSESSMENT.md` for documentation fitness and open gaps.
+
+Repository documents are the detailed authority. Scheduler prompts and PR prose
+are execution/control evidence, not a second independently maintained product
+specification. Active-PR behavior must never be described as protected-main
+shipped behavior.
+
 ## Mandatory merge gates
 
 - `mvn -B --no-transfer-progress verify` is the authoritative local and CI

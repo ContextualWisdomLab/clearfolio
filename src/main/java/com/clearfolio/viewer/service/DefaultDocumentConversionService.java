@@ -21,9 +21,6 @@ import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.repository.ConversionJobRepository;
 import com.clearfolio.viewer.repository.ConversionJobStateStore;
 import com.clearfolio.viewer.repository.RepositoryBackedConversionJobStateStore;
-import com.clearfolio.viewer.repository.TenantScopedConversionJobStateStore;
-import com.clearfolio.viewer.repository.TenantScopedJobMutationRepository;
-import com.clearfolio.viewer.repository.TenantScopedRetryResult;
 
 /**
  * Default implementation that validates uploads, deduplicates by content hash,
@@ -123,7 +120,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
                 repository,
                 validationService,
                 conversionWorker,
-                new InMemoryArtifactStore(),
+                new com.clearfolio.viewer.artifact.InMemoryArtifactStore(),
                 conversionProperties
         );
     }
@@ -154,13 +151,17 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         );
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public UUID submit(MultipartFile file) {
         return submit(file, PolicyOverrideRequest.none());
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public UUID submit(MultipartFile file, PolicyOverrideRequest overrideRequest) {
         return submit(file, overrideRequest, new TenantContext(
@@ -170,22 +171,16 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         ));
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public UUID submit(
-            MultipartFile file,
-            PolicyOverrideRequest overrideRequest,
-            TenantContext tenantContext
-    ) {
+    public UUID submit(MultipartFile file, PolicyOverrideRequest overrideRequest, TenantContext tenantContext) {
         PolicyOverrideRequest effectiveOverride = overrideRequest == null
                 ? PolicyOverrideRequest.none()
                 : overrideRequest;
         TenantContext effectiveTenant = tenantContext == null
-                ? new TenantContext(
-                        TenantContext.DEMO_TENANT_ID,
-                        TenantContext.DEMO_SUBJECT_ID,
-                        java.util.Set.of()
-                )
+                ? new TenantContext(TenantContext.DEMO_TENANT_ID, TenantContext.DEMO_SUBJECT_ID, java.util.Set.of())
                 : tenantContext;
         validationService.validateOrThrow(file, effectiveOverride);
 
@@ -210,39 +205,48 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         return result.canonicalJob().getJobId();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Optional<ConversionJob> getJob(UUID jobId) {
         return repository.findById(jobId);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean deleteJob(UUID jobId, TenantContext tenantContext) {
-        if (tenantContext == null
-                || !(repository instanceof TenantScopedJobMutationRepository tenantRepository)) {
+        if (tenantContext == null) {
             return false;
         }
-        return JobMutationCoordinator.withJobLock(jobId, () -> {
-            if (!tenantRepository.deleteByTenantAndId(tenantContext.tenantId(), jobId)) {
-                return false;
-            }
-            deleteArtifact(jobId);
-            return true;
-        });
+
+        Optional<ConversionJob> job = repository.findByTenantAndId(tenantContext.tenantId(), jobId);
+        if (job.isEmpty()) {
+            return false;
+        }
+
+        deleteJob(job.get().getJobId());
+        return true;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteJob(UUID jobId) {
-        JobMutationCoordinator.withJobLock(jobId, () -> {
-            deleteArtifact(jobId);
-            repository.deleteById(jobId);
-            return null;
-        });
+        try {
+            artifactStore.deletePdf(jobId);
+        } catch (Exception ex) {
+            log.warn("Artifact deletion failed failureType={}", ex.getClass().getSimpleName());
+        }
+        repository.deleteById(jobId);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public RetryDeadLetterResult retryDeadLettered(UUID jobId, String operatorId) {
         Optional<ConversionJob> existing = repository.findById(jobId);
@@ -259,46 +263,12 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         return RetryDeadLetterResult.ACCEPTED;
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public RetryDeadLetterResult retryDeadLettered(
-            UUID jobId,
-            TenantContext tenantContext,
-            String operatorId
-    ) {
-        if (tenantContext == null
-                || !(stateStore instanceof TenantScopedConversionJobStateStore tenantStateStore)) {
-            return RetryDeadLetterResult.NOT_FOUND;
-        }
-
-        TenantScopedRetryResult result = tenantStateStore.retryDeadLettered(
-                jobId,
-                tenantContext.tenantId(),
-                operatorId
-        );
-        if (result == TenantScopedRetryResult.NOT_FOUND) {
-            return RetryDeadLetterResult.NOT_FOUND;
-        }
-        if (result == TenantScopedRetryResult.NOT_ELIGIBLE) {
-            return RetryDeadLetterResult.NOT_ELIGIBLE;
-        }
-
-        conversionWorker.enqueue(jobId);
-        return RetryDeadLetterResult.ACCEPTED;
-    }
-
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Iterable<ConversionJob> getAllJobs() {
         return repository.findAll();
-    }
-
-    private void deleteArtifact(UUID jobId) {
-        try {
-            artifactStore.deletePdf(jobId);
-        } catch (Exception ex) {
-            log.warn("Artifact deletion failed failureType={}", ex.getClass().getSimpleName());
-        }
     }
 
     private void seedPdfPassthroughArtifact(ConversionJob job, MultipartFile file) {
@@ -310,7 +280,7 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
         try {
             sourceBytes = file.getBytes();
         } catch (IOException ex) {
-            // Fall back to the worker's qualified conversion path.
+            // Fall back to the worker's placeholder conversion path.
             return;
         }
 
@@ -375,14 +345,13 @@ public class DefaultDocumentConversionService implements DocumentConversionServi
             while ((read = stream.read(buffer)) != -1) {
                 totalRead += read;
                 if (totalRead > maxUploadSizeBytes) {
-                    throw new IllegalArgumentException(
-                            "File size exceeds maximum allowed upload size."
-                    );
+                    throw new IllegalArgumentException("File size exceeds maximum allowed upload size.");
                 }
                 digest.update(buffer, 0, read);
             }
 
             byte[] raw = digest.digest();
+            // Reused HexFormat for performance
             return HEX_FORMAT.formatHex(raw);
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 digest unavailable", ex);

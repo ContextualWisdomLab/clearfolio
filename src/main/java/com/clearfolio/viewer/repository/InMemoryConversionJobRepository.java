@@ -18,11 +18,7 @@ import com.clearfolio.viewer.model.ConversionJobStatus;
  * In-memory repository implementation for conversion job persistence.
  */
 @Repository
-public class InMemoryConversionJobRepository implements
-        ConversionJobRepository,
-        ConversionJobStateStore,
-        TenantScopedJobMutationRepository,
-        TenantScopedConversionJobStateStore {
+public class InMemoryConversionJobRepository implements ConversionJobRepository, ConversionJobStateStore {
 
     private static final String EVENT_SUBMITTED = "conversion.job.submitted";
     private static final String EVENT_DEDUPE_HIT = "conversion.job.dedupe_hit";
@@ -43,20 +39,21 @@ public class InMemoryConversionJobRepository implements
         // Concurrent collections are initialized eagerly for immediate multi-worker use.
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public ConversionJob save(ConversionJob job) {
         jobs.put(job.getJobId(), job);
         if (job.getContentHash() != null && !job.getContentHash().isBlank()) {
-            jobsByTenantAndContentHash.putIfAbsent(
-                    contentKey(job.getTenantId(), job.getContentHash()),
-                    job.getJobId()
-            );
+            jobsByTenantAndContentHash.putIfAbsent(contentKey(job.getTenantId(), job.getContentHash()), job.getJobId());
         }
         return job;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public ConversionJobRepository.FindOrStoreResult findOrStoreByContentHash(ConversionJob candidate) {
         String contentHash = candidate.getContentHash();
@@ -92,19 +89,25 @@ public class InMemoryConversionJobRepository implements
         return new ConversionJobRepository.FindOrStoreResult(canonical.get(), created.get());
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Optional<ConversionJob> findById(UUID jobId) {
         return Optional.ofNullable(jobs.get(jobId));
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Optional<ConversionJob> findByContentHash(String contentHash) {
         return findByTenantAndContentHash("buyer-demo", contentHash);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Optional<ConversionJob> findByTenantAndContentHash(String tenantId, String contentHash) {
         if (contentHash == null || contentHash.isBlank()) {
@@ -119,38 +122,23 @@ public class InMemoryConversionJobRepository implements
         return findById(jobId);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<ConversionJob> findAll() {
         return List.copyOf(jobs.values());
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void deleteById(UUID jobId) {
         ConversionJob removed = jobs.remove(jobId);
-        removeContentHashIndex(removed, jobId);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean deleteByTenantAndId(String tenantId, UUID jobId) {
-        String normalizedTenantId = normalizeTenantId(tenantId);
-        AtomicReference<ConversionJob> removed = new AtomicReference<>();
-        jobs.computeIfPresent(jobId, (ignored, current) -> {
-            if (!current.belongsToTenant(normalizedTenantId)) {
-                return current;
-            }
-            removed.set(current);
-            return null;
-        });
-
-        ConversionJob deleted = removed.get();
-        if (deleted == null) {
-            return false;
+        if (removed != null && removed.getContentHash() != null && !removed.getContentHash().isBlank()) {
+            jobsByTenantAndContentHash.remove(contentKey(removed.getTenantId(), removed.getContentHash()), jobId);
         }
-        removeContentHashIndex(deleted, jobId);
-        return true;
     }
 
     /**
@@ -178,7 +166,9 @@ public class InMemoryConversionJobRepository implements
                 .toList();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Optional<ConversionJob> claimForProcessing(UUID jobId, Instant now) {
         Optional<ConversionJob> job = findById(jobId);
@@ -195,7 +185,9 @@ public class InMemoryConversionJobRepository implements
         return job;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void scheduleRetry(UUID jobId, String message, Instant retryAt) {
         findById(jobId).ifPresent(job -> {
@@ -205,7 +197,9 @@ public class InMemoryConversionJobRepository implements
         });
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void markSucceeded(UUID jobId, String resourcePath, String message) {
         findById(jobId).ifPresent(job -> {
@@ -215,7 +209,9 @@ public class InMemoryConversionJobRepository implements
         });
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void markDeadLettered(UUID jobId, String message) {
         findById(jobId).ifPresent(job -> {
@@ -228,7 +224,9 @@ public class InMemoryConversionJobRepository implements
         });
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean retryDeadLettered(UUID jobId, String operatorId) {
         Optional<ConversionJob> job = findById(jobId);
@@ -245,48 +243,12 @@ public class InMemoryConversionJobRepository implements
         return true;
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public TenantScopedRetryResult retryDeadLettered(
-            UUID jobId,
-            String tenantId,
-            String operatorId
-    ) {
-        String normalizedTenantId = normalizeTenantId(tenantId);
-        AtomicReference<TenantScopedRetryResult> result = new AtomicReference<>(
-                TenantScopedRetryResult.NOT_FOUND
-        );
-        jobs.computeIfPresent(jobId, (ignored, current) -> {
-            if (!current.belongsToTenant(normalizedTenantId)) {
-                return current;
-            }
-            ConversionJobStatus statusBefore = current.getStatus();
-            if (!current.retryDeadLetteredToSubmitted(operatorId)) {
-                result.set(TenantScopedRetryResult.NOT_ELIGIBLE);
-                return current;
-            }
-            appendLifecycleEvent(current, EVENT_RETRY_ACCEPTED, statusBefore);
-            result.set(TenantScopedRetryResult.ACCEPTED);
-            return current;
-        });
-        return result.get();
-    }
-
     private String contentKey(String tenantId, String contentHash) {
         return normalizeTenantId(tenantId) + "\u001f" + contentHash;
     }
 
     private String normalizeTenantId(String tenantId) {
         return tenantId == null || tenantId.isBlank() ? "buyer-demo" : tenantId.strip();
-    }
-
-    private void removeContentHashIndex(ConversionJob removed, UUID jobId) {
-        if (removed != null && removed.getContentHash() != null && !removed.getContentHash().isBlank()) {
-            jobsByTenantAndContentHash.remove(
-                    contentKey(removed.getTenantId(), removed.getContentHash()),
-                    jobId
-            );
-        }
     }
 
     private void appendLifecycleEvent(

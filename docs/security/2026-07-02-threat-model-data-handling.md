@@ -71,7 +71,7 @@ inspection, and no isolated real converter runtime.
 | Boundary | Untrusted side | Trusted side | Controls currently present |
 | --- | --- | --- | --- |
 | Public HTTP request to WebFlux controllers | Browser, API client, uploaded file, headers, path IDs, range header | Controller and service layer | UUID binding, multipart size cap, extension blocklist, range parsing, stable error responses, tenant permission checks, optional signed tenant headers. |
-| Gateway tenant claims to service | Browser-facing gateway or host platform | `TenantAccessService` | Optional HMAC over tenant id, subject id, permissions, and issue time when `clearfolio.tenant-claims.hmac-secret` is configured. |
+| Gateway tenant claims to service | Browser-facing gateway or host platform | `TenantAccessService` | HMAC over tenant id, subject id, permissions, and issue time using configtree-mounted `clearfolio.tenant-claims.hmac-secret`. |
 | Upload validation to background conversion | User-provided file and filename | Validation service, job repository, worker executor | HWP/HWPX block by default, max upload bytes, SHA-256 content hash dedupe, async queue. |
 | Worker to artifact store | Conversion output bytes | In-memory PDF artifact store | Generated PDF is synthetic in current MVP, cloned on put/get. |
 | Artifact ledger to local file | Issued link, revocation, and read-event metadata | Optional append-only file configured by `clearfolio.artifact-link-ledger.path` | Text fields are encoded and replayed locally; this is not a centralized production audit store. |
@@ -86,7 +86,7 @@ inspection, and no isolated real converter runtime.
 - The current service is an MVP running behind a trusted network or demo
   environment. It is not internet-hardened as a standalone SaaS service.
 - Tenant headers are unsigned in the default local buyer-demo profile. If
-  `clearfolio.tenant-claims.hmac-secret` is configured, the service requires
+  `clearfolio.tenant-claims.hmac-secret` is mounted, the service requires
   gateway HMAC signatures and rejects missing, stale, future, or invalid
   signed claims. The `production` Spring profile also fails startup unless that
   secret is configured.

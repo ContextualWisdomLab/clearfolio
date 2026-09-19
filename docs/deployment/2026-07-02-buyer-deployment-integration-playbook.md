@@ -16,8 +16,8 @@ The deployment can prove:
 
 - a buyer can run the upload, conversion, preview, KPI, and operator recovery
   demo without adding a frontend framework;
-- tenant-scoped JSON APIs can require gateway-signed Clearfolio headers when a
-  shared HMAC secret is configured;
+- tenant-scoped JSON APIs require gateway-signed Clearfolio headers using a
+  mounted HMAC secret;
 - preview artifacts require signed artifact tokens, not bare document ids;
 - issued links, revocations, artifact reads, and KPI exports can survive a
   single-process restart through local append-only evidence ledgers;
@@ -36,11 +36,17 @@ The deployment cannot yet prove:
 Use the `buyer-demo` Spring profile for a buyer sandbox:
 
 ```bash
-mkdir -p .clearfolio/buyer-demo
+mkdir -p .clearfolio/buyer-demo .clearfolio/secrets
+chmod 700 .clearfolio/secrets
+
+printf '%s' 'replace-with-gateway-shared-secret' \
+  > .clearfolio/secrets/clearfolio.tenant-claims.hmac-secret
+printf '%s' 'replace-with-artifact-token-secret' \
+  > .clearfolio/secrets/clearfolio.artifact-token.secret
+chmod 600 .clearfolio/secrets/*
 
 export SPRING_PROFILES_ACTIVE=buyer-demo
-export CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET="replace-with-gateway-shared-secret"
-export CLEARFOLIO_ARTIFACT_TOKEN_SECRET="replace-with-artifact-token-secret"
+export CLEARFOLIO_SECRET_CONFIG_DIR="$PWD/.clearfolio/secrets/"
 export CLEARFOLIO_ARTIFACT_LINK_LEDGER_PATH="$PWD/.clearfolio/buyer-demo/artifact-link-ledger.log"
 export CLEARFOLIO_ANALYTICS_SNAPSHOT_LEDGER_PATH="$PWD/.clearfolio/buyer-demo/kpi-snapshot-ledger.log"
 export CLEARFOLIO_FRAME_ANCESTORS="self"
@@ -49,8 +55,9 @@ mvn spring-boot:run
 ```
 
 The profile file is
-`src/main/resources/application-buyer-demo.yml`. It uses environment variables
-only; no secret value is committed.
+`src/main/resources/application-buyer-demo.yml`. Non-secret runtime settings
+use environment variables. Signing secrets are mounted as configtree files;
+no secret value is committed or copied into the process environment.
 
 For a Power Platform embedding test, replace `CLEARFOLIO_FRAME_ANCESTORS` with
 the exact buyer allowlist after the gateway hostname is known. Keep it narrow;
@@ -58,8 +65,8 @@ do not use a wildcard until a security owner explicitly accepts that risk.
 
 ## Gateway Claim Contract
 
-When `CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET` is set, every protected JSON API
-call must include:
+With `clearfolio.tenant-claims.hmac-secret` mounted through the configtree,
+every protected JSON API call must include:
 
 - `X-Clearfolio-Tenant-Id`
 - `X-Clearfolio-Subject-Id`
@@ -105,10 +112,11 @@ job:create,job:read,job:retry,viewer:read,artifact-link:create,analytics:read
 Production role mapping should later replace this scaffold with validated
 gateway or OIDC claims. Do not hand-roll JWT parsing in this service.
 
-For any environment that sets `SPRING_PROFILES_ACTIVE=production`, the service
-fails startup unless `CLEARFOLIO_TENANT_CLAIMS_HMAC_SECRET` is present. The
-buyer-demo profile can still run unsigned for local screenshots, but production
-cannot accidentally inherit that unsigned mode.
+For any environment that sets `SPRING_PROFILES_ACTIVE=production`, the explicit
+readiness boundary rejects a missing or blank tenant-claims secret or artifact-
+token secret. All profiles also resolve both secrets without placeholder
+defaults, so the buyer-demo profile uses mounted demo secrets and never an
+unsigned fallback.
 
 ## Integration Flow
 

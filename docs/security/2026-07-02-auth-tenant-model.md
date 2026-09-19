@@ -7,12 +7,13 @@ This document defines the production authorization contract needed before
 Clearfolio Viewer can claim tenant-safe preview access. It now includes the
 first runtime enforcement slice: protected JSON APIs parse tenant headers,
 check endpoint permissions, store job tenant metadata, filter tenant KPIs, and
-hide cross-tenant jobs. It also includes optional gateway-signed tenant header
-validation with HMAC and timestamp skew controls when
-`clearfolio.tenant-claims.hmac-secret` is configured. The `production` Spring
-profile now fails closed when that secret is missing, so unsigned tenant headers
-cannot be accidentally promoted as a production boundary. It is not yet a
-production OIDC/JWT implementation.
+hide cross-tenant jobs. It also includes mandatory gateway-signed tenant header
+validation with HMAC and timestamp skew controls using a configtree-mounted
+`clearfolio.tenant-claims.hmac-secret`. The `production` Spring profile now
+explicitly fails closed when either that secret or the artifact-token signing
+secret is missing, so unsigned tenant headers or artifact links cannot be
+accidentally promoted as a production boundary. It is not yet a production
+OIDC/JWT implementation.
 
 ## Goal
 
@@ -47,9 +48,9 @@ Current buyer-demo runtime headers:
 - `X-Clearfolio-Subject-Id: buyer-demo-operator`
 - `X-Clearfolio-Permissions: job:create,job:read,job:retry,viewer:read,artifact:read,artifact-link:create,analytics:read`
 
-These headers are a runtime enforcement scaffold. In unsigned demo mode they
-are not a cryptographic identity proof. When
-`clearfolio.tenant-claims.hmac-secret` is set, the service also requires:
+These headers are a runtime enforcement scaffold, not a complete cryptographic
+identity proof. With `clearfolio.tenant-claims.hmac-secret` mounted, the service
+also requires:
 
 - `X-Clearfolio-Claims-Issued-At: <epoch-second>`
 - `X-Clearfolio-Claims-Signature: <base64url-hmac-sha256>`
@@ -71,8 +72,9 @@ replace the scaffold with validated gateway/OIDC claims.
 Production profile boundary:
 
 - `SPRING_PROFILES_ACTIVE=production` requires
-  `clearfolio.tenant-claims.hmac-secret`.
-- Missing or blank secret fails application startup through
+  `clearfolio.tenant-claims.hmac-secret` and
+  `clearfolio.artifact-token.secret`.
+- Either missing or blank secret fails application startup through
   `ProductionAuthReadinessConfig`.
 - This prevents unsigned local demo headers from being used as a production
   claim boundary; it does not replace OIDC/JWT issuer, audience, expiry, and
@@ -173,10 +175,10 @@ all repository gates and integrates.
 - Implemented: cross-tenant status, direct download, retry, and viewer-bootstrap
   lookup returns `404` without revealing the other tenant's job.
 - Implemented: KPI snapshots filter to the request tenant.
-- Implemented: optional HMAC validation for gateway-signed tenant headers when
-  `clearfolio.tenant-claims.hmac-secret` is configured.
-- Implemented: `production` Spring profile startup fails when signed tenant
-  claim secret is missing.
+- Implemented: HMAC validation for gateway-signed tenant headers using the
+  configtree-mounted `clearfolio.tenant-claims.hmac-secret`.
+- Implemented: `production` Spring profile startup fails when either the signed
+  tenant-claim secret or artifact-token signing secret is missing or blank.
 - Not implemented: production OIDC/JWT signature, issuer, audience, expiry,
   revocation, and role mapping.
 - Implemented: signed artifact link creation and artifact token verification
@@ -260,10 +262,10 @@ Store token fingerprints or controlled token identifiers, not raw tokens.
 3. Done: enforce `job:create`, `job:read`, `job:retry`, `viewer:read`,
    `artifact:read`, and `analytics:read` on existing JSON routes.
 4. Done: add tenant-scoped KPI projection from current in-memory jobs.
-5. Done: add optional gateway-signed tenant headers with HMAC and timestamp
-   skew controls.
-6. Done: fail closed for `production` profile when the tenant-claim signing
-   secret is absent.
+5. Done: require gateway-signed tenant headers with HMAC and timestamp skew
+   controls using configtree-mounted key material.
+6. Done: fail closed for `production` profile when either the tenant-claim or
+   artifact-token signing secret is absent or blank.
 7. Next: replace demo headers with validated gateway/OIDC JWT claims.
 8. Done: add signed artifact link creation, issued-token ledger, revocation,
    current-artifact checksum binding, Range handling, and read auditing.

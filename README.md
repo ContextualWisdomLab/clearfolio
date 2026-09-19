@@ -10,8 +10,13 @@ asynchronous conversion that produces an in-memory PDF artifact for preview.
    - `mvn -DskipTests compile`
 2. Run tests:
    - `mvn test`
-3. Start the app locally:
-   - `mvn spring-boot:run`
+3. Mount both signing secrets through a permission-restricted configtree and
+   start the app locally:
+   - `mkdir -p .clearfolio/secrets && chmod 700 .clearfolio/secrets`
+   - `printf '%s' 'replace-with-local-tenant-secret' > .clearfolio/secrets/clearfolio.tenant-claims.hmac-secret`
+   - `printf '%s' 'replace-with-local-artifact-secret' > .clearfolio/secrets/clearfolio.artifact-token.secret`
+   - `chmod 600 .clearfolio/secrets/*`
+   - `CLEARFOLIO_SECRET_CONFIG_DIR="$PWD/.clearfolio/secrets/" mvn spring-boot:run`
 4. Check readiness:
    - `curl -sS http://localhost:8080/healthz`
 
@@ -38,7 +43,7 @@ Protected JSON APIs require Clearfolio tenant headers in the current buyer-demo
 runtime: `X-Clearfolio-Tenant-Id`, `X-Clearfolio-Subject-Id`, and
 `X-Clearfolio-Permissions`. The built-in demo shell sends `buyer-demo` headers
 automatically. These headers are a runtime enforcement scaffold, not production
-OIDC/JWT validation. Deployments can set
+OIDC/JWT validation. Deployments must mount
 `clearfolio.tenant-claims.hmac-secret` to require gateway-signed tenant headers
 with `X-Clearfolio-Claims-Issued-At` and `X-Clearfolio-Claims-Signature`;
 validated OIDC/JWT issuer, audience, expiry, revocation, and role mapping remain
@@ -67,9 +72,9 @@ profile and follow
   FigJam handoff work. It is static local demo data, not production seed data.
 - Status, viewer bootstrap, retry, and KPI JSON APIs enforce tenant permission
   headers and hide cross-tenant jobs as `404`.
-- Tenant headers can be HMAC-signed by a trusted gateway when
-  `clearfolio.tenant-claims.hmac-secret` is configured; unsigned local demo mode
-  should not be exposed as a production internet boundary.
+- Tenant headers must be HMAC-signed by a trusted gateway using the mounted
+  `clearfolio.tenant-claims.hmac-secret`; no runtime profile supplies an
+  unsigned fallback.
 - `GET /viewer/{docId}` returns an HTML shell without checking job existence;
   the protected JSON APIs determine visible state.
 - Artifact reads now require a signed `artifactToken` query parameter or bearer

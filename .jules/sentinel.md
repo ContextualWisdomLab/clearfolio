@@ -35,4 +35,4 @@
 ## 2026-08-20 - 환경 변수 기반 비밀 키 주입 제거
 **Vulnerability:** 런타임 환경 변수(env)를 통해 Spring Boot placeholder(${ENV_VAR:})로 인증 토큰 및 테넌트 클레임 비밀 키가 주입되고 있었습니다. 이는 프로세스 환경에 민감한 정보가 노출되는 위험을 초래합니다.
 **Learning:** Spring Boot 설정 파일에서 기본값을 제공할 경우 config tree 방식의 비밀 관리를 무력화하고 빈 문자열로 덮어쓰여 보안 검증이 우회될 수 있습니다.
-**Prevention:** 애플리케이션 시작 시 KV(configtree) 백엔드에서 강제적으로 비밀 키를 조회하도록 `@Value`의 placeholder 기본값을 제거하고, YAML에서 해당 키 정의를 완전 삭제하여야 합니다.
+**Prevention:** 애플리케이션 시작 시 KV(configtree) 백엔드에서 `clearfolio.tenant-claims.hmac-secret`과 `clearfolio.artifact-token.secret`을 강제적으로 조회하고, production readiness가 두 값을 모두 검증하도록 해야 합니다. 로컬 및 buyer-demo 실행 문서도 비밀 값을 환경 변수에 넣지 않고 권한이 제한된 configtree 파일을 사용해야 합니다.

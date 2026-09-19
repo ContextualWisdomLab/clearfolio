@@ -69,11 +69,11 @@ public class ArtifactLinkService {
     private final SecureRandom secureRandom;
 
     /**
-     * Creates the link service with an optional configured HMAC secret.
+     * Creates the runtime link service with a deployment-provided HMAC secret.
      *
      * @param artifactStore artifact byte store
      * @param artifactLinkLedger issued-link, revocation, and read-audit ledger
-     * @param configuredSecret optional deployment secret
+     * @param configuredSecret deployment signing secret
      */
     @Autowired
     public ArtifactLinkService(

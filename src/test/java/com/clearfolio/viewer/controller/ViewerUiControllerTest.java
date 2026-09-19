@@ -142,6 +142,16 @@ class ViewerUiControllerTest {
     }
 
     @Test
+    void uploadRequiredIndicatorUsesDedicatedComponentStyle() throws Exception {
+        try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/viewer.css")) {
+            assertNotNull(input);
+            String css = new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            assertTrue(css.contains(".required-indicator {"));
+            assertTrue(css.contains("color: var(--danger);"));
+        }
+    }
+
+    @Test
     void demoFixtureProvidesBuyerDemoStoryStates() throws Exception {
         try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/demo-fixtures.json")) {
             assertNotNull(input);

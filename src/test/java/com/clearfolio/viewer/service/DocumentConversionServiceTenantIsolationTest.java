@@ -20,8 +20,6 @@ class DocumentConversionServiceTenantIsolationTest {
 
     private static final TenantContext TENANT_A = new TenantContext(
             "tenant-a", "admin-a", Set.of("admin:read", "admin:write"));
-    private static final TenantContext TENANT_B = new TenantContext(
-            "tenant-b", "admin-b", Set.of("admin:read", "admin:write"));
 
     @Test
     void tenantScopedListExcludesForeignJobs() {

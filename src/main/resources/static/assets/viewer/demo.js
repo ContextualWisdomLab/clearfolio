@@ -114,6 +114,8 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
+  // Build the complete DOM subtree before inserting it into the live container.
+  const fragment = document.createDocumentFragment();
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -143,19 +145,14 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    el.historyBody.appendChild(row);
+    fragment.appendChild(row);
   }
+  el.historyBody.appendChild(fragment);
 
   renderRecoveryEvidence(history);
 }
 
-function addDetailRow(label, value) {
-  const term = document.createElement("dt");
-  const description = document.createElement("dd");
-  term.textContent = label;
-  description.textContent = formatDetailValue(value);
-  el.jobDetailBody.append(term, description);
-}
+
 
 function formatDetailValue(value) {
   if (value === null || value === undefined || value === "") {
@@ -177,17 +174,30 @@ function renderJobDetail(detail) {
     : "Operational evidence";
   el.jobDetailBody.textContent = "";
 
-  addDetailRow("Job ID", detail.jobId);
-  addDetailRow("Tenant", detail.tenantId);
-  addDetailRow("Status", detail.status);
-  addDetailRow("Message", detail.message);
-  addDetailRow("Attempts", `${detail.attemptCount ?? 0} / ${detail.maxAttempts ?? "n/a"}`);
-  addDetailRow("Dead-lettered", Boolean(detail.deadLettered));
-  addDetailRow("Retry at", detail.retryAt);
-  addDetailRow("Created", detail.createdAt);
-  addDetailRow("Started", detail.startedAt);
-  addDetailRow("Completed", detail.completedAt);
-  addDetailRow("Artifact", detail.convertedResourcePath);
+  // Build the complete DOM subtree before inserting it into the live container.
+  const fragment = document.createDocumentFragment();
+
+  const addDetailToFragment = (label, value) => {
+    const term = document.createElement("dt");
+    const description = document.createElement("dd");
+    term.textContent = label;
+    description.textContent = formatDetailValue(value);
+    fragment.append(term, description);
+  };
+
+  addDetailToFragment("Job ID", detail.jobId);
+  addDetailToFragment("Tenant", detail.tenantId);
+  addDetailToFragment("Status", detail.status);
+  addDetailToFragment("Message", detail.message);
+  addDetailToFragment("Attempts", `${detail.attemptCount ?? 0} / ${detail.maxAttempts ?? "n/a"}`);
+  addDetailToFragment("Dead-lettered", Boolean(detail.deadLettered));
+  addDetailToFragment("Retry at", detail.retryAt);
+  addDetailToFragment("Created", detail.createdAt);
+  addDetailToFragment("Started", detail.startedAt);
+  addDetailToFragment("Completed", detail.completedAt);
+  addDetailToFragment("Artifact", detail.convertedResourcePath);
+
+  el.jobDetailBody.appendChild(fragment);
 
   el.retryJobBtn.hidden = !detail.deadLettered;
 }

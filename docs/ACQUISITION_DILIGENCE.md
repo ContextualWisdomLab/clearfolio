@@ -1,7 +1,7 @@
 # Clearfolio Acquisition Diligence
 
 Status: Canonical acquisition-readiness index
-Assessment date: 2026-08-10
+Assessment date: 2026-09-20
 Protected-main baseline assessed: `f3cc09a9838f0f88c81a2ceae22138fab80a2edb`
 
 This document is the current buyer/acquirer diligence authority for Clearfolio. It separates protected-main evidence, `ACTIVE_PR` evidence, historical evidence, external evidence, and unresolved acquisition risk. It does **not** convert a green pull request, demo artifact, valuation narrative, model review, or historical snapshot into production or acquisition readiness.
@@ -43,7 +43,7 @@ This repository does not claim certification, legal title assurance, customer tr
 | Is the Office engine isolated from the API trust boundary? | `ACTIVE_PR` / `PLANNED` | ADR-0005, `docs/UML.md`, issue #5, #306 | Provider-neutral publication boundary is being developed; sandboxed sidecar or independently operated remote runtime still requires qualification. |
 | Are accepted conversion jobs durably recoverable with explicit backpressure/cancellation? | `PLANNED` | issue #312, protected-main worker/repository/executor code | No. Protected main is safely bounded but process-local; production durable acceptance/outbox, lease fencing, cancellation and admission semantics remain to implement. |
 | Does Clearfolio have provider-neutral production identity federation? | `PLANNED` | issue #314, current tenant-claim verifier/config code, Draft #313 key-strength hardening | No. Current shared-HMAC gateway claims are a deployment adapter; issuer/audience/algorithm/key-rotation/tenant-role federation still requires a versioned verifier contract. |
-| Is the complete tenant-safe deletion/download journey shipped? | `PARTIAL` | issue #263, #270/#268/#264 | Lower-layer work exists on active branches; buyer-facing lifecycle completion and integrated recovery evidence remain. |
+| Is the complete tenant-safe deletion/download journey shipped? | `PARTIAL` | issue #263; protected #270; #268 `SUPERSEDED`; bounded lifecycle/accessibility successors | Signed download is `IMPLEMENTED_ON_MAIN`, while buyer-facing deletion completion and integrated recovery evidence remain unintegrated. |
 | Are APIs versioned and host/MSA boundaries explicit? | `PARTIAL` | `docs/API_CONTRACT.md`, `ARCHITECTURE.md`, ADR-0001 | Current boundaries are documented; full generated/public schema completeness remains partial. |
 
 ## Architecture and engineering diligence
@@ -75,7 +75,7 @@ The set is `DESIGN_SUFFICIENT` on the active documentation line when its current
 
 `docs/DATA_MODEL.md` is a conceptual/logical ERD and ownership map. It explicitly distinguishes process memory, file artifacts, file ledgers, host-owned identity, `ACTIVE_PR` lifecycle evidence, and `PLANNED` entities. A diagrammed entity does not imply a database table. Protected-main job state remains process-local by default, so distributed durability must not be inferred from filesystem artifact persistence.
 
-Issue #312 is the bounded authority for future general durable conversion-job acceptance, transactional outbox/idempotency, lease-fenced execution, explicit backpressure/cancellation, restart/redelivery recovery and related OpenTelemetry evidence. It must reuse generation/fencing semantics from #268 after integration rather than duplicating them.
+Issue #312 is the bounded authority for future general durable conversion-job acceptance, transactional outbox/idempotency, lease-fenced execution, explicit backpressure/cancellation, restart/redelivery recovery and related OpenTelemetry evidence. It must reuse the accepted generation/fencing requirements preserved from `SUPERSEDED` #268 and current bounded successors rather than duplicating them.
 
 Issue #314 is the bounded authority for provider-neutral production identity verification/federation. It must preserve the internal `tenant_context` authorization contract and artifact-token separation instead of copying object authorization into each identity provider adapter.
 
@@ -166,7 +166,7 @@ Live PR and issue numbers and heads must be refetched before a transaction or re
 
 - #270 — security/privacy/test-evidence and signed direct-download parent;
 - #264 — nested-safe accessible async viewer controls, stacked behind #270;
-- #268 — signed admin tenant/lifecycle/deletion recovery, stacked behind #270;
+- #268 — `SUPERSEDED`; signed admin tenant/lifecycle/deletion requirements are preserved in bounded successors and are not protected-main behavior by inheritance;
 - #271 — repository-local OpenCode development-loop controls, stacked behind #270 and central `.github` dependency;
 - #276 — malformed artifact-token structure hardening, stacked behind #270;
 - #295 — liveness/readiness separation, stacked behind #270;

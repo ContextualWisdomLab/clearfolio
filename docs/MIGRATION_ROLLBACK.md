@@ -67,7 +67,7 @@ Artifact bytes and metadata are security-sensitive durable state.
 - If a release changes on-disk layout, migrate by copy/verify/atomic switch where practical rather than in-place destructive mutation.
 - Restore exercises must prove that signed-delivery and tenant-ownership checks still protect recovered artifacts.
 
-Active PR #268 adds stronger lifecycle/deletion fencing. It remains `ACTIVE_PR`, not protected-main recovery behavior.
+#268 is `SUPERSEDED`. Bounded successors preserve stronger lifecycle/deletion fencing as `PARTIAL` target evidence, not protected-main recovery behavior.
 
 ## Converter/runtime rollback
 

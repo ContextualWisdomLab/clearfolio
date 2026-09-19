@@ -48,7 +48,7 @@ The detailed transformed-format qualification authority is `docs/FIDELITY_ACCEPT
 - `FileSystemArtifactStore` can persist artifact bytes and metadata locally; in-memory mode remains available for tests/development.
 - selected evidence uses append-only/file-backed ledgers such as artifact-link and analytics snapshot ledgers when configured.
 
-`ACTIVE_PR` #268:
+`PARTIAL` target; #268 is `SUPERSEDED` and bounded successors remain unintegrated:
 
 - durable artifact deletion receipts, generation fencing, append-only recovery evidence and fairness/restart hardening.
 
@@ -66,7 +66,7 @@ Current/future persistence compatibility, rollback and restore semantics are gov
 
 `IMPLEMENTED_ON_MAIN`: `TenantContext`, `TenantAccessService`, and `TenantPermissions` provide tenant/subject/permission boundaries and same-tenant concealment semantics. Signed gateway claims can be configured; unsigned demo scaffolding is not a production internet trust boundary.
 
-`ACTIVE_PR` #270/#268 strengthens:
+`IMPLEMENTED_ON_MAIN` through protected #270 for signed claims and audit controls; #268 is `SUPERSEDED` and the remaining lifecycle bullets are `PARTIAL` target behavior:
 
 - signed tenant claim requirements;
 - dedicated least-privilege admin/artifact permissions;
@@ -93,7 +93,7 @@ Migrating this deviation is a product/security task. Documentation must not clai
 
 `IMPLEMENTED_ON_MAIN`: `ArtifactLinkService` issues HMAC-bound, tenant/document/checksum/scoped tokens with expiry, ledger presence, revocation, and read-audit evidence. `ArtifactController#getPdf` validates signed tokens and single-range requests before serving bytes.
 
-`ACTIVE_PR` #270 remediation: direct `ConversionController` download must use the same signed-delivery semantics. Dedicated `artifact:read` permission is necessary but not sufficient to bypass signed token/revocation/audit requirements.
+`IMPLEMENTED_ON_MAIN` through protected #270: direct `ConversionController` download uses the same signed-delivery semantics. Dedicated `artifact:read` permission remains necessary but cannot bypass signed token, revocation, or audit requirements.
 
 ### Privacy-safe audit
 
@@ -114,7 +114,7 @@ Raw secrets and uncontrolled exception-selected details must not become durable/
 - `/api/v1/viewer/{docId}` and alias: protected bootstrap data and signed artifact-link metadata for succeeded jobs.
 - `/api/v1/viewer/{docId}/artifact-links`: tenant-authorized signed artifact-link issuance.
 - `/artifacts/{docId}.pdf`: signed token + revocation + checksum binding + single-range + read audit.
-- `/api/v1/convert/jobs/{jobId}/download`: direct-download convenience endpoint; active remediation aligns it to the same signed artifact-delivery authority while retaining dedicated tenant permission and attachment semantics.
+- `/api/v1/convert/jobs/{jobId}/download`: direct-download convenience endpoint; protected #270 aligned it to the same signed artifact-delivery authority while retaining dedicated tenant permission and attachment semantics (`IMPLEMENTED_ON_MAIN`).
 
 All new public API/schema changes require version/compatibility analysis and regression coverage. `docs/API_CONTRACT.md` is the version/authority index; implementation-specific examples must not silently redefine its tenant, token, lifecycle, or error semantics.
 
@@ -132,7 +132,7 @@ Required invariants:
 6. delete/retry operations must not cross tenant or generation fences;
 7. future distributed storage must preserve idempotency and recovery under worker crash/restart.
 
-`ACTIVE_PR` #268 is the lower-layer implementation owner for immutable generation, deletion receipts, cleanup recovery and related administrative lifecycle hardening. Umbrella issue #263 owns the remaining integrated user-facing deletion/download API and accessible UX after #270/#268/#264 integrate. New work must reuse that substrate rather than duplicate it on another branch.
+Historical #268 is `SUPERSEDED`. Current bounded successors preserve individual immutable-generation, deletion-receipt, cleanup-recovery, and administrative-lifecycle primitives, but they remain unintegrated `PARTIAL` evidence. Umbrella issue #263 owns the remaining integrated user-facing deletion/download API and accessible UX after those successors and the accessibility lane integrate. New work must reuse the accepted contracts rather than duplicate them on another branch.
 
 ## 6. Conversion and fidelity requirements
 
@@ -234,4 +234,4 @@ Decision contract: exact evidence → RCA → distinct remedies → empirical fe
 - assuming in-memory state is durable distributed persistence;
 - treating a PR-body SHA or status-only bot result as current integration evidence;
 - duplicating central control-plane write authority inside the product repository;
-- duplicating #268 lifecycle/deletion substrate to bypass its dependency/review gate.
+- duplicating the accepted #268 lifecycle/deletion requirements, now `SUPERSEDED` into bounded successors, to bypass their dependency/review gates.

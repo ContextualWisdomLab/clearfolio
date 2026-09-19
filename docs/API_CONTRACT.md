@@ -22,7 +22,7 @@ This document is an index and compatibility contract. Source controllers and ver
 | `POST /api/v1/convert/jobs` | tenant `job:create` + validation/policy boundary | `IMPLEMENTED_ON_MAIN`; returns async job contract |
 | `GET /api/v1/convert/jobs/{jobId}` | tenant job read + same-tenant ownership | `IMPLEMENTED_ON_MAIN` |
 | `POST /api/v1/convert/jobs/{jobId}/retry` | retry permission + same-tenant/dead-letter eligibility | `IMPLEMENTED_ON_MAIN`; stricter signed-claim/admin contracts evolve in active stack |
-| `DELETE /api/v1/convert/jobs/{jobId}` | delete permission + same tenant | present on current code path; durable deletion semantics `ACTIVE_PR` #268 |
+| `DELETE /api/v1/convert/jobs/{jobId}` | delete permission + same tenant | present on current code path; durable deletion semantics `PARTIAL`; #268 `SUPERSEDED`, bounded successors unintegrated |
 | `GET /api/v1/viewer/{docId}` | viewer permission + same tenant | `IMPLEMENTED_ON_MAIN`; returns bootstrap only for succeeded job |
 | `GET /api/v1/convert/viewer/{docId}` | same as canonical viewer bootstrap | compatibility alias |
 | `POST /api/v1/viewer/{docId}/artifact-links` | artifact-link-create permission + same tenant | `IMPLEMENTED_ON_MAIN`; returns signed short-lived URL/token metadata |
@@ -30,7 +30,7 @@ This document is an index and compatibility contract. Source controllers and ver
 | `GET /api/v1/viewer/{docId}/artifact-read-events` | audit-read permission + tenant scope | `IMPLEMENTED_ON_MAIN` |
 | `GET /artifacts/{docId}.pdf` | signed artifact token; token scope/doc/tenant/checksum/expiry/ledger/revocation | `IMPLEMENTED_ON_MAIN`; zero or one Range; controlled read audit |
 | `GET /api/v1/convert/jobs/{jobId}/download` | tenant `artifact:read` + same tenant + signed artifact delivery | `IMPLEMENTED_ON_MAIN`; protected-main #270 requires signed artifact token verification, zero-or-one Range handling, checksum binding and verified-read audit |
-| admin list/retry/delete surfaces | signed tenant claims + least-privilege admin permission + tenant-scoped service contract | stronger contract `ACTIVE_PR` #268 |
+| admin list/retry/delete surfaces | signed tenant claims + least-privilege admin permission + tenant-scoped service contract | protected #270 controls `IMPLEMENTED_ON_MAIN`; #268 `SUPERSEDED`, remaining lifecycle hardening `PARTIAL` in bounded successors |
 | `GET /healthz` | orchestration probe | protected-main health surface; liveness semantic target `ACTIVE_PR` #295 |
 | `GET /readyz` | orchestration traffic-readiness probe | `ACTIVE_PR` #295 only; not protected-main behavior |
 

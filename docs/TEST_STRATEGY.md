@@ -32,7 +32,7 @@ Required classes include:
 
 ### Concurrency and recovery tests
 
-Cover duplicate submission races, bounded executor saturation, retry/dead-letter transitions, lifecycle serialization, stale processing recovery, crash/restart replay and—when #268 integrates—deletion receipt fairness, torn tails, generation mismatch and cleanup recovery.
+Cover duplicate submission races, bounded executor saturation, retry/dead-letter transitions, lifecycle serialization, stale processing recovery, crash/restart replay and—because #268 is `SUPERSEDED`, when its bounded lifecycle successors integrate—deletion receipt fairness, torn tails, generation mismatch and cleanup recovery.
 
 ### Document-fidelity tests
 

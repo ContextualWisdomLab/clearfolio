@@ -2,7 +2,7 @@
 
 Status: Canonical traceability index
 Baseline: protected `main` at `55d7ae8647208e301f282350f076eeddaba61d11`
-Assessment date: 2026-08-12
+Assessment date: 2026-09-20
 
 This document maps product and technical requirements to current implementation,
 verification, decisions, and open work. It prevents five recurring errors:

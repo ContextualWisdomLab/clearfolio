@@ -1,7 +1,7 @@
 # ADR-0004: Fence durable job/artifact deletion by immutable lifecycle generation
 
 Status: Proposed
-Implementation maturity: `ACTIVE_PR` #268
+Implementation maturity: `PARTIAL` target; #268 is `SUPERSEDED`; bounded successors remain unintegrated
 
 ## Context and drivers
 

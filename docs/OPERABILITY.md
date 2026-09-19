@@ -56,7 +56,7 @@ Protected-main worker behavior is bounded and asynchronous. Operators should mon
 - PDF artifacts may live in memory or `FileSystemArtifactStore` depending on configuration.
 - Signed artifact links are short-lived and revocable; canonical artifact reads are audited.
 - Local filesystem durability is not equivalent to remote object-store transactional guarantees.
-- `ACTIVE_PR` #268 adds deletion receipts and restart-safe cleanup evidence; do not rely on those semantics before integration.
+- #268 is `SUPERSEDED`; bounded successors preserve deletion-receipt and restart-safe cleanup requirements as `PARTIAL` evidence, so operators must not rely on those semantics before integration.
 
 ## Failure and recovery matrix
 

@@ -46,15 +46,15 @@ Uploaded documents and all document-derived strings are untrusted data. Model ou
 
 | Threat | Boundary / impact | Current/target mitigation |
 | --- | --- | --- |
-| cross-tenant IDOR | job/artifact/admin APIs disclose or mutate another tenant | same-tenant concealment `IMPLEMENTED_ON_MAIN`; stricter signed/admin mutation contracts `ACTIVE_PR` #268/#270 |
-| artifact-token bypass | permission-only route returns document bytes without revocation/checksum/audit | canonical `/artifacts` signed delivery `IMPLEMENTED_ON_MAIN`; direct-download alignment `ACTIVE_PR` #270 |
+| cross-tenant IDOR | job/artifact/admin APIs disclose or mutate another tenant | same-tenant concealment and protected #270 signed/admin controls `IMPLEMENTED_ON_MAIN`; #268 `SUPERSEDED`, remaining lifecycle successors `PARTIAL` |
+| artifact-token bypass | permission-only route returns document bytes without revocation/checksum/audit | canonical `/artifacts` signed delivery and direct-download alignment `IMPLEMENTED_ON_MAIN` through protected #270 |
 | stale/replayed artifact token | old token reads changed/revoked artifact | expiry, ledger presence, revocation, doc/scope/tenant/checksum binding |
 | malformed token/parser ambiguity | surplus delimiters, empty claims, malformed Base64/UUID/epoch alter verification semantics | strict parser hardening `ACTIVE_PR` #276; fail closed before authorization/ledger continuation |
-| weak/shared cryptographic keys | one compromise crosses signing/audit purposes | key strength/separation `ACTIVE_PR` #270/#268; domain-separated HMAC pseudonyms |
+| weak/shared cryptographic keys | one compromise crosses signing/audit purposes | protected #270 key strength/separation and domain-separated HMAC pseudonyms `IMPLEMENTED_ON_MAIN`; #268 `SUPERSEDED` for remaining lifecycle work |
 | raw PII/secret audit leakage | approver, tenant, token or exception-selected data leaves protected boundary | purpose-bound pseudonymization and controlled failure codes; privacy review; no raw tokens |
-| job UUID rebinding / stale mutation | old retry/delete work acts on a replacement lifecycle | permanent identity + generation fences `ACTIVE_PR` #268 |
-| deletion evidence confusion | failed read interpreted as artifact absence, causing metadata loss | persist pending receipt first; confirmed digest/absence distinction `ACTIVE_PR` #268 |
-| recovery starvation after restart | repeatedly failing oldest receipt blocks later cleanup | durable attempt transitions and replay-derived fairness `ACTIVE_PR` #268 |
+| job UUID rebinding / stale mutation | old retry/delete work acts on a replacement lifecycle | permanent identity + generation fences `PARTIAL`; #268 `SUPERSEDED`, bounded successors unintegrated |
+| deletion evidence confusion | failed read interpreted as artifact absence, causing metadata loss | persist pending receipt first; confirmed digest/absence distinction `PARTIAL`; #268 `SUPERSEDED`, bounded successors unintegrated |
+| recovery starvation after restart | repeatedly failing oldest receipt blocks later cleanup | durable attempt transitions and replay-derived fairness `PARTIAL`; #268 `SUPERSEDED`, bounded successors unintegrated |
 | malicious/oversized document | CPU/memory/disk exhaustion, parser/converter exploit | upload bounds/fuzz/blocklist current; real converter must add sandbox/resource/active-content/no-network controls |
 | macro/script/external-resource execution | document content gains code/network authority | forbidden in deterministic conversion architecture; real converter acceptance must prove boundary |
 | placeholder fidelity overclaim | buyer believes non-PDF documents were faithfully converted | ADR-0005; release/support matrix; placeholder labelled development-only |

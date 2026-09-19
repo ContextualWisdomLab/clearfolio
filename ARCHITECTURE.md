@@ -86,7 +86,7 @@ Uploaded documents, document-derived strings, browser data, model output and PR 
   - short-lived signed artifact-read claims tied to token id, tenant, subject, document, scope, purpose, checksum, issue and expiry times;
   - issued-token ledger, revocation, checksum binding and read audit.
 
-`ACTIVE_PR` #270/#268 strengthens signed claims, dedicated least privilege, key separation, HMAC audit pseudonymization, immutable lifecycle identity and admin/deletion boundaries.
+`IMPLEMENTED_ON_MAIN` through protected #270 for signed claims, dedicated least privilege, key separation, and HMAC audit pseudonymization. #268 is `SUPERSEDED`; immutable lifecycle identity and admin/deletion boundaries remain `PARTIAL` in unintegrated bounded successors.
 
 ### Conversion and lifecycle
 
@@ -110,7 +110,7 @@ Uploaded documents, document-derived strings, browser data, model output and PR 
 - append-only/file-backed ledgers
   - selected artifact-link and analytics evidence can survive restart when configured.
 
-These persistence choices do **not** establish a durable distributed job system. SQL-backed lifecycle state, distributed idempotency/backpressure/cancellation and remote-object-store transaction/fencing remain `PLANNED`, while deletion-receipt hardening is `ACTIVE_PR` #268.
+These persistence choices do **not** establish a durable distributed job system. SQL-backed lifecycle state, distributed idempotency/backpressure/cancellation and remote-object-store transaction/fencing remain `PLANNED`; #268 is `SUPERSEDED`, and deletion-receipt hardening remains a `PARTIAL` target across unintegrated bounded successors.
 
 ## Conversion truth and fidelity boundary
 
@@ -147,7 +147,7 @@ tenant/job state
 → 200 / 206 / controlled failure
 ```
 
-Dedicated tenant permission and signed artifact-token authority are separate controls where both apply. The direct conversion-job download endpoint is currently under `ACTIVE_PR` remediation to match this contract; permission-only direct byte delivery is not the accepted final architecture.
+Dedicated tenant permission and signed artifact-token authority are separate controls where both apply. Protected #270 aligned the direct conversion-job download endpoint with this contract (`IMPLEMENTED_ON_MAIN`); permission-only direct byte delivery is not the accepted architecture.
 
 ## Lifecycle and recovery
 
@@ -163,7 +163,7 @@ stateDiagram-v2
     FAILED --> SUBMITTED: authorized dead-letter retry
 ```
 
-`ACTIVE_PR` #268 adds restart-safe artifact deletion receipts, immutable lifecycle generations, generation-fenced cleanup, durable failed-attempt evidence, replay validation and recovery fairness. Do not treat those semantics as protected-main behavior until integration.
+#268 is `SUPERSEDED`. Bounded successors preserve restart-safe artifact deletion receipts, immutable lifecycle generations, generation-fenced cleanup, durable failed-attempt evidence, replay validation, and recovery fairness as `PARTIAL` target semantics; do not treat them as protected-main behavior until integration.
 
 `docs/MIGRATION_ROLLBACK.md` is the canonical compatibility/recovery authority for file-ledger, artifact-store, converter/runtime, future SQL and public-contract changes. It explicitly distinguishes current process-local job state from future persistent architecture and forbids rollback that re-enables a known authorization bypass.
 

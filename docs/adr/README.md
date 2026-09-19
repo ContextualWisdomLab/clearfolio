@@ -1,16 +1,16 @@
 # Clearfolio Architecture Decision Records
 
 Status: Canonical ADR index
-Baseline: protected `main` at `83ec6f7fe2b04bdcd28bf98ec350e41e55730a18`
+Baseline: protected `main` at `55d7ae8647208e301f282350f076eeddaba61d11`
 
 ADR status and implementation maturity are intentionally separate. `Accepted` means the architecture decision is authoritative; it does not imply that every consequence is implemented on protected main. Each ADR therefore records implementation status explicitly.
 
 | ADR | Decision | Status | Implementation maturity |
 | --- | --- | --- | --- |
 | [0001](0001-standalone-msa-ownership.md) | Clearfolio remains independently deployable with explicit host/MSA authority boundaries | Accepted | `PARTIAL` / `ACCEPTED_ARCHITECTURE` |
-| [0002](0002-tenant-artifact-authorization.md) | Tenant authorization and signed artifact delivery are separate required controls | Accepted | `IMPLEMENTED_ON_MAIN` + `ACTIVE_PR` direct-download alignment |
-| [0003](0003-audit-pseudonymization-key-separation.md) | Audit pseudonyms use purpose-separated, domain-separated cryptographic material | Proposed | `ACTIVE_PR` #270/#268 |
-| [0004](0004-durable-lifecycle-generation-fencing.md) | Durable job/artifact deletion uses immutable identity, generation fencing and restart-safe evidence | Proposed | `ACTIVE_PR` #268 |
+| [0002](0002-tenant-artifact-authorization.md) | Tenant authorization and signed artifact delivery are separate required controls | Accepted | `IMPLEMENTED_ON_MAIN` through protected #270, including direct-download alignment |
+| [0003](0003-audit-pseudonymization-key-separation.md) | Audit pseudonyms use purpose-separated, domain-separated cryptographic material | Proposed | `IMPLEMENTED_ON_MAIN` through protected #270; #268 `SUPERSEDED` for remaining lifecycle work |
+| [0004](0004-durable-lifecycle-generation-fencing.md) | Durable job/artifact deletion uses immutable identity, generation fencing and restart-safe evidence | Proposed | `PARTIAL` target; #268 `SUPERSEDED`; bounded successors unintegrated |
 | [0005](0005-deterministic-conversion-fidelity.md) | Supported-format claims require deterministic real conversion and fidelity evidence; placeholders are non-production | Accepted | `PARTIAL`; real Office conversion `PLANNED` |
 | [0006](0006-liveness-readiness-separation.md) | Process liveness and traffic readiness are independent signals | Proposed | `ACTIVE_PR` #295 |
 | [0007](0007-exact-head-live-base-evidence.md) | Merge/release evidence binds exact source head and independently resolved live base | Proposed | CI semantics `ACTIVE_PR` #270; operational policy accepted |

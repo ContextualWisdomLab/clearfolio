@@ -26,7 +26,7 @@ Former descendants are not automatically current because their old ancestry and 
 - current #295: liveness/readiness separation, clean `ACTIVE_PR`;
 - current #340: deterministic single logging runtime binding, clean `ACTIVE_PR` with `spring-jcl` retained and standalone `commons-logging` excluded.
 
-PR #264 and PR #295 have been rebuilt on the protected baseline and are current-base active work. **Only #268 remains unreconciled** among the former #270 descendants listed here; its historical source/check evidence is not current acceptance. No predecessor review or check transfers automatically.
+PR #264 and PR #295 have been rebuilt on the protected baseline and are current-base active work. Historical #268 is `SUPERSEDED`; its valuable requirements are mapped to bounded current successors #341/#342/#345/#350/#351/#353/#361/#363/#380, none of which is protected-main behavior merely by inheritance. No predecessor review or check transfers automatically.
 
 ## Conversation decision coverage
 
@@ -134,7 +134,7 @@ Documentation is sufficient only when it exposes rather than hides open work:
 - issue #321: observable CODEOWNERS and independent human reviewer route; advisory bots are not counted approval;
 - issue #322 / PR #323: viewer generation safety; stale DOM publication is partially addressed, while active PDF.js cancellation/destruction and broader parity remain;
 - issue #324 / current #334: robust light/dark focus appearance with executable contrast and geometry evidence;
-- issue #326: push analytics tenant isolation into repository queries after PR #268's scoped API;
+- issue #326: push analytics tenant isolation into repository queries after the accepted scoped-API contract preserved from `SUPERSEDED` #268;
 - issue #327 / current #338: terminal-outcome conversion success rate;
 - issue #329 / current #339: fail-closed finite and domain-valid KPI ledger evidence;
 - issue #331: scheduler **execution receipt**, failure envelope, resumable checkpoint, and budget continuation evidence.
@@ -157,7 +157,7 @@ These gaps demonstrate why `DESIGN_SUFFICIENT` is not product, release, acquisit
 12. Credential drift: issue #319 is runtime authority migration; PR #313 is key readiness only.
 13. Viewer drift: issue #322 requires operation-generation ownership and active cancellation; PR #323 is only the first stale-publication slice.
 14. Accessibility drift: one mixed focus color is not robust light/dark focus evidence; issue #324 and current #334 own the current slice.
-15. Analytics isolation drift: global materialization plus application filtering is weaker than a tenant-scoped repository query; issue #326 owns adoption after PR #268.
+15. Analytics isolation drift: global materialization plus application filtering is weaker than a tenant-scoped repository query; issue #326 owns adoption after the scoped-API contract preserved from `SUPERSEDED` #268.
 16. KPI semantic drift: in-flight work must not count as failed conversion outcomes; issue #327 and current #338 own the denominator correction.
 17. KPI integrity drift: parseable NaN, infinity, or out-of-range values are invalid buyer evidence; issue #329 and current #339 own fail-closed replay validation.
 18. Governance drift: protected merge requires a counted write-authorized human approval; central `.github#772`, not broader bot authority, owns provisioning.

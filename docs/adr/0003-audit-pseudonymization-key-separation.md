@@ -1,7 +1,7 @@
 # ADR-0003: Use purpose-separated, domain-separated audit pseudonymization
 
 Status: Proposed
-Implementation maturity: `ACTIVE_PR` #270/#268
+Implementation maturity: `IMPLEMENTED_ON_MAIN` through protected #270; #268 is `SUPERSEDED` for remaining lifecycle work
 
 ## Context and drivers
 

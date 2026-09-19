@@ -56,7 +56,7 @@ A reviewer needs exact evidence for tenant isolation, active-content and externa
 
 `IMPLEMENTED_ON_MAIN`: bounded worker retry/dead-letter behavior, operator retry, process-local startup recovery, and file-backed artifact options exist.
 
-`ACTIVE_PR`: #268 adds stronger durable deletion receipts, generation fencing, retry fairness, crash-tail validation, and restart recovery.
+`PARTIAL`: #268 is `SUPERSEDED`; bounded successor lanes preserve individual lifecycle primitives, but durable deletion receipts, generation fencing, retry fairness, crash-tail validation, and restart recovery are not protected-main behavior.
 
 `ACTIVE_PR`: #295 separates process liveness from traffic readiness.
 
@@ -64,7 +64,7 @@ A reviewer needs exact evidence for tenant isolation, active-content and externa
 
 `IMPLEMENTED_ON_MAIN`: tenant contexts, permissions, same-tenant checks, cross-tenant concealment, signed viewer artifact links, revocation and audit evidence exist in the current scaffold.
 
-`ACTIVE_PR`: #270 and #268 strengthen signed tenant claims, dedicated artifact/admin least privilege, purpose-separated cryptographic keys, domain-separated HMAC audit pseudonyms, immutable job identity, and durable mutation boundaries.
+`IMPLEMENTED_ON_MAIN`: protected #270 strengthened signed tenant claims, dedicated artifact/admin least privilege, purpose-separated cryptographic keys, and domain-separated HMAC audit pseudonyms. #268 is `SUPERSEDED`; remaining immutable lifecycle and durable mutation work is `PARTIAL` in unintegrated bounded successors.
 
 `PLANNED`: production IdP/OIDC issuer/audience/expiry/revocation/role mapping, enterprise tenant lifecycle, data-retention policy, and distributed policy enforcement.
 
@@ -82,11 +82,11 @@ A reviewer needs exact evidence for tenant isolation, active-content and externa
 | --- | --- | --- |
 | FR-01 | Accept bounded document uploads and return an asynchronous job contract without inline conversion | `IMPLEMENTED_ON_MAIN` |
 | FR-02 | Expose tenant-scoped job status and stable lifecycle metadata | `IMPLEMENTED_ON_MAIN` |
-| FR-03 | Expose state-gated viewer bootstrap and controlled artifact delivery | `IMPLEMENTED_ON_MAIN` / direct-download hardening `ACTIVE_PR` |
+| FR-03 | Expose state-gated viewer bootstrap and controlled artifact delivery | `IMPLEMENTED_ON_MAIN` through protected #270 |
 | FR-04 | Preserve content identity and idempotent dedupe behavior at the current repository boundary | `IMPLEMENTED_ON_MAIN` |
 | FR-05 | Fail closed for blocked formats, malformed input and bounded upload limits | `IMPLEMENTED_ON_MAIN` |
 | FR-06 | Require least-privilege authorization before tenant repository/artifact/admin access | `IMPLEMENTED_ON_MAIN`, strengthened in `ACTIVE_PR` |
-| FR-07 | Preserve immutable lifecycle identity and restart-safe artifact deletion evidence | `ACTIVE_PR` #268 |
+| FR-07 | Preserve immutable lifecycle identity and restart-safe artifact deletion evidence | `PARTIAL`; #268 `SUPERSEDED`; bounded successors are not integrated |
 | FR-08 | Separate liveness from traffic readiness | `ACTIVE_PR` #295 |
 | FR-09 | Make repeated asynchronous viewer actions contextually named and nested-safe | `ACTIVE_PR` #264 |
 | FR-10 | Convert each claimed Office format using deterministic real-fixture fidelity acceptance instead of placeholder output | `PLANNED`, issue #5 |
@@ -94,7 +94,7 @@ A reviewer needs exact evidence for tenant isolation, active-content and externa
 | FR-12 | Publish OpenTelemetry traces and low-cardinality privacy-safe metrics | `PLANNED` |
 | FR-13 | Maintain versioned naruon/MSA contracts without cross-service application-database access | `ACCEPTED_ARCHITECTURE` |
 | FR-14 | Produce SBOM, attribution, reproducibility and release-provenance evidence tied to exact source | `PARTIAL`, strengthened in #270 |
-| FR-15 | Support truthful tenant-safe deletion/download UX on the durable lifecycle substrate without duplicate cleanup or signed-link bypass | `PLANNED` after #270/#268/#264 integration, issue #263 |
+| FR-15 | Support truthful tenant-safe deletion/download UX on the durable lifecycle substrate without duplicate cleanup or signed-link bypass | `PLANNED` after protected #270 and bounded lifecycle/accessibility successor integration, issue #263 |
 
 ## Non-functional requirements
 

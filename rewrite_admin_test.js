@@ -1,4 +1,7 @@
-package com.clearfolio.viewer.controller;
+const fs = require('fs');
+
+const path = 'src/test/java/com/clearfolio/viewer/controller/AdminControllerTest.java';
+const content = `package com.clearfolio.viewer.controller;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -179,3 +182,6 @@ class AdminControllerTest {
                 .expectStatus().isForbidden();
     }
 }
+`;
+
+fs.writeFileSync(path, content);

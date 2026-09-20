@@ -136,10 +136,10 @@ public class TenantAccessService {
      */
     public static String signClaims(TenantContext context, String issuedAt, String secret) {
         String payload = String.join("\n",
-                context.tenantId(),
-                context.subjectId(),
-                context.canonicalPermissions(),
-                issuedAt
+                context.tenantId().length() + ":" + context.tenantId(),
+                context.subjectId().length() + ":" + context.subjectId(),
+                context.canonicalPermissions().length() + ":" + context.canonicalPermissions(),
+                issuedAt.length() + ":" + issuedAt
         );
         return hmac(payload, secret);
     }

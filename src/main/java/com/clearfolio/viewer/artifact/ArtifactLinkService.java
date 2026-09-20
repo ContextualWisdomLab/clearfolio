@@ -422,7 +422,22 @@ public class ArtifactLinkService {
         if (value == null) {
             return null;
         }
-        String cleaned = value.replace("\u0000", "").strip();
+
+        String cleaned;
+        if (value.indexOf('\u0000') < 0) {
+            cleaned = value;
+        } else {
+            StringBuilder sb = new StringBuilder(value.length());
+            for (int i = 0; i < value.length(); i++) {
+                char c = value.charAt(i);
+                if (c != '\u0000') {
+                    sb.append(c);
+                }
+            }
+            cleaned = sb.toString();
+        }
+        cleaned = cleaned.strip();
+
         return cleaned.isEmpty() ? null : cleaned;
     }
 

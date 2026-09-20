@@ -1,0 +1,5 @@
+⚡ Bolt: 성능 최적화 - 문자열 직렬화 및 소독 로직 최적화
+
+불필요한 가변 인자 배열 생성 및 중간 객체 할당을 방지하기 위해 다음 항목들을 개선했습니다:
+1. `KpiSnapshotLedger`와 `ArtifactLinkLedger`에서 레코드 직렬화 시 `String.join` 대신 초기 용량이 지정된 `StringBuilder`를 사용하도록 최적화했습니다.
+2. null 문자가 없는 일반적인 해피 패스(happy path)에서 불필요한 문자열 객체 할당 및 `replace()` 호출 체인을 방지하기 위해 `indexOf`로 먼저 검사한 후 지연 할당을 수행하는 단일 패스 문자열 최적화를 `TenantContext`, `ConversionProperties`, `ArtifactLinkService`, `ConversionJob` 등 여러 핵심 도메인 및 설정 클래스에 적용했습니다.

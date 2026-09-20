@@ -133,9 +133,22 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
             return null;
         }
 
-        String sanitized = value
-                .replace("\u0000", "")
-                .strip();
+        // ⚡ Bolt: Single-pass string sanitization
+        // Avoids unnecessary string allocations for the happy path where no null characters exist.
+        String sanitized;
+        if (value.indexOf('\u0000') < 0) {
+            sanitized = value.strip();
+        } else {
+            StringBuilder sb = new StringBuilder(value.length());
+            for (int i = 0; i < value.length(); i++) {
+                char c = value.charAt(i);
+                if (c != '\u0000') {
+                    sb.append(c);
+                }
+            }
+            sanitized = sb.toString().strip();
+        }
+
         return sanitized.isEmpty() ? null : sanitized;
     }
 }

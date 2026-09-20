@@ -36,7 +36,7 @@
 
 ### Fixed
 
-- 뷰어 polling의 재시도 버튼 busy lease를 success·error뿐 아니라 `AbortSignal` cancellation에서도 정확히 한 번 해제하도록 수정했습니다. 복원 시 원래 child node 객체·listener·disabled/ARIA state를 유지하며, 실제 browser/a11y/responsive acceptance evidence는 Draft gate로 남습니다.
+- 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정했습니다.
 
 ## [0.1.0] - 2026-06-25
 

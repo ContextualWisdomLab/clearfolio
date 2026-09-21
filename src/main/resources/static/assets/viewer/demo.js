@@ -114,6 +114,10 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
+  // ⚡ Bolt: Batch DOM mutations using a DocumentFragment to prevent multiple reflows
+  // Expected Impact: Reduces layout thrashing from O(N) reflows to O(1) single paint
+  const fragment = document.createDocumentFragment();
+
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -143,8 +147,10 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    el.historyBody.appendChild(row);
+    fragment.appendChild(row);
   }
+
+  el.historyBody.appendChild(fragment);
 
   renderRecoveryEvidence(history);
 }

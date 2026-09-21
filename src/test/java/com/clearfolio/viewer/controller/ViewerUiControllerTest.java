@@ -39,6 +39,9 @@ class ViewerUiControllerTest {
                 .value(body -> {
                     assertTrue(body.contains("Document intake"));
                     assertTrue(body.contains("id=\"upload-form\""));
+                    assertTrue(body.contains("<label class=\"field-label\" for=\"file-input\">"));
+                    assertTrue(body.contains("<span class=\"required-indicator\" aria-hidden=\"true\">*</span>"));
+                    assertTrue(body.contains("<input id=\"file-input\" name=\"file\" class=\"file-input\" type=\"file\" required />"));
                     assertTrue(body.contains("name=\"file\""));
                     assertTrue(body.contains("id=\"session-history\""));
                     assertTrue(body.contains("id=\"job-detail\""));
@@ -135,6 +138,16 @@ class ViewerUiControllerTest {
             assertTrue(script.contains("X-Clearfolio-Tenant-Id"));
             assertTrue(script.contains("X-Clearfolio-Permissions"));
             assertTrue(script.contains("deadLettered"));
+        }
+    }
+
+    @Test
+    void uploadRequiredIndicatorUsesDedicatedComponentStyle() throws Exception {
+        try (InputStream input = getClass().getResourceAsStream("/static/assets/viewer/viewer.css")) {
+            assertNotNull(input);
+            String css = new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            assertTrue(css.contains(".required-indicator {"));
+            assertTrue(css.contains("color: var(--danger);"));
         }
     }
 

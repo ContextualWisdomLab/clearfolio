@@ -4,6 +4,7 @@
 
 ### Added
 
+- **UI UX 개선**: 파일 업로드 폼의 `Document` 레이블에 시각적 필수 마커(`*`)를 추가했습니다. Grid 레이아웃에서 텍스트와 마커가 분리되지 않도록 한 요소로 묶고, native `required` 의미는 유지한 채 장식 마커만 보조 기술에서 숨겼습니다. 오류 제목 스타일과의 결합을 제거하고 전용 `.required-indicator` component class를 사용합니다.
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.

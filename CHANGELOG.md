@@ -12,6 +12,13 @@
   - KPI 스냅샷 증거를 다시 불러오는 `refreshKpiEvidence` 동작 중에 "Refresh evidence" 버튼을 비활성화하고 "Refreshing..."이라는 피드백을 제공하여 사용자의 중복 클릭을 방지했습니다.
   - 버튼 상태 변경 시 내부 DOM 구조를 보존하기 위해 `Array.from(button.childNodes)`로 원래 노드를 저장하고, 성공 및 실패 후 `finally` 블록에서 `replaceChildren(...)`으로 안전하게 복원하도록 구현했습니다.
 
+### Security
+- **(Sentinel)** 관리자 API (`/api/v1/admin/convert/jobs`)에 누락된 인증/인가 과정을 추가했습니다.
+  이전에는 해당 엔드포인트에 대한 테넌트 클레임 및 권한 검증이 없었으나, 이제 `ADMIN_READ` 및 `ADMIN_WRITE` 권한이 요구됩니다.
+
+### Fixed
+- `AdminController` 엔드포인트에 `TenantAccessService`를 통한 인증 로직을 추가하여 관리자 권한 없는 접근을 차단했습니다.
+
 ### Changed
 
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.

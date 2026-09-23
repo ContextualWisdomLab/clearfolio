@@ -147,7 +147,10 @@ public class KpiSnapshotLedger {
         }
     }
 
-    private static String serialize(KpiSnapshotRecord record) {
+    private static String serialize(final KpiSnapshotRecord record) {
+        /* Optimization: Use pre-sized StringBuilder with chained appends.
+         * Avoids varargs array creation and intermediate String allocations
+         * from String.valueOf() for primitive types. */
         return new StringBuilder(256)
                 .append(SNAPSHOT).append('\t')
                 .append(field(record.tenantId())).append('\t')

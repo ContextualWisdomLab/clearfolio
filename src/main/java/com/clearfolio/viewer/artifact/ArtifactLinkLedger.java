@@ -231,9 +231,7 @@ public class ArtifactLinkLedger {
         }
     }
 
-    private static String serializeIssued(final ArtifactLinkRecord record) {
-        /* Optimization: Use pre-sized StringBuilder with chained appends.
-         * Avoids varargs array creation and intermediate String allocations. */
+    private static String serializeIssued(ArtifactLinkRecord record) {
         return new StringBuilder(512)
                 .append(ISSUED).append('\t')
                 .append(field(record.tokenId())).append('\t')
@@ -252,9 +250,7 @@ public class ArtifactLinkLedger {
                 .toString();
     }
 
-    private static String serializeRevoked(final ArtifactLinkRecord record) {
-        /* Optimization: Use pre-sized StringBuilder with chained appends.
-         * Avoids varargs array creation and intermediate String allocations. */
+    private static String serializeRevoked(ArtifactLinkRecord record) {
         return new StringBuilder(256)
                 .append(REVOKED).append('\t')
                 .append(field(record.tokenId())).append('\t')
@@ -264,10 +260,7 @@ public class ArtifactLinkLedger {
                 .toString();
     }
 
-    private static String serializeRead(final ArtifactReadEvent event) {
-        /* Optimization: Use pre-sized StringBuilder with chained appends.
-         * Avoids varargs array creation and intermediate String allocations
-         * from String.valueOf() for primitive types. */
+    private static String serializeRead(ArtifactReadEvent event) {
         return new StringBuilder(256)
                 .append(READ).append('\t')
                 .append(field(event.tenantId())).append('\t')

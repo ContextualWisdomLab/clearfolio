@@ -61,6 +61,7 @@ class KpiSnapshotLedgerTest {
     void stringConstructorTreatsBlankPathAsInMemoryAndMissingPathAsEmpty() {
         KpiSnapshotLedger nullPath = new KpiSnapshotLedger((String) null);
         KpiSnapshotLedger blankPath = new KpiSnapshotLedger(" ");
+        KpiSnapshotLedger emptyPath = new KpiSnapshotLedger("");
         KpiSnapshotLedger configuredStringPath = new KpiSnapshotLedger(
                 tempDir.resolve("configured-string.log").toString()
         );
@@ -68,6 +69,7 @@ class KpiSnapshotLedgerTest {
 
         assertTrue(nullPath.snapshotsFor("tenant-a").isEmpty());
         assertTrue(blankPath.snapshotsFor("tenant-a").isEmpty());
+        assertTrue(emptyPath.snapshotsFor("tenant-a").isEmpty());
         assertTrue(configuredStringPath.snapshotsFor("tenant-a").isEmpty());
         assertTrue(missingPath.snapshotsFor("tenant-a").isEmpty());
     }

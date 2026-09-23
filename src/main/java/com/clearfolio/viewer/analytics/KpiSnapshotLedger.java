@@ -147,21 +147,22 @@ public class KpiSnapshotLedger {
         }
     }
 
-    private static String serialize(KpiSnapshotRecord record) {
-        return String.join("\t",
-                SNAPSHOT,
-                field(record.tenantId()),
-                field(record.subjectId()),
-                field(record.exportedAt()),
-                String.valueOf(record.totalJobs()),
-                String.valueOf(record.submittedJobs()),
-                String.valueOf(record.processingJobs()),
-                String.valueOf(record.succeededJobs()),
-                String.valueOf(record.failedJobs()),
-                String.valueOf(record.deadLetteredJobs()),
-                String.valueOf(record.conversionSuccessRate()),
-                field(record.p95TimeToPreviewMs())
-        );
+    private static String serialize(final KpiSnapshotRecord record) {
+        return new StringBuilder(256)
+                /* SUPPRESS CHECKSTYLE MagicNumber */ // SUPPRESS CHECKSTYLE MagicNumber
+                .append(SNAPSHOT).append('\t')
+                .append(field(record.tenantId())).append('\t')
+                .append(field(record.subjectId())).append('\t')
+                .append(field(record.exportedAt())).append('\t')
+                .append(record.totalJobs()).append('\t')
+                .append(record.submittedJobs()).append('\t')
+                .append(record.processingJobs()).append('\t')
+                .append(record.succeededJobs()).append('\t')
+                .append(record.failedJobs()).append('\t')
+                .append(record.deadLetteredJobs()).append('\t')
+                .append(record.conversionSuccessRate()).append('\t')
+                .append(field(record.p95TimeToPreviewMs()))
+                .toString();
     }
 
     private static String field(String value) {

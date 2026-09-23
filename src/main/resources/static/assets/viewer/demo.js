@@ -190,6 +190,7 @@ function renderJobDetail(detail) {
   addDetailRow("Artifact", detail.convertedResourcePath);
 
   el.retryJobBtn.hidden = !detail.deadLettered;
+  el.jobDetail.focus();
 }
 
 function isNeedsAction(job) {

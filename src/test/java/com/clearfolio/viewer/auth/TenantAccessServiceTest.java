@@ -53,6 +53,60 @@ class TenantAccessServiceTest {
     }
 
     @Test
+    void requireSignedFailsClosedWhenSecretIsBlankOrNull() {
+        TenantAccessService blankSecret = new TenantAccessService(" ", 300L, Clock.fixed(NOW, ZoneOffset.UTC));
+        TenantAccessService nullSecret = new TenantAccessService(null, 300L, Clock.fixed(NOW, ZoneOffset.UTC));
+
+        ResponseStatusException blank = assertThrows(
+                ResponseStatusException.class,
+                () -> blankSecret.requireSigned(headers(TenantPermissions.ADMIN_READ), TenantPermissions.ADMIN_READ)
+        );
+        ResponseStatusException absent = assertThrows(
+                ResponseStatusException.class,
+                () -> nullSecret.requireSigned(headers(TenantPermissions.ADMIN_READ), TenantPermissions.ADMIN_READ)
+        );
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, blank.getStatusCode());
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, absent.getStatusCode());
+    }
+
+    @Test
+    void requireSignedAcceptsValidSignedPermission() {
+        TenantContext context = signedService().requireSigned(
+                signedHeaders(TenantPermissions.ADMIN_READ, NOW),
+                TenantPermissions.ADMIN_READ
+        );
+
+        assertEquals(TenantContext.DEMO_TENANT_ID, context.tenantId());
+    }
+
+    @Test
+    void requireSignedRejectsUnsignedClaimsWhenSecretIsConfigured() {
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> signedService().requireSigned(
+                        headers(TenantPermissions.ADMIN_READ),
+                        TenantPermissions.ADMIN_READ
+                )
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+    }
+
+    @Test
+    void requireSignedRejectsMissingPermission() {
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> signedService().requireSigned(
+                        signedHeaders(TenantPermissions.JOB_READ, NOW),
+                        TenantPermissions.ADMIN_READ
+                )
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+    }
+
+    @Test
     void springConstructorSupportsSignedGatewayClaims() {
         TenantAccessService signedService = new TenantAccessService(SECRET, 300L);
 

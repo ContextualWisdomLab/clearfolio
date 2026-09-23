@@ -1,15 +1,22 @@
 package com.clearfolio.viewer.controller;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
@@ -17,13 +24,17 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
+    private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService);
+        tenantAccessService = mock(TenantAccessService.class);
+        when(tenantAccessService.requireSigned(any(HttpHeaders.class), any(String.class)))
+                .thenReturn(new TenantContext("tenant", "subject", java.util.Set.of()));
+        controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -120,5 +131,57 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+    }
+
+    @Test
+    void adminReadFailsClosedWhenSignedClaimsAreNotConfigured() {
+        when(conversionService.getAllJobs()).thenReturn(List.of());
+        WebTestClient unsignedAdminClient = clientWithAccessService(new TenantAccessService());
+
+        unsignedAdminClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .headers(headers -> addAdminHeaders(headers, TenantPermissions.ADMIN_READ))
+                .exchange()
+                .expectStatus().isEqualTo(503);
+
+        verifyNoInteractions(conversionService);
+    }
+
+    @Test
+    void adminDeleteFailsClosedWhenSignedClaimsAreNotConfigured() {
+        WebTestClient unsignedAdminClient = clientWithAccessService(new TenantAccessService());
+
+        unsignedAdminClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + UUID.randomUUID())
+                .headers(headers -> addAdminHeaders(headers, TenantPermissions.ADMIN_WRITE))
+                .exchange()
+                .expectStatus().isEqualTo(503);
+
+        verifyNoInteractions(conversionService);
+    }
+
+    @Test
+    void adminRetryFailsClosedWhenSignedClaimsAreNotConfigured() {
+        WebTestClient unsignedAdminClient = clientWithAccessService(new TenantAccessService());
+
+        unsignedAdminClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + UUID.randomUUID() + "/retry")
+                .headers(headers -> addAdminHeaders(headers, TenantPermissions.ADMIN_WRITE))
+                .exchange()
+                .expectStatus().isEqualTo(503);
+
+        verifyNoInteractions(conversionService);
+    }
+
+    private WebTestClient clientWithAccessService(TenantAccessService accessService) {
+        return WebTestClient.bindToController(new AdminController(conversionService, accessService))
+                .controllerAdvice(new ApiExceptionHandler())
+                .build();
+    }
+
+    private static void addAdminHeaders(HttpHeaders headers, String permission) {
+        headers.add(TenantContext.TENANT_ID_HEADER, "attacker-selected-tenant");
+        headers.add(TenantContext.SUBJECT_ID_HEADER, "attacker-selected-subject");
+        headers.add(TenantContext.PERMISSIONS_HEADER, permission);
     }
 }

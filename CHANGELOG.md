@@ -12,6 +12,10 @@
   - KPI 스냅샷 증거를 다시 불러오는 `refreshKpiEvidence` 동작 중에 "Refresh evidence" 버튼을 비활성화하고 "Refreshing..."이라는 피드백을 제공하여 사용자의 중복 클릭을 방지했습니다.
   - 버튼 상태 변경 시 내부 DOM 구조를 보존하기 위해 `Array.from(button.childNodes)`로 원래 노드를 저장하고, 성공 및 실패 후 `finally` 블록에서 `replaceChildren(...)`으로 안전하게 복원하도록 구현했습니다.
 
+### Security
+
+- 관리자 작업 조회·삭제·재시도 API는 `ADMIN_READ` 또는 `ADMIN_WRITE` 권한뿐 아니라 유효한 서명형 gateway claim을 요구합니다. 일반 테넌트 API의 unsigned demo-mode 계약은 유지하되, 관리자 경로에서는 HMAC secret이 구성되지 않았으면 `503`으로 fail closed하고 raw `X-Clearfolio-*` 헤더를 권한 근거로 사용하지 않습니다.
+
 ### Changed
 
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.

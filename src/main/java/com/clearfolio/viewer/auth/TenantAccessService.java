@@ -61,6 +61,10 @@ public class TenantAccessService {
     /**
      * Resolves tenant claims and verifies the required permission.
      *
+     * <p>When no HMAC secret is configured this method preserves the unsigned
+     * demo-mode contract. Privileged endpoints that must never trust raw client
+     * claims should use {@link #requireSigned(HttpHeaders, String)}.</p>
+     *
      * @param headers request headers
      * @param permission required permission
      * @return verified tenant context
@@ -79,6 +83,27 @@ public class TenantAccessService {
         }
 
         return context;
+    }
+
+    /**
+     * Requires a configured signed-claim boundary before checking permission.
+     *
+     * <p>This is intended for privileged cross-tenant operations where unsigned
+     * demo-mode headers cannot be accepted as an authorization source. A missing
+     * signing secret is treated as server misconfiguration and fails closed.</p>
+     *
+     * @param headers request headers
+     * @param permission required permission
+     * @return verified tenant context
+     */
+    public TenantContext requireSigned(HttpHeaders headers, String permission) {
+        if (claimsHmacSecret == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "signed auth claims are not configured"
+            );
+        }
+        return require(headers, permission);
     }
 
     /**

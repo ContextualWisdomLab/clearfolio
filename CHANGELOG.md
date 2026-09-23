@@ -13,11 +13,8 @@
   - 버튼 상태 변경 시 내부 DOM 구조를 보존하기 위해 `Array.from(button.childNodes)`로 원래 노드를 저장하고, 성공 및 실패 후 `finally` 블록에서 `replaceChildren(...)`으로 안전하게 복원하도록 구현했습니다.
 
 ### Security
-- **(Sentinel)** 관리자 API (`/api/v1/admin/convert/jobs`)에 누락된 인증/인가 과정을 추가했습니다.
-  이전에는 해당 엔드포인트에 대한 테넌트 클레임 및 권한 검증이 없었으나, 이제 `ADMIN_READ` 및 `ADMIN_WRITE` 권한이 요구됩니다.
 
-### Fixed
-- `AdminController` 엔드포인트에 `TenantAccessService`를 통한 인증 로직을 추가하여 관리자 권한 없는 접근을 차단했습니다.
+- 관리자 작업 조회·삭제·재시도 API는 `ADMIN_READ` 또는 `ADMIN_WRITE` 권한뿐 아니라 유효한 서명형 gateway claim을 요구합니다. 일반 테넌트 API의 unsigned demo-mode 계약은 유지하되, 관리자 경로에서는 HMAC secret이 구성되지 않았으면 `503`으로 fail closed하고 raw `X-Clearfolio-*` 헤더를 권한 근거로 사용하지 않습니다.
 
 ### Changed
 
@@ -55,7 +52,7 @@
   - 임시 로딩 상태 적용 후, 원래 버튼 내부에 존재할 수 있는 중첩 DOM 노드(아이콘 등)가 보존될 수 있도록 `childNodes`를 임시 저장하고 `replaceChildren(...)`으로 복원하는 방식으로 구현했습니다.
 
 - **PDF 다운로드 API 추가 (`GET /api/v1/convert/jobs/{jobId}/download`)**
-  - 변환 성공한 작업에 대한 PDF 바이너리 다운로드 엔드포인트를 구현했습니다.
+  - 변환 성공한 작업의 PDF 바이너리 다운로드 엔드포인트를 구현했습니다.
   - 파일 다운로드 시 원본 파일명 기반의 `.pdf` 확장자 처리와 파일 무결성을 위한 체크섬(`X-Checksum-Sha256`) 헤더를 응답에 포함하도록 지원합니다.
 
 - **관리자용 전체 작업 조회 API 추가 (`GET /api/v1/admin/convert/jobs`)**

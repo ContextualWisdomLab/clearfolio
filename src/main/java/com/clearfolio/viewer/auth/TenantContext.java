@@ -1,5 +1,7 @@
 package com.clearfolio.viewer.auth;
 
+import com.clearfolio.viewer.util.StringUtils;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -128,13 +130,12 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
         return parsed;
     }
 
-    private static String sanitize(String value) {
+    private static String sanitize(final String value) {
         if (value == null) {
             return null;
         }
 
-        String sanitized = value
-                .replace("\u0000", "")
+        String sanitized = StringUtils.removeNullChars(value)
                 .strip();
         return sanitized.isEmpty() ? null : sanitized;
     }

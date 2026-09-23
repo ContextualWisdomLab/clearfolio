@@ -1,5 +1,7 @@
 package com.clearfolio.viewer.config;
 
+import com.clearfolio.viewer.util.StringUtils;
+
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -47,15 +49,14 @@ public class ConversionProperties {
      *
      * @param blockedExtensions blocked extension set
      */
-    public void setBlockedExtensions(Set<String> blockedExtensions) {
+    public void setBlockedExtensions(final Set<String> blockedExtensions) {
         LinkedHashSet<String> normalized = new LinkedHashSet<>();
         if (blockedExtensions != null) {
             for (String extension : blockedExtensions) {
                 if (extension == null) {
                     continue;
                 }
-                String sanitized = extension
-                        .replace("\u0000", "")
+                String sanitized = StringUtils.removeNullChars(extension)
                         .trim()
                         .toLowerCase(Locale.ROOT);
                 if (!sanitized.isEmpty()) {

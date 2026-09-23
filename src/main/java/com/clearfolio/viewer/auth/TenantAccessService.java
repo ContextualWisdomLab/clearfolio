@@ -1,5 +1,7 @@
 package com.clearfolio.viewer.auth;
 
+import com.clearfolio.viewer.util.StringUtils;
+
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -154,11 +156,11 @@ public class TenantAccessService {
         }
     }
 
-    private static String clean(String value) {
+    private static String clean(final String value) {
         if (value == null) {
             return null;
         }
-        String cleaned = value.replace("\u0000", "").strip();
+        String cleaned = StringUtils.removeNullChars(value).strip();
         return cleaned.isEmpty() ? null : cleaned;
     }
 }

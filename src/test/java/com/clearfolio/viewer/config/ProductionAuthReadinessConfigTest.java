@@ -10,11 +10,24 @@ class ProductionAuthReadinessConfigTest {
 
     @Test
     void productionProfileFailsWithoutSignedTenantClaimsSecret() {
-        productionRunner().run(context -> {
+        productionRunner()
+                .withBean(PropertySourcesPlaceholderConfigurer.class, PropertySourcesPlaceholderConfigurer::new)
+                .run(context -> {
             assertThat(context.getStartupFailure()).isNotNull();
             assertThat(context.getStartupFailure().getCause().getMessage())
                     .contains("Could not resolve placeholder");
         });
+    }
+
+    @Test
+    void productionProfileFailsWithEmptySignedTenantClaimsSecret() {
+        productionRunner()
+                .withPropertyValues("clearfolio.tenant-claims.hmac-secret=")
+                .run(context -> {
+                    assertThat(context.getStartupFailure()).isNotNull();
+                    assertThat(context.getStartupFailure().getCause().getCause().getMessage())
+                            .contains("production profile requires clearfolio.tenant-claims.hmac-secret");
+                });
     }
 
     @Test
@@ -27,7 +40,6 @@ class ProductionAuthReadinessConfigTest {
     private static ApplicationContextRunner productionRunner() {
         return new ApplicationContextRunner()
                 .withUserConfiguration(ProductionAuthReadinessConfig.class)
-                .withBean(PropertySourcesPlaceholderConfigurer.class, PropertySourcesPlaceholderConfigurer::new)
                 .withInitializer(context -> context.getEnvironment().setActiveProfiles("production"));
     }
 }

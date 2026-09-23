@@ -11,8 +11,5 @@
 **Action:** 비동기 버튼 텍스트 변경 시, `innerHTML`을 임시 변수에 저장하고 `finally` 블록에서 복원하여 내부 DOM 구조 손실 없이 상태 피드백을 제공해야 합니다.
 
 ## 2026-07-13 - Async Table Actions UX
-**Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
+**Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that the request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
-## 2026-09-23 - [Form Accessibility]
-**Learning:** Adding a visible required indicator to form fields with `required` attribute helps UX, but it must include `aria-hidden="true"` to prevent redundant screen reader announcements since the HTML5 `required` attribute already handles screen reader semantics.
-**Action:** Always add `aria-hidden="true"` to visual required indicators like `*` when the input uses the native `required` attribute.

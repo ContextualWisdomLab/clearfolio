@@ -36,7 +36,7 @@ const elementIds = [
   "retry-job-btn",
 ];
 
-test("the executable demo renders inert actions and blocks repeated status activation", async () => {
+test("the executable demo renders inert actions, blocks repeated activation, and focuses opened job detail", async () => {
   const elements = new Map(elementIds.map(id => [id, new MockElement()]));
   const fileName = "<img src=x onerror=alert(1)>.pdf";
   const history = [{
@@ -171,4 +171,34 @@ test("the executable demo renders inert actions and blocks repeated status activ
     `View status JSON for ${fileName}`,
   );
   assert.match(popupBody.childNodes[0].textContent, /"status": "SUCCEEDED"/);
+
+  let jobDetailFocused = false;
+  elements.get("job-detail").focus = () => {
+    jobDetailFocused = true;
+  };
+  globalThis.fetch = async () => ({
+    ok: true,
+    headers: {
+      get() {
+        return "application/json";
+      },
+    },
+    async json() {
+      return {
+        jobId: "document-identifier",
+        tenantId: "buyer-demo",
+        fileName,
+        status: "SUCCEEDED",
+        attemptCount: 1,
+        maxAttempts: 3,
+        deadLettered: false,
+      };
+    },
+  });
+
+  actionsCell.childNodes[0].dispatchEvent({ type: "click" });
+  await new Promise(resolve => setImmediate(resolve));
+
+  assert.equal(elements.get("job-detail").hidden, false);
+  assert.equal(jobDetailFocused, true, "opening job detail must move focus to the revealed region");
 });

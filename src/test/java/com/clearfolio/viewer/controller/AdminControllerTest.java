@@ -31,7 +31,7 @@ class AdminControllerTest {
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
         tenantAccessService = mock(TenantAccessService.class);
-        when(tenantAccessService.require(any(HttpHeaders.class), any(String.class)))
+        when(tenantAccessService.requireSigned(any(HttpHeaders.class), any(String.class)))
                 .thenReturn(new TenantContext("tenant", "subject", java.util.Set.of()));
         controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)

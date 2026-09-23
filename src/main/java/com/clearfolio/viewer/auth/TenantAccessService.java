@@ -47,15 +47,20 @@ public class TenantAccessService {
      */
     @Autowired
     public TenantAccessService(
-            @Value("${clearfolio.tenant-claims.hmac-secret:}") String claimsHmacSecret,
-            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
+            @Value("${clearfolio.tenant-claims.hmac-secret}")
+            final String claimsHmacSecret,
+            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}")
+            final long maxSkewSeconds) {
         this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
     }
 
-    TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {
-        this.claimsHmacSecret = clean(claimsHmacSecret);
-        this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
-        this.clock = clock;
+    TenantAccessService(
+            final String inClaimsHmacSecret,
+            final long inMaxSkewSeconds,
+            final Clock inClock) {
+        this.claimsHmacSecret = clean(inClaimsHmacSecret);
+        this.maxSkewSeconds = Math.max(0L, inMaxSkewSeconds);
+        this.clock = inClock;
     }
 
     /**
@@ -65,7 +70,9 @@ public class TenantAccessService {
      * @param permission required permission
      * @return verified tenant context
      */
-    public TenantContext require(HttpHeaders headers, String permission) {
+    public TenantContext require(
+            final HttpHeaders headers,
+            final String permission) {
         TenantContext context = TenantContext.fromHeaders(headers)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
@@ -75,7 +82,11 @@ public class TenantAccessService {
         requireSignedClaimsWhenConfigured(headers, context);
 
         if (!context.hasPermission(permission)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing permission: " + permission);
+
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "missing permission: " + permission
+            );
         }
 
         return context;
@@ -87,42 +98,74 @@ public class TenantAccessService {
      * @param context verified tenant context
      * @param job conversion job being accessed
      */
-    public void requireSameTenant(TenantContext context, ConversionJob job) {
-        if (context == null || job == null || !job.belongsToTenant(context.tenantId())) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+    public void requireSameTenant(
+            final TenantContext context,
+            final ConversionJob job) {
+        if (context == null
+                || job == null
+                || !job.belongsToTenant(context.tenantId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "job not found"
+            );
         }
     }
 
-    private void requireSignedClaimsWhenConfigured(HttpHeaders headers, TenantContext context) {
+    private void requireSignedClaimsWhenConfigured(
+            final HttpHeaders headers,
+            final TenantContext context) {
         if (claimsHmacSecret == null) {
             return;
         }
 
-        String issuedAt = clean(headers.getFirst(TenantContext.CLAIMS_ISSUED_AT_HEADER));
-        String suppliedSignature = clean(headers.getFirst(TenantContext.CLAIMS_SIGNATURE_HEADER));
-        if (issuedAt == null || suppliedSignature == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "signed auth claims required");
+        String issuedAt = clean(headers.getFirst(
+                TenantContext.CLAIMS_ISSUED_AT_HEADER
+        ));
+        String suppliedSignature = clean(headers.getFirst(
+                TenantContext.CLAIMS_SIGNATURE_HEADER
+        ));
+        if (issuedAt == null
+                    || suppliedSignature == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "signed auth claims required"
+                );
         }
 
         long issuedAtEpoch = parseIssuedAt(issuedAt);
         long now = Instant.now(clock).getEpochSecond();
-        if (issuedAtEpoch < now - maxSkewSeconds || issuedAtEpoch > now + maxSkewSeconds) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "auth claims expired");
+        if (issuedAtEpoch < now - maxSkewSeconds
+                    || issuedAtEpoch > now + maxSkewSeconds) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "auth claims expired"
+                );
         }
 
-        String expectedSignature = signClaims(context, issuedAt, claimsHmacSecret);
+        String expectedSignature = signClaims(
+                context,
+                issuedAt,
+                claimsHmacSecret
+        );
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                suppliedSignature.getBytes(StandardCharsets.US_ASCII))) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "auth claims signature invalid");
+                suppliedSignature.getBytes(StandardCharsets.US_ASCII)
+        )) {
+            throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "auth claims signature invalid"
+            );
         }
     }
 
-    private static long parseIssuedAt(String issuedAt) {
+    private static long parseIssuedAt(final String issuedAt) {
         try {
             return Long.parseLong(issuedAt);
         } catch (NumberFormatException ex) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "auth claims timestamp invalid");
+            throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "auth claims timestamp invalid"
+            );
         }
     }
 
@@ -134,8 +177,12 @@ public class TenantAccessService {
      * @param secret shared gateway secret
      * @return Base64URL HMAC signature
      */
-    public static String signClaims(TenantContext context, String issuedAt, String secret) {
-        String payload = String.join("\n",
+    public static String signClaims(
+            final TenantContext context,
+            final String issuedAt,
+            final String secret) {
+        String payload = String.join(
+                "\n",
                 context.tenantId(),
                 context.subjectId(),
                 context.canonicalPermissions(),
@@ -144,17 +191,27 @@ public class TenantAccessService {
         return hmac(payload, secret);
     }
 
-    private static String hmac(String payload, String secret) {
+    private static String hmac(
+            final String payload,
+            final String secret) {
         try {
             Mac mac = Mac.getInstance(HMAC_SHA_256);
-            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_SHA_256));
-            return URL_ENCODER.encodeToString(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
+            mac.init(new SecretKeySpec(
+                    secret.getBytes(StandardCharsets.UTF_8),
+                    HMAC_SHA_256
+            ));
+            return URL_ENCODER.encodeToString(
+                mac.doFinal(payload.getBytes(StandardCharsets.UTF_8))
+            );
         } catch (GeneralSecurityException ex) {
-            throw new IllegalStateException("tenant claims signing failed", ex);
+            throw new IllegalStateException(
+                "tenant claims signing failed",
+                ex
+            );
         }
     }
 
-    private static String clean(String value) {
+    private static String clean(final String value) {
         if (value == null) {
             return null;
         }

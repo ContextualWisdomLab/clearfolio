@@ -52,7 +52,7 @@ class AdminControllerTest {
     void getAllJobsRequiresAdminPermission() {
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
-                .headers(headers -> addTenantHeaders(headers, TENANT_A, TenantPermissions.JOB_READ))
+                .headers(headers -> addTenantHeaders(headers, TENANT_A, "admin", TenantPermissions.JOB_READ))
                 .exchange()
                 .expectStatus().isForbidden();
     }
@@ -135,16 +135,19 @@ class AdminControllerTest {
     }
 
     @Test
-    void retryDeadLetteredReturnsAcceptedForOwnedJob() {
+    void retryDeadLetteredReturnsAcceptedForOwnedJobAndPreservesOperatorIdentity() {
         UUID jobId = UUID.randomUUID();
+        String operatorId = "operator-7";
         when(conversionService.getJob(jobId)).thenReturn(Optional.of(job(jobId, TENANT_A, "owned.pdf")));
-        when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
+        when(conversionService.retryDeadLettered(jobId, operatorId)).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
-                .headers(headers -> addAdminHeaders(headers, TENANT_A))
+                .headers(headers -> addAdminHeaders(headers, TENANT_A, operatorId))
                 .exchange()
                 .expectStatus().isAccepted();
+
+        verify(conversionService).retryDeadLettered(jobId, operatorId);
     }
 
     @Test
@@ -219,15 +222,23 @@ class AdminControllerTest {
     }
 
     private static void addAdminHeaders(org.springframework.http.HttpHeaders headers, String tenantId) {
-        addTenantHeaders(headers, tenantId, TenantPermissions.ADMIN_ACCESS);
+        addAdminHeaders(headers, tenantId, "admin");
+    }
+
+    private static void addAdminHeaders(
+            org.springframework.http.HttpHeaders headers,
+            String tenantId,
+            String subjectId) {
+        addTenantHeaders(headers, tenantId, subjectId, TenantPermissions.ADMIN_ACCESS);
     }
 
     private static void addTenantHeaders(
             org.springframework.http.HttpHeaders headers,
             String tenantId,
+            String subjectId,
             String permissions) {
         headers.add(TenantContext.TENANT_ID_HEADER, tenantId);
-        headers.add(TenantContext.SUBJECT_ID_HEADER, "admin");
+        headers.add(TenantContext.SUBJECT_ID_HEADER, subjectId);
         headers.add(TenantContext.PERMISSIONS_HEADER, permissions);
     }
 }

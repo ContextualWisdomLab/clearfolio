@@ -103,7 +103,7 @@ public class AdminController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
         tenantAccessService.requireSameTenant(tenantContext, job);
 
-        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
+        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, tenantContext.subjectId());
         if (result == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
         }

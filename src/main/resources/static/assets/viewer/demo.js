@@ -190,7 +190,6 @@ function renderJobDetail(detail) {
   addDetailRow("Artifact", detail.convertedResourcePath);
 
   el.retryJobBtn.hidden = !detail.deadLettered;
-  el.jobDetail.focus();
 }
 
 function isNeedsAction(job) {
@@ -243,6 +242,7 @@ async function openJobDetail(job) {
       refreshKpisAfterUpdate: false,
     });
     setStatus("Seeded job detail loaded.");
+    el.jobDetail.focus();
     return;
   }
   if (!job.statusUrl) {
@@ -269,6 +269,7 @@ async function openJobDetail(job) {
   });
   renderJobDetail(data);
   setStatus("Job detail loaded.");
+  el.jobDetail.focus();
 }
 
 async function retryActiveJob() {

@@ -2,6 +2,7 @@ package com.clearfolio.viewer.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
@@ -142,6 +143,8 @@ class AdminControllerTest {
                 .headers(headers -> addAdminHeaders(headers, TenantPermissions.ADMIN_READ))
                 .exchange()
                 .expectStatus().isEqualTo(503);
+
+        verifyNoInteractions(conversionService);
     }
 
     @Test
@@ -153,6 +156,8 @@ class AdminControllerTest {
                 .headers(headers -> addAdminHeaders(headers, TenantPermissions.ADMIN_WRITE))
                 .exchange()
                 .expectStatus().isEqualTo(503);
+
+        verifyNoInteractions(conversionService);
     }
 
     @Test
@@ -164,6 +169,8 @@ class AdminControllerTest {
                 .headers(headers -> addAdminHeaders(headers, TenantPermissions.ADMIN_WRITE))
                 .exchange()
                 .expectStatus().isEqualTo(503);
+
+        verifyNoInteractions(conversionService);
     }
 
     private WebTestClient clientWithAccessService(TenantAccessService accessService) {

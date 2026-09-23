@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpHeaders;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -57,7 +56,7 @@ public class AdminController {
      */
     @GetMapping("/api/v1/admin/convert/jobs")
     public AdminJobListResponse getAllJobs(@RequestParam(required = false) Boolean deadLettered, @RequestHeader HttpHeaders headers) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_READ);
+        tenantAccessService.requireSigned(headers, TenantPermissions.ADMIN_READ);
         Iterable<ConversionJob> allJobs = conversionService.getAllJobs();
 
         if (deadLettered == null) {
@@ -82,7 +81,7 @@ public class AdminController {
      */
     @DeleteMapping("/api/v1/admin/convert/jobs/{jobId}")
     public ResponseEntity<Void> deleteJob(@PathVariable UUID jobId, @RequestHeader HttpHeaders headers) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+        tenantAccessService.requireSigned(headers, TenantPermissions.ADMIN_WRITE);
         conversionService.deleteJob(jobId);
         return ResponseEntity.noContent().build();
     }
@@ -96,7 +95,7 @@ public class AdminController {
      */
     @PostMapping("/api/v1/admin/convert/jobs/{jobId}/retry")
     public ResponseEntity<Void> retryDeadLettered(@PathVariable UUID jobId, @RequestHeader HttpHeaders headers) {
-        tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
+        tenantAccessService.requireSigned(headers, TenantPermissions.ADMIN_WRITE);
         RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
         if (result == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");

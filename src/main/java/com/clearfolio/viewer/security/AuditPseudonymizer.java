@@ -67,7 +67,7 @@ public final class AuditPseudonymizer {
      * @param identifier exact identifier bytes represented as a Java string
      * @return versioned fingerprint or a fixed safe marker
      */
-    public String fingerprint(String identifier) {
+    public String fingerprint(final String identifier) {
         if (identifier == null) {
             return "absent:" + keyVersion;
         }
@@ -80,7 +80,11 @@ public final class AuditPseudonymizer {
             Mac mac = Mac.getInstance(HMAC_SHA_256);
             mac.init(new SecretKeySpec(secretBytes, HMAC_SHA_256));
             byte[] digest = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            return keyVersion + ":" + HEX_FORMAT.formatHex(digest, 0, FINGERPRINT_BYTES);
+            // ⚡ Bolt: Use pre-sized StringBuilder to avoid concatenation allocations
+            StringBuilder sb = new StringBuilder(keyVersion.length() + 1 + (FINGERPRINT_BYTES * 2));
+            sb.append(keyVersion).append(':');
+            HEX_FORMAT.formatHex(sb, digest, 0, FINGERPRINT_BYTES);
+            return sb.toString();
         } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("audit pseudonym HMAC unavailable", ex);
         }

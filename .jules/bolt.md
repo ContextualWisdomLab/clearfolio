@@ -22,3 +22,6 @@
 ## 2026-07-14 - String.join 사용 시 불필요한 배열 할당 최적화
 **Learning:** 다수의 문자열 필드를 구분자와 함께 결합할 때 `String.join()`을 사용하면, 내부적으로 가변 인자(varargs) 배열이 생성되고 객체 할당이 발생하여 성능 저하 및 GC 압박이 발생할 수 있습니다.
 **Action:** 결합해야 할 필드가 많은 구조화된 레코드(예: `ArtifactLinkLedger`, `KpiSnapshotLedger`의 직렬화)의 경우, `String.join()` 대신 미리 크기가 계산된 `StringBuilder`를 초기화하고 `append()`를 체이닝하여 중간 객체 할당을 방지하고 성능을 최적화해야 합니다.
+## 2026-09-24 - StringBuilder 사용 시 불필요한 배열 및 임시 객체 할당 최적화
+**Learning:** `AuditPseudonymizer.java`의 `fingerprint` 메서드에서 반환 문자열을 생성할 때 `+` 연산자와 `HexFormat.formatHex(digest, 0, FINGERPRINT_BYTES)`를 혼용하면 내부적으로 여러 `StringBuilder`와 중간 문자열 객체가 생성되어 메모리 사용량과 가비지 컬렉션(GC) 압박이 증가합니다.
+**Action:** 직렬화나 문자열 조합 시, 미리 계산된 크기로 `StringBuilder`를 초기화하고 체이닝된 `append`와 `HexFormat.formatHex(Appendable, byte[], int, int)` 메서드를 사용하여 단일 버퍼에서 문자열을 조립함으로써 불필요한 객체 할당을 방지해야 합니다.

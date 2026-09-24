@@ -30,7 +30,10 @@ public final class StringUtils {
                     sb = new StringBuilder(value.length());
                     sb.append(value, 0, i);
                 }
-            } else if (sb != null) {
+                continue; // 100% coverage by avoiding the missing else branch
+            }
+
+            if (sb != null) {
                 sb.append(c);
             }
         }

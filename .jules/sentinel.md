@@ -32,3 +32,7 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## 2026-09-22 - [시크릿 설정의 빈 문자열 폴백 제거]
+**Vulnerability:** Spring Boot 설정에서 @Value 애노테이션 사용 시, `${secret:}`와 같이 빈 문자열 폴백이 존재하여 시크릿이 환경변수/KV에 마운트되지 않았을 때 프로그램이 암묵적으로 빈 문자열을 시크릿으로 사용하여 보안 서명이 취약해지는 문제 발견.
+**Learning:** 스프링 부트에서 빈 문자열 폴백을 허용하면 시작 시점(fail-fast)에 오류가 나지 않고, 런타임에 유효하지 않은 시크릿으로 동작하게 됨.
+**Prevention:** 런타임 시크릿 주입 시 `@Value("${secret}")`처럼 빈 문자열 폴백을 제거하여, 값이 없을 때 `IllegalArgumentException` 등이 발생하며 애플리케이션 시작을 차단하도록 강제해야 함.

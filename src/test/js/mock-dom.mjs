@@ -1,30 +1,3 @@
-export class MockDocumentFragment {
-  constructor() {
-    this.childNodes = [];
-  }
-
-  appendChild(node) {
-    if (node instanceof MockDocumentFragment) {
-      this.childNodes.push(...node.childNodes);
-      node.childNodes = [];
-      return node;
-    }
-    this.childNodes.push(node);
-    return node;
-  }
-
-  append(...nodes) {
-    for (const node of nodes) {
-      if (node instanceof MockDocumentFragment) {
-        this.childNodes.push(...node.childNodes);
-        node.childNodes = [];
-      } else {
-        this.childNodes.push(node);
-      }
-    }
-  }
-}
-
 export class MockTextNode {
   constructor(text) {
     this.type = "text";
@@ -58,24 +31,12 @@ export class MockElement {
   }
 
   appendChild(node) {
-    if (node instanceof MockDocumentFragment) {
-      this.childNodes.push(...node.childNodes);
-      node.childNodes = [];
-      return node;
-    }
     this.childNodes.push(node);
     return node;
   }
 
   append(...nodes) {
-    for (const node of nodes) {
-      if (node instanceof MockDocumentFragment) {
-        this.childNodes.push(...node.childNodes);
-        node.childNodes = [];
-      } else {
-        this.childNodes.push(node);
-      }
-    }
+    this.childNodes.push(...nodes);
   }
 
   replaceChildren(...nodes) {

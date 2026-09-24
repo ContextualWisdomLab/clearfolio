@@ -1,6 +1,4 @@
-⚡ Bolt: [성능 개선] DocumentFragment를 사용한 DOM 일괄 업데이트 적용
+🛡️ Sentinel: [CRITICAL] 파일 업로드 경로 조작(Path Traversal) 취약점 수정
 
-💡 What: `demo.js`의 `renderHistory` 함수에서 루프 내 `appendChild` 호출을 `DocumentFragment`를 활용한 단일 DOM 업데이트 방식으로 수정했습니다. 관련된 JS 테스트 코드를 지원하기 위해 `mock-dom.mjs`에 `MockDocumentFragment`를 추가하고 모든 테스트 모의 객체에 `createDocumentFragment`를 구현했습니다.
-🎯 Why: 루프를 돌며 DOM 요소를 하나씩 추가할 때 발생하는 반복적인 브라우저 리플로우(reflow) 및 리페인트(repaint) 오버헤드를 방지하여 렌더링 성능을 개선하기 위함입니다.
-📊 Impact: 요소 추가로 인한 불필요한 레이아웃 계산과 리페인트가 감소되어 히스토리 목록 렌더링 속도가 향상됩니다.
-🔬 Measurement: 수십 개 이상의 목록 데이터를 렌더링할 때 개발자 도구의 성능(Performance) 탭을 통해 렌더링(레이아웃/페인팅) 소요 시간 단축 여부를 확인합니다.
+MultipartFile.getOriginalFilename()을 신뢰하여 발생할 수 있는 경로 조작 취약점을 수정했습니다.
+StringUtils.cleanPath()를 사용하여 경로를 정규화하고 순수한 파일명만 추출하여 악의적인 페이로드(예: ../../../etc/passwd.hwp)로부터 시스템을 보호합니다.

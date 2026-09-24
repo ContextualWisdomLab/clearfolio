@@ -114,8 +114,6 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
-  const fragment = document.createDocumentFragment();
-
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -145,11 +143,8 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    fragment.appendChild(row);
+    el.historyBody.appendChild(row);
   }
-
-  // 💡 성능 최적화: DocumentFragment를 사용하여 리플로우(reflow)와 리페인트(repaint)를 최소화합니다. (DOM 일괄 업데이트)
-  el.historyBody.appendChild(fragment);
 
   renderRecoveryEvidence(history);
 }

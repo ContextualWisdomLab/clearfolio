@@ -242,6 +242,7 @@ async function openJobDetail(job) {
       refreshKpisAfterUpdate: false,
     });
     setStatus("Seeded job detail loaded.");
+    el.jobDetail.focus();
     return;
   }
   if (!job.statusUrl) {
@@ -268,6 +269,7 @@ async function openJobDetail(job) {
   });
   renderJobDetail(data);
   setStatus("Job detail loaded.");
+  el.jobDetail.focus();
 }
 
 async function retryActiveJob() {

@@ -185,7 +185,11 @@ public class ViewerUiController {
                         </div>
 
                         <form id="upload-form" class="upload-form" enctype="multipart/form-data">
-                          <label class="field-label" for="file-input">Document</label>
+                          <label class="field-label" for="file-input">Document
+                            <span aria-hidden="true"
+                                  style="color: var(--danger);"
+                                  title="Required">*</span>
+                          </label>
                           <input id="file-input" name="file" class="file-input" type="file" required />
 
                           <div class="actions">
@@ -299,10 +303,15 @@ public class ViewerUiController {
                             </thead>
                             <tbody id="history-body"></tbody>
                           </table>
-                          <p class="empty-state" id="empty-history">No documents submitted in this session.</p>
+                          <p class="empty-state" id="empty-history">
+                            No documents submitted in this session.
+                            Submit a document above to get started.
+                          </p>
                         </div>
 
-                        <aside class="job-detail" id="job-detail" aria-labelledby="job-detail-title" hidden>
+                        <aside class="job-detail" id="job-detail"
+                                 aria-labelledby="job-detail-title"
+                                 hidden tabindex="-1">
                           <div class="job-detail__header">
                             <div>
                               <h3 id="job-detail-title" class="job-detail__title">Job detail</h3>

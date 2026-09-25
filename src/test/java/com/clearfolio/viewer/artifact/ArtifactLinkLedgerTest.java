@@ -103,6 +103,7 @@ class ArtifactLinkLedgerTest {
 
         ledger.recordIssued(record);
         ledger.revoke("token-1", Instant.EPOCH.plusSeconds(1), "operator-1", "viewer closed");
+        ledger.revoke("token-1", Instant.EPOCH.plusSeconds(2), "operator-2", "already closed");
         ledger.recordRead(event);
 
         ArtifactLinkLedger reloaded = new ArtifactLinkLedger(ledgerPath);

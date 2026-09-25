@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-09-25 - Fail-Fast Startup for Missing Secrets
+**Vulnerability:** Spring Boot `@Value` annotations used default empty string fallbacks (e.g., `@Value("${secret:}")`) for security-critical secrets like `hmac-secret`.
+**Learning:** This design silently defaults missing secrets to empty strings at startup, preventing explicit fail-fast mechanisms when secrets are unmounted or misconfigured in production, which causes services to operate with known weak/default keys.
+**Prevention:** Remove default fallbacks from `@Value` for security-critical properties (e.g., use `@Value("${secret}")`), forcing a hard context initialization failure ( `IllegalArgumentException: Could not resolve placeholder`) if they are absent.

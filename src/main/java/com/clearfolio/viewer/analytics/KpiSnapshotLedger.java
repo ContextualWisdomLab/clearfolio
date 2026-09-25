@@ -27,13 +27,22 @@ import com.clearfolio.viewer.auth.TenantContext;
 @Repository
 public class KpiSnapshotLedger {
 
+    /** SNAPSHOT constant. */
     private static final String SNAPSHOT = "SNAPSHOT";
+    /** NULL field constant. */
     private static final String NULL_FIELD = "-";
-    private static final Base64.Encoder ENCODER = Base64.getUrlEncoder().withoutPadding();
+    /** Encoder. */
+    private static final Base64.Encoder ENCODER =
+            Base64.getUrlEncoder().withoutPadding();
+    /** Decoder. */
     private static final Base64.Decoder DECODER = Base64.getUrlDecoder();
 
-    private final ConcurrentLinkedQueue<KpiSnapshotRecord> snapshots = new ConcurrentLinkedQueue<>();
+    /** Snapshots. */
+    private final ConcurrentLinkedQueue<KpiSnapshotRecord> snapshots
+            = new ConcurrentLinkedQueue<>();
+    /** Ledger path. */
     private final Path ledgerPath;
+    /** Clock. */
     private final Clock clock;
 
     /**
@@ -46,16 +55,18 @@ public class KpiSnapshotLedger {
     /**
      * Creates a KPI snapshot ledger with optional file-backed persistence.
      *
-     * @param ledgerPath configured append-only ledger path
+     * @param path configured append-only ledger path
      */
     @Autowired
-    public KpiSnapshotLedger(@Value("${clearfolio.analytics-snapshot-ledger.path:}") String ledgerPath) {
-        this(pathOf(ledgerPath), Clock.systemUTC());
+    public KpiSnapshotLedger(
+            @Value("${clearfolio.analytics-snapshot-ledger.path:}")
+            final String path) {
+        this(pathOf(path), Clock.systemUTC());
     }
 
-    KpiSnapshotLedger(Path ledgerPath, Clock clock) {
-        this.ledgerPath = ledgerPath;
-        this.clock = clock;
+    KpiSnapshotLedger(final Path path, final Clock clockArg) {
+        this.ledgerPath = path;
+        this.clock = clockArg;
         load();
     }
 
@@ -65,7 +76,9 @@ public class KpiSnapshotLedger {
      * @param tenantContext tenant and subject that requested the snapshot
      * @param snapshot KPI payload returned to the caller
      */
-    public synchronized void recordSnapshot(TenantContext tenantContext, KpiSnapshotResponse snapshot) {
+    public synchronized void recordSnapshot(
+            final TenantContext tenantContext,
+            final KpiSnapshotResponse snapshot) {
         KpiSnapshotRecord record = new KpiSnapshotRecord(
                 tenantContext.tenantId(),
                 tenantContext.subjectId(),
@@ -89,7 +102,7 @@ public class KpiSnapshotLedger {
      * @param tenantId tenant identifier
      * @return matching snapshot evidence
      */
-    public List<KpiSnapshotRecord> snapshotsFor(String tenantId) {
+    public List<KpiSnapshotRecord> snapshotsFor(final String tenantId) {
         return snapshots.stream()
                 .filter(snapshot -> snapshot.tenantId().equals(tenantId))
                 .toList();
@@ -99,16 +112,18 @@ public class KpiSnapshotLedger {
         if (ledgerPath == null) {
             return;
         }
-        try (Stream<String> lines = Files.lines(ledgerPath, StandardCharsets.UTF_8)) {
+        try (Stream<String> lines =
+                     Files.lines(ledgerPath, StandardCharsets.UTF_8)) {
             lines.forEach(this::replayLine);
         } catch (java.nio.file.NoSuchFileException ex) {
             // Ignore missing ledger file
         } catch (IOException | UncheckedIOException ex) {
-            throw new IllegalStateException("kpi snapshot ledger cannot be loaded", ex);
+            throw new IllegalStateException(
+                    "kpi snapshot ledger cannot be loaded", ex);
         }
     }
 
-    private void replayLine(String line) {
+    private void replayLine(final String line) {
         String[] fields = line.split("\t", -1);
         if (fields.length != 12 || !SNAPSHOT.equals(fields[0])) {
             throw invalidLine();
@@ -128,7 +143,7 @@ public class KpiSnapshotLedger {
         ));
     }
 
-    private void appendLine(String line) {
+    private void appendLine(final String line) {
         if (ledgerPath == null) {
             return;
         }
@@ -143,11 +158,12 @@ public class KpiSnapshotLedger {
                     StandardOpenOption.APPEND
             );
         } catch (IOException ex) {
-            throw new IllegalStateException("kpi snapshot ledger cannot be written", ex);
+            throw new IllegalStateException(
+                    "kpi snapshot ledger cannot be written", ex);
         }
     }
 
-    private static String serialize(KpiSnapshotRecord record) {
+    private static String serialize(final KpiSnapshotRecord record) {
         return String.join("\t",
                 SNAPSHOT,
                 field(record.tenantId()),
@@ -164,19 +180,19 @@ public class KpiSnapshotLedger {
         );
     }
 
-    private static String field(String value) {
+    private static String field(final String value) {
         return ENCODER.encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 
-    private static String field(Instant instant) {
+    private static String field(final Instant instant) {
         return instant.toString();
     }
 
-    private static String field(Long value) {
+    private static String field(final Long value) {
         return value == null ? NULL_FIELD : String.valueOf(value);
     }
 
-    private static String value(String field) {
+    private static String value(final String field) {
         if (NULL_FIELD.equals(field)) {
             return null;
         }
@@ -187,7 +203,7 @@ public class KpiSnapshotLedger {
         }
     }
 
-    private static String requiredValue(String field) {
+    private static String requiredValue(final String field) {
         String value = value(field);
         if (value == null || value.isBlank()) {
             throw invalidLine();
@@ -195,7 +211,7 @@ public class KpiSnapshotLedger {
         return value;
     }
 
-    private static Instant instant(String field) {
+    private static Instant instant(final String field) {
         try {
             return Instant.parse(field);
         } catch (DateTimeException ex) {
@@ -203,7 +219,7 @@ public class KpiSnapshotLedger {
         }
     }
 
-    private static int integer(String field) {
+    private static int integer(final String field) {
         try {
             return Integer.parseInt(field);
         } catch (NumberFormatException ex) {
@@ -211,7 +227,7 @@ public class KpiSnapshotLedger {
         }
     }
 
-    private static double rate(String field) {
+    private static double rate(final String field) {
         try {
             return Double.parseDouble(field);
         } catch (NumberFormatException ex) {
@@ -219,7 +235,7 @@ public class KpiSnapshotLedger {
         }
     }
 
-    private static Long nullableLong(String field) {
+    private static Long nullableLong(final String field) {
         if (NULL_FIELD.equals(field)) {
             return null;
         }
@@ -230,16 +246,18 @@ public class KpiSnapshotLedger {
         }
     }
 
-    private static Path pathOf(String value) {
+    private static Path pathOf(final String value) {
         String cleaned = value == null ? null : value.strip();
         return cleaned == null || cleaned.isEmpty() ? null : Path.of(cleaned);
     }
 
     private static IllegalStateException invalidLine() {
-        return new IllegalStateException("kpi snapshot ledger contains an invalid line");
+        return new IllegalStateException(
+                "kpi snapshot ledger contains an invalid line");
     }
 
-    private static IllegalStateException invalidLine(Throwable cause) {
-        return new IllegalStateException("kpi snapshot ledger contains an invalid line", cause);
+    private static IllegalStateException invalidLine(final Throwable cause) {
+        return new IllegalStateException(
+                "kpi snapshot ledger contains an invalid line", cause);
     }
 }

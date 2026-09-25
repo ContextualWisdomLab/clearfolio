@@ -31,12 +31,24 @@ export class MockElement {
   }
 
   appendChild(node) {
+    if (node && node.type === "document-fragment") {
+      this.childNodes.push(...node.childNodes);
+      node.childNodes = [];
+      return node;
+    }
     this.childNodes.push(node);
     return node;
   }
 
   append(...nodes) {
-    this.childNodes.push(...nodes);
+    for (const node of nodes) {
+      if (node && node.type === "document-fragment") {
+        this.childNodes.push(...node.childNodes);
+        node.childNodes = [];
+      } else {
+        this.childNodes.push(node);
+      }
+    }
   }
 
   replaceChildren(...nodes) {
@@ -74,4 +86,20 @@ export class MockElement {
   focus() {}
 
   reset() {}
+}
+
+export class MockDocumentFragment {
+  constructor() {
+    this.type = "document-fragment";
+    this.childNodes = [];
+  }
+
+  appendChild(node) {
+    this.childNodes.push(node);
+    return node;
+  }
+
+  append(...nodes) {
+    this.childNodes.push(...nodes);
+  }
 }

@@ -19,3 +19,7 @@
 ## 2026-07-13 - 단일 패스 문자열 치환 최적화 (O(N) 단일 스캔 및 지연 할당)
 **Learning:** `String.replace()`를 여러 번 체이닝하여 호출하면, 문자열 치환이 발생하지 않는 경우에도 내부적으로 불필요한 스캔이 중복 발생하고, 치환 시마다 새로운 문자열 객체와 char 배열이 할당되어 메모리 낭비와 성능 저하(GC 압박)가 발생한다.
 **Action:** 여러 문자를 한 번에 치환해야 하는 경우, O(N) 단일 스캔을 통해 `charAt()`으로 문자를 확인하고, 치환이 실제로 필요한 경우에만 `StringBuilder`를 지연 할당(Lazy allocation)하여 성능을 최적화하고 불필요한 메모리 할당을 방지한다.
+
+## 2026-09-25 - [프론트엔드 성능: DocumentFragment를 사용한 DOM 일괄 처리]
+**Learning:** DocumentFragment를 사용하여 반복적인 DOM 삽입을 최적화하면 레이아웃 스래싱(layout thrashing)을 줄일 수 있습니다. 하지만 사용자 정의 모의 DOM(custom mock DOMs)과 같은 테스트 환경이 append 중 childNodes 순회 및 삽입 시 fragment 비우기 등 fragment의 동작을 제대로 에뮬레이션하는지 확인해야 합니다.
+**Action:** 일괄 처리(batching)를 위해 DocumentFragment를 도입할 때는 테스트 커버리지와 정확성을 유지하기 위해 사용자 정의 테스트 DOM 추상화가 fragment 시맨틱스를 지원하는지 항상 확인하고 업데이트해야 합니다.

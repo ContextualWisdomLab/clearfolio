@@ -71,7 +71,7 @@ public class ArtifactStoreProperties {
      * @param rootDir artifact storage root directory
      */
     public void setRootDir(final String rootDir) {
-        String sanitized = rootDir == null ? "" : StringUtils.removeNullChars(rootDir).strip();
+        String sanitized = rootDir == null ? "" : rootDir.replace("\u0000", "").strip();
         this.rootDir = sanitized.isEmpty() ? DEFAULT_ROOT_DIR : sanitized;
     }
 

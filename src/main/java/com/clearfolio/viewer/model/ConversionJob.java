@@ -1,5 +1,7 @@
 package com.clearfolio.viewer.model;
 
+import com.clearfolio.viewer.util.StringUtils;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -118,11 +120,8 @@ public class ConversionJob {
         this.deadLettered = false;
     }
 
-    private String sanitize(String value) {
-        if (value == null) {
-            return null;
-        }
-        return value.replace("\u0000", "");
+    private String sanitize(final String value) {
+        return StringUtils.removeNullChars(value);
     }
 
     private String normalizeOrDefault(String value, String fallback) {

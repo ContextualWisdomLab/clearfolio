@@ -1,5 +1,7 @@
 package com.clearfolio.viewer.config;
 
+import com.clearfolio.viewer.util.StringUtils;
+
 import java.util.Locale;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -48,7 +50,7 @@ public class ArtifactStoreProperties {
      *
      * @param mode artifact store mode
      */
-    public void setMode(String mode) {
+    public void setMode(final String mode) {
         String sanitized = sanitize(mode);
         this.mode = sanitized.isEmpty() ? MODE_FILESYSTEM : sanitized;
     }
@@ -68,7 +70,7 @@ public class ArtifactStoreProperties {
      *
      * @param rootDir artifact storage root directory
      */
-    public void setRootDir(String rootDir) {
+    public void setRootDir(final String rootDir) {
         String sanitized = rootDir == null ? "" : rootDir.replace("\u0000", "").strip();
         this.rootDir = sanitized.isEmpty() ? DEFAULT_ROOT_DIR : sanitized;
     }
@@ -82,10 +84,10 @@ public class ArtifactStoreProperties {
         return MODE_IN_MEMORY.equals(mode);
     }
 
-    private static String sanitize(String value) {
+    private static String sanitize(final String value) {
         if (value == null) {
             return "";
         }
-        return value.replace("\u0000", "").strip().toLowerCase(Locale.ROOT);
+        return StringUtils.removeNullChars(value).strip().toLowerCase(Locale.ROOT);
     }
 }

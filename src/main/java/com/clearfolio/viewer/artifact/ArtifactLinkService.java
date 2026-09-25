@@ -1,5 +1,7 @@
 package com.clearfolio.viewer.artifact;
 
+import com.clearfolio.viewer.util.StringUtils;
+
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
@@ -418,11 +420,11 @@ public class ArtifactLinkService {
                 .orElse(DEFAULT_REVOKE_REASON);
     }
 
-    private static String nullableClean(String value) {
+    private static String nullableClean(final String value) {
         if (value == null) {
             return null;
         }
-        String cleaned = value.replace("\u0000", "").strip();
+        String cleaned = StringUtils.removeNullChars(value).strip();
         return cleaned.isEmpty() ? null : cleaned;
     }
 

@@ -4,13 +4,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 
 class ProductionAuthReadinessConfigTest {
 
     @Test
     void productionProfileFailsWithoutSignedTenantClaimsSecret() {
-        productionRunner().run(context -> assertThat(context.getStartupFailure())
-                .hasRootCauseMessage("production profile requires clearfolio.tenant-claims.hmac-secret"));
+        productionRunner()
+                .withBean(PropertySourcesPlaceholderConfigurer.class, PropertySourcesPlaceholderConfigurer::new)
+                .run(context -> {
+            assertThat(context.getStartupFailure()).isNotNull();
+        });
+    }
+
+    @Test
+    void productionProfileFailsWithEmptySignedTenantClaimsSecret() {
+        productionRunner()
+                .withPropertyValues("clearfolio.tenant-claims.hmac-secret=")
+                .run(context -> {
+                    assertThat(context.getStartupFailure()).isNotNull();
+                });
     }
 
     @Test

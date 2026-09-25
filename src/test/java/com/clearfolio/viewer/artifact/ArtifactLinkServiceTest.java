@@ -26,6 +26,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.junit.jupiter.api.BeforeEach;
+import com.clearfolio.viewer.auth.CredentialRegistryPort;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -153,7 +154,8 @@ class ArtifactLinkServiceTest {
     @Test
     void springConstructorUsesProvidedLedger() {
         ArtifactLinkLedger ledger = new ArtifactLinkLedger();
-        ArtifactLinkService serviceWithLedger = new ArtifactLinkService(artifactStore, ledger, SECRET);
+        CredentialRegistryPort credentialRegistryPort = (CredentialRegistryPort) (final String name) -> CredentialRegistryPort.ARTIFACT_TOKEN_SECRET.equals(name) ? java.util.Optional.of(SECRET) : java.util.Optional.empty();
+        ArtifactLinkService serviceWithLedger = new ArtifactLinkService(artifactStore, ledger, credentialRegistryPort);
         UUID docId = UUID.randomUUID();
         ConversionJob job = succeededJob(docId);
         artifactStore.putPdf(docId, sampleBytes());

@@ -30,6 +30,7 @@ import com.clearfolio.viewer.api.ArtifactLinkRevocationRequest;
 import com.clearfolio.viewer.api.ArtifactLinkRevocationResponse;
 import com.clearfolio.viewer.api.ArtifactLinkResponse;
 import com.clearfolio.viewer.api.ArtifactReadEventResponse;
+import com.clearfolio.viewer.auth.CredentialRegistryPort;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
@@ -79,8 +80,8 @@ public class ArtifactLinkService {
     public ArtifactLinkService(
             ArtifactStore artifactStore,
             ArtifactLinkLedger artifactLinkLedger,
-            @Value("${clearfolio.artifact-token.secret:}") String configuredSecret) {
-        this(artifactStore, artifactLinkLedger, configuredSecret, Clock.systemUTC(), new SecureRandom());
+            final CredentialRegistryPort credentialRegistryPort) {
+        this(artifactStore, artifactLinkLedger, credentialRegistryPort.getCredential(CredentialRegistryPort.ARTIFACT_TOKEN_SECRET).orElse(""), Clock.systemUTC(), new SecureRandom());
     }
 
     /**

@@ -47,9 +47,9 @@ public class TenantAccessService {
      */
     @Autowired
     public TenantAccessService(
-            @Value("${clearfolio.tenant-claims.hmac-secret:}") String claimsHmacSecret,
-            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
-        this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
+            final CredentialRegistryPort credentialRegistryPort,
+            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") final long maxSkewSeconds) {
+        this(credentialRegistryPort.getCredential(CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET).orElse(""), maxSkewSeconds, Clock.systemUTC());
     }
 
     TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {

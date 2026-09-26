@@ -9,6 +9,7 @@ import com.code_intelligence.jazzer.api.FuzzedDataProvider;
 import com.code_intelligence.jazzer.junit.FuzzTest;
 
 import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.CredentialRegistryPort;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.auth.TenantPermissions;
 
@@ -29,7 +30,7 @@ import com.clearfolio.viewer.auth.TenantPermissions;
 final class TenantClaimsFuzzTest {
 
     private final TenantAccessService accessService =
-            new TenantAccessService("clearfolio-fuzz-claims-secret", 300L);
+            new TenantAccessService((CredentialRegistryPort) (final String name) -> CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET.equals(name) ? java.util.Optional.of("clearfolio-fuzz-claims-secret") : java.util.Optional.empty(), 300L);
 
     @FuzzTest(maxDuration = "60s")
     void headerClaimsParsingIsRobust(FuzzedDataProvider data) {

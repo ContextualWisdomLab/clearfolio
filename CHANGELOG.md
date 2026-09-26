@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### 변경됨
+- 환경변수를 직접 읽던 방식에서 벗어나 `CredentialRegistryPort` 인터페이스를 통해 비밀 키를 가져오도록 `ArtifactLinkService` 및 `TenantAccessService` 로직 개선 (보안 강화).
+- 개발 환경 편의를 위해 `EnvVarCredentialRegistryAdapter`를 추가하여 기본 동작 유지.
+
 ### Added
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.

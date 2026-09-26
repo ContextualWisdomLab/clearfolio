@@ -13,3 +13,6 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+## 2026-09-24 - CSS Grid Inline Elements
+**Learning:** When adding inline elements (like a visual required indicator) inside CSS grid containers like `.field-label`, wrapping the text and the new element together in a single `<span>` tag prevents `display: grid` from forcing the elements onto separate grid tracks.
+**Action:** Always wrap text and inline sibling elements in a single span when placing them directly inside a grid container to preserve inline flow.

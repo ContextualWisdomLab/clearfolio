@@ -74,7 +74,7 @@ public class ArtifactLinkService {
      *
      * @param artifactStore artifact byte store
      * @param artifactLinkLedger issued-link, revocation, and read-audit ledger
-     * @param configuredSecret optional deployment secret
+     * @param credentialRegistryPort credential registry used to resolve the deployment secret
      */
     @Autowired
     public ArtifactLinkService(

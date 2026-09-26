@@ -282,12 +282,15 @@ These groups cannot all remain independent merge candidates.
   document state or prevent keyboard/screen-reader users from completing the
   workflow.
 - **Existing authority:** issues #322, #324, and #476; PRs #323, #334, #445,
-  #465, #466, #472, #473, #477, #481.
+  #465, #466, #472, #473, #477, #481, and Draft #610 exact
+  `c071b387afd58d6dc9a77f131dc601bb34504c64`.
 - **Completion evidence:**
   - one generation/attempt owns each DOM publication;
   - superseded loading and render tasks are actively cancelled/destroyed;
   - no stale canvas, link, metadata, status, or focus publication;
   - no unhandled cancellation rejection;
+  - the Refresh CTA proves single-flight success, error, abort/restart, offline,
+    and exact child-node/disabled/ARIA restoration at the consumer boundary;
   - every state is independently renderable and testable in Storybook;
   - keyboard, focus-visible, busy/disabled, live-region, forced-colors,
     reduced-motion, responsive, and representative screen-reader tests pass;

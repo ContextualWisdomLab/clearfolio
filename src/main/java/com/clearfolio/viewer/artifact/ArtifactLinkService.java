@@ -334,7 +334,7 @@ public class ArtifactLinkService {
 
     private ArtifactTokenClaims parseAndVerify(final String token) {
         final int lastDotIndex = token.lastIndexOf('.');
-        if (lastDotIndex == -1 || lastDotIndex == token.length() - 1) {
+        if (lastDotIndex <= 0 || lastDotIndex == token.length() - 1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 

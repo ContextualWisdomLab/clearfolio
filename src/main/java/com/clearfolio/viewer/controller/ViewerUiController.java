@@ -181,11 +181,11 @@ public class ViewerUiController {
                             <h2 id="upload-title" class="panel__title">Upload document</h2>
                             <p class="panel__caption">Uses the existing async conversion API. History is stored only in this browser session.</p>
                           </div>
-                          <button type="button" class="btn btn-secondary btn-compact" id="load-demo-data-btn">Load demo story</button>
+                          <button type="button" class="btn btn-secondary btn-compact" id="load-demo-data-btn" aria-label="Load demo story (seeded data)">Load demo story</button>
                         </div>
 
                         <form id="upload-form" class="upload-form" enctype="multipart/form-data">
-                          <label class="field-label" for="file-input">Document</label>
+                          <label class="field-label" for="file-input"><span>Document <span class="error__title" aria-hidden="true">*</span></span></label>
                           <input id="file-input" name="file" class="file-input" type="file" required />
 
                           <div class="actions">
@@ -284,7 +284,7 @@ public class ViewerUiController {
                             <h2 id="history-title" class="panel__title">Session history</h2>
                             <p class="panel__caption">Open status JSON for diligence or launch the preview when conversion is ready.</p>
                           </div>
-                          <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn">Clear</button>
+                          <button type="button" class="btn btn-secondary btn-compact" id="clear-history-btn" aria-label="Clear session history">Clear</button>
                         </div>
 
                         <div class="table-wrap" id="session-history">

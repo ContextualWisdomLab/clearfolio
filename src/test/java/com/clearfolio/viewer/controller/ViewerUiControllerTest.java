@@ -20,6 +20,22 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 
 class ViewerUiControllerTest {
 
+    @Test
+    void demoRendersRequiredIndicatorCorrectly() {
+        webTestClient.get().uri("/")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
+                .expectBody(String.class).value(html -> {
+                    assertTrue(html.contains("aria-hidden=\"true\">*"),
+                            "Should contain accessible required indicator");
+                    assertTrue(html.contains("aria-label=\"Load demo story"),
+                            "Should contain accessible label for demo story button");
+                    assertTrue(html.contains("aria-label=\"Clear session history"),
+                            "Should contain accessible label for clear button");
+                });
+    }
+
     private WebTestClient webTestClient;
 
     @BeforeEach

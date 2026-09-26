@@ -231,47 +231,47 @@ public class ArtifactLinkLedger {
         }
     }
 
-    private static String serializeIssued(ArtifactLinkRecord record) {
-        return String.join("\t",
-                ISSUED,
-                field(record.tokenId()),
-                field(record.tenantId()),
-                field(record.subjectId()),
-                record.docId().toString(),
-                field(record.scope()),
-                field(record.purpose()),
-                field(record.artifactChecksum()),
-                field(record.viewerSessionId()),
-                field(record.issuedAt()),
-                field(record.expiresAt()),
-                field(record.revokedAt()),
-                field(record.revokedBy()),
-                field(record.revokeReason())
-        );
+    private static String serializeIssued(final ArtifactLinkRecord record) {
+        return new StringBuilder(256)
+                .append(ISSUED).append('\t')
+                .append(field(record.tokenId())).append('\t')
+                .append(field(record.tenantId())).append('\t')
+                .append(field(record.subjectId())).append('\t')
+                .append(record.docId()).append('\t')
+                .append(field(record.scope())).append('\t')
+                .append(field(record.purpose())).append('\t')
+                .append(field(record.artifactChecksum())).append('\t')
+                .append(field(record.viewerSessionId())).append('\t')
+                .append(field(record.issuedAt())).append('\t')
+                .append(field(record.expiresAt())).append('\t')
+                .append(field(record.revokedAt())).append('\t')
+                .append(field(record.revokedBy())).append('\t')
+                .append(field(record.revokeReason()))
+                .toString();
     }
 
-    private static String serializeRevoked(ArtifactLinkRecord record) {
-        return String.join("\t",
-                REVOKED,
-                field(record.tokenId()),
-                field(record.revokedAt()),
-                field(record.revokedBy()),
-                field(record.revokeReason())
-        );
+    private static String serializeRevoked(final ArtifactLinkRecord record) {
+        return new StringBuilder(128)
+                .append(REVOKED).append('\t')
+                .append(field(record.tokenId())).append('\t')
+                .append(field(record.revokedAt())).append('\t')
+                .append(field(record.revokedBy())).append('\t')
+                .append(field(record.revokeReason()))
+                .toString();
     }
 
-    private static String serializeRead(ArtifactReadEvent event) {
-        return String.join("\t",
-                READ,
-                field(event.tenantId()),
-                field(event.subjectId()),
-                event.docId().toString(),
-                field(event.tokenId()),
-                field(event.rangeRequested()),
-                String.valueOf(event.statusCode()),
-                field(event.traceId()),
-                field(event.readAt())
-        );
+    private static String serializeRead(final ArtifactReadEvent event) {
+        return new StringBuilder(256)
+                .append(READ).append('\t')
+                .append(field(event.tenantId())).append('\t')
+                .append(field(event.subjectId())).append('\t')
+                .append(event.docId()).append('\t')
+                .append(field(event.tokenId())).append('\t')
+                .append(field(event.rangeRequested())).append('\t')
+                .append(event.statusCode()).append('\t')
+                .append(field(event.traceId())).append('\t')
+                .append(field(event.readAt()))
+                .toString();
     }
 
     private static String field(String value) {

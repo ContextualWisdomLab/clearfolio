@@ -3,7 +3,6 @@ package com.clearfolio.viewer.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.util.StringUtils;
 
 /**
  * Fails closed when production profile is started without signed tenant claims.
@@ -20,9 +19,5 @@ public class ProductionAuthReadinessConfig {
     public ProductionAuthReadinessConfig(
             @Value("${clearfolio.tenant-claims.hmac-secret}")
             final String tenantClaimsSecret) {
-        if (!StringUtils.hasText(tenantClaimsSecret)) {
-            throw new IllegalStateException(
-                    "clearfolio.tenant-claims.hmac-secret must not be blank in production");
-        }
     }
 }

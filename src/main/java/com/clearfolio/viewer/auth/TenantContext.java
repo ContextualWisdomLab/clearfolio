@@ -121,19 +121,10 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
         }
 
         LinkedHashSet<String> parsed = new LinkedHashSet<>();
-        int prev = 0;
-        int next;
-        while ((next = normalized.indexOf(',', prev)) != -1) {
-            String val = sanitize(normalized.substring(prev, next));
-            if (val != null) {
-                parsed.add(val);
-            }
-            prev = next + 1;
-        }
-        String val = sanitize(normalized.substring(prev));
-        if (val != null) {
-            parsed.add(val);
-        }
+        Arrays.stream(normalized.split(","))
+                .map(TenantContext::sanitize)
+                .filter(value -> value != null)
+                .forEach(parsed::add);
         return parsed;
     }
 

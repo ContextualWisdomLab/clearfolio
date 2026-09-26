@@ -13,3 +13,6 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+## 2024-08-25 - viewer.js 비동기 버튼 로딩 상태 개선
+**Learning:** `viewer.js`의 `Refresh` 버튼이 `setBusyState` 유틸리티를 사용하지 않고 직접 `disabled`와 `textContent`를 조작하고 있어, 접근성(ARIA) 속성이 누락되고 원래 DOM 구조 복원이 보장되지 않는 문제가 있었습니다.
+**Action:** `demo.js`와 동일하게 `viewer.js`에서도 `setBusyState`를 도입하여 비동기 작업 중 일관된 로딩 상태와 접근성(ARIA) 피드백을 제공하도록 개선했습니다.

@@ -20,6 +20,6 @@
 **Learning:** `String.replace()`를 여러 번 체이닝하여 호출하면, 문자열 치환이 발생하지 않는 경우에도 내부적으로 불필요한 스캔이 중복 발생하고, 치환 시마다 새로운 문자열 객체와 char 배열이 할당되어 메모리 낭비와 성능 저하(GC 압박)가 발생한다.
 **Action:** 여러 문자를 한 번에 치환해야 하는 경우, O(N) 단일 스캔을 통해 `charAt()`으로 문자를 확인하고, 치환이 실제로 필요한 경우에만 `StringBuilder`를 지연 할당(Lazy allocation)하여 성능을 최적화하고 불필요한 메모리 할당을 방지한다.
 
-## 2026-08-26 - Avoid String.split() for JWT/token parsing
-**Learning:** Using `String.split()` and Java Streams for parsing simple delimited tokens creates unnecessary array allocations and functional overhead. Defer the extraction and allocation of individual token fields until *after* the HMAC signature has been verified.
-**Action:** Use manual loops with `indexOf()` and `substring()` instead to reduce GC pressure and fail-fast before allocating garbage for parsed claims when handling maliciously crafted or invalid tokens.
+## 2026-08-26 - JWT/토큰 파싱 시 String.split() 사용 지양
+**Learning:** 단순한 구분 기호가 있는 토큰을 파싱할 때 `String.split()`이나 Java Stream을 사용하면 불필요한 배열 할당 및 함수형 오버헤드가 발생합니다. 개별 토큰 필드의 추출 및 할당을 HMAC 서명 검증 *이후*로 지연시켜야 합니다.
+**Action:** 루프 내에서 `indexOf()`와 `substring()`을 대신 사용하여 GC 압박을 줄이고, 악의적으로 조작되거나 유효하지 않은 토큰을 처리할 때 파싱된 클레임에 대한 가비지를 할당하기 전에 빠르게 실패(fail-fast)하도록 구현합니다.

@@ -88,7 +88,7 @@ public class ArtifactLinkService {
      * Creates the link service with an isolated runtime ledger.
      *
      * @param artifactStore artifact byte store
-     * @param credentialRegistryPort port to retrieve secrets from key vault
+     * @param configuredSecret optional deployment secret
      */
     public ArtifactLinkService(
             ArtifactStore artifactStore,

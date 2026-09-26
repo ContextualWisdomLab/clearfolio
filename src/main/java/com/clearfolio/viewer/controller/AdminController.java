@@ -29,20 +29,26 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 @RestController
 public class AdminController {
 
+    /**
+     * Document conversion service.
+     */
     private final DocumentConversionService conversionService;
+    /**
+     * Tenant access service.
+     */
     private final TenantAccessService tenantAccessService;
 
     /**
      * Creates a controller for admin operations.
      *
-     * @param conversionService conversion service
-     * @param tenantAccessService tenant access service
+     * @param pConversionService conversion service
+     * @param pTenantAccessService tenant access service
      */
     public AdminController(
-            final DocumentConversionService conversionService,
-            final TenantAccessService tenantAccessService) {
-        this.conversionService = conversionService;
-        this.tenantAccessService = tenantAccessService;
+            final DocumentConversionService pConversionService,
+            final TenantAccessService pTenantAccessService) {
+        this.conversionService = pConversionService;
+        this.tenantAccessService = pTenantAccessService;
     }
 
     /**
@@ -125,12 +131,15 @@ public class AdminController {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "job not found"));
         tenantAccessService.requireSameTenant(tenantContext, job);
-        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
+        RetryDeadLetterResult result = conversionService
+                .retryDeadLettered(jobId, "admin");
         if (result == RetryDeadLetterResult.NOT_FOUND) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "job not found");
         }
         if (result == RetryDeadLetterResult.NOT_ELIGIBLE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "job is not eligible for retry");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "job is not eligible for retry");
         }
         return ResponseEntity.accepted().build();
     }

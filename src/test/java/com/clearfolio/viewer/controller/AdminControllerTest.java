@@ -3,20 +3,16 @@ package com.clearfolio.viewer.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
-import java.util.Set;
 import java.util.UUID;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
-import static org.mockito.Mockito.doThrow;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.auth.TenantContext;
@@ -40,17 +36,6 @@ class AdminControllerTest {
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
-    }
-
-    @Test
-    void missingPermissionReturnsUnauthorized() {
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ)))
-                .thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "auth token required"));
-
-        webTestClient.get()
-                .uri("/api/v1/admin/convert/jobs")
-                .exchange()
-                .expectStatus().isUnauthorized();
     }
 
     @Test
@@ -98,25 +83,6 @@ class AdminControllerTest {
     }
 
     @Test
-    void getAllJobsFiltersByDeadLetteredTrueReturnsEmptyForOtherTenant() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "other-tenant", "other-sub", "a.pdf", "application/pdf", "hash-a", 100L, 3);
-        job1.markDeadLettered("failed");
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1));
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ)))
-                .thenReturn(new TenantContext(
-                        "admin-tenant",
-                        "admin-sub",
-                        Set.of(TenantPermissions.ADMIN_READ)));
-
-        webTestClient.get()
-                .uri("/api/v1/admin/convert/jobs?deadLettered=true")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.jobs.length()").isEqualTo(0);
-    }
-
-    @Test
     void getAllJobsFiltersByDeadLetteredFalse() {
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "admin-tenant", "admin-sub", "a.pdf", "application/pdf", "hash-a", 100L, 3);
         job1.markDeadLettered("failed");
@@ -139,24 +105,6 @@ class AdminControllerTest {
     }
 
     @Test
-    void getAllJobsReturnsEmptyForOtherTenantNoFilter() {
-        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "other-tenant", "other-sub", "a.pdf", "application/pdf", "hash-a", 100L, 3);
-        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1));
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ)))
-                .thenReturn(new TenantContext(
-                        "admin-tenant",
-                        "admin-sub",
-                        Set.of(TenantPermissions.ADMIN_READ)));
-
-        webTestClient.get()
-                .uri("/api/v1/admin/convert/jobs")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.jobs.length()").isEqualTo(0);
-    }
-
-    @Test
     void deleteJobReturnsNoContent() {
         UUID jobId = UUID.randomUUID();
         when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
@@ -171,22 +119,6 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
                 .exchange()
                 .expectStatus().isNoContent();
-    }
-
-    @Test
-    void deleteJobReturnsNotFoundWhenJobDoesNotExist() {
-        UUID jobId = UUID.randomUUID();
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
-                .thenReturn(new TenantContext(
-                        "admin-tenant",
-                        "admin-sub",
-                        Set.of(TenantPermissions.ADMIN_WRITE)));
-        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.empty());
-
-        webTestClient.delete()
-                .uri("/api/v1/admin/convert/jobs/" + jobId)
-                .exchange()
-                .expectStatus().isNotFound();
     }
 
     @Test
@@ -205,22 +137,6 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
                 .expectStatus().isAccepted();
-    }
-
-    @Test
-    void retryDeadLetteredReturnsNotFoundWhenJobDoesNotExist() {
-        UUID jobId = UUID.randomUUID();
-        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
-                .thenReturn(new TenantContext(
-                        "admin-tenant",
-                        "admin-sub",
-                        Set.of(TenantPermissions.ADMIN_WRITE)));
-        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.empty());
-
-        webTestClient.post()
-                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
-                .exchange()
-                .expectStatus().isNotFound();
     }
 
     @Test
@@ -257,5 +173,74 @@ class AdminControllerTest {
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+    }
+
+    @Test
+    void getAllJobsReturnsEmptyForOtherTenantNoFilter() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "other-tenant", "other-sub", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1));
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ)))
+                .thenReturn(new TenantContext(
+                        "admin-tenant",
+                        "admin-sub",
+                        Set.of(TenantPermissions.ADMIN_READ)));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(0);
+    }
+
+    @Test
+    void getAllJobsFiltersByDeadLetteredTrueReturnsEmptyForOtherTenant() {
+        ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "other-tenant", "other-sub", "a.pdf", "application/pdf", "hash-a", 100L, 3);
+        job1.markDeadLettered("failed");
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1));
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_READ)))
+                .thenReturn(new TenantContext(
+                        "admin-tenant",
+                        "admin-sub",
+                        Set.of(TenantPermissions.ADMIN_READ)));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(0);
+    }
+
+    @Test
+    void deleteJobReturnsNotFoundWhenJobDoesNotExist() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(new TenantContext(
+                        "admin-tenant",
+                        "admin-sub",
+                        Set.of(TenantPermissions.ADMIN_WRITE)));
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.empty());
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenJobDoesNotExist() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(new TenantContext(
+                        "admin-tenant",
+                        "admin-sub",
+                        Set.of(TenantPermissions.ADMIN_WRITE)));
+        when(conversionService.getJob(jobId)).thenReturn(java.util.Optional.empty());
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
     }
 }

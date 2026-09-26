@@ -74,7 +74,7 @@ public class ArtifactLinkService {
      *
      * @param artifactStore artifact byte store
      * @param artifactLinkLedger issued-link, revocation, and read-audit ledger
-     * @param configuredSecret optional deployment secret
+     * @param credentialRegistryPort port to retrieve secrets from key vault
      */
     @Autowired
     public ArtifactLinkService(
@@ -88,7 +88,7 @@ public class ArtifactLinkService {
      * Creates the link service with an isolated runtime ledger.
      *
      * @param artifactStore artifact byte store
-     * @param configuredSecret optional deployment secret
+     * @param credentialRegistryPort port to retrieve secrets from key vault
      */
     public ArtifactLinkService(
             ArtifactStore artifactStore,

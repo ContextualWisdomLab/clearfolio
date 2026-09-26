@@ -8,9 +8,14 @@ import {
 } from "../../main/resources/static/assets/viewer/dom-utils.js";
 import { MockElement, MockTextNode } from "./mock-dom.mjs";
 
+import { MockDocumentFragment } from "./mock-dom.mjs";
+
 globalThis.document = {
   createElement(tagName) {
     return new MockElement(tagName);
+  },
+  createDocumentFragment() {
+    return new MockDocumentFragment();
   }
 };
 

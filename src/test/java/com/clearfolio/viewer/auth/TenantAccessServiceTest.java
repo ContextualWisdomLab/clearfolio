@@ -44,12 +44,24 @@ class TenantAccessServiceTest {
     }
 
     @Test
-    void requireSkipsSignatureValidationWhenSecretIsBlankOrNull() {
-        TenantAccessService blankSecret = new TenantAccessService(" ", 300L, Clock.fixed(NOW, ZoneOffset.UTC));
+    void requireSkipsSignatureValidationWhenSecretIsNull() {
         TenantAccessService nullSecret = new TenantAccessService(null, 300L, Clock.fixed(NOW, ZoneOffset.UTC));
 
-        assertDoesNotThrow(() -> blankSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
         assertDoesNotThrow(() -> nullSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
+    }
+
+    @Test
+    void cleanMethodBranchCoverage() {
+        TenantAccessService signedService = signedService();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(TenantContext.TENANT_ID_HEADER, TenantContext.DEMO_TENANT_ID);
+        headers.set(TenantContext.SUBJECT_ID_HEADER, TenantContext.DEMO_SUBJECT_ID);
+        headers.set(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_READ);
+        headers.set(TenantContext.CLAIMS_ISSUED_AT_HEADER, "\u0000");
+        headers.set(TenantContext.CLAIMS_SIGNATURE_HEADER, "\u0000");
+
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+            () -> signedService.require(headers, TenantPermissions.JOB_READ));
     }
 
     @Test

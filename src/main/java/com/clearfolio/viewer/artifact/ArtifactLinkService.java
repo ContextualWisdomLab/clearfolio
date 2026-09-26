@@ -79,7 +79,7 @@ public class ArtifactLinkService {
     public ArtifactLinkService(
             ArtifactStore artifactStore,
             ArtifactLinkLedger artifactLinkLedger,
-            @Value("${clearfolio.artifact-token.secret:}") String configuredSecret) {
+            @Value("${clearfolio.artifact-token.secret}") String configuredSecret) {
         this(artifactStore, artifactLinkLedger, configuredSecret, Clock.systemUTC(), new SecureRandom());
     }
 

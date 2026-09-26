@@ -65,7 +65,6 @@ public final class TenantPermissions {
      * Permission required to execute administrative actions.
      */
     public static final String ADMIN_WRITE = "admin:write";
-
     private TenantPermissions() {
     }
 }

@@ -75,6 +75,7 @@ function showError(message) {
   el.liveStatus.textContent = "";
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
+
 }
 
 function clearPreview() {

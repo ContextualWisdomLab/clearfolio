@@ -1,8 +1,8 @@
 # Changelog
 
 ## [Unreleased]
-
 ### Added
+- [UI] `viewer.js`에서 비동기 로딩 중 `Refresh` 버튼의 DOM 구조를 보호하기 위해 `setBusyState`를 사용하도록 수정했습니다.
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**

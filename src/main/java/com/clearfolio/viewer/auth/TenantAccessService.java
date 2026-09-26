@@ -42,7 +42,7 @@ public class TenantAccessService {
     /**
      * Creates an access service with optional signed gateway claim validation.
      *
-     * @param claimsHmacSecret optional shared gateway HMAC secret
+     * @param credentialRegistryPort port to retrieve secrets from key vault
      * @param maxSkewSeconds maximum accepted clock skew in seconds
      */
     @Autowired

@@ -12,6 +12,11 @@ public class EnvVarCredentialRegistryAdapter implements CredentialRegistryPort {
 
     private final Environment environment;
 
+    /**
+     * Creates an adapter using the Spring Environment.
+     *
+     * @param environment Spring environment
+     */
     public EnvVarCredentialRegistryAdapter(final Environment environment) {
         this.environment = environment;
     }

@@ -16,7 +16,7 @@ public class ProductionAuthReadinessConfig {
     /**
      * Verifies that production cannot start with unsigned tenant headers.
      *
-     * @param tenantClaimsSecret shared gateway signing secret
+     * @param credentialRegistryPort port to retrieve secrets from key vault
      */
     public ProductionAuthReadinessConfig(
             final CredentialRegistryPort credentialRegistryPort) {

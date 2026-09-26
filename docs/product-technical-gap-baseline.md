@@ -664,3 +664,18 @@ fidelity on the same integrated release candidate.
 | Governance | current-head hosted checks and independent approval | FAIL |
 
 Unit and Maven success are correctness evidence, not a reflow or rendering-performance measurement. Keep both product deltas Draft/Proposed until the applicable rows pass.
+## 2026-09-27 history-render performance acceptance — #577
+
+PR #577 exact `2b486bb43defef3c4421004fa5d9b13aa679224b` is Draft/Proposed. It batches history rows through a native `DocumentFragment` and extends the mock DOM, but the stated reflow/repaint improvement has no real-browser measurement.
+
+| Concern | Required evidence | Status |
+|---|---|---|
+| Determinism / semantics | Same row order, cells, links/actions, empty-state and recovery evidence before/after batching | Mock source coverage; browser pending |
+| Accessibility / interaction | Table semantics, accessible names, pointer/touch/keyboard, AT and busy/disabled behavior | FAIL |
+| Responsive / locales | 320/768/desktop plus intermediate widths; ko/en/ja/zh/vi/es/de/fr wrapping and font fallback | FAIL |
+| Large-data performance | Fixed realistic history, hardware/runtime, warm-up, samples/failure denominator, layout/paint/main-thread/heap/GC median and p95 | FAIL |
+| Recovery | Reload, offline/stale/conflict/retry, interrupted render and lifecycle cleanup | FAIL |
+| Governance | Exact-head CI, Security, Semgrep and CodeQL are queued; fuzz is pending; prior approval is not sufficient for missing current evidence | FAIL |
+
+Keep the native batching delta, but do not claim a performance win or return #577 to Ready until browser profiling and the full interaction/recovery matrix are bound to the unchanged head.
+

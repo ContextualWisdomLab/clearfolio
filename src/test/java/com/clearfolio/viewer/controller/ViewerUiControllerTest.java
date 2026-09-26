@@ -228,4 +228,19 @@ class ViewerUiControllerTest {
                 .expectBody(String.class)
                 .value(body -> assertTrue(body.contains(docId.toString())));
     }
+
+    @Test
+    void viewerHtmlLoadsViewerJsAsModule() {
+        UUID docId = UUID.randomUUID();
+        webTestClient.get()
+                .uri("/viewer/{docId}", docId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
+                .expectBody(String.class)
+                .value(body -> {
+                    assertTrue(body.contains("<script type=\"module\" src=\"/assets/viewer/viewer.js\"></script>"));
+                });
+    }
+
 }

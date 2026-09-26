@@ -22,7 +22,8 @@ public class ProductionAuthReadinessConfig {
             final String tenantClaimsSecret) {
         if (!StringUtils.hasText(tenantClaimsSecret)) {
             throw new IllegalStateException(
-                    "clearfolio.tenant-claims.hmac-secret must not be blank in production");
+                    "clearfolio.tenant-claims.hmac-secret must not "
+                            + "be blank in production");
         }
     }
 }

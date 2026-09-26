@@ -20,8 +20,7 @@ class ProductionAuthReadinessConfigTest {
                 .withPropertyValues("clearfolio.tenant-claims.hmac-secret=   ")
                 .run(context -> assertThat(context.getStartupFailure())
                         .isNotNull()
-                        .hasRootCauseMessage(
-                                "clearfolio.tenant-claims.hmac-secret must not be blank in production"));
+                        .hasRootCauseMessage("clearfolio.tenant-claims.hmac-secret must not be blank in production"));
     }
 
     @Test

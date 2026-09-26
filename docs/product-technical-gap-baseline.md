@@ -651,3 +651,16 @@ Evaluate Clearfolio by completed buyer workstream and tagged evidence, not by
 raw PR count. The next action is to collapse the duplicate queue, establish the
 production identity/durability/tenant foundation, and qualify viewer and Office
 fidelity on the same integrated release candidate.
+
+## 2026-09-27 viewer DOM acceptance
+
+| PR / surface | Exact evidence | Status |
+|---|---|---|
+| #610 busy lifecycle | `0813a4d6e3855d97f0fc56760cba29a044472769`; mock integration preserves retry child state through FAILED recovery | Source partial; real browser/race/reload pending |
+| #606 history batching | `0debb9b663a30c10e20ae3ce9da45c5f90340aa9`; DocumentFragment and mock-DOM contracts retained | Draft; performance FAIL |
+| Performance | Fixed large-history dataset, runtime/hardware, warm-up, samples, failure denominator, reflow/main-thread/heap/GC and median/p95 | FAIL |
+| Accessibility/responsive/locales | Chromium/Firefox/WebKit, AT, pointer/touch/keyboard, 320/768/desktop and ko/en/ja/zh/vi/es/de/fr | FAIL |
+| Recovery | duplicate activation, abort/race, offline, retry, popup/permission, reload and lifecycle cleanup | FAIL |
+| Governance | current-head hosted checks and independent approval | FAIL |
+
+Unit and Maven success are correctness evidence, not a reflow or rendering-performance measurement. Keep both product deltas Draft/Proposed until the applicable rows pass.

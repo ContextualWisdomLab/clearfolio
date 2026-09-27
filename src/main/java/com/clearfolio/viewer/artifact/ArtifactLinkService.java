@@ -33,6 +33,7 @@ import com.clearfolio.viewer.api.ArtifactReadEventResponse;
 import com.clearfolio.viewer.auth.TenantContext;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.model.ConversionJobStatus;
+import com.clearfolio.viewer.auth.CredentialRegistryPort;
 
 /**
  * Issues and verifies tenant-bound HMAC artifact tokens.
@@ -77,10 +78,10 @@ public class ArtifactLinkService {
      */
     @Autowired
     public ArtifactLinkService(
-            ArtifactStore artifactStore,
-            ArtifactLinkLedger artifactLinkLedger,
-            @Value("${clearfolio.artifact-token.secret:}") String configuredSecret) {
-        this(artifactStore, artifactLinkLedger, configuredSecret, Clock.systemUTC(), new SecureRandom());
+            final ArtifactStore artifactStore,
+            final ArtifactLinkLedger artifactLinkLedger,
+            final CredentialRegistryPort credentialRegistryPort) {
+        this(artifactStore, artifactLinkLedger, credentialRegistryPort.getCredential(CredentialRegistryPort.ARTIFACT_TOKEN_SECRET).orElse(""), Clock.systemUTC(), new SecureRandom());
     }
 
     /**

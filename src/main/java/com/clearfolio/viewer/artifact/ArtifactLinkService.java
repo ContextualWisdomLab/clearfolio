@@ -332,24 +332,59 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+    /**
+     * Maximum length of an artifact token to prevent resource exhaustion attacks.
+     */
+    private static final int MAX_TOKEN_LENGTH = 4096;
+
+    @SuppressWarnings("checkstyle:MagicNumber")
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        if (token.length() > MAX_TOKEN_LENGTH) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED,
+                    "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
-        String expectedSignature = hmac(payload);
+        final int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1 || lastDotIndex == token.length() - 1) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED,
+                    "artifact token invalid");
+        }
+
+        final String payload = token.substring(0, lastDotIndex);
+        final String signature = token.substring(lastDotIndex + 1);
+
+        final String expectedSignature = hmac(payload);
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+                signature.getBytes(StandardCharsets.US_ASCII))) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED,
+                    "artifact token invalid");
+        }
+
+        final String[] parts = new String[TOKEN_FIELD_COUNT];
+        int partIndex = 0;
+        int startIndex = 0;
+        for (int i = 0; i <= payload.length(); i++) {
+            if (i == payload.length() || payload.charAt(i) == '.') {
+                if (partIndex >= TOKEN_FIELD_COUNT) {
+                    throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED,
+                            "artifact token invalid");
+                }
+                parts[partIndex++] = payload.substring(startIndex, i);
+                startIndex = i + 1;
+            }
+        }
+
+        if (partIndex != TOKEN_FIELD_COUNT) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED,
+                    "artifact token invalid");
         }
 
         try {
-            String version = decode(parts[0]);
+            final String version = decode(parts[0]);
             if (!VERSION.equals(version)) {
-                throw new IllegalArgumentException("unsupported artifact token version");
+                throw new IllegalArgumentException(
+                        "unsupported artifact token version");
             }
             return new ArtifactTokenClaims(
                     decode(parts[1]),
@@ -365,7 +400,8 @@ public class ArtifactLinkService {
         } catch (IllegalArgumentException | DateTimeException ex) {
             // IllegalArgumentException: malformed Base64URL, UUID, or numeric fields.
             // DateTimeException: epoch-second value outside the supported Instant range.
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED,
+                    "artifact token invalid");
         }
     }
 

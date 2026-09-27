@@ -17,6 +17,14 @@ public class ProductionAuthReadinessConfig {
      * @param tenantClaimsSecret shared gateway signing secret
      */
     public ProductionAuthReadinessConfig(
-            @Value("${clearfolio.tenant-claims.hmac-secret}") String tenantClaimsSecret) {
+            @Value("${clearfolio.tenant-claims.hmac-secret}")
+            final String tenantClaimsSecret) {
+        if (tenantClaimsSecret == null || tenantClaimsSecret.isEmpty()
+                || tenantClaimsSecret.equals(
+                        "${clearfolio.tenant-claims.hmac-secret}")) {
+            throw new IllegalStateException(
+                    "production profile requires "
+                    + "clearfolio.tenant-claims.hmac-secret");
+        }
     }
 }

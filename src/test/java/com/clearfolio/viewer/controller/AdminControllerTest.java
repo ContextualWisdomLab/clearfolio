@@ -17,13 +17,15 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
+    private com.clearfolio.viewer.auth.TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService);
+        tenantAccessService = mock(com.clearfolio.viewer.auth.TenantAccessService.class);
+        controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -34,6 +36,8 @@ class AdminControllerTest {
         ConversionJob job1 = new ConversionJob(UUID.randomUUID(), "a.pdf", "application/pdf", "hash-a", 100L);
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(tenantAccessService.require(org.mockito.ArgumentMatchers.any(org.springframework.http.HttpHeaders.class), org.mockito.ArgumentMatchers.eq(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)))
+                .thenReturn(new com.clearfolio.viewer.auth.TenantContext("tenant", "sub", java.util.Set.of(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
@@ -52,6 +56,8 @@ class AdminControllerTest {
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(tenantAccessService.require(org.mockito.ArgumentMatchers.any(org.springframework.http.HttpHeaders.class), org.mockito.ArgumentMatchers.eq(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)))
+                .thenReturn(new com.clearfolio.viewer.auth.TenantContext("tenant", "sub", java.util.Set.of(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
@@ -69,6 +75,8 @@ class AdminControllerTest {
         ConversionJob job2 = new ConversionJob(UUID.randomUUID(), "b.pdf", "application/pdf", "hash-b", 100L);
 
         when(conversionService.getAllJobs()).thenReturn(Arrays.asList(job1, job2));
+        when(tenantAccessService.require(org.mockito.ArgumentMatchers.any(org.springframework.http.HttpHeaders.class), org.mockito.ArgumentMatchers.eq(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)))
+                .thenReturn(new com.clearfolio.viewer.auth.TenantContext("tenant", "sub", java.util.Set.of(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)));
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
@@ -82,6 +90,8 @@ class AdminControllerTest {
     @Test
     void deleteJobReturnsNoContent() {
         UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(org.mockito.ArgumentMatchers.any(org.springframework.http.HttpHeaders.class), org.mockito.ArgumentMatchers.eq(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)))
+                .thenReturn(new com.clearfolio.viewer.auth.TenantContext("tenant", "sub", java.util.Set.of(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)));
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
@@ -92,6 +102,8 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(org.mockito.ArgumentMatchers.any(org.springframework.http.HttpHeaders.class), org.mockito.ArgumentMatchers.eq(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)))
+                .thenReturn(new com.clearfolio.viewer.auth.TenantContext("tenant", "sub", java.util.Set.of(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)));
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
@@ -103,6 +115,8 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsNotFoundWhenNotFound() {
         UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(org.mockito.ArgumentMatchers.any(org.springframework.http.HttpHeaders.class), org.mockito.ArgumentMatchers.eq(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)))
+                .thenReturn(new com.clearfolio.viewer.auth.TenantContext("tenant", "sub", java.util.Set.of(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)));
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
@@ -114,11 +128,35 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsConflictWhenNotEligible() {
         UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(org.mockito.ArgumentMatchers.any(org.springframework.http.HttpHeaders.class), org.mockito.ArgumentMatchers.eq(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)))
+                .thenReturn(new com.clearfolio.viewer.auth.TenantContext("tenant", "sub", java.util.Set.of(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)));
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+    }
+
+    @Test
+    void returnsForbiddenWhenNoAdminOperatePermission() {
+        UUID jobId = UUID.randomUUID();
+        when(tenantAccessService.require(org.mockito.ArgumentMatchers.any(org.springframework.http.HttpHeaders.class), org.mockito.ArgumentMatchers.eq(com.clearfolio.viewer.auth.TenantPermissions.ADMIN_OPERATE)))
+                .thenThrow(new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN));
+
+        webTestClient.delete()
+                .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .exchange()
+                .expectStatus().isForbidden();
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .exchange()
+                .expectStatus().isForbidden();
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isForbidden();
     }
 }

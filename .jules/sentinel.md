@@ -36,3 +36,7 @@
 **Vulnerability:** Missing authorization check on `AdminController` endpoints allowed unauthenticated access to admin-only APIs.
 **Learning:** Even internal or admin APIs require explicit injection and verification of `TenantAccessService` to prevent unauthorized actions and data leakage across boundaries.
 **Prevention:** Always mandate header injection and `TenantAccessService.require()` with explicitly defined role permissions (e.g. `ADMIN_READ`, `ADMIN_WRITE`) on all new API controllers.
+## $(date +%Y-%m-%d) - [Admin Tenant Filtering Missing]
+**Vulnerability:** Even though the `AdminController` was protected by requiring admin permissions (like `ADMIN_READ`), the `getAllJobs` and other endpoints failed to filter objects by the specific `tenantId` of the requesting admin.
+**Learning:** Checking that a user has a specific permission does not automatically scope the data they see to their tenant. `TenantAccessService` enforces the presence of the permission, but the controller or service layer must actively filter the returned resources by `tenantContext.tenantId()`.
+**Prevention:** Always pair functional authorization (`tenantAccessService.require(..., ADMIN_READ)`) with object-level or tenant-level data filtering in admin endpoints (e.g., verifying `job.belongsToTenant(context.tenantId())`).

@@ -13,3 +13,6 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+## 2026-09-27 - 필수 입력 필드 (Required Field) 접근성 개선
+**Learning:** 명시적인 `(required)` 텍스트를 레이블에 포함시키는 것이 스크린 리더 사용자나 인지 장애가 있는 사용자가 필수 필드를 더 쉽게 이해할 수 있게 돕는다는 점을 배웠습니다.
+**Action:** 앞으로 폼 요소를 구성할 때 필수 입력 항목인 경우, 시각적인 표식 뿐만 아니라 레이블 내부에 텍스트로 명확히 명시해야 합니다.

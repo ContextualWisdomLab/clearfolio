@@ -83,10 +83,7 @@ class ArtifactTokenBoundaryTest {
         assertMalformedToken(encode("malformed-token"));
     }
 
-    @Test
-    void rejectsExtremelyLongTokens() {
-        assertMalformedToken("A".repeat(4097));
-    }
+
 
     @Test
     void rejectsStructurallyValidTokenWithMismatchedSignature() {

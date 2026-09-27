@@ -22,3 +22,6 @@
 ## 2026-08-21 - Optimize Artifact Token Parsing
 **Learning:** Parsing JWT-like artifact tokens by splitting them on dots via `String.split("\\\\.")` and using Java Streams created unnecessary functional overhead and array allocations, adding GC pressure. This is a common performance pitfall in Java when doing repetitive fixed-length parsing.
 **Action:** Replace `String.split()` with manual bounds checking, `indexOf(.)`, and `substring()` to avoid array instantiations entirely. Extract token fields into a primitive structure before processing to reduce overhead and improve throughput during token verification.
+## 2026-08-21 - Maintain 100% test coverage for security bounds
+**Learning:** Any new code path, including security bounds checking (e.g. \`token.length() > MAX_TOKEN_LENGTH\`), must be fully covered by unit tests to satisfy the 100% JaCoCo coverage requirement.
+**Action:** When adding early returns or exception throws for boundary conditions, immediately add a corresponding test case (e.g. \`"A".repeat(4097)\`) to exercise the new path and prevent CI failures.

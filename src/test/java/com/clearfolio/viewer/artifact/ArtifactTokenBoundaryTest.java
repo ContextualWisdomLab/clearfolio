@@ -97,6 +97,11 @@ class ArtifactTokenBoundaryTest {
     }
 
     @Test
+    void verifyTokenLengthLimitRejectsExcessivelyLongTokens() {
+        assertMalformedToken("A".repeat(4097));
+    }
+
+    @Test
     void rejectsSignedPayloadWithAnEmptyRequiredField() {
         String[] fields = validPayloadFields.clone();
         fields[1] = "";

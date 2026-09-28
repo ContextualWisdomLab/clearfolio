@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-07-20 - Admin API Authorization Check
+**Vulnerability:** The Admin API (`AdminController`) exposed internal admin endpoints (`/api/v1/admin/convert/jobs`, etc.) without any `TenantAccessService` authorization checks.
+**Learning:** Admin endpoints must enforce strict authorization checks, such as `admin:operate`, to prevent unauthorized internal or external users from listing all tenant jobs, deleting them, or retrying dead lettered jobs without authorization.
+**Prevention:** Always inject `TenantAccessService` into admin endpoints and require appropriate cross-tenant admin permissions via `tenantAccessService.require(headers, "admin:operate")`.

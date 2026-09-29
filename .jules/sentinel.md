@@ -40,7 +40,3 @@
 **Vulnerability:** Even though the `AdminController` was protected by requiring admin permissions (like `ADMIN_READ`), the `getAllJobs` and other endpoints failed to filter objects by the specific `tenantId` of the requesting admin.
 **Learning:** Checking that a user has a specific permission does not automatically scope the data they see to their tenant. `TenantAccessService` enforces the presence of the permission, but the controller or service layer must actively filter the returned resources by `tenantContext.tenantId()`.
 **Prevention:** Always pair functional authorization (`tenantAccessService.require(..., ADMIN_READ)`) with object-level or tenant-level data filtering in admin endpoints (e.g., verifying `job.belongsToTenant(context.tenantId())`).
-## $(date +%Y-%m-%d) - [Jackson Databind Vulnerabilities]
-**Vulnerability:** The project was using an outdated version of `jackson-databind` (via `jackson-bom`), which had known HIGH and MEDIUM severity vulnerabilities reported by Trivy (CVE-2026-68497, CVE-2026-19032, CVE-2026-83557).
-**Learning:** Outdated dependencies, especially ubiquitous libraries like `jackson-databind` which parse untrusted inputs, are frequent vectors for critical vulnerabilities (e.g., DoS, RCE via deserialization).
-**Prevention:** Regularly scan dependencies and bump the affected package or its managing BOM/parent as required by the security policy (`SECURITY.md`). Here we updated `jackson-bom.version` in `pom.xml`.

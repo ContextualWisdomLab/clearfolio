@@ -5,8 +5,31 @@ export class MockTextNode {
   }
 }
 
+export class MockDocumentFragment {
+  get textContent() {
+    return this.childNodes.map(node => node.textContent !== undefined ? node.textContent : "").join("");
+  }
+  set textContent(value) {
+    const text = String(value);
+    this.childNodes = text === "" ? [] : [new MockTextNode(text)];
+  }
+  constructor() {
+    this.childNodes = [];
+  }
+  appendChild(node) {
+    if (node && node.childNodes && node.constructor.name === "MockDocumentFragment") {
+      this.childNodes.push(...node.childNodes);
+      node.childNodes = [];
+      return node;
+    }
+    this.childNodes.push(node);
+    return node;
+  }
+}
+
 export class MockElement {
   constructor(tagName = "div") {
+    this.type = "";
     this.tagName = tagName.toUpperCase();
     this.attributes = new Map();
     this.childNodes = [];
@@ -31,12 +54,24 @@ export class MockElement {
   }
 
   appendChild(node) {
+    if (node && node.childNodes && node.constructor.name === "MockDocumentFragment") {
+      this.childNodes.push(...node.childNodes);
+      node.childNodes = [];
+      return node;
+    }
     this.childNodes.push(node);
     return node;
   }
 
   append(...nodes) {
-    this.childNodes.push(...nodes);
+    for (const node of nodes) {
+      if (node && node.childNodes && node.constructor.name === "MockDocumentFragment") {
+        this.childNodes.push(...node.childNodes);
+        node.childNodes = [];
+      } else {
+        this.childNodes.push(node);
+      }
+    }
   }
 
   replaceChildren(...nodes) {

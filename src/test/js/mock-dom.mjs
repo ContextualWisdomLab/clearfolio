@@ -5,6 +5,44 @@ export class MockTextNode {
   }
 }
 
+
+export class MockDocumentFragment {
+  constructor() {
+    this.nodeType = 11;
+    this.childNodes = [];
+  }
+
+  get textContent() {
+    return this.childNodes.map(node => node.textContent).join("");
+  }
+
+  set textContent(value) {
+    const text = String(value);
+    this.childNodes = text === "" ? [] : [new MockTextNode(text)];
+  }
+
+  appendChild(node) {
+    if (node && node.nodeType === 11) {
+      this.childNodes.push(...node.childNodes);
+      node.childNodes = [];
+      return node;
+    }
+    this.childNodes.push(node);
+    return node;
+  }
+
+  append(...nodes) {
+    for (const node of nodes) {
+      if (node && node.nodeType === 11) {
+        this.childNodes.push(...node.childNodes);
+        node.childNodes = [];
+      } else {
+        this.childNodes.push(node);
+      }
+    }
+  }
+}
+
 export class MockElement {
   constructor(tagName = "div") {
     this.tagName = tagName.toUpperCase();
@@ -31,12 +69,24 @@ export class MockElement {
   }
 
   appendChild(node) {
+    if (node && node.nodeType === 11) {
+      this.childNodes.push(...node.childNodes);
+      node.childNodes = [];
+      return node;
+    }
     this.childNodes.push(node);
     return node;
   }
 
   append(...nodes) {
-    this.childNodes.push(...nodes);
+    for (const node of nodes) {
+      if (node && node.nodeType === 11) {
+        this.childNodes.push(...node.childNodes);
+        node.childNodes = [];
+      } else {
+        this.childNodes.push(node);
+      }
+    }
   }
 
   replaceChildren(...nodes) {

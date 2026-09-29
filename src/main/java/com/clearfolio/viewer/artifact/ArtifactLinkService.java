@@ -8,7 +8,6 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -334,8 +333,22 @@ public class ArtifactLinkService {
 
     @SuppressWarnings("checkstyle:MagicNumber")
     private ArtifactTokenClaims parseAndVerify(final String token) {
+        // Bolt Optimization: Verify the structural validity (dot count) of the token
+        // without allocating intermediate arrays or performing Regex splits.
+        // This fails fast for malformed tokens before computing the expensive HMAC.
         int lastDotIndex = token.lastIndexOf('.');
         if (lastDotIndex == -1 || lastDotIndex == token.length() - 1) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
+        int expectedDots = TOKEN_FIELD_COUNT - 1;
+        int currentDotCount = 0;
+        for (int i = 0; i < lastDotIndex; i++) {
+            if (token.charAt(i) == '.') {
+                currentDotCount++;
+            }
+        }
+        if (currentDotCount != expectedDots) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 

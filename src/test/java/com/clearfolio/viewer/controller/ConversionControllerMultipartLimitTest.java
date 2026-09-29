@@ -48,7 +48,9 @@ import com.clearfolio.viewer.service.PolicyOverrideRequest;
                 "conversion.max-upload-size-bytes=1024",
                 "spring.codec.max-in-memory-size=2048",
                 "conversion.policy-override-secret=0123456789abcdef0123456789abcdef",
-                "conversion.audit-pseudonym-secret=fedcba9876543210fedcba9876543210"
+                "conversion.audit-pseudonym-secret=fedcba9876543210fedcba9876543210",
+                "clearfolio.tenant-claims.hmac-secret=test-secret",
+                "clearfolio.artifact-token.secret=test-secret"
         }
 )
 class ConversionControllerMultipartLimitTest {

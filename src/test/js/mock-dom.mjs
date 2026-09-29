@@ -11,8 +11,24 @@ export class MockDocumentFragment {
   }
 
   appendChild(node) {
-    this.childNodes.push(node);
+    if (node instanceof MockDocumentFragment) {
+      this.childNodes.push(...node.childNodes);
+      node.childNodes = [];
+    } else {
+      this.childNodes.push(node);
+    }
     return node;
+  }
+
+  append(...nodes) {
+    for (const node of nodes) {
+      if (node instanceof MockDocumentFragment) {
+        this.childNodes.push(...node.childNodes);
+        node.childNodes = [];
+      } else {
+        this.childNodes.push(node);
+      }
+    }
   }
 }
 

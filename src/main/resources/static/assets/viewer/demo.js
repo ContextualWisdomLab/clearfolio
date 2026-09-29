@@ -114,6 +114,8 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
+  // Bolt optimization: Use DocumentFragment to batch DOM insertions.
+  // This reduces DOM repaints and layout reflows from O(n) to O(1).
   const fragment = document.createDocumentFragment();
   for (const job of history) {
     const row = document.createElement("tr");

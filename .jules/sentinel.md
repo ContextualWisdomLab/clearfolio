@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-09-29 - jackson-databind 취약점 패치 (CVE-2026-68497, CVE-2026-19032, CVE-2026-83557)
+**Vulnerability:** Trivy 보안 스캐너에서 `jackson-databind` 2.22.1 버전에 대한 다수의 취약점(CRITICAL/HIGH)이 검출되었습니다.
+**Learning:** 애플리케이션의 주요 직렬화/역직렬화 라이브러리에 존재하는 취약점은 데이터 처리 과정에서 원격 코드 실행(RCE)이나 서비스 거부(DoS) 등의 심각한 보안 위협을 초래할 수 있습니다.
+**Prevention:** 의존성 취약점이 발견되면 즉시 안전한 상위 버전(예: 2.22.2)으로 업데이트해야 하며, 지속적인 취약점 스캐닝 파이프라인(Trivy 등)을 통해 버전을 관리해야 합니다.

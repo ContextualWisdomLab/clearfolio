@@ -8,7 +8,9 @@ import java.util.Optional;
 @FunctionalInterface
 public interface CredentialRegistryPort {
 
+    /** Tenant claims HMAC secret name. */
     String TENANT_CLAIMS_HMAC_SECRET = "clearfolio.tenant-claims.hmac-secret";
+    /** Artifact token secret name. */
     String ARTIFACT_TOKEN_SECRET = "clearfolio.artifact-token.secret";
 
     /**

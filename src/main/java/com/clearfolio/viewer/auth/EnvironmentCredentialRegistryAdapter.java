@@ -13,6 +13,11 @@ public class EnvironmentCredentialRegistryAdapter implements CredentialRegistryP
 
     private final Environment environment;
 
+    /**
+     * Creates an adapter using the given Spring environment.
+     *
+     * @param environment Spring environment
+     */
     public EnvironmentCredentialRegistryAdapter(final Environment environment) {
         this.environment = environment;
     }

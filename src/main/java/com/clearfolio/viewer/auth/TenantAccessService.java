@@ -43,7 +43,7 @@ public class TenantAccessService {
     /**
      * Creates an access service with optional signed gateway claim validation.
      *
-     * @param claimsHmacSecret optional shared gateway HMAC secret
+     * @param credentialRegistryPort port for resolving runtime secrets
      * @param maxSkewSeconds maximum accepted clock skew in seconds
      */
     @Autowired
@@ -53,7 +53,13 @@ public class TenantAccessService {
         this(credentialRegistryPort.getCredential(CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET).orElse(""), maxSkewSeconds, Clock.systemUTC());
     }
 
-    public TenantAccessService(String claimsHmacSecret, long maxSkewSeconds) {
+    /**
+     * Creates an access service with a static secret and skew.
+     *
+     * @param claimsHmacSecret static HMAC secret
+     * @param maxSkewSeconds maximum accepted clock skew in seconds
+     */
+    public TenantAccessService(final String claimsHmacSecret, final long maxSkewSeconds) {
         this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
     }
 

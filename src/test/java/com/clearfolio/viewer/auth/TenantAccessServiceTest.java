@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import java.util.Optional;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -50,6 +51,19 @@ class TenantAccessServiceTest {
 
         assertDoesNotThrow(() -> blankSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
         assertDoesNotThrow(() -> nullSecret.require(headers(TenantPermissions.JOB_READ), TenantPermissions.JOB_READ));
+    }
+
+
+    @Test
+    void springConstructorSupportsCredentialRegistryPort() {
+        TenantAccessService portService = new TenantAccessService(
+                (CredentialRegistryPort) (final String name) -> CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET.equals(name) ? Optional.of(SECRET) : Optional.empty(),
+                300L
+        );
+        assertDoesNotThrow(() -> portService.require(
+                signedHeaders(TenantPermissions.JOB_READ, Instant.now()),
+                TenantPermissions.JOB_READ
+        ));
     }
 
     @Test

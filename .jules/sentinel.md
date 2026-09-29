@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-08-19 - 환경 변수 기반 비밀값 주입 제거 (KV Configtree 마이그레이션)
+**Vulnerability:** `application-buyer-demo.yml`에서 `clearfolio.artifact-token.secret` 및 `clearfolio.tenant-claims.hmac-secret`와 같은 런타임 비밀값을 환경 변수 대체(placeholder) `${ENV_VAR:}` 방식으로 주입하고 있었습니다. 이는 프로세스 환경을 통해 민감한 자격 증명을 노출시킬 수 있습니다.
+**Learning:** Spring Boot에서 런타임 시크릿은 환경 변수가 아닌 KV(Key-Value) 기반 저장소를 통해 로드해야 합니다. 본 저장소에서는 `application.yml`에 설정된 `spring.config.import: "optional:configtree:..."` 기능을 사용하여 마운트된 디렉토리의 파일들을 읽어들이는 방식이 표준입니다.
+**Prevention:** Configtree로 원활하게 연동하기 위해 YAML 파일에서 빈 문자열로 오버라이드될 수 있는 시크릿 설정 키 자체를 완전히 제거하여, Spring Boot가 올바르게 KV 저장소에서 해당 시크릿들을 가져오도록 강제해야 합니다.

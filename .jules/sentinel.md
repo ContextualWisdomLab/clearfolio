@@ -36,3 +36,7 @@
 **Vulnerability:** Admin endpoints lacked tenant and permission checks, allowing unauthorized access.
 **Learning:** Important endpoints must enforce permissions via TenantAccessService.
 **Prevention:** Ensure new endpoints are reviewed for authorization requirements.
+## 2026-09-28 - [CVE-2026-54515 Vulnerability Remediation]
+**Vulnerability:** CVE-2026-54515, CVE-2026-19032, CVE-2026-83557 on com.fasterxml.jackson.core:jackson-databind
+**Learning:** We need to aggressively patch Jackson libraries to prevent RCE.
+**Prevention:** Update pom.xml when vulnerabilities are found by Trivy.

@@ -74,7 +74,7 @@ jobs:
           PY
               echo "::endgroup::"
             fi
-            exit 0
+            exit 1
           fi
           python3 scripts/verify_maven_test_reports.py
 

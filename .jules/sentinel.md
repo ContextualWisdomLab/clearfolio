@@ -37,3 +37,8 @@
 **Vulnerability:** The `AdminController` exposed privileged management actions (retrieving all jobs globally, deleting arbitrary jobs, and retrying failed conversions) completely unauthenticated. Attackers could call endpoints like `/api/v1/admin/convert/jobs` to bypass tenant isolation boundaries and exfiltrate or mutate other tenants' internal processing statuses.
 **Learning:** High-privilege controller endpoints that interact directly with repository services must still pass through explicit authentication boundaries and enforce context checks (`tenantAccessService.require(headers, TenantPermissions.ADMIN_READ)`). Relying on obscurity (e.g. prefixing the route with `/admin`) does not automatically enforce an authorization boundary.
 **Prevention:** Integrate all administrative controllers with the canonical application authorization service. Ensure specific endpoints map explicitly to administrative claims (`ADMIN_READ`, `ADMIN_WRITE`) to ensure the invoker is granted the proper roles before mutating data.
+
+## 2026-09-29 - Default Dependency Version Inheritance
+**Vulnerability:** The project inherited a vulnerable version of `jackson-databind` (2.15.4) which is susceptible to multiple Medium to High CVEs.
+**Learning:** Depending on the parent `spring-boot-starter-parent` without explicitly overriding or updating vulnerable transitives can expose the project to known security vulnerabilities over time.
+**Prevention:** Regularly scan dependencies with tools like Trivy and explicitly declare pinned security overrides in `dependencyManagement` for known vulnerable transitives (e.g., `jackson-bom`).

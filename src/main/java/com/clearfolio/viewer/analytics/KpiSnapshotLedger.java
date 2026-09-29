@@ -147,8 +147,8 @@ public class KpiSnapshotLedger {
         }
     }
 
-    private static String serialize(KpiSnapshotRecord record) {
-        StringBuilder sb = new StringBuilder(256);
+    private static String serialize(final KpiSnapshotRecord record) {
+        StringBuilder sb = new StringBuilder();
         sb.append(SNAPSHOT)
                 .append('\t').append(field(record.tenantId()))
                 .append('\t').append(field(record.subjectId()))

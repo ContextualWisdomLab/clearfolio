@@ -231,8 +231,8 @@ public class ArtifactLinkLedger {
         }
     }
 
-    private static String serializeIssued(ArtifactLinkRecord record) {
-        StringBuilder sb = new StringBuilder(256);
+    private static String serializeIssued(final ArtifactLinkRecord record) {
+        StringBuilder sb = new StringBuilder();
         sb.append(ISSUED)
                 .append('\t').append(field(record.tokenId()))
                 .append('\t').append(field(record.tenantId()))
@@ -250,8 +250,8 @@ public class ArtifactLinkLedger {
         return sb.toString();
     }
 
-    private static String serializeRevoked(ArtifactLinkRecord record) {
-        StringBuilder sb = new StringBuilder(128);
+    private static String serializeRevoked(final ArtifactLinkRecord record) {
+        StringBuilder sb = new StringBuilder();
         sb.append(REVOKED)
                 .append('\t').append(field(record.tokenId()))
                 .append('\t').append(field(record.revokedAt()))
@@ -260,8 +260,8 @@ public class ArtifactLinkLedger {
         return sb.toString();
     }
 
-    private static String serializeRead(ArtifactReadEvent event) {
-        StringBuilder sb = new StringBuilder(128);
+    private static String serializeRead(final ArtifactReadEvent event) {
+        StringBuilder sb = new StringBuilder();
         sb.append(READ)
                 .append('\t').append(field(event.tenantId()))
                 .append('\t').append(field(event.subjectId()))

@@ -13,3 +13,6 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+## 2026-09-20 - 폼 레이블 필수 표시자 추가 및 버튼 접근성 개선 (Adding ARIA attributes to visual indicators and buttons)
+**Learning:** `required` 속성이 이미 적용된 `input` 요소의 레이블에 추가된 시각적 표시자(`*`)에 `aria-hidden="true"`를 추가하여 스크린 리더가 불필요하게 반복해서 읽지 않도록 방지했습니다. 접근성 지침 WCAG 2.5.3 (Label in Name)을 준수하기 위해 컨텍스트가 부족한 데모 버튼에 원래의 텍스트가 연속된 문자열로 포함되도록 `aria-label`을 수정했습니다.
+**Action:** HTML5 `required` 속성을 사용하는 폼 필드에 시각적 표시자(`*`)를 추가할 때는 항상 `aria-hidden="true"`를 적용해야 합니다. 또한, 텍스트가 있는 버튼에 `aria-label`을 적용할 때는 반드시 버튼의 시각적인 텍스트가 연속된 부분 문자열로 포함되도록 작성하여 음성 제어 사용자가 접근할 수 있도록 해야 합니다.

@@ -32,3 +32,15 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## $(date +%Y-%m-%d) - [Admin Auth Bypass Fixed]
+**Vulnerability:** Missing authorization check on `AdminController` endpoints allowed unauthenticated access to admin-only APIs.
+**Learning:** Even internal or admin APIs require explicit injection and verification of `TenantAccessService` to prevent unauthorized actions and data leakage across boundaries.
+**Prevention:** Always mandate header injection and `TenantAccessService.require()` with explicitly defined role permissions (e.g. `ADMIN_READ`, `ADMIN_WRITE`) on all new API controllers.
+## $(date +%Y-%m-%d) - [Admin Tenant Filtering Missing]
+**Vulnerability:** Even though the `AdminController` was protected by requiring admin permissions (like `ADMIN_READ`), the `getAllJobs` and other endpoints failed to filter objects by the specific `tenantId` of the requesting admin.
+**Learning:** Checking that a user has a specific permission does not automatically scope the data they see to their tenant. `TenantAccessService` enforces the presence of the permission, but the controller or service layer must actively filter the returned resources by `tenantContext.tenantId()`.
+**Prevention:** Always pair functional authorization (`tenantAccessService.require(..., ADMIN_READ)`) with object-level or tenant-level data filtering in admin endpoints (e.g., verifying `job.belongsToTenant(context.tenantId())`).
+## $(date +%Y-%m-%d) - [Jackson Databind Vulnerabilities]
+**Vulnerability:** The project was using an outdated version of `jackson-databind` (via `jackson-bom`), which had known HIGH and MEDIUM severity vulnerabilities reported by Trivy (CVE-2026-68497, CVE-2026-19032, CVE-2026-83557).
+**Learning:** Outdated dependencies, especially ubiquitous libraries like `jackson-databind` which parse untrusted inputs, are frequent vectors for critical vulnerabilities (e.g., DoS, RCE via deserialization).
+**Prevention:** Regularly scan dependencies and bump the affected package or its managing BOM/parent as required by the security policy (`SECURITY.md`). Here we updated `jackson-bom.version` in `pom.xml`.

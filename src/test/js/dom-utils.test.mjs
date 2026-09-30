@@ -8,9 +8,14 @@ import {
 } from "../../main/resources/static/assets/viewer/dom-utils.js";
 import { MockElement, MockTextNode } from "./mock-dom.mjs";
 
+import { MockDocumentFragment } from "./mock-dom.mjs";
+
 globalThis.document = {
   createElement(tagName) {
     return new MockElement(tagName);
+  },
+  createDocumentFragment() {
+    return new MockDocumentFragment();
   }
 };
 
@@ -152,4 +157,27 @@ test("markup-like labels remain inert text in buttons and links", () => {
   assert.equal(link.textContent, markupLabel);
   assert.equal(link.childNodes.length, 1);
   assert.equal(link.childNodes[0].type, "text");
+});
+
+test("MockDocumentFragment append and appendChild correctly move nodes", () => {
+  const fragment = new MockDocumentFragment();
+  const parent = new MockElement("div");
+  const child1 = new MockTextNode("child1");
+  const child2 = new MockTextNode("child2");
+
+  fragment.appendChild(child1);
+  fragment.append(child2);
+  assert.equal(fragment.childNodes.length, 2);
+
+  parent.appendChild(fragment);
+  assert.equal(fragment.childNodes.length, 0);
+  assert.equal(parent.childNodes.length, 2);
+
+  const fragment2 = new MockDocumentFragment();
+  const child3 = new MockTextNode("child3");
+  fragment2.append(child3);
+
+  parent.append(fragment2, new MockTextNode("child4"));
+  assert.equal(fragment2.childNodes.length, 0);
+  assert.equal(parent.childNodes.length, 4);
 });

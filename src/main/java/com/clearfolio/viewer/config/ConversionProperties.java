@@ -54,10 +54,23 @@ public class ConversionProperties {
                 if (extension == null) {
                     continue;
                 }
-                String sanitized = extension
-                        .replace("\u0000", "")
-                        .trim()
-                        .toLowerCase(Locale.ROOT);
+
+                String sanitized;
+                if (extension.indexOf('\u0000') < 0) {
+                    sanitized = extension;
+                } else {
+                    StringBuilder sb = new StringBuilder(extension.length());
+                    for (int i = 0; i < extension.length(); i++) {
+                        char c = extension.charAt(i);
+                        if (c != '\u0000') {
+                            sb.append(c);
+                        }
+                    }
+                    sanitized = sb.toString();
+                }
+
+                sanitized = sanitized.trim().toLowerCase(Locale.ROOT);
+
                 if (!sanitized.isEmpty()) {
                     normalized.add(sanitized);
                 }

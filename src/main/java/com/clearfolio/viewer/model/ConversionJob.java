@@ -122,7 +122,17 @@ public class ConversionJob {
         if (value == null) {
             return null;
         }
-        return value.replace("\u0000", "");
+        if (value.indexOf('\u0000') < 0) {
+            return value;
+        }
+        StringBuilder sb = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c != '\u0000') {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     private String normalizeOrDefault(String value, String fallback) {

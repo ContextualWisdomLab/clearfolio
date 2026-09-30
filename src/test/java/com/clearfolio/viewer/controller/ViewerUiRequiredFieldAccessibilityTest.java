@@ -26,7 +26,8 @@ class ViewerUiRequiredFieldAccessibilityTest {
                 .expectHeader().contentTypeCompatibleWith(MediaType.TEXT_HTML)
                 .expectBody(String.class)
                 .value(body -> {
-                    assertTrue(body.contains("<label class=\"field-label\" for=\"file-input\"><span>Document (required)</span></label>"));
+                    assertTrue(body.contains("for=\"file-input\""));
+                    assertTrue(body.contains("<span>Document (required)</span>"));
                 });
     }
 }

@@ -120,11 +120,23 @@ public record TenantContext(String tenantId, String subjectId, Set<String> permi
             return Set.of();
         }
 
+        // Optimization: Single-pass scanning with indexOf(',') avoids the overhead of
+        // regex evaluation, String array allocation, and Stream pipeline instantiation
+        // that String.split() incurs.
         LinkedHashSet<String> parsed = new LinkedHashSet<>();
-        Arrays.stream(normalized.split(","))
-                .map(TenantContext::sanitize)
-                .filter(value -> value != null)
-                .forEach(parsed::add);
+        int pos = 0;
+        int endPos;
+        while ((endPos = normalized.indexOf(',', pos)) >= 0) {
+            String perm = sanitize(normalized.substring(pos, endPos));
+            if (perm != null) {
+                parsed.add(perm);
+            }
+            pos = endPos + 1;
+        }
+        String lastPerm = sanitize(normalized.substring(pos));
+        if (lastPerm != null) {
+            parsed.add(lastPerm);
+        }
         return parsed;
     }
 

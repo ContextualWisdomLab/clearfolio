@@ -33,12 +33,16 @@ class FileCredentialRegistryAdapterTest {
 
     @Test
     void getCredentialReturnsEmptyOnIoException(@TempDir Path tempDir) throws IOException {
-        Path folder = tempDir.resolve("folder.properties");
-        Files.createDirectory(folder);
-        // Providing a directory path will trigger either an isRegularFile check failure or an IOException if read.
-        FileCredentialRegistryAdapter adapter = new FileCredentialRegistryAdapter(folder.toString());
+        Path unreadable = tempDir.resolve("unreadable.properties");
+        Files.createFile(unreadable);
+
+        unreadable.toFile().setReadable(false, false);
+
+        FileCredentialRegistryAdapter adapter = new FileCredentialRegistryAdapter(unreadable.toString());
 
         assertTrue(adapter.getCredential("some.key").isEmpty());
+
+        unreadable.toFile().setReadable(true, false);
     }
 
     @Test

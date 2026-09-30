@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### 변경 사항 (Changed)
+- **프론트엔드 성능**: `demo.js`에서 DocumentFragment를 사용하여 히스토리 렌더링 시 DOM 조작을 일괄 처리(batching)하여 레이아웃 스래싱을 감소시켰습니다.
+- **테스트 환경**: 사용자 정의 모의 DOM 환경에 `MockDocumentFragment` 지원을 추가하여 테스트 신뢰성을 높였습니다.
+
+
 ### Added
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.

@@ -54,6 +54,19 @@ class DependencyPolicyTest {
     }
 
     @Test
+    void pomPinsJacksonLinePastSeptember2026DatabindAdvisories() throws Exception {
+        Document document = parsedPom();
+        Element properties = (Element) document.getElementsByTagName("properties").item(0);
+
+        assertEquals(
+                "2.22.3",
+                directChildTextOf(properties, "jackson-bom.version"),
+                "Jackson 2.22.3 is the first 2.22.x release that fixes CVE-2026-68497, "
+                        + "CVE-2026-91776, CVE-2026-91777, CVE-2026-19032, and CVE-2026-83557"
+        );
+    }
+
+    @Test
     void mavenVerifyGeneratesWarningFreePublicApiJavadocs() throws Exception {
         Document document = parsedPom();
         Element properties = (Element) document.getElementsByTagName("properties").item(0);

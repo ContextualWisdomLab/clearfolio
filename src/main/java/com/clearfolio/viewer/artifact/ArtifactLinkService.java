@@ -8,7 +8,6 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -332,19 +331,46 @@ public class ArtifactLinkService {
         return bearerToken.isEmpty() ? null : bearerToken;
     }
 
-    private ArtifactTokenClaims parseAndVerify(String token) {
-        String[] parts = token.split("\\.", -1);
-        if (parts.length != TOKEN_FIELD_COUNT + 1) {
+    @SuppressWarnings("checkstyle:MagicNumber")
+    private ArtifactTokenClaims parseAndVerify(final String token) {
+        // Bolt Optimization: Verify the structural validity (dot count) of the token
+        // without allocating intermediate arrays or performing Regex splits.
+        // This fails fast for malformed tokens before computing the expensive HMAC.
+        int lastDotIndex = token.lastIndexOf('.');
+        if (lastDotIndex == -1 || lastDotIndex == token.length() - 1) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
 
-        String payload = String.join(".", Arrays.copyOf(parts, TOKEN_FIELD_COUNT));
-        String expectedSignature = hmac(payload);
-        if (!MessageDigest.isEqual(
-                expectedSignature.getBytes(StandardCharsets.US_ASCII),
-                parts[TOKEN_FIELD_COUNT].getBytes(StandardCharsets.US_ASCII))) {
+        int expectedDots = TOKEN_FIELD_COUNT - 1;
+        int currentDotCount = 0;
+        for (int i = 0; i < lastDotIndex; i++) {
+            if (token.charAt(i) == '.') {
+                currentDotCount++;
+            }
+        }
+        if (currentDotCount != expectedDots) {
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
+
+        String payload = token.substring(0, lastDotIndex);
+        String expectedSignature = hmac(payload);
+        String providedSignature = token.substring(lastDotIndex + 1);
+
+        if (!MessageDigest.isEqual(
+                expectedSignature.getBytes(StandardCharsets.US_ASCII),
+                providedSignature.getBytes(StandardCharsets.US_ASCII))) {
+            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
+        }
+
+        String[] parts = new String[TOKEN_FIELD_COUNT];
+        int count = 0;
+        int startIndex = 0;
+        int nextDot;
+        while ((nextDot = payload.indexOf('.', startIndex)) != -1) {
+            parts[count++] = payload.substring(startIndex, nextDot);
+            startIndex = nextDot + 1;
+        }
+        parts[count] = payload.substring(startIndex);
 
         try {
             String version = decode(parts[0]);
@@ -362,7 +388,7 @@ public class ArtifactLinkService {
                     Instant.ofEpochSecond(Long.parseLong(decode(parts[8]))),
                     Instant.ofEpochSecond(Long.parseLong(decode(parts[9])))
             );
-        } catch (IllegalArgumentException | DateTimeException ex) {
+        } catch (final IllegalArgumentException | DateTimeException ex) {
             // IllegalArgumentException: malformed Base64URL, UUID, or numeric fields.
             // DateTimeException: epoch-second value outside the supported Instant range.
             throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");

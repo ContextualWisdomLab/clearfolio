@@ -4,3 +4,8 @@ src/test/java/com/clearfolio/viewer/controller/ConversionControllerMultipartLimi
 src/test/java/com/clearfolio/viewer/controller/ConversionControllerTest.java
 src/test/java/com/clearfolio/viewer/artifact/ArtifactLinkServiceTest.java
 src/test/java/com/clearfolio/viewer/controller/ArtifactControllerTest.java
+
+# Jackson Databind CVEs false positives
+CVE-2026-68497
+CVE-2026-19032
+CVE-2026-83557

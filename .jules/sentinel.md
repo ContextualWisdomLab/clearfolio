@@ -37,3 +37,8 @@
 **Vulnerability:** The endpoints in `AdminController` (`/api/v1/admin/convert/jobs`, `/api/v1/admin/convert/jobs/{jobId}`, and `/api/v1/admin/convert/jobs/{jobId}/retry`) did not require authentication or authorization checks.
 **Learning:** Security measures must be applied to administrative endpoints to prevent unauthorized access and data modification, even if the API seems to be used only internally or by privileged tools.
 **Prevention:** Ensure all newly created controllers and endpoints implement `TenantAccessService.require` appropriately with clear permission mappings such as `ADMIN_READ` and `ADMIN_WRITE`.
+
+## 2026-09-30 - [CRITICAL] Update jackson-bom to address multiple CVEs
+**Vulnerability:** Trivy reported `CVE-2026-68497`, `CVE-2026-19032`, and `CVE-2026-83557` targeting `com.fasterxml.jackson.core:jackson-databind` in the dependency tree.
+**Learning:** Legacy dependencies like `jackson-bom` should be aggressively monitored and updated to prevent deserialization or related attacks.
+**Prevention:** Always bump `jackson-bom.version` in the root `pom.xml` dependency management section when critical CVEs emerge.

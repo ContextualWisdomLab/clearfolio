@@ -6,6 +6,7 @@ import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Optional;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -42,17 +43,27 @@ public class TenantAccessService {
     /**
      * Creates an access service with optional signed gateway claim validation.
      *
-     * @param claimsHmacSecret optional shared gateway HMAC secret
+     * @param credentialRegistryPort port for resolving runtime secrets
      * @param maxSkewSeconds maximum accepted clock skew in seconds
      */
     @Autowired
     public TenantAccessService(
-            @Value("${clearfolio.tenant-claims.hmac-secret:}") String claimsHmacSecret,
-            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
+            final CredentialRegistryPort credentialRegistryPort,
+            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") final long maxSkewSeconds) {
+        this(credentialRegistryPort.getCredential(CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET).orElse(""), maxSkewSeconds, Clock.systemUTC());
+    }
+
+    /**
+     * Creates an access service with a static secret and skew.
+     *
+     * @param claimsHmacSecret static HMAC secret
+     * @param maxSkewSeconds maximum accepted clock skew in seconds
+     */
+    public TenantAccessService(final String claimsHmacSecret, final long maxSkewSeconds) {
         this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
     }
 
-    TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {
+    TenantAccessService(final String claimsHmacSecret, final long maxSkewSeconds, final Clock clock) {
         this.claimsHmacSecret = clean(claimsHmacSecret);
         this.maxSkewSeconds = Math.max(0L, maxSkewSeconds);
         this.clock = clock;

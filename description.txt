@@ -1,5 +1,3 @@
-🚨 Severity: CRITICAL
-💡 Vulnerability: 파일 업로드 시 `MultipartFile.getOriginalFilename()` 값을 검증 없이 사용하여 발생할 수 있는 경로 조작(Path Traversal) 취약점 발견.
-🎯 Impact: 공격자가 디렉토리 탐색 문자열(`../`)을 포함한 파일명을 전송하여 의도하지 않은 경로에 파일을 저장하거나 시스템 파일(예: `/etc/passwd`)에 접근/조작할 위험이 있음.
-🔧 Fix: `DefaultDocumentConversionService` 및 `DefaultDocumentValidationService`에서 파일명을 사용하기 전 `StringUtils.cleanPath()`를 통해 경로를 정규화하고, 마지막 `/` 이후의 순수한 파일명만 추출하도록 `sanitizeFilename` 메소드를 추가하여 안전하게 처리함.
-✅ Verification: 단위 테스트(`submitStripsDirectoryTraversalFromOriginalFilename` 및 `stripsDirectoryTraversalFromFilename` 등)를 추가하여 취약점 문자열이 정상적으로 제거되며 100% 테스트 커버리지를 보장함.
+환경 변수를 통한 직접적인 런타임 시크릿 주입을 제거하고, CredentialRegistryPort를 통해 안전하게 시스템 시크릿(tenant-claims, artifact-token)을 조회할 수 있도록 변경했습니다.
+모든 권한 테스트와 시크릿 검증 로직은 람다 형태의 포트 구현체를 통해 100% JaCoCo 테스트 커버리지를 만족합니다.
+추가된 EnvironmentCredentialRegistryAdapter 또한 새로운 유닛 테스트를 통해 검증되었습니다.

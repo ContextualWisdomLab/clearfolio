@@ -13,7 +13,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
-import com.clearfolio.viewer.auth.CredentialRegistryPort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -55,8 +54,7 @@ class TenantAccessServiceTest {
 
     @Test
     void springConstructorSupportsSignedGatewayClaims() {
-        CredentialRegistryPort credentialRegistryPort = (CredentialRegistryPort) (final String name) -> CredentialRegistryPort.TENANT_CLAIMS_HMAC_SECRET.equals(name) ? java.util.Optional.of(SECRET) : java.util.Optional.empty();
-        TenantAccessService signedService = new TenantAccessService(credentialRegistryPort, 300L);
+        TenantAccessService signedService = new TenantAccessService(SECRET, 300L);
 
         assertDoesNotThrow(() -> signedService.require(
                 signedHeaders(TenantPermissions.JOB_READ, Instant.now()),

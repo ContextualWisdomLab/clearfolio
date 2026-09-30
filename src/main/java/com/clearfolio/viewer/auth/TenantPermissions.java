@@ -55,6 +55,11 @@ public final class TenantPermissions {
      */
     public static final String ANALYTICS_READ = "analytics:read";
 
+    /**
+     * Permission required for cross-tenant admin operations.
+     */
+    public static final String ADMIN_OPERATE = "admin:operate";
+
     private TenantPermissions() {
     }
 }

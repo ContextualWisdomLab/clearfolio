@@ -70,3 +70,8 @@
 - 루트 `LICENSE`와 Maven license metadata를 추가해 Scorecard License alert가 표준 Apache-2.0 파일을 확인할 수 있게 했습니다.
 - logback-core 신규 권고(GHSA-jhq6-gfmj-v8fx) 대응을 위해 Logback 관리 버전을 `1.5.35`로 고정했습니다.
 - 저장소 보안 정책, Maven/GitHub Actions Dependabot 설정, 기본 CodeQL/중앙 SAST 운영 지침, 다운로드 파일명 정규화 Jazzer fuzz target을 추가해 Scorecard 보안 거버넌스 신호를 보강했습니다.
+
+### Fixed
+
+- **UI UX 개선**: 비동기 버튼(`setBusyState`)에 로딩 스피너 애니메이션을 추가하여 로딩 상태일 때 텍스트뿐만 아니라 시각적인 회전 애니메이션이 함께 표시되도록 개선했습니다.
+- `viewer.js`에서 재시도 버튼(`retryBtn`)의 로딩 상태가 `setLoading`, `showError`, `poll` 성공 시 원래의 텍스트와 상태로 안전하게 복원되도록 로직을 수정했습니다.

@@ -26,8 +26,14 @@ export function setBusyState(button, loadingText) {
     busyStates.set(button, state);
 
     button.disabled = true;
-    button.textContent = loadingText;
     button.setAttribute("aria-busy", "true");
+
+    const spinner = document.createElement("span");
+    spinner.className = "spinner";
+    spinner.setAttribute("aria-hidden", "true");
+
+    button.replaceChildren(spinner, document.createTextNode(loadingText));
+
     button.setAttribute(
       "aria-label",
       state.originalAriaLabel === null || state.originalAriaLabel === ""

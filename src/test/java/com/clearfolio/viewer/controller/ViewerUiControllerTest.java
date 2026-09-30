@@ -80,6 +80,7 @@ class ViewerUiControllerTest {
                     assertTrue(body.contains("clearfolio-initial-state\" content=\"LOADING\""));
                     assertTrue(body.contains("/assets/viewer/viewer.css"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
+                    assertTrue(body.contains("/assets/viewer/dom-utils.js") == false);
                     assertTrue(body.contains("target=\"_blank\" rel=\"noopener noreferrer\""));
                     assertTrue(body.contains("aria-label=\"Open JSON bootstrap in a new tab\""));
                 });
@@ -200,6 +201,7 @@ class ViewerUiControllerTest {
                     assertTrue(!body.contains("not-a-uuid"));
                     assertTrue(body.contains("clearfolio-initial-state\" content=\"NOT_FOUND"));
                     assertTrue(body.contains("/assets/viewer/viewer.js"));
+                    assertTrue(body.contains("/assets/viewer/dom-utils.js") == false);
                 });
     }
 

@@ -75,3 +75,14 @@ export class MockElement {
 
   reset() {}
 }
+
+
+export class MockDocument {
+  createElement(tagName) {
+    return new MockElement(tagName);
+  }
+
+  createTextNode(text) {
+    return new MockTextNode(text);
+  }
+}

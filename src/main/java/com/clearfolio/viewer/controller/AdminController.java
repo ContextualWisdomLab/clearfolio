@@ -40,8 +40,8 @@ public class AdminController {
      * @param tenantAccessService tenant and permission guard
      */
     public AdminController(
-            DocumentConversionService conversionService,
-            TenantAccessService tenantAccessService) {
+            final DocumentConversionService conversionService,
+            final TenantAccessService tenantAccessService) {
         this.tenantAccessService = tenantAccessService;
         this.conversionService = conversionService;
     }
@@ -55,12 +55,12 @@ public class AdminController {
      */
     @GetMapping("/api/v1/admin/convert/jobs")
     public AdminJobListResponse getAllJobs(
-            @RequestParam(required = false) Boolean deadLettered,
-            @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext =
+            @RequestParam(required = false) final Boolean deadLettered,
+            @RequestHeader final HttpHeaders headers) {
+        final TenantContext tenantContext =
                 tenantAccessService.require(headers, TenantPermissions.ADMIN_READ);
-        List<ConversionJob> filtered = new ArrayList<>();
-        for (ConversionJob job : conversionService.getAllJobs()) {
+        final List<ConversionJob> filtered = new ArrayList<>();
+        for (final ConversionJob job : conversionService.getAllJobs()) {
             if (job.belongsToTenant(tenantContext.tenantId())
                     && (deadLettered == null || job.isDeadLettered() == deadLettered)) {
                 filtered.add(job);
@@ -78,9 +78,9 @@ public class AdminController {
      */
     @DeleteMapping("/api/v1/admin/convert/jobs/{jobId}")
     public ResponseEntity<Void> deleteJob(
-            @PathVariable UUID jobId,
-            @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext =
+            @PathVariable final UUID jobId,
+            @RequestHeader final HttpHeaders headers) {
+        final TenantContext tenantContext =
                 tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
         if (!conversionService.deleteJob(jobId, tenantContext)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
@@ -97,14 +97,14 @@ public class AdminController {
      */
     @PostMapping("/api/v1/admin/convert/jobs/{jobId}/retry")
     public ResponseEntity<Void> retryDeadLettered(
-            @PathVariable UUID jobId,
-            @RequestHeader HttpHeaders headers) {
-        TenantContext tenantContext =
+            @PathVariable final UUID jobId,
+            @RequestHeader final HttpHeaders headers) {
+        final TenantContext tenantContext =
                 tenantAccessService.require(headers, TenantPermissions.ADMIN_WRITE);
-        ConversionJob job = conversionService.getJob(jobId)
+        final ConversionJob job = conversionService.getJob(jobId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found"));
         tenantAccessService.requireSameTenant(tenantContext, job);
-        RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
+        final RetryDeadLetterResult result = conversionService.retryDeadLettered(jobId, "admin");
         if (result == RetryDeadLetterResult.NOT_FOUND) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "job not found");
         }

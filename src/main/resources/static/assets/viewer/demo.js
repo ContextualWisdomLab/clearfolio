@@ -114,6 +114,9 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
+  // ⚡ Bolt: Add DocumentFragment for batched DOM insertions to prevent layout thrashing
+  const fragment = document.createDocumentFragment();
+
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -143,18 +146,11 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    el.historyBody.appendChild(row);
+    fragment.appendChild(row);
   }
 
+  el.historyBody.appendChild(fragment);
   renderRecoveryEvidence(history);
-}
-
-function addDetailRow(label, value) {
-  const term = document.createElement("dt");
-  const description = document.createElement("dd");
-  term.textContent = label;
-  description.textContent = formatDetailValue(value);
-  el.jobDetailBody.append(term, description);
 }
 
 function formatDetailValue(value) {
@@ -177,17 +173,30 @@ function renderJobDetail(detail) {
     : "Operational evidence";
   el.jobDetailBody.textContent = "";
 
-  addDetailRow("Job ID", detail.jobId);
-  addDetailRow("Tenant", detail.tenantId);
-  addDetailRow("Status", detail.status);
-  addDetailRow("Message", detail.message);
-  addDetailRow("Attempts", `${detail.attemptCount ?? 0} / ${detail.maxAttempts ?? "n/a"}`);
-  addDetailRow("Dead-lettered", Boolean(detail.deadLettered));
-  addDetailRow("Retry at", detail.retryAt);
-  addDetailRow("Created", detail.createdAt);
-  addDetailRow("Started", detail.startedAt);
-  addDetailRow("Completed", detail.completedAt);
-  addDetailRow("Artifact", detail.convertedResourcePath);
+  // ⚡ Bolt: Add DocumentFragment for batched DOM insertions to prevent layout thrashing
+  const fragment = document.createDocumentFragment();
+
+  const addDetailRowToFragment = (label, value) => {
+    const term = document.createElement("dt");
+    const description = document.createElement("dd");
+    term.textContent = label;
+    description.textContent = formatDetailValue(value);
+    fragment.append(term, description);
+  };
+
+  addDetailRowToFragment("Job ID", detail.jobId);
+  addDetailRowToFragment("Tenant", detail.tenantId);
+  addDetailRowToFragment("Status", detail.status);
+  addDetailRowToFragment("Message", detail.message);
+  addDetailRowToFragment("Attempts", `${detail.attemptCount ?? 0} / ${detail.maxAttempts ?? "n/a"}`);
+  addDetailRowToFragment("Dead-lettered", Boolean(detail.deadLettered));
+  addDetailRowToFragment("Retry at", detail.retryAt);
+  addDetailRowToFragment("Created", detail.createdAt);
+  addDetailRowToFragment("Started", detail.startedAt);
+  addDetailRowToFragment("Completed", detail.completedAt);
+  addDetailRowToFragment("Artifact", detail.convertedResourcePath);
+
+  el.jobDetailBody.appendChild(fragment);
 
   el.retryJobBtn.hidden = !detail.deadLettered;
 }

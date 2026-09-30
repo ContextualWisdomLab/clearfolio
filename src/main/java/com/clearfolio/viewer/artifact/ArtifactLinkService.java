@@ -367,14 +367,8 @@ public class ArtifactLinkService {
         int startIndex = 0;
         int nextDot;
         while ((nextDot = payload.indexOf('.', startIndex)) != -1) {
-            if (count == TOKEN_FIELD_COUNT - 1) {
-                throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
-            }
             parts[count++] = payload.substring(startIndex, nextDot);
             startIndex = nextDot + 1;
-        }
-        if (count != TOKEN_FIELD_COUNT - 1) {
-            throw new ArtifactTokenException(HttpStatus.UNAUTHORIZED, "artifact token invalid");
         }
         parts[count] = payload.substring(startIndex);
 

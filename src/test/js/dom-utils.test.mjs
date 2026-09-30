@@ -11,6 +11,9 @@ import { MockElement, MockTextNode } from "./mock-dom.mjs";
 globalThis.document = {
   createElement(tagName) {
     return new MockElement(tagName);
+  },
+  createTextNode(text) {
+    return new MockTextNode(text);
   }
 };
 

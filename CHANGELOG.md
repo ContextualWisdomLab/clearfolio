@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed (Security)
+- **Sentinel**: [CRITICAL] Spring Boot의 런타임 시크릿에 대한 환경 변수 주입(Empty default value)을 제거하여, 시크릿 누락 시 Fail-Fast가 동작하도록 개선했습니다. 이제 시크릿은 KV 백엔드(예: configtree)를 통해서만 안전하게 로드됩니다.
+
+
 ### Added
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.

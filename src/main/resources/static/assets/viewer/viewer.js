@@ -51,15 +51,15 @@ function isUuidLike(value) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
 }
 
-let restoreBusyState = null;
+let clearBusyState = null;
 
 function setLoading(message) {
   el.error.hidden = true;
   el.liveStatus.textContent = message;
   el.preview.setAttribute("aria-busy", "true");
 
-  if (restoreBusyState === null) {
-      restoreBusyState = setBusyState(el.retryBtn, "Refreshing...");
+  if (clearBusyState === null) {
+      clearBusyState = setBusyState(el.retryBtn, "Refreshing...");
   }
 }
 
@@ -70,9 +70,9 @@ function showError(message) {
   el.preview.setAttribute("aria-busy", "false");
   el.errorTitle.focus();
 
-  if (restoreBusyState !== null) {
-      restoreBusyState();
-      restoreBusyState = null;
+  if (clearBusyState !== null) {
+      clearBusyState();
+      clearBusyState = null;
   }
 }
 
@@ -282,9 +282,9 @@ async function poll(docId, abortSignal) {
     el.preview.setAttribute("aria-busy", "false");
     el.liveStatus.textContent = "Ready.";
 
-    if (restoreBusyState !== null) {
-        restoreBusyState();
-        restoreBusyState = null;
+    if (clearBusyState !== null) {
+        clearBusyState();
+        clearBusyState = null;
     }
   } catch (_error) {
     if (abortSignal.aborted) {

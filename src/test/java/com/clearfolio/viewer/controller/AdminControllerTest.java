@@ -87,6 +87,21 @@ class AdminControllerTest {
                 .jsonPath("$.jobs[0].fileName").isEqualTo("a.pdf");
     }
 
+
+    @Test
+    void getAllJobsFiltersOwnedJobsByDeadLetteredTrueReturnsEmptyWhenNoneMatch() {
+        allow(TenantPermissions.ADMIN_READ);
+        ConversionJob active = job(TENANT_ID, "b.pdf");
+        when(conversionService.getAllJobs()).thenReturn(Arrays.asList(active));
+
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.jobs.length()").isEqualTo(0);
+    }
+
     @Test
     void getAllJobsFiltersOwnedJobsByDeadLetteredFalse() {
         allow(TenantPermissions.ADMIN_READ);
@@ -205,7 +220,8 @@ class AdminControllerTest {
 
     @Test
     void retryDeadLetteredReturnsNotFoundWhenJobIsMissing() {
-        allow(TenantPermissions.ADMIN_WRITE);
+        when(tenantAccessService.require(any(HttpHeaders.class), eq(TenantPermissions.ADMIN_WRITE)))
+                .thenReturn(mock(TenantContext.class));
         UUID jobId = UUID.randomUUID();
         when(conversionService.getJob(jobId)).thenReturn(Optional.empty());
 
@@ -234,6 +250,25 @@ class AdminControllerTest {
                 .expectStatus().isNotFound();
 
         verify(conversionService, never()).retryDeadLettered(jobId, "admin");
+    }
+
+
+
+    @Test
+    void retryDeadLetteredReturnsNotFoundWhenServiceReturnsNotFound() {
+        TenantContext context = allow(TenantPermissions.ADMIN_WRITE);
+        ConversionJob owned = job(TENANT_ID, "a.pdf");
+        UUID jobId = owned.getJobId();
+        when(conversionService.getJob(jobId)).thenReturn(Optional.of(owned));
+        when(conversionService.retryDeadLettered(jobId, "admin"))
+                .thenReturn(RetryDeadLetterResult.NOT_FOUND);
+
+        webTestClient.post()
+                .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verify(tenantAccessService).requireSameTenant(context, owned);
     }
 
     @Test

@@ -68,3 +68,21 @@ history, and restores tree `41b7c5a757c449769bfacfa67ccfc27f05e37bb9`.
 The predecessor remains open Draft as evidence. Successor #662 is Ready only
 for review admission; merge remains HOLD until exact-current-head Checks are
 terminal and an independent approval exists.
+
+
+## #663 carryover — 2026-10-02
+
+Draft #663 exact `2b49634cfabc00d888ef2e14a23a865f5d4c5f85` independently
+reproduced the Jackson 2.22.1 scanner failure and repaired its POM to 2.22.3, but
+that partial repair duplicated canonical owner #503 and omitted its regenerated
+SBOM, attribution, expired-exception removal, and cross-artifact drift contract.
+Those owner paths remain authoritative in successor #662.
+
+The #663 production UI blob
+`d55dfd56f8a9709b999b0c722d5dc75d4f13d479` is byte-identical to #662.
+Its stricter response regression, which asserts the complete label and span
+structure, is carried forward here. The standalone string-search dependency test
+is superseded by `DependencyPolicyTest`, which parses the POM and binds Jackson
+2.22.3 to the SBOM and attribution evidence. #663 remains open until this
+successor head receives exact-head verification; retirement is permitted only
+after that complete carryover is verified.

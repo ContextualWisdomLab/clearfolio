@@ -36,3 +36,7 @@
 **Vulnerability:** Trivy-FS detected multiple High and Medium severity CVEs (CVE-2026-68497, CVE-2026-91776, CVE-2026-91777, etc.) associated with `jackson-databind` inside `pom.xml`.
 **Learning:** `jackson-databind` vulnerabilities regularly surface when BOM properties referencing out-of-date versions (like `2.22.1`) are present in Maven `pom.xml`.
 **Prevention:** Increment the BOM version parameter (e.g. `jackson-bom.version`) in `pom.xml` instead of defining a direct dependency override, ensuring all Jackson-related packages are upgraded symmetrically to resolve vulnerabilities.
+## 2026-09-30 - [jackson-databind vulnerabilities part 2]
+**Vulnerability:** Jackson `2.22.2` is affected by CVE-2026-91776 and CVE-2026-91777 and was flagged by an exact-head admission correction rule.
+**Learning:** Checking the latest versions or canonical owner repositories for terminal GREEN status is necessary when fixing vulnerabilities.
+**Prevention:** Always bump to the safe root-cause repair version (`2.22.3`) as verified by the canonical dependency owner to ensure the PR can be ordinarily integrated.

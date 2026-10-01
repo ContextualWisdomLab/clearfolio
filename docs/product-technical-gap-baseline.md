@@ -51,3 +51,19 @@ single-writer and exact-head evidence are stable.
 
 FasterXML. (2026, September 21). *Jackson release 2.22.3*.
 https://github.com/FasterXML/jackson/wiki/Jackson-Release-2.22.3
+
+
+## Successor handoff — 2026-10-01
+
+The original #661 writer repeated the identical eight-path Jackson downgrade five
+times at `5d27441771689395358109d735e16d2ea9bbe30e`,
+`19795e9f645a6a731ad3db869ec441d58f7d9786`,
+`980503850cff4f4a5e0d6bbf7e11b51e609f528f`,
+`a486ce3e001f312f8b60d70ecbdc572c5336d11c`, and
+`586bfc9a4a3436653e0488cae55fa4b34b22e525`. Direct repair on that
+branch could not remain authoritative. Draft successor #662 at
+`78587632e979de03895d9a9e49ad86bd0a3f85db` carries every valid accessibility
+and canonical-owner delta, preserves all five concurrent commits in ordinary
+history, and restores tree `41b7c5a757c449769bfacfa67ccfc27f05e37bb9`.
+The predecessor remains open Draft as evidence; successor merge remains HOLD
+until exact-current-head Checks are terminal and an independent approval exists.

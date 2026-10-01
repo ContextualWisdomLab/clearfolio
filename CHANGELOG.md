@@ -4,6 +4,8 @@
 
 ### Added
 
+- **관리자 엔드포인트 보안 강화**: 관리자 전용 API(`AdminController`)에 `TenantAccessService`를 통한 `ADMIN_OPERATE` 권한 인증 및 인가 검증을 추가하여 보안 취약점을 해결했습니다.
+
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**
   - 특정 변환 작업을 삭제할 수 있는 `DELETE /api/v1/admin/convert/jobs/{jobId}` 엔드포인트를 추가했습니다.

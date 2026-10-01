@@ -54,6 +54,18 @@ class DependencyPolicyTest {
     }
 
     @Test
+    void pomPinsJacksonLineWithBoundedDeserializationWork() throws Exception {
+        Document document = parsedPom();
+        Element properties = (Element) document.getElementsByTagName("properties").item(0);
+
+        assertEquals(
+                "2.22.3",
+                directChildTextOf(properties, "jackson-bom.version"),
+                "Jackson 2.22.3 fixes CVE-2026-91776 and CVE-2026-91777 denial-of-service paths"
+        );
+    }
+
+    @Test
     void mavenVerifyGeneratesWarningFreePublicApiJavadocs() throws Exception {
         Document document = parsedPom();
         Element properties = (Element) document.getElementsByTagName("properties").item(0);

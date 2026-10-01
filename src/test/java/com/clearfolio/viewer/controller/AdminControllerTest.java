@@ -32,7 +32,7 @@ class AdminControllerTest {
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
         tenantAccessService = mock(TenantAccessService.class);
-        TenantContext tenantContext = TenantContext.fromClaims("tenant-1", "user-1", "admin:operate");
+        TenantContext tenantContext = new TenantContext("tenant-1", "user-1", java.util.Set.of("admin:operate"));
         when(tenantAccessService.require(any(HttpHeaders.class), eq("admin:operate"))).thenReturn(tenantContext);
 
         controller = new AdminController(conversionService, tenantAccessService);

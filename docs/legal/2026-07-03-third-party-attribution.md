@@ -14,11 +14,11 @@ CycloneDX SBOM. It is engineering evidence, not legal advice.
 | Component | Version | License metadata | Package URL |
 | --- | --- | --- | --- |
 | com.fasterxml.jackson.core:jackson-annotations | 2.22 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.core/jackson-annotations@2.22?type=jar` |
-| com.fasterxml.jackson.core:jackson-core | 2.22.1 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.core/jackson-core@2.22.1?type=jar` |
-| com.fasterxml.jackson.core:jackson-databind | 2.22.1 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.22.1?type=jar` |
-| com.fasterxml.jackson.datatype:jackson-datatype-jdk8 | 2.22.1 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jdk8@2.22.1?type=jar` |
-| com.fasterxml.jackson.datatype:jackson-datatype-jsr310 | 2.22.1 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.22.1?type=jar` |
-| com.fasterxml.jackson.module:jackson-module-parameter-names | 2.22.1 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.module/jackson-module-parameter-names@2.22.1?type=jar` |
+| com.fasterxml.jackson.core:jackson-core | 2.22.3 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.core/jackson-core@2.22.3?type=jar` |
+| com.fasterxml.jackson.core:jackson-databind | 2.22.3 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.22.3?type=jar` |
+| com.fasterxml.jackson.datatype:jackson-datatype-jdk8 | 2.22.3 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jdk8@2.22.3?type=jar` |
+| com.fasterxml.jackson.datatype:jackson-datatype-jsr310 | 2.22.3 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310@2.22.3?type=jar` |
+| com.fasterxml.jackson.module:jackson-module-parameter-names | 2.22.3 | Apache-2.0 | `pkg:maven/com.fasterxml.jackson.module/jackson-module-parameter-names@2.22.3?type=jar` |
 | com.fasterxml:classmate | 1.7.3 | Apache-2.0 | `pkg:maven/com.fasterxml/classmate@1.7.3?type=jar` |
 | commons-logging:commons-logging | 1.4.0 | Apache-2.0 | `pkg:maven/commons-logging/commons-logging@1.4.0?type=jar` |
 | io.micrometer:micrometer-commons | 1.15.12 | Apache-2.0 | `pkg:maven/io.micrometer/micrometer-commons@1.15.12?type=jar` |

@@ -32,3 +32,11 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+## 2026-09-30 - [jackson-databind vulnerabilities]
+**Vulnerability:** Trivy-FS detected multiple High and Medium severity CVEs (CVE-2026-68497, CVE-2026-91776, CVE-2026-91777, etc.) associated with `jackson-databind` inside `pom.xml`.
+**Learning:** `jackson-databind` vulnerabilities regularly surface when BOM properties referencing out-of-date versions (like `2.22.1`) are present in Maven `pom.xml`.
+**Prevention:** Increment the BOM version parameter (e.g. `jackson-bom.version`) in `pom.xml` instead of defining a direct dependency override, ensuring all Jackson-related packages are upgraded symmetrically to resolve vulnerabilities.
+## 2026-09-30 - [jackson-databind vulnerabilities part 2]
+**Vulnerability:** Jackson `2.22.2` is affected by CVE-2026-91776 and CVE-2026-91777 and was flagged by an exact-head admission correction rule.
+**Learning:** Checking the latest versions or canonical owner repositories for terminal GREEN status is necessary when fixing vulnerabilities.
+**Prevention:** Always bump to the safe root-cause repair version (`2.22.3`) as verified by the canonical dependency owner to ensure the PR can be ordinarily integrated.

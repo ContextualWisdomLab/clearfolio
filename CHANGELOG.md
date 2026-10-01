@@ -24,6 +24,7 @@
 
 ### Security
 
+- Jackson BOM을 `2.22.3`으로 올려 `jackson-databind`의 무제한 type-id 캐시 성장(CVE-2026-91776)과 이차 시간 forward-reference 해석(CVE-2026-91777)을 수정했습니다. 만료된 GHSA-5jmj-h7xm-6q6v OSV 예외를 제거하고 SBOM·제3자 고지문을 새 의존성 그래프와 함께 갱신했습니다.
 - `GET /api/v1/convert/jobs/{jobId}/download`가 리소스 조회 전에 전용 `artifact:read` 권한을 검증하고, PDF 저장소 접근 전에 작업의 tenant 소유권을 확인하도록 강화했습니다. `job:read`만으로는 문서 바이트를 읽을 수 없으며, 인증 누락·권한 누락·교차 tenant UUID 접근은 각각 fail closed 처리되고 교차 tenant 요청은 리소스 존재를 숨기는 `404`를 반환합니다.
 - Maven XML 테스트 보고서 검증기는 각 `testsuite`의 `tests`, `skipped`, `failures`, `errors` 속성을 모두 필수 증거로 요구합니다. 누락된 결과 수를 암묵적으로 0으로 간주하지 않고 fail closed 처리하며, 각 속성 누락 회귀 테스트를 추가했습니다.
 - Maven XML 테스트 보고서 검증기는 UTF-8만 허용하고 UTF-8 BOM은 수용하며, NUL 바이트·DTD·엔터티 선언을 파싱 전에 거부합니다. UTF-16 같은 대체 인코딩으로 위험 선언을 바이트 검사에서 숨기는 우회와 외부 엔터티 읽기·엔터티 확장형 서비스 거부를 회귀 테스트로 차단했습니다.
@@ -36,6 +37,7 @@
 
 ### Fixed
 
+- Enforced `admin:operate` on every Admin API endpoint and repaired the controller test fixture to construct the released `TenantContext` contract directly.
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정했습니다.
 
 ## [0.1.0] - 2026-06-25

@@ -29,6 +29,9 @@ ATTRIBUTION_PATH = (
 NETTY_VERSION_PATTERN = re.compile(
     r"<netty\.version>\s*([^<\s]+)\s*</netty\.version>"
 )
+JACKSON_VERSION_PATTERN = re.compile(
+    r"<jackson-bom\.version>\s*([^<\s]+)\s*</jackson-bom\.version>"
+)
 
 
 def component(group: str, name: str, version: str, license_id: str, purl: str) -> dict:
@@ -47,6 +50,16 @@ def managed_netty_version() -> str:
     matches = NETTY_VERSION_PATTERN.findall(POM_PATH.read_text(encoding="utf-8"))
     if len(matches) != 1:
         raise AssertionError("pom.xml must declare exactly one non-blank netty.version property")
+    return matches[0]
+
+
+def managed_jackson_version() -> str:
+    """Read the reviewed Jackson family version from the trusted project POM."""
+    matches = JACKSON_VERSION_PATTERN.findall(POM_PATH.read_text(encoding="utf-8"))
+    if len(matches) != 1:
+        raise AssertionError(
+            "pom.xml must declare exactly one non-blank jackson-bom.version property"
+        )
     return matches[0]
 
 
@@ -191,6 +204,51 @@ class ThirdPartyAttributionTest(unittest.TestCase):
             "4.1.135.Final",
             actual_attribution,
             "the historical Netty line must be absent from buyer attribution",
+        )
+
+    def test_buyer_evidence_tracks_reviewed_jackson_security_line(self) -> None:
+        """Require Jackson SBOM references and attribution to match Maven."""
+        expected_version = managed_jackson_version()
+        sbom_text = SBOM_PATH.read_text(encoding="utf-8")
+        sbom = json.loads(sbom_text)
+        jackson_components = [
+            item
+            for item in sbom.get("components", [])
+            if str(item.get("group", "")).startswith("com.fasterxml.jackson")
+            and item.get("name") != "jackson-annotations"
+        ]
+
+        self.assertGreater(len(jackson_components), 0)
+        self.assertEqual(
+            {expected_version},
+            {str(item.get("version", "")) for item in jackson_components},
+            "every patch-versioned Jackson module must match jackson-bom.version",
+        )
+        for item in jackson_components:
+            coordinate = f"{item.get('group')}:{item.get('name')}"
+            self.assertIn(
+                f"@{expected_version}",
+                str(item.get("purl", "")),
+                f"{coordinate} purl must identify the reviewed Jackson version",
+            )
+            self.assertIn(
+                f"@{expected_version}",
+                str(item.get("bom-ref", "")),
+                f"{coordinate} bom-ref must identify the reviewed Jackson version",
+            )
+
+        self.assertNotIn("2.22.1", sbom_text)
+        actual_attribution = ATTRIBUTION_PATH.read_text(encoding="utf-8")
+        jackson_rows = [
+            line
+            for line in actual_attribution.splitlines()
+            if line.startswith("| com.fasterxml.jackson.")
+            and ":jackson-annotations |" not in line
+        ]
+        self.assertEqual(len(jackson_components), len(jackson_rows))
+        self.assertTrue(
+            all(f"| {expected_version} |" in line for line in jackson_rows),
+            "every patch-versioned Jackson attribution row must use the reviewed version",
         )
 
 

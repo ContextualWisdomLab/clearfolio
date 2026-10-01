@@ -44,8 +44,8 @@ temporary branches.
 | Gap | Exact evidence | Action | Status |
 | --- | --- | --- | --- |
 | Required document input was not visibly identified | PR #663, original head `38b9150fe8d29e2dfdbb879db5599b2b8c6db191` | Render `Document (required)` inside the grid-safe span and retain response regression coverage | Implemented; browser accessibility evidence remains Proposed |
-| Jackson 2.22.1 contained newly disclosed denial-of-service vulnerabilities | PR #663; RED head `3a75f0129977315795b140a67d62d0e083177dde`; Maven run 36925567288 failed only `SecurityDependencyFloorTest` | Upgrade the BOM and direct dependency floor to 2.22.3, retain a regression test, and verify repository scanners | Fixed at `8120329a367c2b66c658689824f065a7796c3185`; CI 36925898692 and Security Scan 36925898878 GREEN |
-| Exact-head CodeQL is skipped while the PR is Draft | PR #663, workflow run 36925898744 | Admit the repaired source for review; central stale-event repair remains owned by ContextualWisdomLab/.github#2537 | Blocked at canonical owner; no bypass or synthetic wake event |
+| Jackson 2.22.1 contained newly disclosed denial-of-service vulnerabilities | Canonical dependency PR #503, exact head `bf121dffff24e771739f50b9e2cc7961459670a2`; the duplicate #663 dependency delta was removed at `80eb0a73f9fbeff7a7f9652d08946c2bdad7cd54` | Complete, verify, and merge the dependency repair at #503; consume only its protected result | In progress at canonical owner; excluded from #663 |
+| CodeQL was skipped on predecessor Draft head `80eb0a73f9fbeff7a7f9652d08946c2bdad7cd54` | PR #663, workflow run 36926377953 | Keep the PR Draft while UI evidence is incomplete; central stale-event repair remains owned by ContextualWisdomLab/.github#2537 | Non-evidence preserved; no bypass or synthetic wake event |
 | Canonical UML / ERD index is absent from the evidenced document set | This baseline and repository documentation search on 2026-10-02 | Add only diagrams backed by current code, schema, and API evidence | Proposed |
 
 ## Verification rules

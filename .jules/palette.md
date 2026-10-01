@@ -13,7 +13,3 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
-
-## 2026-10-01 - Use setBusyState for async button
-**Learning:** When implementing a loading state, using a robust utility like `setBusyState` instead of manual DOM mutations ensures nested elements are preserved and accessibility states are correctly managed.
-**Action:** Always use the dedicated `setBusyState` tool instead of explicitly modifying `textContent` and `disabled` state manually.

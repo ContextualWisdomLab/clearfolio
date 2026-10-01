@@ -13,3 +13,6 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+## 2026-09-30 - Add explicit text (required) to field label
+**Learning:** Required form fields need explicit text `(required)` inside the label for accessibility, rather than using styled asterisks. When doing so inside a CSS grid container like `.field-label`, the text needs to be wrapped in a `<span>` to prevent `display: grid` from forcing elements onto separate tracks.
+**Action:** Use explicit `(required)` text wrapped in `<span>` for required fields in CSS grids.

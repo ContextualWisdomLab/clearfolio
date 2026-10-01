@@ -1,7 +1,7 @@
 # Auth, RBAC, and Tenant Model
 
 Date: 2026-07-02
-Last updated: 2026-10-01
+Last updated: 2026-08-09
 
 This document defines the production authorization contract needed before
 Clearfolio Viewer can claim tenant-safe preview access. It now includes the
@@ -103,7 +103,7 @@ to the identity provider or gateway, not the viewer service.
 | `viewer_user` | `job:create`, `job:read`, `viewer:read`, `artifact-link:create`, `artifact:read` |
 | `workflow_client` | `job:create`, `job:read`, `viewer:read` |
 | `operator` | `job:read`, `job:retry`, `artifact-link:revoke`, `audit:read` |
-| `tenant_admin` | `job:read`, `artifact-link:revoke`, `audit:read`, `tenant:configure`, `admin:operate` |
+| `tenant_admin` | `job:read`, `artifact-link:revoke`, `audit:read`, `tenant:configure` |
 | `buyer_reviewer` | `job:read`, `viewer:read`, `analytics:read`, `audit:read` in a demo or diligence tenant |
 
 Server-side authorization must check both permission and tenant ownership. A
@@ -147,7 +147,7 @@ unauthorized action, depending on route semantics.
 | `GET /viewer/{docId}` | none for HTML shell | Shell does not inspect job existence; protected JSON APIs decide state. |
 | `POST /api/v1/viewer/{docId}/artifact-links` | `artifact-link:create` | Same tenant and succeeded job. |
 | `GET /artifacts/{docId}.pdf` | valid signed artifact token | Signed token scope/document/tenant/current checksum/issuance/revocation must match; zero or one Range; record read audit. |
-| `GET /api/v1/admin/convert/jobs` | `admin:operate` | Gateway role mapping must grant this permission to `tenant_admin`; the service validates the signed permission claim before listing global jobs. |\n| `DELETE /api/v1/admin/convert/jobs/{jobId}` | `admin:operate` | Same grant contract; deny before deletion when absent. |\n| `POST /api/v1/admin/convert/jobs/{jobId}/retry` | `admin:operate` | Same grant contract; deny before retry when absent. |\n| `GET /api/v1/analytics/kpi-snapshot` | `analytics:read` | Tenant-scoped aggregate by default. |
+| `GET /api/v1/analytics/kpi-snapshot` | `analytics:read` | Tenant-scoped aggregate by default. |
 
 ## Current Branch Implementation Status
 

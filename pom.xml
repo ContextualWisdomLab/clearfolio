@@ -38,9 +38,11 @@
          which contains the July 2026 HTTP, HTTP/2, MQTT, compression, and
          parser-boundary hardening release. -->
     <netty.version>4.1.136.Final</netty.version>
-    <!-- Security override: Jackson 2.22.3 is the first 2.22.x line fixing
-         CVE-2026-68497, CVE-2026-91776, CVE-2026-91777, CVE-2026-19032,
-         CVE-2026-83557, and retains the CVE-2026-54515 fix. -->
+    <!-- Security override: pull the patched Jackson line for GHSA-5jmj-h7xm-6q6v
+         / CVE-2026-54515 case-insensitive deserialization bypasses. The root
+         OSV config contains a narrow temporary ignore because OSV Scanner
+         v2.3.8 still reports 2.22.1 even though the advisory text names it as
+         patched. -->
     <jackson-bom.version>2.22.3</jackson-bom.version>
     <!-- Security override: GHSA-jhq6-gfmj-v8fx fixes logback-core in 1.5.35. -->
     <logback.version>1.5.35</logback.version>
@@ -57,7 +59,7 @@
   -->
   <dependencyManagement>
     <dependencies>
-      <!-- September 2026 jackson-databind advisory remediation line -->
+      <!-- GHSA-5jmj-h7xm-6q6v / CVE-2026-54515: jackson-databind line -->
       <dependency>
         <groupId>com.fasterxml.jackson</groupId>
         <artifactId>jackson-bom</artifactId>

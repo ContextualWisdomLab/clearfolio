@@ -1,0 +1,4 @@
+[[IgnoredVulns]]
+id = "GHSA-5jmj-h7xm-6q6v"
+ignoreUntil = 2026-08-15
+reason = "jackson-databind is pinned to 2.22.1, which this advisory's own patched-version text identifies as fixed for CVE-2026-54515; OSV Scanner v2.3.8 still matches 2.22.1 via a broad Maven range."

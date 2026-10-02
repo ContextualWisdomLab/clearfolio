@@ -53,6 +53,26 @@ class TenantAccessServiceTest {
     }
 
     @Test
+    void requireSignedFailsClosedWhenSigningSecretIsMissing() {
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> service.requireSigned(headers(TenantPermissions.ADMIN_READ), TenantPermissions.ADMIN_READ)
+        );
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
+    }
+
+    @Test
+    void requireSignedAcceptsValidSignedClaims() {
+        TenantContext context = signedService().requireSigned(
+                signedHeaders(TenantPermissions.ADMIN_READ, NOW),
+                TenantPermissions.ADMIN_READ
+        );
+
+        assertEquals(TenantContext.DEMO_TENANT_ID, context.tenantId());
+    }
+
+    @Test
     void springConstructorSupportsSignedGatewayClaims() {
         TenantAccessService signedService = new TenantAccessService(SECRET, 300L);
 

@@ -148,20 +148,23 @@ public class KpiSnapshotLedger {
     }
 
     private static String serialize(KpiSnapshotRecord record) {
-        return String.join("\t",
-                SNAPSHOT,
-                field(record.tenantId()),
-                field(record.subjectId()),
-                field(record.exportedAt()),
-                String.valueOf(record.totalJobs()),
-                String.valueOf(record.submittedJobs()),
-                String.valueOf(record.processingJobs()),
-                String.valueOf(record.succeededJobs()),
-                String.valueOf(record.failedJobs()),
-                String.valueOf(record.deadLetteredJobs()),
-                String.valueOf(record.conversionSuccessRate()),
-                field(record.p95TimeToPreviewMs())
-        );
+        // Bolt Optimization: Replace String.join with a pre-sized StringBuilder and chained appends.
+        // This avoids varargs array creation and intermediate String object allocations.
+        // Primitive values (e.g., totalJobs) are passed directly to append() to prevent String.valueOf() overhead.
+        StringBuilder sb = new StringBuilder(256);
+        sb.append(SNAPSHOT).append("\t")
+          .append(field(record.tenantId())).append("\t")
+          .append(field(record.subjectId())).append("\t")
+          .append(field(record.exportedAt())).append("\t")
+          .append(record.totalJobs()).append("\t")
+          .append(record.submittedJobs()).append("\t")
+          .append(record.processingJobs()).append("\t")
+          .append(record.succeededJobs()).append("\t")
+          .append(record.failedJobs()).append("\t")
+          .append(record.deadLetteredJobs()).append("\t")
+          .append(record.conversionSuccessRate()).append("\t")
+          .append(field(record.p95TimeToPreviewMs()));
+        return sb.toString();
     }
 
     private static String field(String value) {

@@ -114,6 +114,8 @@ function renderHistory(history = loadHistory()) {
   el.historyBody.textContent = "";
   el.emptyHistory.hidden = history.length > 0;
 
+  const fragment = document.createDocumentFragment();
+
   for (const job of history) {
     const row = document.createElement("tr");
     const fileCell = document.createElement("td");
@@ -143,8 +145,11 @@ function renderHistory(history = loadHistory()) {
     }
 
     row.append(fileCell, statusCell, submittedCell, actionsCell);
-    el.historyBody.appendChild(row);
+    fragment.appendChild(row);
   }
+
+  // Optimize DOM insertion by batching rows using DocumentFragment
+  el.historyBody.appendChild(fragment);
 
   renderRecoveryEvidence(history);
 }

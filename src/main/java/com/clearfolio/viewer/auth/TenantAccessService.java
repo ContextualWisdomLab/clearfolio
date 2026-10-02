@@ -82,27 +82,6 @@ public class TenantAccessService {
     }
 
     /**
-     * Resolves signed tenant claims and verifies the required permission.
-     *
-     * <p>This stricter guard is intended for administrative endpoints. It
-     * fails closed when gateway claim signing has not been configured, rather
-     * than accepting caller-controlled identity headers.</p>
-     *
-     * @param headers request headers
-     * @param permission required permission
-     * @return verified tenant context
-     */
-    public TenantContext requireSigned(HttpHeaders headers, String permission) {
-        if (claimsHmacSecret == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "signed auth claims are not configured"
-            );
-        }
-        return require(headers, permission);
-    }
-
-    /**
      * Hides resources that do not belong to the request tenant.
      *
      * @param context verified tenant context

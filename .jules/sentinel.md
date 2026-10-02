@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-10-02 - 관리자 엔드포인트 권한 부여 누락 방지
+**Vulnerability:** `AdminController.java`의 관리자 엔드포인트(`/api/v1/admin/convert/jobs`, `/api/v1/admin/convert/jobs/{jobId}`, `/api/v1/admin/convert/jobs/{jobId}/retry`)에 권한 부여 검사가 누락되어, 인증되지 않거나 권한이 없는 사용자가 관리자 작업에 접근할 수 있었습니다.
+**Learning:** 관리자용으로 의도된 엔드포인트는 URL에 `/admin` 접두사가 있더라도 접근 제어를 명시적으로 시행해야 합니다. URL 구조만으로는 접근 제어를 보장할 수 없습니다.
+**Prevention:** 민감하거나 관리자 작업을 수행하는 모든 엔드포인트는 `tenantAccessService.require(headers, TenantPermissions.ADMIN_OPERATE)` 검사나 이와 동등한 권한 부여 로직을 포함하여, 인가된 사용자만 접근할 수 있도록 보장해야 합니다.

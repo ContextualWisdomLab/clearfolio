@@ -3,13 +3,16 @@ package com.clearfolio.viewer.controller;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
@@ -17,13 +20,15 @@ import com.clearfolio.viewer.service.RetryDeadLetterResult;
 class AdminControllerTest {
 
     private DocumentConversionService conversionService;
+    private TenantAccessService tenantAccessService;
     private WebTestClient webTestClient;
     private AdminController controller;
 
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService);
+        tenantAccessService = mock(TenantAccessService.class);
+        controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -37,6 +42,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -55,6 +61,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -72,6 +79,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -85,6 +93,7 @@ class AdminControllerTest {
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                 .exchange()
                 .expectStatus().isNoContent();
     }
@@ -96,6 +105,7 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                 .exchange()
                 .expectStatus().isAccepted();
     }
@@ -107,6 +117,7 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -118,6 +129,7 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
     }

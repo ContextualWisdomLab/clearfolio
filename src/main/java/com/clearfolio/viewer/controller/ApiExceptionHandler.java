@@ -257,7 +257,7 @@ public class ApiExceptionHandler {
         StringBuilder sb = null;
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
-            boolean needsReplace = c == '\u0000' || c == '\r' || c == '\n'
+            boolean needsReplace = c == '\u0000' || c == '\t' || c == '\r' || c == '\n'
                     || (c >= '\u2028' && c <= '\u202E');
             if (needsReplace) {
                 if (sb == null) {

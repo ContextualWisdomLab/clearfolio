@@ -8,6 +8,8 @@ import java.security.Provider;
 import java.security.Security;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Optional;
+import com.clearfolio.viewer.config.CredentialRegistryPort;
 import java.time.ZoneOffset;
 import java.util.Set;
 import java.util.UUID;
@@ -54,7 +56,8 @@ class TenantAccessServiceTest {
 
     @Test
     void springConstructorSupportsSignedGatewayClaims() {
-        TenantAccessService signedService = new TenantAccessService(SECRET, 300L);
+        CredentialRegistryPort credentialRegistry = name -> "clearfolio.tenant-claims.hmac-secret".equals(name) ? Optional.of(SECRET) : Optional.empty();
+        TenantAccessService signedService = new TenantAccessService(credentialRegistry, 300L);
 
         assertDoesNotThrow(() -> signedService.require(
                 signedHeaders(TenantPermissions.JOB_READ, Instant.now()),

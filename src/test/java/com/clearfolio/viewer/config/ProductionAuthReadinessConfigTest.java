@@ -22,7 +22,7 @@ class ProductionAuthReadinessConfigTest {
 
     private static ApplicationContextRunner productionRunner() {
         return new ApplicationContextRunner()
-                .withUserConfiguration(ProductionAuthReadinessConfig.class)
+                .withUserConfiguration(ProductionAuthReadinessConfig.class, EnvironmentCredentialRegistry.class)
                 .withInitializer(context -> context.getEnvironment().setActiveProfiles("production"));
     }
 }

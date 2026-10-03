@@ -149,12 +149,12 @@ function renderHistory(history = loadHistory()) {
   renderRecoveryEvidence(history);
 }
 
-function addDetailRow(label, value) {
+function addDetailRow(fragment, label, value) {
   const term = document.createElement("dt");
   const description = document.createElement("dd");
   term.textContent = label;
   description.textContent = formatDetailValue(value);
-  el.jobDetailBody.append(term, description);
+  fragment.append(term, description);
 }
 
 function formatDetailValue(value) {
@@ -177,17 +177,24 @@ function renderJobDetail(detail) {
     : "Operational evidence";
   el.jobDetailBody.textContent = "";
 
-  addDetailRow("Job ID", detail.jobId);
-  addDetailRow("Tenant", detail.tenantId);
-  addDetailRow("Status", detail.status);
-  addDetailRow("Message", detail.message);
-  addDetailRow("Attempts", `${detail.attemptCount ?? 0} / ${detail.maxAttempts ?? "n/a"}`);
-  addDetailRow("Dead-lettered", Boolean(detail.deadLettered));
-  addDetailRow("Retry at", detail.retryAt);
-  addDetailRow("Created", detail.createdAt);
-  addDetailRow("Started", detail.startedAt);
-  addDetailRow("Completed", detail.completedAt);
-  addDetailRow("Artifact", detail.convertedResourcePath);
+  const fragment = document.createDocumentFragment();
+
+  // ⚡ Bolt: DOM batching optimization
+  // Reduces 22 separate DOM insertions into a single batch insertion,
+  // preventing layout thrashing and unnecessary re-renders.
+  addDetailRow(fragment, "Job ID", detail.jobId);
+  addDetailRow(fragment, "Tenant", detail.tenantId);
+  addDetailRow(fragment, "Status", detail.status);
+  addDetailRow(fragment, "Message", detail.message);
+  addDetailRow(fragment, "Attempts", `${detail.attemptCount ?? 0} / ${detail.maxAttempts ?? "n/a"}`);
+  addDetailRow(fragment, "Dead-lettered", Boolean(detail.deadLettered));
+  addDetailRow(fragment, "Retry at", detail.retryAt);
+  addDetailRow(fragment, "Created", detail.createdAt);
+  addDetailRow(fragment, "Started", detail.startedAt);
+  addDetailRow(fragment, "Completed", detail.completedAt);
+  addDetailRow(fragment, "Artifact", detail.convertedResourcePath);
+
+  el.jobDetailBody.appendChild(fragment);
 
   el.retryJobBtn.hidden = !detail.deadLettered;
 }

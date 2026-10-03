@@ -71,9 +71,9 @@ class ApiExceptionHandlerTest {
         Method method = ApiExceptionHandler.class.getDeclaredMethod("sanitizeForLog", String.class);
         method.setAccessible(true);
 
-        String sanitized = (String) method.invoke(handler, "a\u0000b\rc\nd\u2028e\u2029f\u202Eg");
+        String sanitized = (String) method.invoke(handler, "a\u0000b\rc\nd\u2028e\u2029f\u202Eg\th");
 
-        assertEquals("a_b_c_d_e_f_g", sanitized);
+        assertEquals("a_b_c_d_e_f_g_h", sanitized);
     }
 
     @Test

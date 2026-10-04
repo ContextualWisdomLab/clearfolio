@@ -546,17 +546,22 @@ function init() {
   el.loadDemoDataBtn.addEventListener("click", () => {
     void loadDemoData();
   });
-  el.clearHistoryBtn.addEventListener("click", () => {
+  el.clearHistoryBtn.addEventListener("click", async () => {
     if (!window.confirm("Are you sure you want to clear all session history?")) {
       return;
     }
-    saveHistory([]);
-    renderHistory([]);
-    activeJobDetail = null;
-    el.jobDetail.hidden = true;
-    void refreshKpis();
-    void refreshKpiEvidence();
-    setStatus("Session history cleared.");
+    const restore = setBusyState(el.clearHistoryBtn, "Clearing...");
+    try {
+      saveHistory([]);
+      renderHistory([]);
+      activeJobDetail = null;
+      el.jobDetail.hidden = true;
+      await refreshKpis();
+      await refreshKpiEvidence();
+      setStatus("Session history cleared.");
+    } finally {
+      restore();
+    }
   });
   el.retryJobBtn.addEventListener("click", () => {
     void retryActiveJob();

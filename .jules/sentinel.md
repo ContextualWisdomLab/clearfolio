@@ -32,3 +32,8 @@
 **Vulnerability:** The document hashing routine in `DefaultDocumentConversionService` processed file streams without enforcing any maximum size limit on the bytes read. An attacker could exploit this by uploading a maliciously large stream (or exploiting a compression bomb if unzipping), exhausting system memory, CPU, or disk space (DoS).
 **Learning:** Checking the declared file size (e.g., `file.getSize()`) in initial validation is not always sufficient if the input stream itself can be spoofed or dynamically expanded during reading. The actual bytes read must be verified against bounds continuously.
 **Prevention:** Always enforce a strict, configurable size limit (e.g., `ConversionProperties.maxUploadSizeBytes`) within the `while` loop that reads from untrusted input streams. Track `totalRead` and throw an exception immediately if the limit is exceeded.
+
+## 2026-10-04 - Missing Authentication in Admin Controller
+**Vulnerability:** The AdminController endpoints for listing, deleting, and retrying conversion jobs were exposed without any authentication or authorization checks.
+**Learning:** Endpoints intended for administrative use are just as vulnerable to unauthorized access if they do not explicitly enforce tenant context and permission claims like other protected APIs. Relying on path naming conventions alone does not secure endpoints.
+**Prevention:** Always inject and utilize `TenantAccessService` (or equivalent authorization enforcement mechanism) on every protected endpoint, explicitly checking for required permissions (e.g., `TenantPermissions.AUDIT_READ`, `JOB_DELETE`) before processing any business logic.

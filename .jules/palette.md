@@ -13,3 +13,6 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+## 2024-10-04 - 세션 이력 지우기 버튼 비동기 및 접근성 상태 반영
+**Learning:** 비동기 동작을 수행하는 UI 요소(예: 기록 삭제 등)에 적절한 시각적/접근성 피드백이 없으면 사용자가 작업 상태를 파악하기 어렵습니다.
+**Action:** 비동기 작업을 트리거하는 버튼은 `aria-label`로 기능을 명확히 하고, 동작 중일 때 명시적인 로딩(Clearing...) 및 비활성화 상태를 보여주는 것이 필수적입니다.

@@ -13,3 +13,7 @@
 ## 2026-07-13 - Async Table Actions UX
 **Learning:** Adding explicit loading and disabled states to table action buttons that invoke asynchronous processes helps prevent redundant API calls and visually assures the user that their request is being handled.
 **Action:** Consistently apply `disabled` state and `Loading...` text changes to inline table action buttons linked to async workflows, and carefully preserve underlying DOM structures with `Array.from(btn.childNodes)` during the loading cycle to avoid rendering regressions.
+
+## 2026-10-05 - Focus Management for Dynamic Content
+**Learning:** When dynamic content like a side panel or detailed view is loaded asynchronously upon user action, screen readers and keyboard users may not notice the new content if focus remains on the triggering button. Moving focus to the title of the newly loaded content drastically improves discoverability and logical flow.
+**Action:** Always programmatically move focus to a newly rendered panel's title (`tabindex="-1"`) when it is opened via user interaction, such as clicking a 'Details' button.

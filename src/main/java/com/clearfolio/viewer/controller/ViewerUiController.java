@@ -299,13 +299,13 @@ public class ViewerUiController {
                             </thead>
                             <tbody id="history-body"></tbody>
                           </table>
-                          <p class="empty-state" id="empty-history">No documents submitted in this session.</p>
+                          <p class="empty-state" id="empty-history">No documents submitted in this session. Upload a document above to begin.</p>
                         </div>
 
                         <aside class="job-detail" id="job-detail" aria-labelledby="job-detail-title" hidden>
                           <div class="job-detail__header">
                             <div>
-                              <h3 id="job-detail-title" class="job-detail__title">Job detail</h3>
+                              <h3 id="job-detail-title" class="job-detail__title" tabindex="-1">Job detail</h3>
                               <p class="job-detail__caption" id="job-detail-caption">Select a document to inspect operational evidence.</p>
                             </div>
                             <button type="button" class="btn btn-secondary btn-compact" id="retry-job-btn" hidden>Retry dead-lettered job</button>

@@ -40,6 +40,7 @@ const el = {
   recoveryLatestInspected: document.getElementById("recovery-latest-inspected"),
   recoveryStatus: document.getElementById("recovery-status"),
   jobDetail: document.getElementById("job-detail"),
+  jobDetailTitle: document.getElementById("job-detail-title"),
   jobDetailCaption: document.getElementById("job-detail-caption"),
   jobDetailBody: document.getElementById("job-detail-body"),
   retryJobBtn: document.getElementById("retry-job-btn"),
@@ -190,6 +191,7 @@ function renderJobDetail(detail) {
   addDetailRow("Artifact", detail.convertedResourcePath);
 
   el.retryJobBtn.hidden = !detail.deadLettered;
+  el.jobDetailTitle.focus();
 }
 
 function isNeedsAction(job) {

@@ -14,6 +14,8 @@
 
 ### Changed
 
+- **프론트엔드 성능 최적화**: 뷰어 데모 스크립트(`demo.js`)에서 여러 DOM 엘리먼트를 반복적으로 추가할 때 리플로우(reflow)와 리페인트(repaint)를 줄이기 위해 `DocumentFragment`를 사용하도록 개선했습니다.
+
 - PDF.js WebJar를 `6.1.200`으로 올리고, Clearfolio가 동일 버전의 `pdf.mjs`와 `pdf.worker.mjs`를 직접 사용해 서명된 same-origin artifact의 첫 페이지를 렌더링하도록 통합했습니다. 패키징·셸 경로·서명된 `artifactToken` 흐름을 회귀 테스트로 고정했습니다.
 - CI가 pull request의 정확한 head SHA를 명시적으로 체크아웃하고 검증하며, 합성 merge revision은 별도 호환성 작업에서 검증하도록 분리했습니다.
 - Maven `verify` 단계에서 JaCoCo production line 및 branch missed count가 각각 0인지 강제하고, 실패 시 누락 위치 진단을 출력하도록 했습니다.

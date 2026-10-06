@@ -6,6 +6,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.code_intelligence.jazzer.api.FuzzedDataProvider;
+import org.springframework.mock.env.MockEnvironment;
+import com.clearfolio.viewer.config.CredentialRegistryPort;
 import com.code_intelligence.jazzer.junit.FuzzTest;
 
 import com.clearfolio.viewer.auth.TenantAccessService;
@@ -28,8 +30,13 @@ import com.clearfolio.viewer.auth.TenantPermissions;
  */
 final class TenantClaimsFuzzTest {
 
-    private final TenantAccessService accessService =
-            new TenantAccessService("clearfolio-fuzz-claims-secret", 300L);
+    private final TenantAccessService accessService = createFuzzService();
+
+    private static TenantAccessService createFuzzService() {
+        MockEnvironment env = new MockEnvironment();
+        env.setProperty("clearfolio.tenant-claims.hmac-secret", "clearfolio-fuzz-claims-secret");
+        return new TenantAccessService(new CredentialRegistryPort(env), 300L);
+    }
 
     @FuzzTest(maxDuration = "60s")
     void headerClaimsParsingIsRobust(FuzzedDataProvider data) {

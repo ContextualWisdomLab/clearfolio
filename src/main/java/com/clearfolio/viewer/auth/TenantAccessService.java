@@ -10,6 +10,7 @@ import java.util.Base64;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import com.clearfolio.viewer.config.CredentialRegistryPort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -42,14 +43,14 @@ public class TenantAccessService {
     /**
      * Creates an access service with optional signed gateway claim validation.
      *
-     * @param claimsHmacSecret optional shared gateway HMAC secret
+     * @param registryPort registry port for secrets
      * @param maxSkewSeconds maximum accepted clock skew in seconds
      */
     @Autowired
     public TenantAccessService(
-            @Value("${clearfolio.tenant-claims.hmac-secret:}") String claimsHmacSecret,
-            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") long maxSkewSeconds) {
-        this(claimsHmacSecret, maxSkewSeconds, Clock.systemUTC());
+            final CredentialRegistryPort registryPort,
+            @Value("${clearfolio.tenant-claims.max-skew-seconds:300}") final long maxSkewSeconds) {
+        this(registryPort.getCredential("clearfolio.tenant-claims.hmac-secret").orElse(""), maxSkewSeconds, Clock.systemUTC());
     }
 
     TenantAccessService(String claimsHmacSecret, long maxSkewSeconds, Clock clock) {

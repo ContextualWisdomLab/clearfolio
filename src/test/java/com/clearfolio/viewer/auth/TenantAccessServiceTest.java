@@ -12,6 +12,8 @@ import java.time.ZoneOffset;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.mock.env.MockEnvironment;
+import com.clearfolio.viewer.config.CredentialRegistryPort;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -54,7 +56,9 @@ class TenantAccessServiceTest {
 
     @Test
     void springConstructorSupportsSignedGatewayClaims() {
-        TenantAccessService signedService = new TenantAccessService(SECRET, 300L);
+        MockEnvironment env = new MockEnvironment();
+        env.setProperty("clearfolio.tenant-claims.hmac-secret", SECRET);
+        TenantAccessService signedService = new TenantAccessService(new CredentialRegistryPort(env), 300L);
 
         assertDoesNotThrow(() -> signedService.require(
                 signedHeaders(TenantPermissions.JOB_READ, Instant.now()),

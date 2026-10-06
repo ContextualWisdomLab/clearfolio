@@ -15,10 +15,11 @@ public class ProductionAuthReadinessConfig {
     /**
      * Verifies that production cannot start with unsigned tenant headers.
      *
-     * @param tenantClaimsSecret shared gateway signing secret
+     * @param registryPort registry port for secrets
      */
     public ProductionAuthReadinessConfig(
-            @Value("${clearfolio.tenant-claims.hmac-secret:}") String tenantClaimsSecret) {
+            final CredentialRegistryPort registryPort) {
+        String tenantClaimsSecret = registryPort.getCredential("clearfolio.tenant-claims.hmac-secret").orElse("");
         if (!StringUtils.hasText(tenantClaimsSecret)) {
             throw new IllegalStateException(
                     "production profile requires clearfolio.tenant-claims.hmac-secret"

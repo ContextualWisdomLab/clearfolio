@@ -18,6 +18,7 @@ import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import com.clearfolio.viewer.config.CredentialRegistryPort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -77,10 +78,10 @@ public class ArtifactLinkService {
      */
     @Autowired
     public ArtifactLinkService(
-            ArtifactStore artifactStore,
-            ArtifactLinkLedger artifactLinkLedger,
-            @Value("${clearfolio.artifact-token.secret:}") String configuredSecret) {
-        this(artifactStore, artifactLinkLedger, configuredSecret, Clock.systemUTC(), new SecureRandom());
+            final ArtifactStore artifactStore,
+            final ArtifactLinkLedger artifactLinkLedger,
+            final CredentialRegistryPort registryPort) {
+        this(artifactStore, artifactLinkLedger, registryPort.getCredential("clearfolio.artifact-token.secret").orElse(""), Clock.systemUTC(), new SecureRandom());
     }
 
     /**

@@ -6,10 +6,13 @@ import {
   createLink,
   setBusyState
 } from "../../main/resources/static/assets/viewer/dom-utils.js";
-import { MockElement, MockTextNode } from "./mock-dom.mjs";
+import { MockElement, MockTextNode, MockDocumentFragment } from "./mock-dom.mjs";
 
 globalThis.document = {
-  createElement(tagName) {
+  createDocumentFragment() {
+      return new MockDocumentFragment();
+    },
+    createElement(tagName) {
     return new MockElement(tagName);
   }
 };

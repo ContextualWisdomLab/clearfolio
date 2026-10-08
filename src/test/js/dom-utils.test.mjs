@@ -6,12 +6,16 @@ import {
   createLink,
   setBusyState
 } from "../../main/resources/static/assets/viewer/dom-utils.js";
-import { MockElement, MockTextNode } from "./mock-dom.mjs";
+import { MockElement, MockTextNode, MockDocumentFragment } from "./mock-dom.mjs";
 
 globalThis.document = {
   createElement(tagName) {
     return new MockElement(tagName);
-  }
+  },
+  createDocumentFragment() {
+    return new MockDocumentFragment();
+  },
+
 };
 
 test("setBusyState restores an enabled control and the original node identities", () => {

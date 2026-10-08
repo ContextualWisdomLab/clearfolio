@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- **프론트엔드 렌더링 성능 최적화**: `demo.js`의 `renderHistory`와 `renderJobDetail`에서 반복적인 DOM 삽입 작업을 `DocumentFragment`를 사용하여 일괄 처리하도록 개선하여 레이아웃 스래싱을 방지했습니다.
 
 - **UI UX 개선**: 'Details' 버튼 클릭 시, 작업 상세 정보 로드 중에 사용자가 명시적인 로딩 상태를 확인할 수 있도록 'Loading...' 텍스트와 비활성화 상태를 표시하도록 추가했습니다.
 - **관리자용 단건 작업 삭제 및 재시도 API 추가**

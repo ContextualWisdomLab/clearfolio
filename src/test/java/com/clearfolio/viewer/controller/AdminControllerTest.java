@@ -106,7 +106,6 @@ class AdminControllerTest {
     void retryDeadLetteredReturnsAcceptedWhenAccepted() {
         UUID jobId = UUID.randomUUID();
         when(tenantAccessService.require(any(HttpHeaders.class), any(String.class))).thenReturn(mockContext);
-        when(tenantAccessService.require(any(HttpHeaders.class), any(String.class))).thenReturn(mockContext);
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.ACCEPTED);
 
         webTestClient.post()
@@ -119,7 +118,6 @@ class AdminControllerTest {
     void retryDeadLetteredReturnsNotFoundWhenNotFound() {
         UUID jobId = UUID.randomUUID();
         when(tenantAccessService.require(any(HttpHeaders.class), any(String.class))).thenReturn(mockContext);
-        when(tenantAccessService.require(any(HttpHeaders.class), any(String.class))).thenReturn(mockContext);
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_FOUND);
 
         webTestClient.post()
@@ -131,7 +129,6 @@ class AdminControllerTest {
     @Test
     void retryDeadLetteredReturnsConflictWhenNotEligible() {
         UUID jobId = UUID.randomUUID();
-        when(tenantAccessService.require(any(HttpHeaders.class), any(String.class))).thenReturn(mockContext);
         when(tenantAccessService.require(any(HttpHeaders.class), any(String.class))).thenReturn(mockContext);
         when(conversionService.retryDeadLettered(jobId, "admin")).thenReturn(RetryDeadLetterResult.NOT_ELIGIBLE);
 

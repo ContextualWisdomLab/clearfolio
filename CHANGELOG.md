@@ -36,6 +36,8 @@
 
 ### Fixed
 
+- AdminController의 관리자 엔드포인트(`GET /api/v1/admin/convert/jobs`, `DELETE /api/v1/admin/convert/jobs/{jobId}`, `POST /api/v1/admin/convert/jobs/{jobId}/retry`)에 인증 및 권한 확인이 누락되어 있던 보안 취약점을 수정했습니다. 모든 관리자 엔드포인트는 이제 `TenantAccessService`를 통해 `admin:operate` 권한을 요구하도록 개선되었습니다.
+
 - 뷰어 UI의 재시도 버튼 로딩 상태가 내부 DOM을 손상시키지 않고 안전하게 복원되도록 수정했습니다.
 
 ## [0.1.0] - 2026-06-25

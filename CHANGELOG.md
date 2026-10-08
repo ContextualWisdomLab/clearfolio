@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- [성능] `DocumentFragment`를 사용하여 DOM reflow 및 repaint를 줄여 프론트엔드 성능 개선. `renderHistory`와 `renderJobDetail` 함수에서 요소들을 개별적으로 DOM에 추가하는 대신, `DocumentFragment`에 모아서 한 번에 추가하도록 최적화.
+
 
 ### Added
 

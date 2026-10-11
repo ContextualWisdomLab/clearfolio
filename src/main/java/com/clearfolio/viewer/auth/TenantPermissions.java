@@ -6,6 +6,11 @@ package com.clearfolio.viewer.auth;
 public final class TenantPermissions {
 
     /**
+     * Permission required to operate on administrative endpoints.
+     */
+    public static final String ADMIN_OPERATE = "admin:operate";
+
+    /**
      * Permission required to submit a conversion job.
      */
     public static final String JOB_CREATE = "job:create";

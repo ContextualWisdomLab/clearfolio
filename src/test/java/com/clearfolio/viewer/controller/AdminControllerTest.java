@@ -8,8 +8,12 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.clearfolio.viewer.auth.TenantAccessService;
+import com.clearfolio.viewer.auth.TenantContext;
+import com.clearfolio.viewer.auth.TenantPermissions;
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
 import com.clearfolio.viewer.service.RetryDeadLetterResult;
@@ -23,10 +27,17 @@ class AdminControllerTest {
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService);
+        TenantAccessService tenantAccessService = new TenantAccessService();
+        controller = new AdminController(conversionService, tenantAccessService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
+    }
+
+    private void addAuth(final HttpHeaders headers) {
+        headers.add(TenantContext.TENANT_ID_HEADER, "tenant-a");
+        headers.add(TenantContext.SUBJECT_ID_HEADER, "admin-user");
+        headers.add(TenantContext.PERMISSIONS_HEADER, TenantPermissions.ADMIN_OPERATE);
     }
 
     @Test
@@ -37,6 +48,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
+                .headers(this::addAuth)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -55,6 +67,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
+                .headers(this::addAuth)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -72,6 +85,7 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
+                .headers(this::addAuth)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -85,6 +99,7 @@ class AdminControllerTest {
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
+                .headers(this::addAuth)
                 .exchange()
                 .expectStatus().isNoContent();
     }
@@ -96,6 +111,7 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .headers(this::addAuth)
                 .exchange()
                 .expectStatus().isAccepted();
     }
@@ -107,6 +123,7 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .headers(this::addAuth)
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -118,7 +135,21 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
+                .headers(this::addAuth)
                 .exchange()
-                .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
+                .expectStatus().isEqualTo(409);
+    }
+
+    @Test
+    void requiresAdminOperatePermission() {
+        webTestClient.get()
+                .uri("/api/v1/admin/convert/jobs")
+                .headers(headers -> {
+                    headers.add(TenantContext.TENANT_ID_HEADER, "tenant-a");
+                    headers.add(TenantContext.SUBJECT_ID_HEADER, "user-1");
+                    headers.add(TenantContext.PERMISSIONS_HEADER, TenantPermissions.JOB_READ);
+                })
+                .exchange()
+                .expectStatus().isForbidden();
     }
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MockElement } from "./mock-dom.mjs";
+import { MockElement, MockDocumentFragment } from "./mock-dom.mjs";
 
 const elementIds = [
   "upload-form",
@@ -53,6 +53,9 @@ test("the executable demo renders inert actions and blocks repeated status activ
     },
     createElement(tagName) {
       return new MockElement(tagName);
+    },
+    createDocumentFragment() {
+      return new MockDocumentFragment();
     },
   };
   globalThis.window = {

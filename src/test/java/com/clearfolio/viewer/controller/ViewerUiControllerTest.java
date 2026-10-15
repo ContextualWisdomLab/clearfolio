@@ -228,4 +228,21 @@ class ViewerUiControllerTest {
                 .expectBody(String.class)
                 .value(body -> assertTrue(body.contains(docId.toString())));
     }
+
+    @Test
+    void viewerUiRequiredFieldAccessibilityTest() {
+        webTestClient.get()
+                .uri("/")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().contentTypeCompatibleWith(
+                        MediaType.TEXT_HTML)
+                .expectBody(String.class)
+                .value(body -> {
+                    assertTrue(body.contains(
+                            "<label class=\"field-label\" "
+                            + "for=\"file-input\">"
+                            + "Document (required)</label>"));
+                });
+    }
 }

@@ -9,9 +9,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import com.clearfolio.viewer.auth.TenantContext;
-
-import com.clearfolio.viewer.auth.TenantAccessService;
 
 import com.clearfolio.viewer.model.ConversionJob;
 import com.clearfolio.viewer.service.DocumentConversionService;
@@ -26,7 +23,7 @@ class AdminControllerTest {
     @BeforeEach
     void setUp() {
         conversionService = mock(DocumentConversionService.class);
-        controller = new AdminController(conversionService, new TenantAccessService());
+        controller = new AdminController(conversionService);
         webTestClient = WebTestClient.bindToController(controller)
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
@@ -40,9 +37,6 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs")
-                .header(TenantContext.TENANT_ID_HEADER, "tenant1")
-                .header(TenantContext.SUBJECT_ID_HEADER, "subject1")
-                .header(TenantContext.PERMISSIONS_HEADER, "admin:operate")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -61,9 +55,6 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=true")
-                .header(TenantContext.TENANT_ID_HEADER, "tenant1")
-                .header(TenantContext.SUBJECT_ID_HEADER, "subject1")
-                .header(TenantContext.PERMISSIONS_HEADER, "admin:operate")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -81,9 +72,6 @@ class AdminControllerTest {
 
         webTestClient.get()
                 .uri("/api/v1/admin/convert/jobs?deadLettered=false")
-                .header(TenantContext.TENANT_ID_HEADER, "tenant1")
-                .header(TenantContext.SUBJECT_ID_HEADER, "subject1")
-                .header(TenantContext.PERMISSIONS_HEADER, "admin:operate")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -97,9 +85,6 @@ class AdminControllerTest {
 
         webTestClient.delete()
                 .uri("/api/v1/admin/convert/jobs/" + jobId)
-                .header(TenantContext.TENANT_ID_HEADER, "tenant1")
-                .header(TenantContext.SUBJECT_ID_HEADER, "subject1")
-                .header(TenantContext.PERMISSIONS_HEADER, "admin:operate")
                 .exchange()
                 .expectStatus().isNoContent();
     }
@@ -111,9 +96,6 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
-                .header(TenantContext.TENANT_ID_HEADER, "tenant1")
-                .header(TenantContext.SUBJECT_ID_HEADER, "subject1")
-                .header(TenantContext.PERMISSIONS_HEADER, "admin:operate")
                 .exchange()
                 .expectStatus().isAccepted();
     }
@@ -125,9 +107,6 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
-                .header(TenantContext.TENANT_ID_HEADER, "tenant1")
-                .header(TenantContext.SUBJECT_ID_HEADER, "subject1")
-                .header(TenantContext.PERMISSIONS_HEADER, "admin:operate")
                 .exchange()
                 .expectStatus().isNotFound();
     }
@@ -139,9 +118,6 @@ class AdminControllerTest {
 
         webTestClient.post()
                 .uri("/api/v1/admin/convert/jobs/" + jobId + "/retry")
-                .header(TenantContext.TENANT_ID_HEADER, "tenant1")
-                .header(TenantContext.SUBJECT_ID_HEADER, "subject1")
-                .header(TenantContext.PERMISSIONS_HEADER, "admin:operate")
                 .exchange()
                 .expectStatus().isEqualTo(409); // isConflict() isn't always available depending on spring-test version, so using isEqualTo(409) is safer
     }
